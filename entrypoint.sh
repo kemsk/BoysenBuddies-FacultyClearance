@@ -1,5 +1,8 @@
 #!/bin/bash
 
+mkdir -p /app/staticfiles/frontend
+cp -r /app/frontend_dist/* /app/staticfiles/frontend/
+
 python manage.py collectstatic --noinput
 python manage.py makemigrations --noinput
 python manage.py migrate --noinput

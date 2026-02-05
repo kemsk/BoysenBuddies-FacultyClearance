@@ -1,0 +1,160 @@
+import React from "react";
+import "../../index.css"; 
+import { DualRoleHeader } from "../../stories/components/header";
+
+import {
+  WelcomeAcademicCard,
+  ClearanceStatusCard,
+  ClearanceProgressCard,
+  ExpandableClearanceStepCard,
+  ApprovedCard,
+} from "../../stories/components/cards";
+
+export default function DualRoleFacultyDashboard() {
+  const clearanceCurrent = 1;
+  const clearanceTotal = 6;
+  const clearancePercent =
+    clearanceTotal > 0
+      ? Math.round((clearanceCurrent / clearanceTotal) * 100)
+      : 0;
+  const isClearanceApproved = clearancePercent >= 100;
+
+  const [openStep, setOpenStep] = React.useState<number | null>(null);
+  const toggleStep = (index: number) => {
+    setOpenStep((prev) => (prev === index ? null : index));
+  };
+
+  return (
+    <div className="min-h-screen bg-primary-foreground text-primary-foreground">
+      
+      {/* HEADER */}
+      <div className="header mb-3">
+        <DualRoleHeader />
+      </div>
+
+      {/* DASHBOARD CONTENT */}
+      <main className="dashboard p-4">
+        <WelcomeAcademicCard
+          name="John Doe"
+          topLeft={{ label: "Academic Year", value: "2025–2026" }}
+          topRight={{ label: "Semester", value: "1" }}
+          rows={[
+            { label: "College", value: "College of Computer Studies" },
+            { label: "Department", value: "Information Technology" },
+            { label: "Faculty Type", value: "Full-time Faculty (On Probation)" },
+          ]}
+          afterRows={
+          <ClearanceStatusCard statusLabel="Pending" 
+          statusVariant="warning" className="mb-6
+"/>}
+        />
+        
+        <div className="mt-5">
+          <ClearanceProgressCard
+            value={clearancePercent}
+            current={clearanceCurrent}
+            total={clearanceTotal}
+          />
+        </div>
+
+        {isClearanceApproved ? (
+          <div className="mt-5">
+            <ApprovedCard />
+          </div>
+        ) : (
+          <>
+            <div className="mt-5">
+              <ExpandableClearanceStepCard
+                index={1}
+                title="Department Chair"
+                statusLabel="PENDING"
+                statusVariant="warning"
+                expanded={openStep === 1}
+                onToggle={() => toggleStep(1)}
+                submittedTo="Maria Jimenez"
+                submittedOn="11/22/2025, 3:02:21 PM"
+                requirements={[
+                  {
+                    title: "Grades Roster",
+                    description: "Submit screenshot via this link:\ngoogleforms.com",
+                  },
+                  {
+                    title: "Laboratory Manual",
+                    description:
+                      "Physical submission to the Department Office\nOffice Lorem Ipsum Dolore es Amut",
+                  },
+                ]}
+              />
+            </div>
+
+            <div className="mt-2">
+              <ExpandableClearanceStepCard
+                index={2}
+                title="College Dean"
+                statusLabel="PENDING"
+                statusVariant="warning"
+                expanded={openStep === 2}
+                onToggle={() => toggleStep(2)}
+                requirements={[]}
+              />
+            </div>
+
+            <div className="mt-2">
+              <ExpandableClearanceStepCard
+                index={3}
+                title="University Registrar"
+                statusLabel="PENDING"
+                statusVariant="warning"
+                expanded={openStep === 3}
+                onToggle={() => toggleStep(3)}
+                requirements={[]}
+              />
+            </div>
+
+            <div className="mt-2">
+              <ExpandableClearanceStepCard
+                index={4}
+                title="University Library"
+                statusLabel="PENDING"
+                statusVariant="warning"
+                expanded={openStep === 4}
+                onToggle={() => toggleStep(4)}
+                requirements={[]}
+              />
+            </div>
+
+            <div className="mt-2">
+              <ExpandableClearanceStepCard
+                index={5}
+                title="OVPHE"
+                statusLabel="PENDING"
+                statusVariant="warning"
+                collapsedType= "dropdownOnly"
+                expanded={openStep === 5}
+                onToggle={() => toggleStep(5)}
+                requirements={[]}
+              />
+            </div>
+
+            <div className="mt-2">
+              <ExpandableClearanceStepCard
+                index={6}
+                title="Human Resources Office"
+                statusLabel="PENDING"
+                statusVariant="warning"
+                collapsedType=  "locked"
+                expanded={openStep === 6}
+                onToggle={() => toggleStep(6)}
+                requirements={[]}
+              />
+            </div>
+          </>
+        )}
+
+      </main>
+
+    </div>
+  );
+}
+
+
