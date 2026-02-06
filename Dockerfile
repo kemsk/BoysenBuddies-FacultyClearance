@@ -7,6 +7,13 @@ COPY Frontend/package.json Frontend/package-lock.json ./
 RUN npm ci
  
 COPY Frontend/ ./
+
+# Set up the environment for the build
+ENV NODE_ENV=production
+
+# Install Vite and other build tools
+RUN npm install -g vite
+
 RUN npm run build:docker
  
 # Stage 2: Base build stage
@@ -66,4 +73,3 @@ EXPOSE 8001
 RUN chmod +x /app/entrypoint.sh
 
 CMD ["/app/entrypoint.sh"]
-

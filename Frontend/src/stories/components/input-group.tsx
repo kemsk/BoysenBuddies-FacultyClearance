@@ -2,7 +2,7 @@ import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { Search } from "lucide-react"
 
-import { cn } from "../../components/lib/utils";
+import { cn } from "@/components/lib/utils";
 import { Button } from "./button"
 import { Input } from "./input"
 import { Textarea } from "./textarea"
