@@ -1,4 +1,3 @@
-# Stage 1: Build Vite frontend
 FROM node:22-alpine AS frontend-builder
  
 WORKDIR /frontend
@@ -7,6 +6,13 @@ COPY Frontend/package.json Frontend/package-lock.json ./
 RUN npm ci
  
 COPY Frontend/ ./
+
+# Set up the environment for the build
+ENV NODE_ENV=production
+
+# Install Vite and other build tools
+RUN npm install -g vite
+
 RUN npm run build:docker
  
 # Stage 2: Base build stage
@@ -66,4 +72,3 @@ EXPOSE 8001
 RUN chmod +x /app/entrypoint.sh
 
 CMD ["/app/entrypoint.sh"]
-

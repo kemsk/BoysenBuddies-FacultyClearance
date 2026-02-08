@@ -759,7 +759,7 @@ export function HROHeader() {
   );
 }
 
-export function CISCOHeader() {
+export function CISOHeader() {
   const navigate = useNavigate();
 
   return (
@@ -785,7 +785,7 @@ export function CISCOHeader() {
             <div>
               <SheetClose asChild>
                 <Link
-                  to="/CISCO-dashboard"
+                  to="/CISO-dashboard"
                   className="flex items-center gap-3  font-semibold text-primary text-xl"
                 >
                   <img
@@ -805,7 +805,7 @@ export function CISCOHeader() {
                 <div className="flex flex-col space-y-3">
                   <SheetClose asChild>
                     <Link
-                      to="/CISCO-system-guideline"
+                      to="/CISO-system-guideline"
                       className="text-xl font-regular text-primary"
                     >
                       System Guidlines
@@ -813,7 +813,7 @@ export function CISCOHeader() {
                   </SheetClose>
                   <SheetClose asChild>
                     <Link
-                      to="/CISCO-announcement"
+                      to="/CISO-announcement"
                       className="text-xl font-regular text-primary"
                     >
                       Announcements
@@ -827,7 +827,7 @@ export function CISCOHeader() {
            <div className="mt-2">
               <SheetClose asChild>
                 <Link
-                  to="/CISCO-tools"
+                  to="/CISO-tools"
                   className="flex items-center gap-3 text-xl font-semibold text-primary"
                 >
                   <img
@@ -846,7 +846,7 @@ export function CISCOHeader() {
                 <div className=" flex flex-col space-y-3">
                   <SheetClose asChild>
                     <Link
-                      to="/CISCO-faculty-data-dump"
+                      to="/CISO-faculty-data-dump"
                       className="text-xl font-regular text-primary"
                     >
                       Faculty Data Dump
@@ -855,7 +855,7 @@ export function CISCOHeader() {
 
                   <SheetClose asChild>
                     <Link
-                      to="/CISCO-manage-system-user"
+                      to="/CISO-manage-system-user"
                       className="text-xl font-regular text-primary"
                     >
                       Manage System Users
@@ -864,7 +864,7 @@ export function CISCOHeader() {
 
                   <SheetClose asChild>
                     <Link
-                      to="/CISCO-activity-logs"
+                      to="/CISO-activity-logs"
                       className="text-xl font-regular text-primary"
                     >
                       Check Activity Logs
@@ -878,7 +878,7 @@ export function CISCOHeader() {
             <div className="mt-2">
             <SheetClose asChild>
               <Link
-                to="/CISCO-notification"
+                to="/CISO-notification"
                 className="flex items-center gap-3 text-xl font-semibold text-primary"
               >
                 <img
@@ -941,7 +941,7 @@ export function CISCOHeader() {
   );
 }
 
-export function OPVHEHeader() {
+export function OVPHEHeader() {
   const navigate = useNavigate();
 
   return (
@@ -967,7 +967,7 @@ export function OPVHEHeader() {
             <div>
               <SheetClose asChild>
                 <Link
-                  to="/OPVHE-dashboard"
+                  to="/OVPHE-dashboard"
                   className="flex items-center gap-3  font-semibold text-primary text-xl"
                 >
                   <img
@@ -987,7 +987,7 @@ export function OPVHEHeader() {
                 <div className="flex flex-col space-y-3">
                   <SheetClose asChild>
                     <Link
-                      to="/OPVHE-system-guideline"
+                      to="/OVPHE-system-guideline"
                       className="text-xl font-regular text-primary"
                     >
                       System Guidlines
@@ -995,7 +995,7 @@ export function OPVHEHeader() {
                   </SheetClose>
                   <SheetClose asChild>
                     <Link
-                      to="/OPVHE-announcements"
+                      to="/OVPHE-announcements"
                       className="text-xl font-regular text-primary"
                     >
                       Announcements
@@ -1009,7 +1009,7 @@ export function OPVHEHeader() {
            <div className="mt-2">
               <SheetClose asChild>
                 <Link
-                  to="/OPVHE-tools"
+                  to="/OVPHE-tools"
                   className="flex items-center gap-3 text-xl font-semibold text-primary"
                 >
                   <img
@@ -1028,7 +1028,7 @@ export function OPVHEHeader() {
                 <div className=" flex flex-col space-y-3">
                   <SheetClose asChild>
                     <Link
-                      to="/OPVHE-clearance-timeline"
+                      to="/OVPHE-clearance-timeline"
                       className="text-xl font-regular text-primary"
                     >
                       Clearance Timeline
@@ -1037,7 +1037,7 @@ export function OPVHEHeader() {
 
                   <SheetClose asChild>
                     <Link
-                      to="/OPVHE-college-office-configuration"
+                      to="/OVPHE-college-office-configuration"
                       className="text-xl font-regular text-primary"
                     >
                       College & Office Configuration
@@ -1046,7 +1046,7 @@ export function OPVHEHeader() {
 
                   <SheetClose asChild>
                     <Link
-                      to="/OPVHE-system-analytics"
+                      to="/OVPHE-system-analytics"
                       className="text-xl font-regular text-primary"
                     >
                       System Analytics
@@ -1055,7 +1055,7 @@ export function OPVHEHeader() {
 
                   <SheetClose asChild>
                     <Link
-                      to="/OPVHE-activity-logs"
+                      to="/OVPHE-activity-logs"
                       className="text-xl font-regular text-primary"
                     >
                       Check Activity Logs
@@ -1068,7 +1068,7 @@ export function OPVHEHeader() {
             <div className="mt-2">
             <SheetClose asChild>
               <Link
-                to="/OPVHE-notification"
+                to="/OVPHE-notification"
                 className="flex items-center gap-3 text-xl font-semibold text-primary"
               >
                 <img

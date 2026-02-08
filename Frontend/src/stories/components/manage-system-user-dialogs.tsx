@@ -27,7 +27,7 @@ import {
 } from "./alert-dialog";
 
 export type ApproverType = "College" | "Office";
-export type SystemAdminOffice = "OPVHE" | "CISCO";
+export type SystemAdminOffice = "OVPHE" | "CISO";
 
 export type ManageSystemUserBasePayload = {
   firstName: string;
@@ -350,7 +350,7 @@ export function ManageSystemAdminDialog({
   const [lastName, setLastName] = React.useState("");
   const [universityId, setUniversityId] = React.useState("");
   const [email, setEmail] = React.useState("");
-  const [systemAdminOffice, setSystemAdminOffice] = React.useState<SystemAdminOffice>("OPVHE");
+  const [systemAdminOffice, setSystemAdminOffice] = React.useState<SystemAdminOffice>("OVPHE");
   const [isActive, setIsActive] = React.useState(false);
 
   React.useEffect(() => {
@@ -360,7 +360,7 @@ export function ManageSystemAdminDialog({
     setLastName(initialValues?.lastName ?? "");
     setUniversityId(initialValues?.universityId ?? "");
     setEmail(initialValues?.email ?? "");
-    setSystemAdminOffice(initialValues?.systemAdminOffice ?? "OPVHE");
+    setSystemAdminOffice(initialValues?.systemAdminOffice ?? "OVPHE");
     setIsActive(Boolean(initialValues?.isActive));
   }, [effectiveOpen, initialValues]);
 
@@ -405,8 +405,8 @@ export function ManageSystemAdminDialog({
                 value={systemAdminOffice}
                 onChange={setSystemAdminOffice}
                 options={[
-                  { value: "OPVHE", label: "OPVHE" },
-                  { value: "CISCO", label: "CISCO" },
+                  { value: "OVPHE", label: "OVPHE" },
+                  { value: "CISO", label: "CISO" },
                 ]}
               />
 

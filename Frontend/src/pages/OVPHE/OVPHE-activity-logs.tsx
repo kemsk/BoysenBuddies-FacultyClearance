@@ -1,5 +1,5 @@
 import "../../index.css";
-import { ApprovalHeader } from "../../stories/components/header";
+import { OVPHEHeader } from "../../stories/components/header";
 
 import {
   Breadcrumb,
@@ -23,203 +23,24 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Link } from "react-router-dom";
 
-export default function CISCOActivityLogs() {
+export default function OVPHEActivityLogs() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 40;
 
-  const items: ActivityLogItem[] = [
-    {
-      id: "log-1",
-      dateLabel: "01/10/2027",
-      timeLabel: "1:40 PM",
-      variant: "approved_clearance",
-      actorFirstName: "Merida",
-      actorLastName: "Santos",
-      approverDepartment: "College of Computer Studies",
-      facultyFirstName: "Alexander",
-      facultyLastName: "Hamilton",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Alexander Hamilton",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },
-    {
-      id: "log-2",
-      dateLabel: "01/10/2026",
-      timeLabel: "1:10 PM",
-      variant: "rejected_clearance",
-      actorFirstName: "Angela",
-      actorLastName: "Santos",
-      approverDepartment: "College of Computer Studies",
-      facultyFirstName: "Alexander",
-      facultyLastName: "Hamilton",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Alexander Hamilton",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },
-    {
-      id: "log-3",
-      dateLabel: "03/10/2026",
-      timeLabel: "4:10 PM",
-      variant: "create_request",
-      facultyFirstName: "Angela",
-      facultyLastName: "Santos",
-      facultyCollege: "College of Computer Studies",
-      facultyDepartment: "Computer Science",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Angela Santos",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },
-    {
-      id: "log-4",
-      dateLabel: "03/10/2027",
-      timeLabel: "4:10 PM",
-      variant: "edited_requirements",
-      actorFirstName: "Angela",
-      actorLastName: "Santos",
-      requirementTitle: "Exit Clearance Form",
-      approverDepartment: "College of Computer Studies",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Angela Santos",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },
-    {
-      id: "log-5",
-      dateLabel: "03/10/2027",
-      timeLabel: "3:10 PM",
-      variant: "created_requirements",
-      actorFirstName: "Angela",
-      actorLastName: "Santos",
-      requirementTitle: "Library Clearance",
-      approverDepartment: "Computer Science",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Angela Santos",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },
-    {
-      id: "log-6",
-      dateLabel: "06/10/2027",
-      timeLabel: "5:10 PM",
-      variant: "deleted_requirements",
-      actorFirstName: "Angela",
-      actorLastName: "Santos",
-      requirementTitle: "Library Clearance",
-      approverDepartment: "Computer Science",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Angela Santos",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },
-    {
-      id: "log-7",
-      dateLabel: "06/10/2025",
-      timeLabel: "5:10 PM",
-      variant: "added_assistant_approver",
-      actorFirstName: "Angela",
-      actorLastName: "Santos",
-      requirementTitle: "Library Clearance",
-      approverDepartment: "Computer Science",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Angela Santos",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },
-    {
-      id: "log-8",
-      dateLabel: "03/10/2027",
-      timeLabel: "5:10 PM",
-      variant: "updated_assistant_approver",
-      actorFirstName: "Angela",
-      actorLastName: "Santos",
-      requirementTitle: "Library Clearance",
-      approverDepartment: "Computer Science",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Angela Santos",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },
-    {
-      id: "log-9",
-      dateLabel: "03/10/2025",
-      timeLabel: "5:10 PM",
-      variant: "removed_assistant_approver",
-      actorFirstName: "Angela",
-      actorLastName: "Santos",
-      requirementTitle: "Library Clearance",
-      approverDepartment: "Computer Science",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Angela Santos",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },    
-    {
-      id: "log-9",
-      dateLabel: "07/15/2024",
-      timeLabel: "5:10 PM",
-      variant: "user_logout",
-      actorFirstName: "Angela",
-      actorLastName: "Santos",
-      requirementTitle: "Library Clearance",
-      approverDepartment: "Computer Science",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Angela Santos",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },    
-    {
-      id: "log-10",
-      dateLabel: "06/12/2027",
-      timeLabel: "5:10 PM",
-      variant: "edited_announcement",
-      actorFirstName: "Angela",
-      actorLastName: "Santos",
-      requirementTitle: "Library Clearance",
-      approverDepartment: "Computer Science",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Angela Santos",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },    
+  const [items, setItems] = useState<ActivityLogItem[]>([]);
 
-  ];
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("query", query.trim());
+    params.set("page", "1");
+    params.set("pageSize", "500");
+
+    fetch(`/admin/xu-faculty-clearance/api/ovphe/activity-logs?${params.toString()}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { items: ActivityLogItem[] }) => setItems(data.items ?? []))
+      .catch(() => setItems([]));
+  }, [query]);
 
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -346,7 +167,7 @@ export default function CISCOActivityLogs() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <ApprovalHeader />
+        <OVPHEHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}

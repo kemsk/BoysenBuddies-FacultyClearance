@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import "../../index.css"; 
-import { OPVHEHeader } from "../../stories/components/header";
+import { OVPHEHeader } from "../../stories/components/header";
 
 import {
   type AnnouncementItem,
@@ -56,7 +56,7 @@ function GuidelinesToggle({
   );
 }
 
-export default function OPVHEAnnouncements() {
+export default function OVPHEAnnouncements() {
   const navigate = useNavigate();
 
   const [items, setItems] = React.useState<AnnouncementItem[]>([]);
@@ -68,11 +68,22 @@ export default function OPVHEAnnouncements() {
   >({ open: false });
 
   React.useEffect(() => {
-    const initial = loadAnnouncementsItems().map((item) => ({
-      ...item,
-      enabled: item.enabled ?? true,
-    }));
-    setItems(initial);
+    fetch("/admin/xu-faculty-clearance/api/ovphe/announcements")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { items: AnnouncementItem[] }) => {
+        const initial = (data.items ?? []).map((item) => ({
+          ...item,
+          enabled: item.enabled ?? true,
+        }));
+        setItems(initial);
+      })
+      .catch(() => {
+        const initial = loadAnnouncementsItems().map((item) => ({
+          ...item,
+          enabled: item.enabled ?? true,
+        }));
+        setItems(initial);
+      });
   }, []);
 
   return (
@@ -80,7 +91,7 @@ export default function OPVHEAnnouncements() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <OPVHEHeader />
+        <OVPHEHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}

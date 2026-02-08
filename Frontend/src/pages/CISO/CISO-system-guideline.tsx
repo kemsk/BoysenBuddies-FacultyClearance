@@ -1,16 +1,18 @@
 import * as React from "react";
 
 import "../../index.css"; 
-import { CISCOHeader } from "../../stories/components/header";
+import { CISOHeader } from "../../stories/components/header";
 
 import {
+  AnnouncementsCard,
   type AnnouncementItem,
+  WelcomeAcademicCard,
   SectionListCard,
+  type SystemGuidlinesItem,
 } from "../../stories/components/cards";
 
 import { Button } from "../../stories/components/button";
 import { Divider } from "../../stories/components/divider";
-import { Checkbox } from "../../stories/components/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,10 +21,10 @@ import {
 } from "../../stories/components/alert-dialog";
 
 import {
-  EditAnnouncementsDialog,
-  loadAnnouncementsItems,
-  saveAnnouncementsItems,
-} from "../../stories/components/edit-announcements-dialog";
+  EditSystemGuidelinesDialog,
+  loadSystemGuidelinesItems,
+  saveSystemGuidelinesItems,
+} from "../../stories/components/edit-system-guidelines-dialog";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -56,10 +58,10 @@ function GuidelinesToggle({
   );
 }
 
-export default function CISCOAnnouncements() {
+export default function CISOSystemGuideline() {
   const navigate = useNavigate();
 
-  const [items, setItems] = React.useState<AnnouncementItem[]>([]);
+  const [items, setItems] = React.useState<SystemGuidlinesItem[]>([]);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
   const [confirm, setConfirm] = React.useState<
@@ -68,25 +70,40 @@ export default function CISCOAnnouncements() {
   >({ open: false });
 
   React.useEffect(() => {
-    const initial = loadAnnouncementsItems().map((item) => ({
-      ...item,
-      enabled: item.enabled ?? true,
-    }));
-    setItems(initial);
+    fetch("/admin/xu-faculty-clearance/api/ciso/system-guidelines")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { items: SystemGuidlinesItem[] }) => {
+        const initial = (data.items ?? []).map((item) => ({
+          ...item,
+          enabled: item.enabled ?? true,
+        }));
+        setItems(initial);
+      })
+      .catch(() => {
+        const initial = loadSystemGuidelinesItems().map((item) => ({
+          ...item,
+          enabled: item.enabled ?? true,
+        }));
+        setItems(initial);
+      });
   }, []);
+
+
+
+
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
       
       {/* HEADER */}
       <div className="header mb-3">
-        <CISCOHeader />
+        <CISOHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
       <main className="dashboard p-4 mt-2 space-y-3">
 
-        <h1 className="text-2xl text-left text-primary font-bold">Announcements</h1>
+        <h1 className="text-2xl text-left text-primary font-bold">System Guidelines</h1>
 
         <Breadcrumb className="mt-2">
           <BreadcrumbList>
@@ -97,19 +114,19 @@ export default function CISCOAnnouncements() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>Announcements</BreadcrumbPage>
+              <BreadcrumbPage>System Guidelines</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/system-admin-dashboard")}> 
+          <Button variant="back" onClick={() => navigate("/approver-dashboard")}> 
             <img src="BlackArrowIcon.png" alt="back" />Back
           </Button>
         </div>
 
           <SectionListCard
-            title="Announcements"
+            title="System Guidelines"
             headerActionImgSrc="/WhitePlusIcon.png"
             headerActionImgAlt="Add Maintenance Window"
             headerActionOnClick={() => {
@@ -117,30 +134,30 @@ export default function CISCOAnnouncements() {
               setDialogOpen(true);
             }}
           >
-            <div className="p-4">
-              <div className="space-y-6">
-                {items.map((item, idx) => {
-                  const enabled = item.enabled ?? true;
-                  const descriptionText = item.description;
+            <div className="p-0">
+              {items.map((item, idx) => {
+                const enabled = item.enabled ?? true;
+                const descriptionText = Array.isArray(item.description)
+                  ? item.description
+                      .map((d) => (typeof d === "string" ? d : d.text))
+                      .join("\n")
+                  : item.description;
 
-                  return (
-                    <div
-                      key={`${item.title}-${idx}`}
-                      className="overflow-hidden rounded-md bg-muted"
-                    >
-                      <div className="flex items-center justify-between bg-muted px-4 py-4">
-                        <div className="text-lg font-bold text-foreground">{item.title}</div>
-                        <GuidelinesToggle
-                          checked={enabled}
-                          onChange={(next) => {
-                            setConfirm({
-                              open: true,
-                              type: next ? "enable" : "disable",
-                              index: idx,
-                            });
-                          }}
-                        />
-                      </div>
+                return (
+                  <div key={`${item.title}-${idx}`} className="bg-muted m-4">
+                    <div className="flex items-center justify-between bg-muted px-4 py-3">
+                      <div className="text-md font-bold text-foreground">{item.title}</div>
+                      <GuidelinesToggle
+                        checked={enabled}
+                        onChange={(next) => {
+                          setConfirm({
+                            open: true,
+                            type: next ? "enable" : "disable",
+                            index: idx,
+                          });
+                        }}
+                      />
+                    </div>
 
                     <Divider color="border-[hsl(var(--white))]" />
 
@@ -152,54 +169,47 @@ export default function CISCOAnnouncements() {
                       <div className="mt-3 text-sm text-muted-foreground">
                         Created: {item.timestamp}
                       </div>
+                    </div>
 
+                    <Divider color="border-[hsl(var(--whiter))]" />
 
-                      <div className="mt-4 flex items-center gap-2 text-sm text-foreground">
-                        <Checkbox
-                          variant="primary"
-                          checked={!!item.pinned}
-                          disabled
-                        />
-                        <span className="font-semibold">Pin announcement</span>
+                    <div className="bg-muted px-4 py-4">
+                      <div className="flex items-center justify-center">
+                        {enabled ? (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            className="h-9 w-[120px] rounded-md bg-muted-foreground/20 text-foreground hover:bg-muted-foreground/20"
+                            onClick={() => {
+                              setEditingIndex(idx);
+                              setDialogOpen(true);
+                            }}
+                          >
+                            EDIT
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            className="h-9 w-[120px] rounded-md"
+                            onClick={() => {
+                              setConfirm({ open: true, type: "delete", index: idx });
+                            }}
+                          >
+                            DELETE
+                          </Button>
+                        )}
                       </div>
                     </div>
 
-                    <Divider color="border-[hsl(var(--white))]" className="mt-3"/>
-
-                      <div className="bg-muted px-4 py-5">
-                        <div className="flex items-center justify-center">
-                          {enabled ? (
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              className="h-9 w-[120px] rounded-md bg-muted-foreground/20 text-foreground hover:bg-muted-foreground/20"
-                              onClick={() => {
-                                setEditingIndex(idx);
-                                setDialogOpen(true);
-                              }}
-                            >
-                              EDIT
-                            </Button>
-                          ) : (
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              className="h-9 w-[120px] rounded-md"
-                              onClick={() => {
-                                setConfirm({ open: true, type: "delete", index: idx });
-                              }}
-                            >
-                              DELETE
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    {idx < items.length - 1 ? (
+                      <Divider  />
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
           </SectionListCard>
 
@@ -273,7 +283,7 @@ export default function CISCOAnnouncements() {
                             if (confirm.type === "delete") {
                               const updated = items.filter((_, i) => i !== confirm.index);
                               setItems(updated);
-                              saveAnnouncementsItems(updated);
+                              saveSystemGuidelinesItems(updated);
                               setConfirm({ open: false });
                               return;
                             }
@@ -283,15 +293,15 @@ export default function CISCOAnnouncements() {
                               i === confirm.index ? { ...it, enabled: nextEnabled } : it
                             );
                             setItems(updated);
-                            saveAnnouncementsItems(updated);
+                            saveSystemGuidelinesItems(updated);
                             setConfirm({ open: false });
                           }}
                         >
                           {actionLabel}
                         </AlertDialogAction>
 
-                        <AlertDialogCancel className="h-11 w-full ">
-                          Cancel
+                        <AlertDialogCancel className="h-11 w-full rounded-md ">
+                            Cancel
                         </AlertDialogCancel>
                       </div>
                     </div>
@@ -301,7 +311,7 @@ export default function CISCOAnnouncements() {
             </AlertDialogContent>
           </AlertDialog>
 
-          <EditAnnouncementsDialog
+          <EditSystemGuidelinesDialog
             open={dialogOpen}
             onOpenChange={setDialogOpen}
             initialValues={
@@ -309,12 +319,13 @@ export default function CISCOAnnouncements() {
                 ? {
                     title: items[editingIndex]?.title ?? "",
                     description:
-                      items[editingIndex]?.description ?? "",
-                    pinned: items[editingIndex]?.pinned ?? false,
+                      typeof items[editingIndex]?.description === "string"
+                        ? items[editingIndex]?.description
+                        : "",
                   }
                 : undefined
             }
-            onSave={({ title, description, pinned }) => {
+            onSave={({ title, description }) => {
               if (editingIndex !== null) {
                 const updated = items.map((it, idx) =>
                   idx === editingIndex
@@ -322,28 +333,27 @@ export default function CISCOAnnouncements() {
                         ...it,
                         title,
                         description,
-                        pinned,
                       }
                     : it
                 );
                 setItems(updated);
-                saveAnnouncementsItems(updated);
+                saveSystemGuidelinesItems(updated);
                 setEditingIndex(null);
                 return;
               }
 
-              const next: AnnouncementItem[] = [
+              const next: SystemGuidlinesItem[] = [
                 {
-                  pinned,
                   title,
                   description,
+                  email: "ciso@xu.edu.ph",
                   timestamp: new Date().toLocaleString(),
                   enabled: true,
                 },
                 ...items,
               ];
               setItems(next);
-              saveAnnouncementsItems(next);
+              saveSystemGuidelinesItems(next);
             }}
           />
   

@@ -52,7 +52,7 @@ export default function ExportArchiveClearance() {
       college: "College of Computer Studies",
       department: "Information Technology",
       facultyType: "Full-time Faculty (On Probation)",
-      missingSignatures: "Library, OPVHE",
+      missingSignatures: "Library, OVPHE",
       status: "incomplete",
     },
   ];
@@ -81,7 +81,7 @@ export default function ExportArchiveClearance() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/CISCO-tools">Tools</Link>
+                <Link to="/CISO-tools">Tools</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -92,7 +92,7 @@ export default function ExportArchiveClearance() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/CISCO-tools")}> 
+          <Button variant="back" onClick={() => navigate("/CISO-tools")}> 
             <img src="BlackArrowIcon.png" alt="back" />Back
           </Button>
         </div>

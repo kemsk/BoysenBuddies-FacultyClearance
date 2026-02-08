@@ -1,5 +1,5 @@
 import "../../index.css"; 
-import { CISCOHeader } from "../../stories/components/header";
+import { CISOHeader } from "../../stories/components/header";
 
 import {
   FacultyDataDumpCard,
@@ -17,7 +17,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { Button } from "../../stories/components/button";
 
-export default function CISCOFacultyDataDump() {
+export default function CISOFacultyDataDump() {
   const navigate = useNavigate();
 
   return (
@@ -25,7 +25,7 @@ export default function CISCOFacultyDataDump() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <CISCOHeader />
+        <CISOHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
@@ -37,7 +37,7 @@ export default function CISCOFacultyDataDump() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/CISCO-tools">Tools</Link>
+                <Link to="/CISO-tools">Tools</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -48,7 +48,7 @@ export default function CISCOFacultyDataDump() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/CISCO-tools")}> 
+          <Button variant="back" onClick={() => navigate("/CISO-tools")}> 
             <img src="BlackArrowIcon.png" alt="back" />Back
           </Button>
         </div>

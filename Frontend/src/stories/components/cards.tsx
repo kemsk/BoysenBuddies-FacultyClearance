@@ -2,7 +2,7 @@ import * as React from "react";
 import { Check, ChevronLeft, ChevronRight, Download, Eye, Pencil, Plus, Trash2, Upload, X, ArrowBigLeft, ArrowBigRight, UserCheck, UserMinus, UserPlus } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { cn } from "../../components/lib/utils";
+import { cn } from "@/components/lib/utils";
 import { Badge } from "./badge";
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";

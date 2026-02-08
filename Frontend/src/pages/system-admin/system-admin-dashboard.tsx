@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import "../../index.css"; 
-import { CISCOHeader } from "../../stories/components/header";
+import { CISOHeader } from "../../stories/components/header";
 
 import {
   AnnouncementsCard,
@@ -15,7 +15,7 @@ import { loadSystemGuidelinesItems } from "../../stories/components/edit-system-
 import { loadAnnouncementsItems } from "../../stories/components/edit-announcements-dialog";
 
 export default function SystemAdminDashboard() {
-  const approverOffice = "OPVHE";
+  const approverOffice = "OVPHE";
 
   const [items, setItems] = React.useState<SystemGuidlinesItem[]>([]);
   const [announcementItems, setAnnouncementItems] = React.useState<AnnouncementItem[]>([]);
@@ -37,7 +37,7 @@ export default function SystemAdminDashboard() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <CISCOHeader />
+        <CISOHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}

@@ -1,58 +1,46 @@
 import "../../index.css";
-import { OPVHEHeader } from "../../stories/components/header";
+import { CISOHeader } from "../../stories/components/header";
 import { ActionNavCard } from "../../stories/components/cards";
 import { Eye, Users } from "lucide-react";
 
-export default function OPVHETools() {
+export default function CISOTools() {
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
       {/* HEADER */}
       <div className="header mb-3">
-        <OPVHEHeader />
+        <CISOHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
       <main className="dashboard p-4">
 
         <div className="mt-0 grid gap-4">
-          <ActionNavCard
-            icon={
-                <img
-                  src="/PrimaryCalendarIcon.png"
-                  alt="activity logs icon"
-                  className="h-9 w-9"
-                />
-            }
-            title="Clearance Timeline"
-            description="View and set the clearance timeline"
-            to="/clearance-timeline"
-          />
 
           <ActionNavCard
             icon={
                 <img
-                  src="/PrimarySliderIcon.png"
+                  src="/PrimaryUploadIcon.png"
                   alt="activity logs icon"
                   className="h-9 w-9"
                 />
             }
-            title="College & Office Configuration"
-            description="View and set the clearance timeline"
-            to="/college-office-configuration"
+            title="Faculty Data Dump"
+            description="Check current system user dump"
+            to="/faculty-data-dump"
           />
 
 
           <ActionNavCard
             icon={
                 <img
-                  src="/PrimaryBarChartIcon.png"
+                  src="/PrimaryPersonIcon.png"
                   alt="activity logs icon"
                   className="h-9 w-9"
                 />
             }
-            title="System Analytics"
-            description="Check the completion rate per college"
-            to="/system-analytics"
+            title="Manage System Users"
+            description="View and set the system approvers"
+            to="/manage-system-user"
           />
 
           <ActionNavCard

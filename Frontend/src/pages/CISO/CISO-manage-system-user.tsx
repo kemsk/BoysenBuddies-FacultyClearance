@@ -1,5 +1,5 @@
 import "../../index.css"; 
-import { CISCOHeader } from "../../stories/components/header";
+import { CISOHeader } from "../../stories/components/header";
 
 
 import {
@@ -35,12 +35,12 @@ import {
   type ManageSystemApproverPayload,
 } from "../../stories/components/manage-system-user-dialogs";
 
-export default function CISCOManageSystemUser() {
+export default function CISOManageSystemUser() {
   const navigate = useNavigate();
   const [page, setPage] = React.useState(1);
   const pageSize = 2;
 
-  const STORAGE_KEY = "cisco_system_users_v1";
+  const STORAGE_KEY = "CISO_system_users_v1";
 
   const defaultUsers: SystemUser[] = [
     {
@@ -75,6 +75,17 @@ export default function CISCOManageSystemUser() {
       return defaultUsers;
     }
   });
+
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/ciso/system-users")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { items: SystemUser[] }) => {
+        setUsers(Array.isArray(data.items) && data.items.length ? data.items : defaultUsers);
+      })
+      .catch(() => {
+        // keep local storage/default behavior
+      });
+  }, []);
 
   React.useEffect(() => {
     try {
@@ -128,7 +139,7 @@ export default function CISCOManageSystemUser() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <CISCOHeader />
+        <CISOHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
@@ -140,7 +151,7 @@ export default function CISCOManageSystemUser() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/CISCO-tools">Tools</Link>
+                <Link to="/CISO-tools">Tools</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -151,7 +162,7 @@ export default function CISCOManageSystemUser() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/CISCO-tools")}> 
+          <Button variant="back" onClick={() => navigate("/CISO-tools")}> 
             <img src="BlackArrowIcon.png" alt="back" />Back
           </Button>
         </div>
@@ -349,7 +360,7 @@ export default function CISCOManageSystemUser() {
                   ...splitName(activeUser.name),
                   universityId: activeUser.universityId,
                   email: activeUser.email,
-                  systemAdminOffice: activeUser.college === "CISCO" ? "CISCO" : "OPVHE",
+                  systemAdminOffice: activeUser.college === "CISO" ? "CISO" : "OVPHE",
                   isActive: true,
                 }
               : undefined

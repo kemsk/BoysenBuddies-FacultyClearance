@@ -1,7 +1,7 @@
 import React from "react";
 import "../../index.css"; // ensure index.css is accessible from src
 import { Button } from "../../stories/components/button";
-import { CISCOHeader } from "../../stories/components/header";
+import { CISOHeader } from "../../stories/components/header";
 
 import {
   NotificationsCard,
@@ -9,48 +9,47 @@ import {
 } from "../../stories/components/cards";
 
 
-export default function CISCONotification() {
+export default function CISONotification() {
   const [readAll, setReadAll] = React.useState(false);
 
-  const items: NotificationItem[] = [
-    {
-      title: "Department Chair",
-      status: "approved",
-      details: ["Submission of Syllabus", "Submission of Grades"],
-      timestamp: "December 3, 2025, 9:30 AM",
-    },
-    {
-      title: "University Registrar",
-      status: "rejected",
-      details: ["Submission of Grades", "Remarks: incomplete submission"],
-      timestamp: "December 1, 2025, 9:30 AM",
-    },
-    {
-      title: "University Registrar",
-      status: "submitted",
-      details: ["Submission of Grades"],
-      timestamp: "November 28, 2025, 9:30 AM",
-    },
-    {
-      title: "University Registrar",
-      status: "submitted",
-      details: ["Submission of Grades"],
-      timestamp: "November 28, 2025, 9:30 AM",
-    },
-    {
-      title: "University Registrar",
-      status: "submitted",
-      details: ["Submission of Grades"],
-      timestamp: "November 28, 2025, 9:30 AM",
-    },
-  ];
+  const [items, setItems] = React.useState<NotificationItem[]>([]);
+
+  React.useEffect(() => {
+    const load = async () => {
+      try {
+        const r = await fetch("/admin/xu-faculty-clearance/api/ciso/notifications", {
+          credentials: "include",
+        });
+
+        const text = await r.text();
+        if (!r.ok) {
+          console.error("CISO notifications fetch failed", r.status, text);
+          setItems([]);
+          return;
+        }
+
+        try {
+          const data = JSON.parse(text) as { items?: NotificationItem[] };
+          setItems(data.items ?? []);
+        } catch (e) {
+          console.error("CISO notifications response was not JSON", r.status, text);
+          setItems([]);
+        }
+      } catch (e) {
+        console.error("CISO notifications fetch threw", e);
+        setItems([]);
+      }
+    };
+
+    void load();
+  }, []);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
       
       {/* HEADER */}
       <div className="header mb-3">
-        <CISCOHeader />
+        <CISOHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}

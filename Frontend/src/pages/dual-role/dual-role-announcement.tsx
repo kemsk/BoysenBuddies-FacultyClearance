@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import "../../index.css"; 
-import { CISCOHeader } from "../../stories/components/header";
+import { CISOHeader } from "../../stories/components/header";
 
 import {
   type AnnouncementItem,
@@ -80,7 +80,7 @@ export default function DualRoleAnnouncements() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <CISCOHeader />
+        <CISOHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}

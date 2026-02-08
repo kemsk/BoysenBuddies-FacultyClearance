@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import "../../index.css"; 
-import { CISCOHeader } from "../../stories/components/header";
+import { OVPHEHeader } from "../../stories/components/header";
 
 import {
   AnnouncementsCard,
@@ -58,7 +58,7 @@ function GuidelinesToggle({
   );
 }
 
-export default function CISCOSystemGuideline() {
+export default function OVPHESystemGuideline() {
   const navigate = useNavigate();
 
   const [items, setItems] = React.useState<SystemGuidlinesItem[]>([]);
@@ -70,11 +70,22 @@ export default function CISCOSystemGuideline() {
   >({ open: false });
 
   React.useEffect(() => {
-    const initial = loadSystemGuidelinesItems().map((item) => ({
-      ...item,
-      enabled: item.enabled ?? true,
-    }));
-    setItems(initial);
+    fetch("/admin/xu-faculty-clearance/api/ovphe/system-guidelines")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { items: SystemGuidlinesItem[] }) => {
+        const initial = (data.items ?? []).map((item) => ({
+          ...item,
+          enabled: item.enabled ?? true,
+        }));
+        setItems(initial);
+      })
+      .catch(() => {
+        const initial = loadSystemGuidelinesItems().map((item) => ({
+          ...item,
+          enabled: item.enabled ?? true,
+        }));
+        setItems(initial);
+      });
   }, []);
 
 
@@ -86,7 +97,7 @@ export default function CISCOSystemGuideline() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <CISCOHeader />
+        <OVPHEHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
@@ -290,7 +301,9 @@ export default function CISCOSystemGuideline() {
                         </AlertDialogAction>
 
                         <AlertDialogCancel className="h-11 w-full rounded-md ">
+                          <Button variant="action" className="h-11 w-full rounded-md bg-muted text-muted-foreground hover:bg-muted">
                             Cancel
+                          </Button>
                         </AlertDialogCancel>
                       </div>
                     </div>

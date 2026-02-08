@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import "../../index.css"; 
-import { OPVHEHeader } from "../../stories/components/header";
+import { OVPHEHeader } from "../../stories/components/header";
 
 import {
   SectionListCard,
@@ -71,10 +71,10 @@ type OfficeItem = {
   short: string;
 };
 
-const COLLEGES_STORAGE_KEY = "opvhe_colleges_v1";
-const DEPARTMENTS_STORAGE_KEY = "opvhe_college_departments_v1";
-const OFFICES_STORAGE_KEY = "opvhe_offices_v1";
-const APPROVER_FLOW_STORAGE_KEY = "opvhe_approver_flow_v1";
+const COLLEGES_STORAGE_KEY = "OVPHE_colleges_v1";
+const DEPARTMENTS_STORAGE_KEY = "OVPHE_college_departments_v1";
+const OFFICES_STORAGE_KEY = "OVPHE_offices_v1";
+const APPROVER_FLOW_STORAGE_KEY = "OVPHE_approver_flow_v1";
 
 type ApproverFlowItem = {
   id: string;
@@ -112,9 +112,9 @@ const DEFAULT_OFFICES: OfficeItem[] = [
   { id: "reg", name: "University Registrar", short: "REG" },
   { id: "ubry", name: "University Library", short: "LIB" },
   {
-    id: "opvhe",
+    id: "OVPHE",
     name: "Office of the Vice President for Higher Education",
-    short: "OPVHE",
+    short: "OVPHE",
   },
   { id: "hro", name: "Human Resources Office", short: "HRO" },
 ];
@@ -621,7 +621,7 @@ function AddOfficeDialog(props: {
   );
 }
 
-export default function OPVHECollegeOfficeConfiguration() {
+export default function OVPHECollegeOfficeConfiguration() {
   const navigate = useNavigate();
 
   const [colleges, setColleges] = React.useState<CollegeItem[]>([]);
@@ -654,16 +654,37 @@ export default function OPVHECollegeOfficeConfiguration() {
   >({ open: false });
 
   React.useEffect(() => {
-    const initialColleges = loadList<CollegeItem[]>(COLLEGES_STORAGE_KEY, DEFAULT_COLLEGES);
-    const initialDepartments = loadList<DepartmentItem[]>(DEPARTMENTS_STORAGE_KEY, DEFAULT_DEPARTMENTS);
-    const initialOffices = loadList<OfficeItem[]>(OFFICES_STORAGE_KEY, DEFAULT_OFFICES);
-    const initialApproverFlow = loadList<ApproverFlowItem[]>(APPROVER_FLOW_STORAGE_KEY, DEFAULT_APPROVER_FLOW);
+    fetch("/admin/xu-faculty-clearance/api/ovphe/org-structure")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { colleges: CollegeItem[]; departments: DepartmentItem[]; offices: OfficeItem[] }) => {
+        const initialColleges = data.colleges ?? [];
+        const initialDepartments = data.departments ?? [];
+        const initialOffices = data.offices ?? [];
 
-    setColleges(initialColleges);
-    setDepartments(initialDepartments);
-    setOffices(initialOffices);
-    setApproverFlow(initialApproverFlow);
-    setSelectedCollegeId(initialColleges[2]?.id ?? initialColleges[0]?.id ?? "");
+        setColleges(initialColleges);
+        setDepartments(initialDepartments);
+        setOffices(initialOffices);
+        setSelectedCollegeId(initialColleges[0]?.id ?? "");
+      })
+      .catch(() => {
+        const initialColleges = loadList<CollegeItem[]>(COLLEGES_STORAGE_KEY, DEFAULT_COLLEGES);
+        const initialDepartments = loadList<DepartmentItem[]>(DEPARTMENTS_STORAGE_KEY, DEFAULT_DEPARTMENTS);
+        const initialOffices = loadList<OfficeItem[]>(OFFICES_STORAGE_KEY, DEFAULT_OFFICES);
+        setColleges(initialColleges);
+        setDepartments(initialDepartments);
+        setOffices(initialOffices);
+        setSelectedCollegeId(initialColleges[2]?.id ?? initialColleges[0]?.id ?? "");
+      });
+
+    fetch("/admin/xu-faculty-clearance/api/ovphe/approver-flow")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { steps: ApproverFlowItem[] }) => {
+        setApproverFlow(data.steps ?? []);
+      })
+      .catch(() => {
+        const initialApproverFlow = loadList<ApproverFlowItem[]>(APPROVER_FLOW_STORAGE_KEY, DEFAULT_APPROVER_FLOW);
+        setApproverFlow(initialApproverFlow);
+      });
   }, []);
 
   const filteredDepartments = React.useMemo(
@@ -701,7 +722,7 @@ export default function OPVHECollegeOfficeConfiguration() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <OPVHEHeader />
+        <OVPHEHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
@@ -713,7 +734,7 @@ export default function OPVHECollegeOfficeConfiguration() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/OPVHE-tools">Tools</Link>
+                <Link to="/OVPHE-tools">Tools</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -724,7 +745,7 @@ export default function OPVHECollegeOfficeConfiguration() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/OPVHE-tools")}> 
+          <Button variant="back" onClick={() => navigate("/OVPHE-tools")}> 
             <img src="BlackArrowIcon.png" alt="back" />Back
           </Button>
         </div>

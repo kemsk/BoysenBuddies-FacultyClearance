@@ -20,23 +20,24 @@ import AssistantApproverRequirementList from "./pages/assistant-approver/assista
 import AssistantApproverClearance from "./pages/assistant-approver/assistant-approver-clearance";
 import AssistantApproverNotification from "./pages/assistant-approver/assistant-approver-notification";
 
-import OPVHEDashboard from "./pages/OPVHE/OPVHE-dashboard";
-import OPVHETools from "./pages/OPVHE/OPVHE-tools";
-import OPVHEClearanceTimeline from "./pages/OPVHE/OPVHE-clearance-timeline";
-import OPVHECollegeOfficeConfiguration from "./pages/OPVHE/OPVHE-college-office-configuration";
-import OPVHESystemAnalytics from "./pages/OPVHE/OPVHE-system-analytics";
-import OPVHESystemGuideline from "./pages/OPVHE/OPVEHE-system-guideline";
-import OPVHEAnnouncements from "./pages/OPVHE/OPVHE-announcement";
-import OPVHENotification from "./pages/OPVHE/OPVHE-notification";
-import OPVHEActivityLogs from "./pages/OPVHE/OPVHE-activity-logs";
+import OVPHEDashboard from "./pages/OVPHE/OVPHE-dashboard";
+import OVPHETools from "./pages/OVPHE/OVPHE-tools";
+import OVPHEClearanceTimeline from "./pages/OVPHE/OVPHE-clearance-timeline";
+import OVPHECollegeOfficeConfiguration from "./pages/OVPHE/OVPHE-college-office-configuration";
+import OVPHESystemAnalytics from "./pages/OVPHE/OVPHE-system-analytics";
+import OVPHESystemGuideline from "./pages/OVPHE/OVPHE-system-guideline";
+import OVPHEAnnouncements from "./pages/OVPHE/OVPHE-announcement";
+import OVPHENotification from "./pages/OVPHE/OVPHE-notification";
+import OVPHEActivityLogs from "./pages/OVPHE/OVPHE-activity-logs";
 
-import CISCODashboard from "./pages/CISCO/CISCO-dashboard";
-import CISCOTools from "./pages/CISCO/CISCO-tools";
-import CISCOSystemGuideline from "./pages/CISCO/CISCO-system-guideline";
-import CISCOAnnouncements from "./pages/CISCO/CISCO-announcement";
-import CISCOFacultyDataDump from "./pages/CISCO/CISCO-faculty-data-dump";
-import CISCOManageSystemUser from "./pages/CISCO/CISCO-manage-system-user";
-import CISCOActivityLogs from "./pages/CISCO/CISCO-activity-logs";
+import CISODashboard from "./pages/CISO/CISO-dashboard";
+import CISOTools from "./pages/CISO/CISO-tools";
+import CISOSystemGuideline from "./pages/CISO/CISO-system-guideline";
+import CISOAnnouncements from "./pages/CISO/CISO-announcement";
+import CISOFacultyDataDump from "./pages/CISO/CISO-faculty-data-dump";
+import CISOManageSystemUser from "./pages/CISO/CISO-manage-system-user";
+import CISOActivityLogs from "./pages/CISO/CISO-activity-logs";
+import CISONotification from "./pages/CISO/CISO-notification";
 
 import HRODashboard from "./pages/HRO/HRO-dashboard";
 import HROAction from "./pages/HRO/HRO-action";
@@ -103,24 +104,25 @@ function App() {
         { <Route path="/HRO-assistant-list" element={<HROAssistantList />} />}
         {<Route path="/HRO-activity-logs" element={<HROActivityLogs />} />}
 
-        { <Route path="/OPVHE-dashboard" element={<OPVHEDashboard />} />} 
-        { <Route path="/OPVHE-tools" element={<OPVHETools />} />}
-        { <Route path="/OPVHE-clearance-timeline" element={<OPVHEClearanceTimeline />} />}
-        { <Route path="/OPVHE-college-office-configuration" element={<OPVHECollegeOfficeConfiguration />} />}
-        { <Route path="/OPVHE-system-analytics" element={<OPVHESystemAnalytics />} />}
-        { <Route path="/OPVHE-system-guideline" element={<OPVHESystemGuideline />} />}
-        { <Route path="/OPVHE-announcement" element={<OPVHEAnnouncements />} />}
-        { <Route path="/OPVHE-announcements" element={<OPVHEAnnouncements />} />}
-        { <Route path="/OPVHE-notification" element={<OPVHENotification />} />}
-        {<Route path="/OPVHE-activity-logs" element={<OPVHEActivityLogs />} />}
+        { <Route path="/OVPHE-dashboard" element={<OVPHEDashboard />} />} 
+        { <Route path="/OVPHE-tools" element={<OVPHETools />} />}
+        { <Route path="/OVPHE-clearance-timeline" element={<OVPHEClearanceTimeline />} />}
+        { <Route path="/OVPHE-college-office-configuration" element={<OVPHECollegeOfficeConfiguration />} />}
+        { <Route path="/OVPHE-system-analytics" element={<OVPHESystemAnalytics />} />}
+        { <Route path="/OVPHE-system-guideline" element={<OVPHESystemGuideline />} />}
+        { <Route path="/OVPHE-announcement" element={<OVPHEAnnouncements />} />}
+        { <Route path="/OVPHE-announcements" element={<OVPHEAnnouncements />} />}
+        { <Route path="/OVPHE-notification" element={<OVPHENotification />} />}
+        {<Route path="/OVPHE-activity-logs" element={<OVPHEActivityLogs />} />}
 
-        { <Route path="/CISCO-dashboard" element={<CISCODashboard />} />}
-        { <Route path="/CISCO-tools" element={<CISCOTools />} />}
-        { <Route path="/CISCO-system-guideline" element={<CISCOSystemGuideline />} />}
-        { <Route path="/CISCO-announcement" element={<CISCOAnnouncements />} />}
-        { <Route path="/CISCO-faculty-data-dump" element={<CISCOFacultyDataDump />} />}
-        { <Route path="/CISCO-manage-system-user" element={<CISCOManageSystemUser />} />}
-        {<Route path="/CISCO-activity-logs" element={<CISCOActivityLogs />} />}
+        { <Route path="/CISO-dashboard" element={<CISODashboard />} />}
+        { <Route path="/CISO-tools" element={<CISOTools />} />}
+        { <Route path="/CISO-system-guideline" element={<CISOSystemGuideline />} />}
+        { <Route path="/CISO-announcement" element={<CISOAnnouncements />} />}
+        { <Route path="/CISO-faculty-data-dump" element={<CISOFacultyDataDump />} />}
+        { <Route path="/CISO-manage-system-user" element={<CISOManageSystemUser />} />}
+        { <Route path="/CISO-notification" element={<CISONotification />} />}
+        {<Route path="/CISO-activity-logs" element={<CISOActivityLogs />} />}
 
         { <Route path="/system-admin-dashboard" element={<SystemAdminDashboard />} />}
         { <Route path="/system-guideline" element={<SystemGuideline />} />}

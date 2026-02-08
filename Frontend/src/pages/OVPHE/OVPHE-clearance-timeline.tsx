@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import "../../index.css"; 
-import { OPVHEHeader } from "../../stories/components/header";
+import { OVPHEHeader } from "../../stories/components/header";
 
 import {
   ClearanceTimelineCard,
@@ -95,6 +95,8 @@ function saveTimelineItems(items: StoredClearanceTimelineItem[]) {
   localStorage.setItem(CLEARANCE_TIMELINE_STORAGE_KEY, JSON.stringify(items));
 }
 
+type OVPHEClearanceTimelinesResponse = { items: StoredClearanceTimelineItem[] };
+
 function formatSchoolYear(startYear: string, endYear: string) {
   if (startYear && endYear) return `S.Y. ${startYear}–${endYear}`;
   return `S.Y. ${startYear || endYear}`;
@@ -128,7 +130,7 @@ function createNowTimestamp() {
   });
 }
 
-export default function OPVHEClearanceTimeline() {
+export default function OVPHEClearanceTimeline() {
   const navigate = useNavigate();
 
   const [items, setItems] = React.useState<StoredClearanceTimelineItem[]>([]);
@@ -138,8 +140,15 @@ export default function OPVHEClearanceTimeline() {
   const [editingItemId, setEditingItemId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    const initial = loadTimelineItems();
-    setItems(initial);
+    fetch("/admin/xu-faculty-clearance/api/ovphe/clearance-timelines")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: OVPHEClearanceTimelinesResponse) => {
+        setItems(Array.isArray(data.items) ? data.items : []);
+      })
+      .catch(() => {
+        const initial = loadTimelineItems();
+        setItems(initial);
+      });
   }, []);
 
   const activeItems = React.useMemo(
@@ -175,7 +184,7 @@ export default function OPVHEClearanceTimeline() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <OPVHEHeader />
+        <OVPHEHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
@@ -187,7 +196,7 @@ export default function OPVHEClearanceTimeline() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/OPVHE-tools">Tools</Link>
+                <Link to="/OVPHE-tools">Tools</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -198,7 +207,7 @@ export default function OPVHEClearanceTimeline() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/OPVHE-tools")}> 
+          <Button variant="back" onClick={() => navigate("/OVPHE-tools")}> 
             <img src="BlackArrowIcon.png" alt="back" />Back
           </Button>
         </div>

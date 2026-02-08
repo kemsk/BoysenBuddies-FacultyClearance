@@ -3,7 +3,7 @@ import * as React from "react";
 import "../../index.css";
 import { Link, useNavigate } from "react-router-dom";
 
-import { OPVHEHeader } from "../../stories/components/header";
+import { OVPHEHeader } from "../../stories/components/header";
 import {
   AnalyticsDonutCard,
   DepartmentCompletionRateCard,
@@ -34,35 +34,82 @@ export default function SystemAnalytics() {
   const [selectedClearance, setSelectedClearance] = React.useState("All Clearances");
   const [selectedCollege, setSelectedCollege] = React.useState("College");
 
-  const completionSections: DepartmentCompletionRateSection[] = [
-    {
-      title: "Department Chair",
-      items: [
-        { label: "Computer Science", completed: 0, total: 6 },
-        { label: "Information Systems", completed: 2, total: 6 },
-        { label: "Information Technology", completed: 6, total: 6 },
-        { label: "Entertainment & Multimedia Computing", completed: 1, total: 6 },
-      ],
-    },
-    {
-      title: "Offices",
-      items: [
-        { label: "College Dean", completed: 0, total: 6 },
-        { label: "University Registrar", completed: 0, total: 6 },
-        { label: "University Library", completed: 4, total: 6 },
-        { label: "OPVHE", completed: 1, total: 6 },
-        { label: "HRO", completed: 3, total: 6 },
-      ],
-    },
+  const [colleges, setColleges] = React.useState<{ id: string; name: string }[]>([]);
+  const [donutTitle, setDonutTitle] = React.useState("College");
+  const [donutCompleted, setDonutCompleted] = React.useState(0);
+  const [donutTotal, setDonutTotal] = React.useState(100);
+  const [completionSections, setCompletionSections] = React.useState<DepartmentCompletionRateSection[]>([]);
 
-  ];
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/ovphe/org-structure")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { colleges: { id: string; name: string }[] }) => {
+        setColleges(data.colleges ?? []);
+      })
+      .catch(() => setColleges([]));
+  }, []);
+
+  React.useEffect(() => {
+    const params = new URLSearchParams();
+    if (selectedClearance && selectedClearance !== "All Clearances") {
+      // selectedClearance is a label like "S.Y. 2025-2026"; backend expects academic_year int
+      const m = selectedClearance.match(/(\d{4})/);
+      if (m) params.set("academic_year", m[1]);
+    }
+    if (selectedTerm && selectedTerm !== "Term") {
+      // backend expects FIRST/SECOND/INTERSESSION
+      const map: Record<string, string> = {
+        "First Semester": "FIRST",
+        "Second Semester": "SECOND",
+        Intersession: "INTERSESSION",
+      };
+      if (map[selectedTerm]) params.set("term", map[selectedTerm]);
+    }
+    if (selectedCollege && selectedCollege !== "College") {
+      const found = colleges.find((c) => c.name === selectedCollege);
+      if (found?.id) params.set("college_id", found.id);
+    }
+
+    fetch(`/admin/xu-faculty-clearance/api/ovphe/system-analytics?${params.toString()}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { rows: { collegeName: string; completionRate: number }[] }) => {
+        const rows = data.rows ?? [];
+        if (rows.length) {
+          const first = rows[0];
+          const pct = Math.round((first.completionRate ?? 0) * 100);
+          setDonutTitle(first.collegeName || "College");
+          setDonutCompleted(pct);
+        } else {
+          setDonutTitle("College");
+          setDonutCompleted(0);
+        }
+        setDonutTotal(100);
+
+        setCompletionSections([
+          {
+            title: "Completion Rate",
+            items: rows.map((r) => ({
+              label: r.collegeName || "",
+              completed: Math.round((r.completionRate ?? 0) * 100),
+              total: 100,
+            })),
+          },
+        ]);
+      })
+      .catch(() => {
+        setDonutTitle("College");
+        setDonutCompleted(0);
+        setDonutTotal(100);
+        setCompletionSections([]);
+      });
+  }, [selectedClearance, selectedTerm, selectedCollege, colleges]);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
       
       {/* HEADER */}
       <div className="header mb-3">
-        <OPVHEHeader />
+        <OVPHEHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
@@ -74,7 +121,7 @@ export default function SystemAnalytics() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/OPVHE-tools">Tools</Link>
+                <Link to="/OVPHE-tools">Tools</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -85,7 +132,7 @@ export default function SystemAnalytics() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/OPVHE-tools")}> 
+          <Button variant="back" onClick={() => navigate("/OVPHE-tools")}> 
             <img src="BlackArrowIcon.png" alt="back" />Back
           </Button>
         </div>
@@ -123,9 +170,11 @@ export default function SystemAnalytics() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="College">College</SelectItem>
-                <SelectItem value="College of Computer Studies">College of Computer Studies</SelectItem>
-                <SelectItem value="College of Agriculture">College of Agriculture</SelectItem>  
-                <SelectItem value="College of Arts and Sciences">College of Arts and Sciences</SelectItem>
+                {colleges.map((c) => (
+                  <SelectItem key={c.id} value={c.name}>
+                    {c.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -152,7 +201,7 @@ export default function SystemAnalytics() {
           </Card>
 
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr]">
-            <AnalyticsDonutCard title="College of Computer Studies" completed={17} total={24} />
+            <AnalyticsDonutCard title={donutTitle} completed={donutCompleted} total={donutTotal} />
 
             <DepartmentCompletionRateCard sections={completionSections} />
           </div>

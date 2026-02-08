@@ -1,46 +1,58 @@
 import "../../index.css";
-import { CISCOHeader } from "../../stories/components/header";
+import { OVPHEHeader } from "../../stories/components/header";
 import { ActionNavCard } from "../../stories/components/cards";
 import { Eye, Users } from "lucide-react";
 
-export default function CISCOTools() {
+export default function OVPHETools() {
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
       {/* HEADER */}
       <div className="header mb-3">
-        <CISCOHeader />
+        <OVPHEHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
       <main className="dashboard p-4">
 
         <div className="mt-0 grid gap-4">
-
           <ActionNavCard
             icon={
                 <img
-                  src="/PrimaryUploadIcon.png"
+                  src="/PrimaryCalendarIcon.png"
                   alt="activity logs icon"
                   className="h-9 w-9"
                 />
             }
-            title="Faculty Data Dump"
-            description="Check current system user dump"
-            to="/faculty-data-dump"
+            title="Clearance Timeline"
+            description="View and set the clearance timeline"
+            to="/clearance-timeline"
+          />
+
+          <ActionNavCard
+            icon={
+                <img
+                  src="/PrimarySliderIcon.png"
+                  alt="activity logs icon"
+                  className="h-9 w-9"
+                />
+            }
+            title="College & Office Configuration"
+            description="View and set the clearance timeline"
+            to="/college-office-configuration"
           />
 
 
           <ActionNavCard
             icon={
                 <img
-                  src="/PrimaryPersonIcon.png"
+                  src="/PrimaryBarChartIcon.png"
                   alt="activity logs icon"
                   className="h-9 w-9"
                 />
             }
-            title="Manage System Users"
-            description="View and set the system approvers"
-            to="/manage-system-user"
+            title="System Analytics"
+            description="Check the completion rate per college"
+            to="/system-analytics"
           />
 
           <ActionNavCard

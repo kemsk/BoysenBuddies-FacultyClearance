@@ -1,7 +1,7 @@
 import React from "react";
 import "../../index.css"; // ensure index.css is accessible from src
 import { Button } from "../../stories/components/button";
-import { OPVHEHeader } from "../../stories/components/header";
+import { OVPHEHeader } from "../../stories/components/header";
 
 import {
   NotificationsCard,
@@ -9,48 +9,24 @@ import {
 } from "../../stories/components/cards";
 
 
-export default function OPVHENotification() {
+export default function OVPHENotification() {
   const [readAll, setReadAll] = React.useState(false);
 
-  const items: NotificationItem[] = [
-    {
-      title: "Department Chair",
-      status: "approved",
-      details: ["Submission of Syllabus", "Submission of Grades"],
-      timestamp: "December 3, 2025, 9:30 AM",
-    },
-    {
-      title: "University Registrar",
-      status: "rejected",
-      details: ["Submission of Grades", "Remarks: incomplete submission"],
-      timestamp: "December 1, 2025, 9:30 AM",
-    },
-    {
-      title: "University Registrar",
-      status: "submitted",
-      details: ["Submission of Grades"],
-      timestamp: "November 28, 2025, 9:30 AM",
-    },
-    {
-      title: "University Registrar",
-      status: "submitted",
-      details: ["Submission of Grades"],
-      timestamp: "November 28, 2025, 9:30 AM",
-    },
-    {
-      title: "University Registrar",
-      status: "submitted",
-      details: ["Submission of Grades"],
-      timestamp: "November 28, 2025, 9:30 AM",
-    },
-  ];
+  const [items, setItems] = React.useState<NotificationItem[]>([]);
+
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/ovphe/notifications")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { items: NotificationItem[] }) => setItems(data.items ?? []))
+      .catch(() => setItems([]));
+  }, []);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
       
       {/* HEADER */}
       <div className="header mb-3">
-        <OPVHEHeader />
+        <OVPHEHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
