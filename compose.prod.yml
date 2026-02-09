@@ -28,7 +28,6 @@ services:
     environment:
       - DATABASE_HOST=${DB_HOST}
       - DATABASE_USER=${DB_USER}
-      - SEED_TEST_DATA=true
     depends_on:
       db:
         condition: service_healthy
