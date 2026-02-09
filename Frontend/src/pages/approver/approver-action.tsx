@@ -19,14 +19,14 @@ export default function Action() {
             icon={<Users className="h-7 w-7" />}
             title="View Student Assistants"
             description="Check the list of Student Assistants\nin your department"
-            to="/student-assistant-list"
+            to="/approver-assistant-list"
           />
 
           <ActionNavCard
             icon={<Eye className="h-7 w-7" />}
             title="Check Activity Logs"
             description="Check the previous actions"
-            to="/activity-logs"
+            to="/approver-activity-logs"
           />
         </div>
       </main>

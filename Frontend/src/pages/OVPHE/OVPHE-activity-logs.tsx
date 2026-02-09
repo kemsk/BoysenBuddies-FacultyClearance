@@ -180,7 +180,7 @@ export default function OVPHEActivityLogs() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/action">Action</Link>
+                <Link to="/OVPHE-tools">Tools</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />

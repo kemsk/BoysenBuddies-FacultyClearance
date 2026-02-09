@@ -103,7 +103,7 @@ export default function OVPHEAnnouncements() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/system-admin-dashboard">Dashboard</Link>
+                <Link to="/OVPHE-dashboard">Dashboard</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -114,7 +114,7 @@ export default function OVPHEAnnouncements() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/system-admin-dashboard")}> 
+          <Button variant="back" onClick={() => navigate("/OVPHE-dashboard")}> 
             <img src="BlackArrowIcon.png" alt="back" />Back
           </Button>
         </div>

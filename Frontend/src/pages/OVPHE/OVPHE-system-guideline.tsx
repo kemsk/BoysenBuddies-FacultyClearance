@@ -3,10 +3,7 @@ import * as React from "react";
 import "../../index.css"; 
 import { OVPHEHeader } from "../../stories/components/header";
 
-import {
-  AnnouncementsCard,
-  type AnnouncementItem,
-  WelcomeAcademicCard,
+import { 
   SectionListCard,
   type SystemGuidlinesItem,
 } from "../../stories/components/cards";
@@ -109,7 +106,7 @@ export default function OVPHESystemGuideline() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/system-admin-dashboard">Dashboard</Link>
+                <Link to="/OVPHE-dashboard">Dashboard</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -120,7 +117,7 @@ export default function OVPHESystemGuideline() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/approver-dashboard")}> 
+          <Button variant="back" onClick={() => navigate("/OVPHE-dashboard")}> 
             <img src="BlackArrowIcon.png" alt="back" />Back
           </Button>
         </div>

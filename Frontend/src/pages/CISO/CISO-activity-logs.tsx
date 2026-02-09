@@ -1,6 +1,7 @@
 import "../../index.css";
-import { ApprovalHeader } from "../../stories/components/header";
+import {CISOHeader } from "../../stories/components/header";
 
+import { Link, useNavigate } from "react-router-dom";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -21,12 +22,13 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useEffect, useMemo, useState } from "react";
 
-import { Link } from "react-router-dom";
+import { Button } from "../../stories/components/button";
 
 export default function CISOActivityLogs() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 40;
+  const navigate = useNavigate();
 
   const [items, setItems] = useState<ActivityLogItem[]>([]);
 
@@ -167,7 +169,7 @@ export default function CISOActivityLogs() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <ApprovalHeader />
+        <CISOHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
@@ -180,7 +182,7 @@ export default function CISOActivityLogs() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/action">Action</Link>
+                <Link to="/CISO-tools">Tools</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -189,6 +191,12 @@ export default function CISOActivityLogs() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
+        
+        <div className="mb-3 mt-2 flex items-center justify-end">
+          <Button variant="back" onClick={() => navigate("/CISO-tools")}> 
+            <img src="BlackArrowIcon.png" alt="back" />Back
+          </Button>
+        </div>
        
        <div className="mt-5 space-y-5">
           <div className="w-full max-w-[520px]">
