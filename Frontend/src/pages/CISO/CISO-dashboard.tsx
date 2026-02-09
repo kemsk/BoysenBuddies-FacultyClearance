@@ -86,7 +86,7 @@ export default function CISODashboard() {
 
           <SystemGuidlinesCard
             items={items}
-            headerActionHref="/system-guideline"
+            headerActionHref="/CISO-system-guideline"
             headerActionImgSrc="/_WhiteArrowIcon.png"
             headerActionImgAlt="Open Requirements"
             cardName="System Guidelines"
@@ -96,7 +96,7 @@ export default function CISODashboard() {
 
           <AnnouncementsCard 
           items={dashboardAnnouncements} 
-          headerActionHref="/announcement"
+          headerActionHref="/CISO-announcement"
           headerActionImgSrc="/BlackChevronIcon.png"
           headerActionImgAlt="Open Announcements"
           
