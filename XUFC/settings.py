@@ -54,6 +54,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'FC.middleware.SessionTimeoutMiddleware',
 ]
 
 ROOT_URLCONF = 'XUFC.urls'
@@ -138,10 +139,33 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
-STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "static"),
+    os.path.join(BASE_DIR, "Frontend", "build", "static")  # React build static files
+]
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Google OAuth Feature Settings
+LOGIN_REDIRECT_URL = 'fc:Dashboard'     
+LOGIN_URL = 'fc:login'            
+LOGOUT_REDIRECT_URL = 'fc:login' 
+
+# Use database-backed sessions (default setting)
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+
+# Ensure sessions last longer (optional)
+SESSION_COOKIE_AGE = 900
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True  
+SESSION_COOKIE_SECURE = True  
+SESSION_SAVE_EVERY_REQUEST = True
+
+# Google OAuth Settings
+AUTHENTICATION_BACKENDS = (
+    'social_core.backends.google.GoogleOAuth2',
+    'django.contrib.auth.backends.ModelBackend',
+)

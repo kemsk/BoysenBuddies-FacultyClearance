@@ -33,18 +33,22 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    class UserType(models.TextChoices):
-        FACULTY = "FACULTY", "FACULTY"
-        APPROVER = "APPROVER", "APPROVER"
-        ASSISTANT = "ASSISTANT", "ASSISTANT"
-        ADMIN = "ADMIN", "ADMIN"
+    class RoleChoices(models.IntegerChoices):
+        HRO = 1, "HRO"
+        CISO = 2, "CISO"
+        OVPHE = 3, "OVPHE"
+        APPROVER = 4, "APPROVER"
+        ASSISTANT_APPROVER = 5, "ASSISTANT_APPROVER"
+        FACULTY = 6, "FACULTY"
+        DUAL_ROLE = 7, "DUAL_ROLE"
 
     email = models.EmailField(max_length=150, unique=True)
     university_id = models.CharField(max_length=50, unique=True)
     first_name = models.CharField(max_length=100, null=True, blank=True)
     middle_name = models.CharField(max_length=100, null=True, blank=True)
     last_name = models.CharField(max_length=100, null=True, blank=True)
-    user_type = models.CharField(max_length=20, choices=UserType.choices)
+    role_value = models.IntegerField(choices=RoleChoices.choices, default=6)  # Default to FACULTY
+    user_pin = models.CharField(max_length=128, blank=True, null=True)
     created_at = models.DateTimeField(default=timezone.now)
 
     is_active = models.BooleanField(default=True)

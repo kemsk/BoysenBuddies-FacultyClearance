@@ -4,6 +4,11 @@ from . import views
 app_name = 'fc'
 
 urlpatterns = [
+    path('login', views.login_view, name='login'),
+    path('login/sso/', views.sso_login, name='sso_login'),
+    path('login/google/', views.google_login, name='google_login'),
+    path('accounts/login/google/callback/', views.google_callback, name='google_callback'),
+    path('logout', views.logout_view, name='logout'),
     path('dashboard', views.dashboard_view, name='Dashboard'),
     path('api/ciso-profile', views.ciso_profile_api, name='CISOProfile'),
     path('api/ciso/system-guidelines', views.ciso_system_guidelines_api, name='CISOSystemGuidelines'),
@@ -20,4 +25,6 @@ urlpatterns = [
     path('api/ovphe/notifications', views.ovphe_notifications_api, name='OVPHENotifications'),
     path('api/ovphe/system-analytics', views.ovphe_system_analytics_api, name='OVPHESystemAnalytics'),
     path('api/ovphe/activity-logs', views.ovphe_activity_logs_api, name='OVPHEActivityLogs'),
+    # Serve React app for all other routes (catch-all)
+    path('<path:path>', views.serve_react_app, name='react_app'),
 ]

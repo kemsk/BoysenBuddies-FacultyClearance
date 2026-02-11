@@ -1,14 +1,51 @@
 from datetime import datetime
+import os
+import secrets
+import requests as http_requests
+from urllib.parse import urlencode
+from dotenv import load_dotenv
+from google.oauth2 import id_token
+import google.auth.transport.requests as google_requests
+import hashlib
+import base64
 
 from django.db import models
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect
+from django.views.decorators.csrf import csrf_protect
 from django.utils import timezone
 
 from .models import *
 
+load_dotenv()
+
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
+
 def dashboard_view(request):
-    return render(request, 'system/dashboard.html')
+    # Return dashboard data as JSON for React frontend
+    if request.session.get('user_authenticated'):
+        from .decorators import ROLE_MAPPING
+        role_value = request.session.get('user_role_value')
+        return JsonResponse({
+            'success': True,
+            'message': 'Dashboard access granted',
+            'user_info': {
+                'id': request.session.get('user_id'),
+                'email': request.session.get('user_email'),
+                'role_value': role_value,
+                'role_name': ROLE_MAPPING.get(role_value, 'Unknown'),
+                'first_name': request.session.get('user_first_name'),
+                'last_name': request.session.get('user_last_name')
+            }
+        })
+    else:
+        return JsonResponse({
+            'success': False,
+            'message': 'Authentication required',
+            'redirect': '/login'
+        }, status=401)
 
 
 def ciso_profile_api(request):
@@ -525,3 +562,374 @@ def ciso_system_users_api(request):
         )
 
     return JsonResponse({"items": items})
+
+
+# Authentication Helper Functions
+def hash_password(value):
+    salt = os.urandom(16)
+    value_salt_combined = value.encode('utf-8') + salt
+    hashed_value = hashlib.sha256(value_salt_combined).hexdigest()
+    stored_hash = base64.b64encode(salt + hashed_value.encode('utf-8')).decode('utf-8')
+    return stored_hash
+
+def verify_password(stored_hash, input_value):
+    decoded = base64.b64decode(stored_hash)
+    salt = decoded[:16]
+    stored_hashed_value = decoded[16:].decode('utf-8')
+    value_salt_combined = input_value.encode('utf-8') + salt
+    hashed_input_value = hashlib.sha256(value_salt_combined).hexdigest()
+    return hashed_input_value == stored_hashed_value
+
+# Authentication Views
+@csrf_protect
+def login_view(request):
+    if request.method == 'POST':
+        # Check if this is an API request (from React frontend)
+        is_api = request.headers.get('Content-Type') == 'application/json'
+        
+        if is_api:
+            import json
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+
+        # Step 1: Handle Email + Password
+        if data.get('email') and data.get('password'):
+            email = data.get('email')
+            password = data.get('password')
+
+            try:
+                user = User.objects.get(email=email)
+
+                if user.check_password(password):
+                    request.session['temp_user_id'] = user.id
+                    request.session['user_email'] = user.email
+                    request.session['user_role_value'] = user.role_value
+                    request.session['user_authenticated'] = True
+                    request.session.modified = True
+
+                    return JsonResponse({
+                            'success': True,
+                            'message': 'Password verified. Please enter PIN.',
+                            'requires_pin': True,
+                            'user_info': {
+                                'email': user.email,
+                                'first_name': user.first_name,
+                                'last_name': user.last_name
+                            }
+                        })
+                else:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Invalid email or password.'
+                    }, status=401)
+            except User.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'User not found.'
+                }, status=404)
+
+        # Step 2: Handle PIN
+        elif request.session.get('temp_user_id') and data.get('user_pin'):
+            entered_pin = data.get('user_pin')
+            stored_user_id = request.session.get('temp_user_id')
+            
+            try:
+                user = User.objects.get(id=stored_user_id)
+                
+                if hasattr(user, 'user_pin') and verify_password(user.user_pin, entered_pin):
+                    # Save permanent session data
+                    request.session['user_authenticated'] = True
+                    request.session['user_id'] = user.id
+                    request.session['user_email'] = user.email
+                    request.session['user_role_value'] = user.role_value
+                    request.session['user_first_name'] = user.first_name
+                    request.session['user_last_name'] = user.last_name
+                    # Remove temp session key
+                    request.session.pop('temp_user_id', None)
+                    request.session.modified = True
+
+                    from .decorators import get_role_dashboard_url
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Login successful!',
+                        'user_info': {
+                            'id': user.id,
+                            'email': user.email,
+                            'first_name': user.first_name,
+                            'last_name': user.last_name,
+                            'role_value': user.role_value,
+                            'role_name': user.get_role_value_display(),
+                            'university_id': user.university_id,
+                            'dashboard_url': get_role_dashboard_url(user.role_value)
+                        }
+                    })
+                else:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Invalid PIN.'
+                    }, status=401)
+            except User.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'User not found.'
+                }, status=404)
+        
+        if is_api:
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid request.'
+            }, status=400)
+        else:
+            return redirect('fc:login')
+
+    # Handle GET requests - API only since React frontend is used
+    if request.session.get('user_authenticated'):
+        from .decorators import ROLE_MAPPING
+        role_value = request.session.get('user_role_value')
+        return JsonResponse({
+            'authenticated': True,
+            'user_info': {
+                'email': request.session.get('user_email'),
+                'role_value': role_value,
+                'role_name': ROLE_MAPPING.get(role_value, 'Unknown'),
+                'first_name': request.session.get('user_first_name'),
+                'last_name': request.session.get('user_last_name')
+            }
+        })
+    else:
+        return JsonResponse({
+            'authenticated': False,
+            'user_info': None
+        })
+
+
+def google_login(request):
+    state = secrets.token_urlsafe(32)
+    request.session['google_oauth_state'] = state
+    request.session.modified = True
+
+    params = {
+        'client_id': GOOGLE_CLIENT_ID,
+        'redirect_uri': GOOGLE_REDIRECT_URI,
+        'response_type': 'code',
+        'scope': 'openid email profile',
+        'access_type': 'offline',
+        'prompt': 'select_account consent',
+        'state': state
+    }
+    google_auth_url = 'https://accounts.google.com/o/oauth2/v2/auth?' + urlencode(params)
+    return redirect(google_auth_url)
+
+
+def google_callback(request):
+    returned_state = request.GET.get('state')
+    expected_state = request.session.pop('google_oauth_state', None)
+
+    if not expected_state or not returned_state or returned_state != expected_state:
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid or missing state. Possible CSRF attack.'
+        }, status=400)
+
+    code = request.GET.get('code')
+    if not code:
+        return JsonResponse({
+            'success': False,
+            'message': 'Authorization failed. No code provided.'
+        }, status=400)
+
+    token_url = 'https://oauth2.googleapis.com/token'
+    data = {
+        'code': code,
+        'client_id': os.getenv('GOOGLE_CLIENT_ID'),
+        'client_secret': os.getenv('GOOGLE_CLIENT_SECRET'),
+        'redirect_uri': os.getenv('GOOGLE_REDIRECT_URI'),
+        'grant_type': 'authorization_code',
+    }
+
+    try:
+        response = http_requests.post(token_url, data=data, timeout=10)
+        response.raise_for_status()
+        token_info = response.json()
+    except http_requests.exceptions.RequestException as e:
+        return JsonResponse({
+            'success': False,
+            'message': f"Failed to connect to Google: {str(e)}"
+        }, status=500)
+
+    id_token_jwt = token_info.get('id_token')
+    if not id_token_jwt:
+        return JsonResponse({
+            'success': False,
+            'message': "No ID token received from Google."
+        }, status=400)
+
+    try:
+        user_data = id_token.verify_oauth2_token(
+            id_token_jwt,
+            google_requests.Request(),
+            audience=os.getenv('GOOGLE_CLIENT_ID')
+        )
+
+        if not user_data['iss'].endswith("accounts.google.com"):
+            raise ValueError(f"Issuer not allowed: {user_data['iss']}")
+
+    except ValueError as e:
+        return JsonResponse({
+            'success': False,
+            'message': f"Invalid ID token: {e}"
+        }, status=400)
+
+    email = user_data.get('email')
+    if not email:
+        return JsonResponse({
+            'success': False,
+            'message': "Google did not return an email address."
+        }, status=400)
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': "This Google account is not registered in our system."
+        }, status=404)
+
+    # Set Session Data
+    request.session['user_authenticated'] = True
+    request.session['user_id'] = user.id
+    request.session['user_email'] = user.email
+    request.session['user_role_value'] = user.role_value
+    request.session['user_first_name'] = user.first_name
+    request.session['user_last_name'] = user.last_name
+    request.session.modified = True
+
+    from .decorators import get_role_dashboard_url
+    return JsonResponse({
+        'success': True,
+        'message': 'Google login successful!',
+        'user_info': {
+            'id': user.id,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'role_value': user.role_value,
+            'role_name': user.get_role_value_display(),
+            'university_id': user.university_id,
+            'dashboard_url': get_role_dashboard_url(user.role_value)
+        }
+    })
+
+
+def sso_login(request):
+    """
+    Handle SSO login requests
+    This can be integrated with institutional SSO systems like SAML, LDAP, or other identity providers
+    """
+    if request.method == 'POST':
+        import json
+        data = json.loads(request.body) if request.headers.get('Content-Type') == 'application/json' else request.POST
+
+        # Get SSO token or credentials from request
+        sso_token = data.get('sso_token')
+        sso_provider = data.get('sso_provider', 'default')
+        
+        if not sso_token:
+            return JsonResponse({
+                'success': False,
+                'message': 'SSO token is required.'
+            }, status=400)
+
+        try:
+            # TODO: Implement actual SSO verification logic here
+            # This would depend on your SSO provider (SAML, LDAP, ADFS, etc.)
+            # For now, we'll simulate SSO verification
+            
+            # Example SSO verification (replace with actual implementation):
+            # user_info = verify_sso_token(sso_token, sso_provider)
+            # user = User.objects.get(email=user_info['email'])
+            
+            # For demonstration, we'll use a mock user lookup
+            # In production, this should be replaced with actual SSO verification
+            user = User.objects.filter(email__endswith='@xu.edu.ph').first()
+            
+            if not user:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'User not found in system.'
+                }, status=404)
+
+            # Set session data for SSO login
+            request.session['user_authenticated'] = True
+            request.session['user_id'] = user.id
+            request.session['user_email'] = user.email
+            request.session['user_role_value'] = user.role_value
+            request.session['user_first_name'] = user.first_name
+            request.session['user_last_name'] = user.last_name
+            request.session['sso_provider'] = sso_provider
+            request.session.modified = True
+
+            from .decorators import get_role_dashboard_url
+            return JsonResponse({
+                'success': True,
+                'message': 'SSO login successful!',
+                'user_info': {
+                    'id': user.id,
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'role_value': user.role_value,
+                    'role_name': user.get_role_value_display(),
+                    'university_id': user.university_id,
+                    'dashboard_url': get_role_dashboard_url(user.role_value)
+                }
+            })
+
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'SSO login failed: {str(e)}'
+            }, status=500)
+    
+    # Handle GET request - return SSO login info
+    return JsonResponse({
+        'message': 'SSO login endpoint. POST with sso_token to authenticate.',
+        'supported_providers': ['saml', 'ldap', 'adfs', 'azure', 'default']
+    })
+
+
+def serve_react_app(request):
+    """
+    Serve the React frontend application
+    This view serves the React app for all non-API routes
+    """
+    from django.http import HttpResponse
+    import os
+    
+    # Path to the React build index.html
+    react_build_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'Frontend', 'build', 'index.html')
+    
+    try:
+        with open(react_build_path, 'r', encoding='utf-8') as f:
+            return HttpResponse(f.read(), content_type='text/html')
+    except FileNotFoundError:
+        return HttpResponse("""
+        <html>
+            <head><title>XU Faculty Clearance</title></head>
+            <body>
+                <h1>XU Faculty Clearance System</h1>
+                <p>React frontend not built yet. Please run:</p>
+                <pre>cd Frontend && npm run build</pre>
+            </body>
+        </html>
+        """, content_type='text/html')
+
+
+def logout_view(request):
+    request.session.flush()
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Logged out successfully.'
+    })
