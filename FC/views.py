@@ -899,7 +899,7 @@ def sso_login(request):
     })
 
 
-def serve_react_app(request):
+def serve_react_app(request, path=None):
     """
     Serve the React frontend application
     This view serves the React app for all non-API routes

@@ -23,12 +23,12 @@ export default function LoginPrompt() {
         {/* Logos */}
         <div className="w-full max-w-screen-sm px-3 flex flex-col items-center gap-8">
 
-          <img src="/public/RemoveBG_Logomark.png" className="w-full max-w-[40%] h-auto -mt-12" />
+          <img src="/RemoveBG_Logomark.png" className="w-full max-w-[40%] h-auto -mt-12" />
 
           {/* App Logo + Progress */}
           <div className="flex flex-col items-center gap-5 w-full">
 
-            <img src="/public/Pen Swish White_FacultyClearTrack.png" className="w-full max-w-[70%] h-auto mb-2" />
+            <img src="/Pen Swish White_FacultyClearTrack.png" className="w-full max-w-[70%] h-auto mb-2" />
 
             <div className="w-full flex flex-col items-center gap-11">
 

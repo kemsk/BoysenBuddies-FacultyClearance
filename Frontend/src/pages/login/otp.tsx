@@ -109,7 +109,7 @@ export default function Otp() {
       {/* Logos */}
         <div className="w-full max-w-screen-sm px-3 flex flex-col items-center gap-8">
 
-        <img src="/public/RemoveBG_Logomark.png" className="w-full max-w-[40%] h-auto -mt-12" />
+        <img src="/RemoveBG_Logomark.png" className="w-full max-w-[40%] h-auto -mt-12" />
 
 
         {/* App Logo + Title */}
@@ -198,12 +198,12 @@ export default function Otp() {
           <Button 
             variant="outline" 
             className="group"
-            onClick={() => window.location.href = "/login"}
+            onClick={() => window.location.href = "/"}
             disabled={isLoading}
           >
             <span className="relative w-5 h-5 mr-0 inline-block">
-              <img src="/public/whiteGoogleLogo.png" alt="Google Icon" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-150 opacity-100 group-hover:opacity-0" />
-              <img src="/public/BlackGoogleLogo.png" alt="Google Icon hover" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-150 opacity-0 group-hover:opacity-100" />
+              <img src="/whiteGoogleLogo.png" alt="Google Icon" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-150 opacity-100 group-hover:opacity-0" />
+              <img src="/BlackGoogleLogo.png" alt="Google Icon hover" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-150 opacity-0 group-hover:opacity-100" />
             </span>
             Back to Login
           </Button>

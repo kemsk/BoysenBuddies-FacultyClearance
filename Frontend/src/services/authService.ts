@@ -1,4 +1,4 @@
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8001/admin/xu-faculty-clearance';
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '';
 
 export interface LoginResponse {
   success: boolean;
