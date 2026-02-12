@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001/admin/xu-faculty-clearance';
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8001/admin/xu-faculty-clearance';
 
 export interface LoginResponse {
   success: boolean;
@@ -132,24 +132,43 @@ class AuthService {
 
   async loginWithGoogle(): Promise<void> {
     try {
-      const response = await fetch(`${API_BASE_URL}/login/google/`, {
-        method: 'GET',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Google login failed');
-      }
-
-      // The response will be a redirect to Google OAuth
-      window.location.href = response.url;
+      // Direct redirect to Google OAuth endpoint
+      window.location.href = `${API_BASE_URL}/login/google/`;
     } catch (error) {
       console.error('Google login error:', error);
       throw error;
     }
   }
 
-  async loginWithSSO(ssoToken: string, provider: string = 'default'): Promise<LoginResponse> {
+  async loginWithSSO(email: string, password: string, provider: string = 'default'): Promise<LoginResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/login/sso/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': this.getCSRFToken(),
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          email: email,
+          password: password,
+          sso_provider: provider
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'SSO login failed');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('SSO login error:', error);
+      throw error;
+    }
+  }
+
+  async loginWithSSOToken(ssoToken: string, provider: string = 'default'): Promise<LoginResponse> {
     try {
       const response = await fetch(`${API_BASE_URL}/login/sso/`, {
         method: 'POST',

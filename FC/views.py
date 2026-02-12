@@ -905,14 +905,20 @@ def serve_react_app(request):
     This view serves the React app for all non-API routes
     """
     from django.http import HttpResponse
-    import os
+    from pathlib import Path
     
-    # Path to the React build index.html
-    react_build_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'Frontend', 'build', 'index.html')
+    base_dir = Path(__file__).resolve().parent.parent
+    candidate_paths = [
+        base_dir / "frontend_dist" / "index.html",
+        base_dir / "Frontend" / "dist" / "index.html",
+        base_dir / "Frontend" / "build" / "index.html",
+    ]
     
     try:
-        with open(react_build_path, 'r', encoding='utf-8') as f:
-            return HttpResponse(f.read(), content_type='text/html')
+        for p in candidate_paths:
+            if p.is_file():
+                return HttpResponse(p.read_text(encoding="utf-8"), content_type="text/html")
+        raise FileNotFoundError
     except FileNotFoundError:
         return HttpResponse("""
         <html>

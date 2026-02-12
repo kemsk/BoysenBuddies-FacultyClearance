@@ -18,6 +18,5 @@ from django.urls import path, include
 
 urlpatterns = [
     path('', include('FC.urls')),  # Serve React app for root and other routes
-    path('admin/xu-faculty-clearance/', include('FC.urls'))
 ]
 

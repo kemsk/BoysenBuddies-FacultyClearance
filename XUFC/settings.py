@@ -141,7 +141,7 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
-    os.path.join(BASE_DIR, "Frontend", "build", "static")  # React build static files
+    # os.path.join(BASE_DIR, "Frontend", "build", "static")  # React build static files - commented out until build exists
 ]
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 

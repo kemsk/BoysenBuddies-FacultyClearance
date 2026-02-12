@@ -2,9 +2,9 @@ import React, { useState } from "react";
 import "../../index.css"; // ensure index.css is accessible from src
 import { Checkbox } from "../../stories/components/checkbox";
 import { Divider } from "../../stories/components/divider";
-import { Button } from "../../stories/components/button";
+import { Button } from "../../components/components/ui/button";
 import { Input } from "../../stories/components/input";
-import { authService, LoginResponse } from "../../services/authService";
+import { authService } from "../../services/authService";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -12,25 +12,60 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Handle error messages from URL parameters (Google OAuth errors)
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorParam = urlParams.get('error');
+    
+    if (errorParam) {
+      const errorMessages: Record<string, string> = {
+        'invalid_state': 'Invalid authentication state. Please try again.',
+        'no_code': 'Authorization failed. Please try again.',
+        'token_failed': 'Failed to connect to Google. Please try again.',
+        'no_id_token': 'No ID token received from Google.',
+        'invalid_token': 'Invalid authentication token.',
+        'no_email': 'Google did not return an email address.',
+        'user_not_found': 'This Google account is not registered in our system.'
+      };
+      
+      setError(errorMessages[errorParam] || 'An error occurred during Google login.');
+      
+      // Clear the error parameter from URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
 
     try {
-      const response: LoginResponse = await authService.login(email, password);
+      // Try SSO login first with email and password
+      const response = await authService.loginWithSSO(email, password);
       
       if (response.success && response.requires_pin) {
         // Redirect to PIN verification page
         window.location.href = "/login/otp";
       } else if (response.success && response.user_info?.dashboard_url) {
-        // Login successful, redirect to role-specific dashboard
+        // SSO login successful, redirect to role-specific dashboard
         window.location.href = response.user_info.dashboard_url;
       } else if (response.success) {
         // Fallback to default dashboard
         window.location.href = "/dashboard";
       } else {
-        setError(response.message || "Login failed");
+        // If SSO fails, try regular login
+        const regularResponse = await authService.login(email, password);
+        
+        if (regularResponse.success && regularResponse.requires_pin) {
+          window.location.href = "/login/otp";
+        } else if (regularResponse.success && regularResponse.user_info?.dashboard_url) {
+          window.location.href = regularResponse.user_info.dashboard_url;
+        } else if (regularResponse.success) {
+          window.location.href = "/dashboard";
+        } else {
+          setError(regularResponse.message || "Login failed");
+        }
       }
     } catch (err: any) {
       setError(err.message || "An error occurred during login");
@@ -44,27 +79,6 @@ export default function Login() {
       await authService.loginWithGoogle();
     } catch (err: any) {
       setError(err.message || "Google login failed");
-    }
-  };
-
-  const handleSSOLogin = async () => {
-    try {
-      // For demonstration, we'll use a mock SSO token
-      // In production, this would come from your SSO provider
-      const ssoToken = "mock-sso-token-" + Date.now();
-      const response = await authService.loginWithSSO(ssoToken, 'default');
-      
-      if (response.success && response.user_info?.dashboard_url) {
-        // SSO login successful, redirect to role-specific dashboard
-        window.location.href = response.user_info.dashboard_url;
-      } else if (response.success) {
-        // Fallback to default dashboard
-        window.location.href = "/dashboard";
-      } else {
-        setError(response.message || "SSO login failed");
-      }
-    } catch (err: any) {
-      setError(err.message || "SSO login failed");
     }
   };
 
@@ -140,13 +154,13 @@ export default function Login() {
 
         {/* Buttons + Divider */}
         <div className="login-input flex flex-col gap-4">
-          {/* Primary login button */}
+          {/* Primary login button (now with SSO functionality) */}
           <Button 
-            variant="secondary" 
+            className="bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80"
             type="submit"
             disabled={isLoading}
           >
-            {isLoading ? "Logging in..." : "Login"}
+            {isLoading ? "Signing in..." : "Sign in"}
           </Button>
 
           {/* Divider with OR */}
@@ -156,22 +170,9 @@ export default function Login() {
             <Divider className="flex-grow" />
           </div>
 
-          {/* SSO login button */}
+          {/* Google Email login button */}
           <Button 
-            variant="outline" 
-            className="group"
-            type="button"
-            onClick={handleSSOLogin}
-            disabled={isLoading}
-          >
-            <i className="fas fa-university mr-2"></i>
-            Sign in with SSO
-          </Button>
-
-          {/* Outline Google login button */}
-          <Button 
-            variant="outline" 
-            className="group"
+            className="border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground group"
             type="button"
             onClick={handleGoogleLogin}
             disabled={isLoading}
@@ -180,7 +181,7 @@ export default function Login() {
               <img src="/public/whiteGoogleLogo.png" alt="Google Icon" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-150 opacity-100 group-hover:opacity-0" />
               <img src="/public/BlackGoogleLogo.png" alt="Google Icon hover" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-150 opacity-0 group-hover:opacity-100" />
             </span>
-            Sign in with Google
+            Google Email
           </Button>
         </div>
         
