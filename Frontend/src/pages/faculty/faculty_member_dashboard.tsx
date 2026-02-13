@@ -11,13 +11,59 @@ import {
 } from "../../stories/components/cards";
 
 export default function Facultydashboard() {
-  const clearanceCurrent = 1;
-  const clearanceTotal = 6;
+  const [profile, setProfile] = React.useState<null | {
+    faculty: {
+      email: string;
+      universityId: string;
+      firstName: string;
+      middleName: string;
+      lastName: string;
+      college: string;
+      department: string;
+      facultyType: string;
+    };
+    timeline: { academicYear: number | null; term: string | null };
+    clearance: { status: string; approvedCount: number; totalCount: number };
+  }>(null);
+
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/faculty/dashboard")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => setProfile(data))
+      .catch(() => {
+        // fallback to hardcoded UI values
+      });
+  }, []);
+
+  const clearanceCurrent = profile?.clearance.approvedCount ?? 1;
+  const clearanceTotal = profile?.clearance.totalCount ?? 6;
   const clearancePercent =
     clearanceTotal > 0
       ? Math.round((clearanceCurrent / clearanceTotal) * 100)
       : 0;
   const isClearanceApproved = clearancePercent >= 100;
+
+  const fullName = profile
+    ? [
+        profile.faculty.firstName,
+        profile.faculty.middleName,
+        profile.faculty.lastName,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .trim() || profile.faculty.email
+    : "John Doe";
+
+  const academicYearLabel = profile?.timeline.academicYear
+    ? `${profile.timeline.academicYear}–${profile.timeline.academicYear + 1}`
+    : "2025–2026";
+
+  const termLabel = profile?.timeline.term ?? "1";
+
+  const collegeLabel = profile?.faculty.college || "College of Computer Studies";
+  const departmentLabel = profile?.faculty.department || "Information Technology";
+  const facultyTypeLabel = profile?.faculty.facultyType || "";
+  const statusLabel = profile?.clearance.status ?? "Pending";
 
   const [openStep, setOpenStep] = React.useState<number | null>(null);
   const toggleStep = (index: number) => {
@@ -35,16 +81,16 @@ export default function Facultydashboard() {
       {/* DASHBOARD CONTENT */}
       <main className="dashboard p-4">
         <WelcomeAcademicCard
-          name="John Doe"
-          topLeft={{ label: "Academic Year", value: "2025–2026" }}
-          topRight={{ label: "Semester", value: "1" }}
+          name={fullName}
+          topLeft={{ label: "Academic Year", value: academicYearLabel }}
+          topRight={{ label: "Semester", value: termLabel }}
           rows={[
-            { label: "College", value: "College of Computer Studies" },
-            { label: "Department", value: "Information Technology" },
-            { label: "Faculty Type", value: "Full-time Faculty (On Probation)" },
+            { label: "College", value: collegeLabel },
+            { label: "Department", value: departmentLabel },
+            { label: "Faculty Type", value: facultyTypeLabel },
           ]}
           afterRows={
-          <ClearanceStatusCard statusLabel="Pending" 
+          <ClearanceStatusCard statusLabel={statusLabel}
           statusVariant="warning" className="mb-6
 "/>}
         />

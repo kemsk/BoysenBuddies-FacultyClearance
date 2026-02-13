@@ -12,7 +12,7 @@ import {
 export default function Notification() {
   const [readAll, setReadAll] = React.useState(false);
 
-  const items: NotificationItem[] = [
+  const fallbackItems: NotificationItem[] = [
     {
       title: "Department Chair",
       status: "approved",
@@ -25,25 +25,28 @@ export default function Notification() {
       details: ["Submission of Grades", "Remarks: incomplete submission"],
       timestamp: "December 1, 2025, 9:30 AM",
     },
-    {
-      title: "University Registrar",
-      status: "submitted",
-      details: ["Submission of Grades"],
-      timestamp: "November 28, 2025, 9:30 AM",
-    },
-    {
-      title: "University Registrar",
-      status: "submitted",
-      details: ["Submission of Grades"],
-      timestamp: "November 28, 2025, 9:30 AM",
-    },
-    {
-      title: "University Registrar",
-      status: "submitted",
-      details: ["Submission of Grades"],
-      timestamp: "November 28, 2025, 9:30 AM",
-    },
   ];
+
+  const [items, setItems] = React.useState<NotificationItem[]>(fallbackItems);
+
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/faculty/notifications")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { items: Array<{ title: string; status: string; details: string[]; timestamp: string }> }) => {
+        const mapped = Array.isArray(data.items)
+          ? data.items.map((n) => ({
+              title: n.title,
+              status: n.status,
+              details: Array.isArray(n.details) ? n.details : [],
+              timestamp: n.timestamp,
+            }))
+          : [];
+        if (mapped.length) setItems(mapped);
+      })
+      .catch(() => {
+        // keep fallback
+      });
+  }, []);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">

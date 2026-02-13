@@ -5,6 +5,7 @@ app_name = 'fc'
 
 urlpatterns = [
     path('dashboard', views.dashboard_view, name='Dashboard'),
+
     path('api/ciso-profile', views.ciso_profile_api, name='CISOProfile'),
     path('api/ciso/system-guidelines', views.ciso_system_guidelines_api, name='CISOSystemGuidelines'),
     path('api/ciso/announcements', views.ciso_announcements_api, name='CISOAnnouncements'),
@@ -20,4 +21,7 @@ urlpatterns = [
     path('api/ovphe/notifications', views.ovphe_notifications_api, name='OVPHENotifications'),
     path('api/ovphe/system-analytics', views.ovphe_system_analytics_api, name='OVPHESystemAnalytics'),
     path('api/ovphe/activity-logs', views.ovphe_activity_logs_api, name='OVPHEActivityLogs'),
+
+    path('api/faculty/dashboard', views.faculty_dashboard_api, name='FacultyDashboard'),
+    path('api/faculty/notifications', views.faculty_notifications_api, name='FacultyNotifications'),
 ]

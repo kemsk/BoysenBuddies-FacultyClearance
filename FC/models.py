@@ -166,6 +166,7 @@ class Clearance(models.Model):
 
 
 class Requirement(models.Model):
+    requirement_id = models.BigAutoField(primary_key=True)
     title = models.CharField(max_length=200)
     description = models.TextField(null=True, blank=True)
     required_physical = models.BooleanField(default=False)
@@ -189,6 +190,7 @@ class Requirement(models.Model):
 
 
 class ClearanceRequest(models.Model):
+    request_id = models.BigAutoField(primary_key=True)
     class Status(models.TextChoices):
         PENDING = "PENDING", "PENDING"
         APPROVED = "APPROVED", "APPROVED"
@@ -262,7 +264,7 @@ class ApproverFlowStep(models.Model):
     colleges = models.ManyToManyField(College, blank=True, related_name="approver_flow_steps")
 
     class Meta:
-        ordering = ["order", "id"]
+        ordering = ["order", "pk"]
 
     def __str__(self):
         return f"{self.category} ({self.order})"
@@ -319,13 +321,14 @@ class ActivityLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["-created_at", "-id"]
+        ordering = ["-created_at", "pk"]
 
     def __str__(self):
         return f"{self.event_type} ({self.created_at})"
 
 
 class ClearanceTimeline(models.Model):
+    timeline_id = models.BigAutoField(primary_key=True)
     academic_year = models.IntegerField(null=True, blank=True)
     term = models.CharField(max_length=20, choices=Clearance.Term.choices, null=True, blank=True)
     term_start_date = models.DateField(null=True, blank=True)
@@ -349,6 +352,7 @@ class ClearanceTimeline(models.Model):
 
 
 class SystemGuideline(models.Model):
+    guideline_id = models.BigAutoField(primary_key=True)
     title = models.CharField(max_length=200, null=True, blank=True)
     body = models.TextField(null=True, blank=True)
     created_by = models.ForeignKey(
@@ -366,6 +370,7 @@ class SystemGuideline(models.Model):
 
 
 class SystemAnalytics(models.Model):
+    analytics_id = models.BigAutoField(primary_key=True)
     academic_year = models.IntegerField(null=True, blank=True)
     term = models.CharField(max_length=20, choices=Clearance.Term.choices, null=True, blank=True)
     college = models.ForeignKey(
@@ -375,6 +380,9 @@ class SystemAnalytics(models.Model):
         blank=True,
         related_name="analytics",
     )
+    completed_count = models.PositiveIntegerField(null=True, blank=True)
+    incomplete_count = models.PositiveIntegerField(null=True, blank=True)
+    total_count = models.PositiveIntegerField(null=True, blank=True)
     completion_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     generated_at = models.DateTimeField(auto_now_add=True)
     generated_by = models.ForeignKey(
@@ -390,6 +398,7 @@ class SystemAnalytics(models.Model):
 
 
 class Archive(models.Model):
+    archive_id = models.BigAutoField(primary_key=True)
     class Status(models.TextChoices):
         COMPLETED = "COMPLETED", "COMPLETED"
         INCOMPLETE = "INCOMPLETE", "INCOMPLETE"
@@ -428,6 +437,7 @@ class Archive(models.Model):
 
 
 class Notification(models.Model):
+    notification_id = models.BigAutoField(primary_key=True)
     class Status(models.TextChoices):
         APPROVED = "approved", "approved"
         REJECTED = "rejected", "rejected"

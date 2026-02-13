@@ -16,7 +16,8 @@ VALUES
 ('20220025546@my.xu.edu.ph', '20220025546', 'capstone', 'Albert Floyd', 'Villanueva', 'ADMIN', NOW(), 1, 1, 1),
 ('20190016375@my.xu.edu.ph', '20190016375', 'kemeru', 'Nesyl', 'Ylanan', 'ADMIN', NOW(), 1, 1, 1),
 ('approver.seed@xu.edu.ph', 'APPROVER-SEED-1', 'capstone', 'Angela', 'Santos', 'APPROVER', NOW(), 1, 1, 0),
-('assistant.seed@xu.edu.ph', 'ASSISTANT-SEED-1', 'capstone', 'Seed', 'Assistant', 'ASSISTANT', NOW(), 1, 1, 0)
+('assistant.seed@xu.edu.ph', 'ASSISTANT-SEED-1', 'capstone', 'Seed', 'Assistant', 'ASSISTANT', NOW(), 1, 1, 0),
+('faculty.seed@xu.edu.ph', 'FACULTY-SEED-1', 'capstone', 'Faye', 'Faculty', 'FACULTY', NOW(), 1, 0, 0)
 ON DUPLICATE KEY UPDATE
     first_name = VALUES(first_name),
     last_name = VALUES(last_name),
@@ -131,6 +132,7 @@ SET @ovphe_admin_id = (SELECT sa.id FROM FC_systemadmin sa
 -- Get user IDs
 SET @approver_user_id = (SELECT id FROM FC_user WHERE email = 'approver.seed@xu.edu.ph' LIMIT 1);
 SET @assistant_user_id = (SELECT id FROM FC_user WHERE email = 'assistant.seed@xu.edu.ph' LIMIT 1);
+SET @faculty_user_id = (SELECT id FROM FC_user WHERE email = 'faculty.seed@xu.edu.ph' LIMIT 1);
 SET @ciso_user_id = (SELECT id FROM FC_user WHERE email = '20220025546@my.xu.edu.ph' LIMIT 1);
 SET @ovphe_user_id = (SELECT id FROM FC_user WHERE email = '20190016375@my.xu.edu.ph' LIMIT 1);
 
@@ -220,6 +222,57 @@ ON DUPLICATE KEY UPDATE
     college_id = VALUES(college_id),
     department_id = VALUES(department_id);
 
+-- Seed Faculty (needed for real analytics)
+INSERT INTO FC_faculty (user_id, employee_id, first_name, last_name, college_id, department_id)
+SELECT * FROM (
+    SELECT @faculty_user_id AS user_id, 'EMP-SEED-1' AS employee_id, 'Faye' AS first_name, 'Faculty' AS last_name, @ccs_id AS college_id, @cs_id AS department_id
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_faculty f WHERE f.user_id = v.user_id
+);
+
+SET @faculty_id = (SELECT id FROM FC_faculty WHERE user_id = @faculty_user_id LIMIT 1);
+
+-- Seed Clearances for real analytics
+INSERT INTO FC_clearance (faculty_id, academic_year, term, status, submitted_date, completed_date)
+SELECT * FROM (
+    SELECT @faculty_id AS faculty_id, YEAR(NOW()) AS academic_year, '1ST' AS term, 'COMPLETED' AS status, NOW() AS submitted_date, NOW() AS completed_date
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_clearance c WHERE c.faculty_id = v.faculty_id AND c.academic_year = v.academic_year AND c.term = v.term AND c.status = v.status
+);
+
+INSERT INTO FC_clearance (faculty_id, academic_year, term, status, submitted_date, completed_date)
+SELECT * FROM (
+    SELECT @faculty_id AS faculty_id, YEAR(NOW()) AS academic_year, '1ST' AS term, 'PENDING' AS status, NOW() AS submitted_date, NULL AS completed_date
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_clearance c WHERE c.faculty_id = v.faculty_id AND c.academic_year = v.academic_year AND c.term = v.term AND c.status = v.status
+);
+
+-- Seed minimal Requirement + ClearanceRequest for the latest clearance row
+INSERT INTO FC_requirement (requirement_id, title, description, required_physical, created_date, is_active)
+SELECT * FROM (
+    SELECT 1 AS requirement_id, 'Grades Roster' AS title, 'Submit screenshot via this link: googleforms.com' AS description, 0 AS required_physical, NOW() AS created_date, 1 AS is_active
+) AS v
+ON DUPLICATE KEY UPDATE
+    title = VALUES(title),
+    description = VALUES(description),
+    required_physical = VALUES(required_physical),
+    is_active = VALUES(is_active);
+
+SET @latest_clearance_id = (
+    SELECT id FROM FC_clearance WHERE faculty_id = @faculty_id ORDER BY id DESC LIMIT 1
+);
+
+INSERT INTO FC_clearancerequest (clearance_id, requirement_id, status, remarks, approved_by_id, approved_date)
+SELECT * FROM (
+    SELECT @latest_clearance_id AS clearance_id, 1 AS requirement_id, 'PENDING' AS status, '' AS remarks, NULL AS approved_by_id, NULL AS approved_date
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_clearancerequest cr WHERE cr.clearance_id = v.clearance_id AND cr.requirement_id = v.requirement_id
+);
+
 -- Seed Announcements
 INSERT INTO FC_announcement (title, body, created_by_id, pin_announcement, is_active, start_date, created_at)
 SELECT * FROM (
@@ -295,23 +348,6 @@ SELECT * FROM (
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_notification n WHERE n.user_id = v.user_id AND n.title = v.title AND n.status = v.status
-);
-
--- Seed SystemAnalytics
-INSERT INTO FC_systemanalytics (college_id, academic_year, term, completion_rate, generated_by_id, generated_at)
-SELECT * FROM (
-    SELECT @ccs_id AS college_id, YEAR(NOW()) AS academic_year, '1ST' AS term, 70.00 AS completion_rate, @ovphe_admin_id AS generated_by_id, NOW() AS generated_at
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_systemanalytics sa WHERE sa.college_id = v.college_id AND sa.academic_year = v.academic_year AND sa.term = v.term
-);
-
-INSERT INTO FC_systemanalytics (college_id, academic_year, term, completion_rate, generated_by_id, generated_at)
-SELECT * FROM (
-    SELECT @cas_id AS college_id, YEAR(NOW()) AS academic_year, '1ST' AS term, 71.00 AS completion_rate, @ovphe_admin_id AS generated_by_id, NOW() AS generated_at
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_systemanalytics sa WHERE sa.college_id = v.college_id AND sa.academic_year = v.academic_year AND sa.term = v.term
 );
 
 -- Seed ActivityLogs
