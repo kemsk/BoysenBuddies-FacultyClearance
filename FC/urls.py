@@ -5,6 +5,8 @@ app_name = 'fc'
 
 urlpatterns = [
     path('dashboard', views.dashboard_view, name='Dashboard'),
+    path('api/clearance-requests', views.clearance_requests_api, name='ClearanceRequests'),
+    path('api/active-clearance-timeline', views.active_clearance_timeline_api, name='ActiveClearanceTimeline'),
     path('api/ciso-profile', views.ciso_profile_api, name='CISOProfile'),
     path('api/ciso/system-guidelines', views.ciso_system_guidelines_api, name='CISOSystemGuidelines'),
     path('api/ciso/announcements', views.ciso_announcements_api, name='CISOAnnouncements'),

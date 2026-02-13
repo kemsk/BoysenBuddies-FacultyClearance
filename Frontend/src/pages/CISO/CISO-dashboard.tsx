@@ -15,6 +15,7 @@ type CISOGuidelinesResponse = { items: SystemGuidlinesItem[] };
 type CISOAnnouncementsResponse = { items: AnnouncementItem[] };
 
 export default function CISODashboard() {
+  const [timeline, setTimeline] = React.useState<{ academicYear: string; semester: string } | null>(null);
   const [profile, setProfile] = React.useState<{
     email: string;
     university_id: string;
@@ -35,6 +36,11 @@ export default function CISODashboard() {
   }, [announcementItems]);
 
   React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/active-clearance-timeline")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => setTimeline(data))
+      .catch(() => setTimeline(null));
+
     fetch("/admin/xu-faculty-clearance/api/ciso/system-guidelines")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: CISOGuidelinesResponse) => setItems(data.items ?? []))
@@ -78,8 +84,8 @@ export default function CISODashboard() {
       <main className="dashboard p-4 mt-2 space-y-3">
         <WelcomeAcademicCard
           name={displayName || "John Doe"}
-          topLeft={{ label: "Academic Year", value: "2025–2026" }}
-          topRight={{ label: "Semester", value: "1" }}
+          topLeft={{ label: "Academic Year", value: timeline?.academicYear || "" }}
+          topRight={{ label: "Semester", value: timeline?.semester || "" }}
           rows={[{ label: "System Admin Role", value: profile?.role ?? "" }]}
         />
         

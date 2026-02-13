@@ -23,38 +23,26 @@ import { SearchInputGroup } from "../../stories/components/input-group";
 export default function HROClearance() {
   const [query, setQuery] = React.useState("");
 
-  const sampleRequests: ClearanceRequestItem[] = [
-    {
-      id: "2005123456789",
-      requestId: "2005123456789",
-      employeeId: "2005123456789",
-      name: "Alexander H. Hamilton",
-      college: "College of Computer Studies",
-      department: "Information Technology",
-      facultyType: "Full-time Faculty (On Probation)",
-      status: "pending",
-    },
-    {
-      id: "2000123456789",
-      requestId: "2000123456789",
-      employeeId: "2000123456789",
-      name: "Elizabeth S. Schuyler",
-      college: "College of Nursing",
-      department: "N/A",
-      facultyType: "Part Time Faculty",
-      status: "rejected",
-    },
-    {
-      id: "2003123456789",
-      requestId: "2003123456789",
-      employeeId: "2003123456789",
-      name: "Aaron Burr Sir",
-      college: "College of Arts and Sciences",
-      department: "Political Science",
-      facultyType: "Full-time Faculty",
-      status: "approved",
-    },
-  ];
+  const [requests, setRequests] = React.useState<ClearanceRequestItem[]>([]);
+
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/clearance-requests")
+      .then((res) => res.json())
+      .then((data) => setRequests(Array.isArray(data?.items) ? data.items : []))
+      .catch(() => setRequests([]));
+  }, []);
+
+  const filteredRequests = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return requests;
+    return requests.filter((r) => {
+      const hay = [r.requestId, r.employeeId, r.name, r.college, r.department, r.facultyType]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [query, requests]);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -110,7 +98,7 @@ export default function HROClearance() {
         </div>
 
         <div className="mt-6">
-          <ClearanceRequestsCard items={sampleRequests} />
+          <ClearanceRequestsCard items={filteredRequests} />
         </div>
 
         

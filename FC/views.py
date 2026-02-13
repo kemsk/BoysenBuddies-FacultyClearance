@@ -132,6 +132,87 @@ def _parse_int(value: str | None):
         return None
 
 
+def _get_active_timeline():
+    return ClearanceTimeline.objects.filter(is_active=True).order_by("-id").first()
+
+
+def _to_request_status(value: str | None):
+    if value == ClearanceRequest.Status.APPROVED:
+        return "approved"
+    if value == ClearanceRequest.Status.REJECTED:
+        return "rejected"
+    return "pending"
+
+
+def clearance_requests_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    active_timeline = _get_active_timeline()
+    if not active_timeline:
+        return JsonResponse({"items": []})
+
+    qs = (
+        ClearanceRequest.objects.select_related(
+            "clearance",
+            "clearance__faculty",
+            "clearance__faculty__college",
+            "clearance__faculty__department",
+        )
+        .filter(timeline=active_timeline)
+        .order_by("-id")
+    )
+
+    items = []
+    for r in qs:
+        faculty = getattr(r.clearance, "faculty", None)
+
+        first_name = (getattr(faculty, "first_name", "") or "").strip()
+        middle_name = (getattr(faculty, "middle_name", "") or "").strip()
+        last_name = (getattr(faculty, "last_name", "") or "").strip()
+
+        parts = [p for p in [first_name, middle_name, last_name] if p]
+        full_name = " ".join(parts)
+
+        college = getattr(getattr(faculty, "college", None), "name", "") or ""
+        department = getattr(getattr(faculty, "department", None), "name", "") or ""
+        faculty_type = getattr(faculty, "faculty_type", "") or ""
+
+        employee_id = getattr(faculty, "employee_id", "") or ""
+
+        items.append(
+            {
+                "id": str(r.id),
+                "requestId": str(r.id),
+                "employeeId": employee_id,
+                "name": full_name,
+                "college": college,
+                "department": department,
+                "facultyType": faculty_type,
+                "status": _to_request_status(r.status),
+            }
+        )
+
+    return JsonResponse({"items": items})
+
+
+def active_clearance_timeline_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    t = _get_active_timeline()
+    if not t:
+        return JsonResponse({"academicYear": "", "semester": ""})
+
+    if t.academic_year is not None:
+        academic_year = f"{t.academic_year}–{t.academic_year + 1}"
+    else:
+        academic_year = ""
+
+    semester = _term_to_label(t.term)
+    return JsonResponse({"academicYear": academic_year, "semester": semester})
+
+
 def ovphe_system_guidelines_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
