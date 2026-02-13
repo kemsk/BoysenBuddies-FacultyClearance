@@ -62,6 +62,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 class Office(models.Model):
     name = models.CharField(max_length=150)
     abbreviation = models.CharField(max_length=20, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    display_order = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return self.name
@@ -70,6 +72,8 @@ class Office(models.Model):
 class College(models.Model):
     name = models.CharField(max_length=150)
     abbreviation = models.CharField(max_length=20, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    display_order = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return self.name
@@ -79,6 +83,8 @@ class Department(models.Model):
     college = models.ForeignKey(College, on_delete=models.CASCADE, related_name="departments")
     name = models.CharField(max_length=150)
     abbreviation = models.CharField(max_length=20, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    display_order = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return self.name

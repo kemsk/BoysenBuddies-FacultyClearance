@@ -47,17 +47,17 @@ ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
 
 -- Seed Colleges
-INSERT INTO FC_college (name, abbreviation)
+INSERT INTO FC_college (name, abbreviation, is_active, display_order)
 SELECT * FROM (
-    SELECT 'College of Computer Studies' AS name, 'CCS' AS abbreviation
+    SELECT 'College of Computer Studies' AS name, 'CCS' AS abbreviation, 1 AS is_active, 0 AS display_order
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_college c WHERE c.abbreviation = v.abbreviation
 );
 
-INSERT INTO FC_college (name, abbreviation)
+INSERT INTO FC_college (name, abbreviation, is_active, display_order)
 SELECT * FROM (
-    SELECT 'College of Arts and Sciences' AS name, 'CAS' AS abbreviation
+    SELECT 'College of Arts and Sciences' AS name, 'CAS' AS abbreviation, 1 AS is_active, 1 AS display_order
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_college c WHERE c.abbreviation = v.abbreviation
@@ -68,17 +68,17 @@ SET @ccs_id = (SELECT id FROM FC_college WHERE abbreviation = 'CCS' LIMIT 1);
 SET @cas_id = (SELECT id FROM FC_college WHERE abbreviation = 'CAS' LIMIT 1);
 
 -- Seed Departments for CCS
-INSERT INTO FC_department (college_id, name, abbreviation)
+INSERT INTO FC_department (college_id, name, abbreviation, is_active, display_order)
 SELECT * FROM (
-    SELECT @ccs_id AS college_id, 'Computer Science' AS name, 'CS' AS abbreviation
+    SELECT @ccs_id AS college_id, 'Computer Science' AS name, 'CS' AS abbreviation, 1 AS is_active, 0 AS display_order
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
 );
 
-INSERT INTO FC_department (college_id, name, abbreviation)
+INSERT INTO FC_department (college_id, name, abbreviation, is_active, display_order)
 SELECT * FROM (
-    SELECT @ccs_id AS college_id, 'Information Technology' AS name, 'IT' AS abbreviation
+    SELECT @ccs_id AS college_id, 'Information Technology' AS name, 'IT' AS abbreviation, 1 AS is_active, 1 AS display_order
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
@@ -88,33 +88,33 @@ WHERE NOT EXISTS (
 SET @cs_id = (SELECT id FROM FC_department WHERE abbreviation = 'CS' AND college_id = @ccs_id LIMIT 1);
 
 -- Seed Offices
-INSERT INTO FC_office (name, abbreviation)
+INSERT INTO FC_office (name, abbreviation, is_active, display_order)
 SELECT * FROM (
-    SELECT 'Office of the Vice President for Higher Education' AS name, 'OVPHE' AS abbreviation
+    SELECT 'Office of the Vice President for Higher Education' AS name, 'OVPHE' AS abbreviation, 1 AS is_active, 2 AS display_order
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_office o WHERE o.abbreviation = v.abbreviation
 );
 
-INSERT INTO FC_office (name, abbreviation)
+INSERT INTO FC_office (name, abbreviation, is_active, display_order)
 SELECT * FROM (
-    SELECT 'University Registrar' AS name, 'REG' AS abbreviation
+    SELECT 'University Registrar' AS name, 'REG' AS abbreviation, 1 AS is_active, 0 AS display_order
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_office o WHERE o.abbreviation = v.abbreviation
 );
 
-INSERT INTO FC_office (name, abbreviation)
+INSERT INTO FC_office (name, abbreviation, is_active, display_order)
 SELECT * FROM (
-    SELECT 'University Library' AS name, 'LIB' AS abbreviation
+    SELECT 'University Library' AS name, 'LIB' AS abbreviation, 1 AS is_active, 1 AS display_order
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_office o WHERE o.abbreviation = v.abbreviation
 );
 
-INSERT INTO FC_office (name, abbreviation)
+INSERT INTO FC_office (name, abbreviation, is_active, display_order)
 SELECT * FROM (
-    SELECT 'Human Resources Office' AS name, 'HRO' AS abbreviation
+    SELECT 'Human Resources Office' AS name, 'HRO' AS abbreviation, 1 AS is_active, 3 AS display_order
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_office o WHERE o.abbreviation = v.abbreviation
@@ -181,7 +181,7 @@ WHERE NOT EXISTS (
 
 INSERT INTO FC_approverflowstep (config_id, `order`, category)
 SELECT * FROM (
-    SELECT @config_id AS config_id, 4 AS `order`, 'OVPHE' AS category
+    SELECT @config_id AS config_id, 4 AS `order`, 'Office of the Vice President for Higher Education' AS category
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
