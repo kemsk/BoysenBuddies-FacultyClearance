@@ -1,9 +1,11 @@
 from datetime import datetime
+import json
 
 from django.db import models
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 
 from .models import *
 
@@ -83,6 +85,231 @@ def _format_timestamp(dt: datetime | None):
         return local.strftime("%B %d, %Y, %I:%M %p")
 
 
+def _json_body(request):
+    if not request.body:
+        return {}
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _serialize_guideline(g: SystemGuideline):
+    return {
+        "id": g.id,
+        "title": g.title or "",
+        "description": g.body or "",
+        "email": g.created_by.email if g.created_by else "",
+        "timestamp": _format_timestamp(g.created_at),
+        "enabled": bool(g.is_active),
+    }
+
+
+def _serialize_announcement(a: Announcement):
+    return {
+        "id": a.id,
+        "title": a.title or "",
+        "description": a.body or "",
+        "email": a.created_by.user.email if getattr(a.created_by, "user", None) else "",
+        "timestamp": _format_timestamp(a.created_at),
+        "pinned": bool(a.pin_announcement),
+        "enabled": bool(a.is_active),
+    }
+
+
+def _get_active_admin_for_role(role: str | None):
+    if role == "ovphe":
+        return _get_active_ovphe_admin()
+    if role == "ciso":
+        return _get_active_ciso_admin()
+    return None
+
+
+@csrf_exempt
+def _system_guidelines_api(request, role: str):
+    if request.method == "GET":
+        guidelines = SystemGuideline.objects.select_related("created_by").order_by("-created_at", "-id")
+        return JsonResponse({"items": [_serialize_guideline(g) for g in guidelines]})
+
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    payload = _json_body(request)
+    if payload is None:
+        return JsonResponse({"detail": "Invalid JSON"}, status=400)
+
+    title = (payload.get("title") or "").strip()
+    description = (payload.get("description") or "").strip()
+    enabled = payload.get("enabled")
+
+    if not title:
+        return JsonResponse({"detail": "title is required"}, status=400)
+
+    admin = _get_active_admin_for_role(role)
+    created_by = admin.user if admin else None
+
+    guideline = SystemGuideline.objects.create(
+        title=title,
+        body=description,
+        created_by=created_by,
+        is_active=bool(enabled) if enabled is not None else True,
+    )
+    return JsonResponse({"item": _serialize_guideline(guideline)})
+
+
+@csrf_exempt
+def _system_guideline_detail_api(request, role: str, guideline_id: int):
+    try:
+        guideline = SystemGuideline.objects.select_related("created_by").get(pk=guideline_id)
+    except SystemGuideline.DoesNotExist:
+        return JsonResponse({"detail": "Not found"}, status=404)
+
+    admin = _get_active_admin_for_role(role)
+    editor_user = admin.user if admin else None
+
+    if request.method == "PUT":
+        payload = _json_body(request)
+        if payload is None:
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
+
+        title = (payload.get("title") or "").strip()
+        description = (payload.get("description") or "").strip()
+        if not title:
+            return JsonResponse({"detail": "title is required"}, status=400)
+
+        guideline.title = title
+        guideline.body = description
+        guideline.created_at = timezone.now()
+        if editor_user is not None:
+            guideline.created_by = editor_user
+        guideline.save(update_fields=["title", "body", "created_at", "created_by"])
+        return JsonResponse({"item": _serialize_guideline(guideline)})
+
+    if request.method == "PATCH":
+        payload = _json_body(request)
+        if payload is None:
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
+
+        if "enabled" not in payload:
+            return JsonResponse({"detail": "enabled is required"}, status=400)
+
+        guideline.is_active = bool(payload.get("enabled"))
+        guideline.created_at = timezone.now()
+        if editor_user is not None:
+            guideline.created_by = editor_user
+        guideline.save(update_fields=["is_active", "created_at", "created_by"])
+        return JsonResponse({"item": _serialize_guideline(guideline)})
+
+    if request.method == "DELETE":
+        guideline.delete()
+        return JsonResponse({"ok": True})
+
+    if request.method == "GET":
+        return JsonResponse({"item": _serialize_guideline(guideline)})
+
+    return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+
+@csrf_exempt
+def _announcements_api(request, role: str):
+    if request.method == "GET":
+        announcements = Announcement.objects.order_by("-created_at", "-id")
+        return JsonResponse({"items": [_serialize_announcement(a) for a in announcements]})
+
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    payload = _json_body(request)
+    if payload is None:
+        return JsonResponse({"detail": "Invalid JSON"}, status=400)
+
+    title = (payload.get("title") or "").strip()
+    description = (payload.get("description") or "").strip()
+    pinned = payload.get("pinned")
+    enabled = payload.get("enabled")
+
+    if not title:
+        return JsonResponse({"detail": "title is required"}, status=400)
+
+    admin = _get_active_admin_for_role(role)
+
+    announcement = Announcement.objects.create(
+        title=title,
+        body=description,
+        created_by=admin,
+        pin_announcement=bool(pinned) if pinned is not None else False,
+        is_active=bool(enabled) if enabled is not None else True,
+    )
+    return JsonResponse({"item": _serialize_announcement(announcement)})
+
+
+@csrf_exempt
+def _announcement_detail_api(request, role: str, announcement_id: int):
+    try:
+        announcement = Announcement.objects.get(pk=announcement_id)
+    except Announcement.DoesNotExist:
+        return JsonResponse({"detail": "Not found"}, status=404)
+
+    admin = _get_active_admin_for_role(role)
+
+    if request.method == "PUT":
+        payload = _json_body(request)
+        if payload is None:
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
+
+        title = (payload.get("title") or "").strip()
+        description = (payload.get("description") or "").strip()
+        pinned = payload.get("pinned")
+
+        if not title:
+            return JsonResponse({"detail": "title is required"}, status=400)
+
+        announcement.title = title
+        announcement.body = description
+        if pinned is not None:
+            announcement.pin_announcement = bool(pinned)
+        announcement.created_at = timezone.now()
+        if admin is not None:
+            announcement.created_by = admin
+        announcement.save(update_fields=["title", "body", "pin_announcement", "created_at", "created_by"])
+        return JsonResponse({"item": _serialize_announcement(announcement)})
+
+    if request.method == "PATCH":
+        payload = _json_body(request)
+        if payload is None:
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
+
+        updated_fields = []
+        if "enabled" in payload:
+            announcement.is_active = bool(payload.get("enabled"))
+            updated_fields.append("is_active")
+        if "pinned" in payload:
+            announcement.pin_announcement = bool(payload.get("pinned"))
+            updated_fields.append("pin_announcement")
+
+        announcement.created_at = timezone.now()
+        updated_fields.append("created_at")
+        if admin is not None:
+            announcement.created_by = admin
+            updated_fields.append("created_by")
+
+        if not updated_fields:
+            return JsonResponse({"detail": "No fields to update"}, status=400)
+
+        announcement.save(update_fields=updated_fields)
+        return JsonResponse({"item": _serialize_announcement(announcement)})
+
+    if request.method == "DELETE":
+        announcement.delete()
+        return JsonResponse({"ok": True})
+
+    if request.method == "GET":
+        return JsonResponse({"item": _serialize_announcement(announcement)})
+
+    return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+
 def _format_time_label(dt: datetime):
     try:
         return dt.strftime("%-I:%M %p")
@@ -100,44 +327,24 @@ def _term_to_label(term: str | None):
     return ""
 
 
+@csrf_exempt
 def ovphe_system_guidelines_api(request):
-    if request.method != "GET":
-        return JsonResponse({"detail": "Method not allowed"}, status=405)
-
-    guidelines = SystemGuideline.objects.select_related("created_by").order_by("-created_at", "-id")
-    items = []
-    for g in guidelines:
-        items.append(
-            {
-                "id": g.id,
-                "title": g.title or "",
-                "description": g.body or "",
-                "email": g.created_by.email if g.created_by else "",
-                "timestamp": _format_timestamp(g.created_at),
-                "enabled": bool(g.is_active),
-            }
-        )
-    return JsonResponse({"items": items})
+    return _system_guidelines_api(request, "ovphe")
 
 
+@csrf_exempt
 def ovphe_announcements_api(request):
-    if request.method != "GET":
-        return JsonResponse({"detail": "Method not allowed"}, status=405)
+    return _announcements_api(request, "ovphe")
 
-    announcements = Announcement.objects.order_by("-created_at", "-id")
-    items = []
-    for a in announcements:
-        items.append(
-            {
-                "id": a.id,
-                "title": a.title or "",
-                "description": a.body or "",
-                "timestamp": _format_timestamp(a.created_at),
-                "pinned": bool(a.pin_announcement),
-                "enabled": bool(a.is_active),
-            }
-        )
-    return JsonResponse({"items": items})
+
+@csrf_exempt
+def ovphe_system_guideline_detail_api(request, guideline_id: int):
+    return _system_guideline_detail_api(request, "ovphe", guideline_id)
+
+
+@csrf_exempt
+def ovphe_announcement_detail_api(request, announcement_id: int):
+    return _announcement_detail_api(request, "ovphe", announcement_id)
 
 
 def ovphe_clearance_timelines_api(request):
@@ -333,44 +540,24 @@ def ovphe_activity_logs_api(request):
     return JsonResponse({"items": items, "total": total})
 
 
+@csrf_exempt
 def ciso_system_guidelines_api(request):
-    if request.method != "GET":
-        return JsonResponse({"detail": "Method not allowed"}, status=405)
-
-    guidelines = SystemGuideline.objects.select_related("created_by").order_by("-created_at", "-id")
-    items = []
-    for g in guidelines:
-        items.append(
-            {
-                "id": g.id,
-                "title": g.title or "",
-                "description": g.body or "",
-                "email": g.created_by.email if g.created_by else "",
-                "timestamp": _format_timestamp(g.created_at),
-                "enabled": bool(g.is_active),
-            }
-        )
-    return JsonResponse({"items": items})
+    return _system_guidelines_api(request, "ciso")
 
 
+@csrf_exempt
 def ciso_announcements_api(request):
-    if request.method != "GET":
-        return JsonResponse({"detail": "Method not allowed"}, status=405)
+    return _announcements_api(request, "ciso")
 
-    announcements = Announcement.objects.order_by("-created_at", "-id")
-    items = []
-    for a in announcements:
-        items.append(
-            {
-                "id": a.id,
-                "title": a.title or "",
-                "description": a.body or "",
-                "timestamp": _format_timestamp(a.created_at),
-                "pinned": bool(a.pin_announcement),
-                "enabled": bool(a.is_active),
-            }
-        )
-    return JsonResponse({"items": items})
+
+@csrf_exempt
+def ciso_system_guideline_detail_api(request, guideline_id: int):
+    return _system_guideline_detail_api(request, "ciso", guideline_id)
+
+
+@csrf_exempt
+def ciso_announcement_detail_api(request, announcement_id: int):
+    return _announcement_detail_api(request, "ciso", announcement_id)
 
 
 def ciso_notifications_api(request):

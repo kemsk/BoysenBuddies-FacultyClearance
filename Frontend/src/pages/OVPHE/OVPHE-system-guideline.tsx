@@ -20,7 +20,6 @@ import {
 import {
   EditSystemGuidelinesDialog,
   loadSystemGuidelinesItems,
-  saveSystemGuidelinesItems,
 } from "../../stories/components/edit-system-guidelines-dialog";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
@@ -58,32 +57,38 @@ function GuidelinesToggle({
 export default function OVPHESystemGuideline() {
   const navigate = useNavigate();
 
-  const [items, setItems] = React.useState<SystemGuidlinesItem[]>([]);
+  type GuidelineApiItem = SystemGuidlinesItem & { id: number };
+
+  const [items, setItems] = React.useState<GuidelineApiItem[]>([]);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
   const [confirm, setConfirm] = React.useState<
-    | { open: true; type: "enable" | "disable" | "delete"; index: number }
+    | { open: true; type: "enable" | "disable" | "deactivate"; index: number }
     | { open: false }
   >({ open: false });
 
-  React.useEffect(() => {
-    fetch("/admin/xu-faculty-clearance/api/ovphe/system-guidelines")
+  const refresh = React.useCallback(() => {
+    return fetch("/admin/xu-faculty-clearance/api/ovphe/system-guidelines")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: { items: SystemGuidlinesItem[] }) => {
+      .then((data: { items: GuidelineApiItem[] }) => {
         const initial = (data.items ?? []).map((item) => ({
-          ...item,
-          enabled: item.enabled ?? true,
-        }));
-        setItems(initial);
-      })
-      .catch(() => {
-        const initial = loadSystemGuidelinesItems().map((item) => ({
           ...item,
           enabled: item.enabled ?? true,
         }));
         setItems(initial);
       });
   }, []);
+
+  React.useEffect(() => {
+    refresh()
+      .catch(() => {
+        const initial = loadSystemGuidelinesItems().map((item) => ({
+          ...item,
+          enabled: item.enabled ?? true,
+        }));
+        setItems(initial as GuidelineApiItem[]);
+      });
+  }, [refresh]);
 
 
 
@@ -164,7 +169,10 @@ export default function OVPHESystemGuideline() {
                       </p>
 
                       <div className="mt-3 text-sm text-muted-foreground">
-                        Created: {item.timestamp}
+                        Last updated: {item.timestamp}
+                      </div>
+                      <div className="mt-1 text-sm text-muted-foreground">
+                        Updated by: {item.email}
                       </div>
                     </div>
 
@@ -192,10 +200,10 @@ export default function OVPHESystemGuideline() {
                             size="sm"
                             className="h-9 w-[120px] rounded-md"
                             onClick={() => {
-                              setConfirm({ open: true, type: "delete", index: idx });
+                              setConfirm({ open: true, type: "deactivate", index: idx });
                             }}
                           >
-                            DELETE
+                            DEACTIVATE
                           </Button>
                         )}
                       </div>
@@ -212,34 +220,26 @@ export default function OVPHESystemGuideline() {
 
           <AlertDialog
             open={confirm.open}
-            onOpenChange={(open) => {
+            onOpenChange={(open: boolean) => {
               if (!open) setConfirm({ open: false });
             }}
           >
             <AlertDialogContent className="w-[420px] max-w-[calc(100vw-3rem)] rounded-xl bg-background p-0">
               {(() => {
-                const type = confirm.open ? confirm.type : "delete";
+                const type = confirm.open ? confirm.type : "deactivate";
                 const index = confirm.open ? confirm.index : -1;
                 const title =
                   index >= 0 && index < items.length ? items[index]?.title ?? "" : "";
 
-                const isDelete = type === "delete";
                 const isDisable = type === "disable";
                 const isEnable = type === "enable";
+                const isDeactivate = type === "deactivate";
 
-                const headingWord = isDelete
-                  ? "DELETE"
-                  : isDisable
-                    ? "DEACTIVATE"
-                    : "ACTIVATE";
+                const headingWord = isDisable || isDeactivate ? "DEACTIVATE" : "ACTIVATE";
 
                 const headingColor = isEnable ? "text-primary" : "text-destructive";
 
-                const actionLabel = isDelete
-                  ? "Delete"
-                  : isDisable
-                    ? "Deactivate"
-                    : "Activate";
+                const actionLabel = isDisable || isDeactivate ? "Deactivate" : "Activate";
 
                 const actionClass = isEnable
                   ? "h-11 w-full rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
@@ -277,21 +277,24 @@ export default function OVPHESystemGuideline() {
                           onClick={() => {
                             if (!confirm.open) return;
 
-                            if (confirm.type === "delete") {
-                              const updated = items.filter((_, i) => i !== confirm.index);
-                              setItems(updated);
-                              saveSystemGuidelinesItems(updated);
+                            const current = items[confirm.index];
+                            if (!current?.id) {
                               setConfirm({ open: false });
                               return;
                             }
 
                             const nextEnabled = confirm.type === "enable";
-                            const updated = items.map((it, i) =>
-                              i === confirm.index ? { ...it, enabled: nextEnabled } : it
-                            );
-                            setItems(updated);
-                            saveSystemGuidelinesItems(updated);
-                            setConfirm({ open: false });
+                            fetch(
+                              `/admin/xu-faculty-clearance/api/ovphe/system-guidelines/${current.id}`,
+                              {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ enabled: nextEnabled }),
+                              }
+                            ).finally(() => {
+                              setConfirm({ open: false });
+                              refresh().catch(() => null);
+                            });
                           }}
                         >
                           {actionLabel}
@@ -326,33 +329,29 @@ export default function OVPHESystemGuideline() {
             }
             onSave={({ title, description }) => {
               if (editingIndex !== null) {
-                const updated = items.map((it, idx) =>
-                  idx === editingIndex
-                    ? {
-                        ...it,
-                        title,
-                        description,
-                      }
-                    : it
-                );
-                setItems(updated);
-                saveSystemGuidelinesItems(updated);
-                setEditingIndex(null);
+                const current = items[editingIndex];
+                if (!current?.id) {
+                  setEditingIndex(null);
+                  return;
+                }
+                fetch(`/admin/xu-faculty-clearance/api/ovphe/system-guidelines/${current.id}`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ title, description }),
+                }).finally(() => {
+                  setEditingIndex(null);
+                  refresh().catch(() => null);
+                });
                 return;
               }
 
-              const next: SystemGuidlinesItem[] = [
-                {
-                  title,
-                  description,
-                  email: "ciso@xu.edu.ph",
-                  timestamp: new Date().toLocaleString(),
-                  enabled: true,
-                },
-                ...items,
-              ];
-              setItems(next);
-              saveSystemGuidelinesItems(next);
+              fetch("/admin/xu-faculty-clearance/api/ovphe/system-guidelines", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title, description }),
+              }).finally(() => {
+                refresh().catch(() => null);
+              });
             }}
           />
   
