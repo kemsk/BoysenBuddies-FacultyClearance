@@ -1,9 +1,11 @@
 from datetime import datetime
+import json
 
 from django.db import models
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 
 from .models import *
 
@@ -100,6 +102,36 @@ def _term_to_label(term: str | None):
     return ""
 
 
+def _label_to_term(label: str | None):
+    if label == "First Semester":
+        return Clearance.Term.FIRST
+    if label == "Second Semester":
+        return Clearance.Term.SECOND
+    if label == "Intersession":
+        return Clearance.Term.INTERSESSION
+    return None
+
+
+def _parse_iso_date(value: str | None):
+    value = (value or "").strip()
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value).date()
+    except Exception:
+        return None
+
+
+def _parse_int(value: str | None):
+    value = (value or "").strip()
+    if not value:
+        return None
+    try:
+        return int(value)
+    except Exception:
+        return None
+
+
 def ovphe_system_guidelines_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
@@ -140,30 +172,95 @@ def ovphe_announcements_api(request):
     return JsonResponse({"items": items})
 
 
+@csrf_exempt
 def ovphe_clearance_timelines_api(request):
-    if request.method != "GET":
-        return JsonResponse({"detail": "Method not allowed"}, status=405)
+    if request.method == "GET":
+        timelines = ClearanceTimeline.objects.order_by("-is_active", "-academic_year", "-id")
+        items = []
+        for t in timelines:
+            start_year = str(t.academic_year or "")
+            end_year = str((t.academic_year + 1) if t.academic_year else "")
+            items.append(
+                {
+                    "id": str(t.id),
+                    "startYear": start_year,
+                    "endYear": end_year,
+                    "semester": _term_to_label(t.term),
+                    "semesterStartDate": t.term_start_date.isoformat() if t.term_start_date else "",
+                    "semesterEndDate": t.term_end_date.isoformat() if t.term_end_date else "",
+                    "clearanceStartDate": t.clearance_start_date.isoformat() if t.clearance_start_date else "",
+                    "clearanceEndDate": t.clearance_end_date.isoformat() if t.clearance_end_date else "",
+                    "setAsActive": bool(t.is_active),
+                    "createdAt": _format_timestamp(t.created_at),
+                }
+            )
+        return JsonResponse({"items": items})
 
-    timelines = ClearanceTimeline.objects.order_by("-is_active", "-academic_year", "-id")
-    items = []
-    for t in timelines:
-        start_year = str(t.academic_year or "")
-        end_year = str((t.academic_year + 1) if t.academic_year else "")
-        items.append(
-            {
-                "id": str(t.id),
-                "startYear": start_year,
-                "endYear": end_year,
-                "semester": _term_to_label(t.term),
-                "semesterStartDate": t.term_start_date.isoformat() if t.term_start_date else "",
-                "semesterEndDate": t.term_end_date.isoformat() if t.term_end_date else "",
-                "clearanceStartDate": t.clearance_start_date.isoformat() if t.clearance_start_date else "",
-                "clearanceEndDate": t.clearance_end_date.isoformat() if t.clearance_end_date else "",
-                "setAsActive": bool(t.is_active),
-                "createdAt": _format_timestamp(t.created_at),
-            }
-        )
-    return JsonResponse({"items": items})
+    if request.method in {"POST", "PUT"}:
+        try:
+            payload = json.loads((request.body or b"{}").decode("utf-8"))
+        except Exception:
+            payload = {}
+
+        start_year = _parse_int(payload.get("startYear"))
+        term = _label_to_term(payload.get("semester"))
+        term_start_date = _parse_iso_date(payload.get("semesterStartDate"))
+        term_end_date = _parse_iso_date(payload.get("semesterEndDate"))
+        clearance_start_date = _parse_iso_date(payload.get("clearanceStartDate"))
+        clearance_end_date = _parse_iso_date(payload.get("clearanceEndDate"))
+        set_as_active = bool(payload.get("setAsActive"))
+
+        admin = _get_active_ovphe_admin()
+        if not admin:
+            return JsonResponse({"detail": "OVPHE user not found"}, status=404)
+
+        if request.method == "POST":
+            if set_as_active:
+                ClearanceTimeline.objects.filter(is_active=True).update(is_active=False)
+
+            t = ClearanceTimeline.objects.create(
+                academic_year=start_year,
+                term=term,
+                term_start_date=term_start_date,
+                term_end_date=term_end_date,
+                clearance_start_date=clearance_start_date,
+                clearance_end_date=clearance_end_date,
+                created_by=admin,
+                is_active=set_as_active,
+            )
+            return JsonResponse({"id": str(t.id)}, status=201)
+
+        timeline_id = payload.get("id")
+        if not timeline_id:
+            return JsonResponse({"detail": "Missing id"}, status=400)
+
+        t = ClearanceTimeline.objects.filter(id=timeline_id).first()
+        if not t:
+            return JsonResponse({"detail": "Timeline not found"}, status=404)
+
+        if set_as_active:
+            ClearanceTimeline.objects.exclude(id=t.id).filter(is_active=True).update(is_active=False)
+
+        t.academic_year = start_year
+        t.term = term
+        t.term_start_date = term_start_date
+        t.term_end_date = term_end_date
+        t.clearance_start_date = clearance_start_date
+        t.clearance_end_date = clearance_end_date
+        t.is_active = set_as_active
+        t.save(update_fields=[
+            "academic_year",
+            "term",
+            "term_start_date",
+            "term_end_date",
+            "clearance_start_date",
+            "clearance_end_date",
+            "is_active",
+        ])
+
+        return JsonResponse({"id": str(t.id)})
+
+    return JsonResponse({"detail": "Method not allowed"}, status=405)
 
 
 def ovphe_org_structure_api(request):

@@ -139,17 +139,23 @@ export default function OVPHEClearanceTimeline() {
   const [editOpen, setEditOpen] = React.useState(false);
   const [editingItemId, setEditingItemId] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    fetch("/admin/xu-faculty-clearance/api/ovphe/clearance-timelines")
+  const refreshTimelines = React.useCallback(() => {
+    return fetch("/admin/xu-faculty-clearance/api/ovphe/clearance-timelines")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: OVPHEClearanceTimelinesResponse) => {
-        setItems(Array.isArray(data.items) ? data.items : []);
+        const nextItems = Array.isArray(data.items) ? data.items : [];
+        setItems(nextItems);
+        saveTimelineItems(nextItems);
       })
       .catch(() => {
         const initial = loadTimelineItems();
         setItems(initial);
       });
   }, []);
+
+  React.useEffect(() => {
+    refreshTimelines();
+  }, [refreshTimelines]);
 
   const activeItems = React.useMemo(
     () => items.filter((i) => i.setAsActive).map(toCardItem),
@@ -238,30 +244,41 @@ export default function OVPHEClearanceTimeline() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreate={(payload) => {
-          const createdAt = createNowTimestamp();
-          const id = `ct-${Date.now()}`;
+          fetch("/admin/xu-faculty-clearance/api/ovphe/clearance-timelines", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          })
+            .then((r) => (r.ok ? r.json() : Promise.reject()))
+            .then(() => refreshTimelines())
+            .catch(() => {
+              const createdAt = createNowTimestamp();
+              const id = `ct-${Date.now()}`;
 
-          const nextItem: StoredClearanceTimelineItem = {
-            id,
-            startYear: payload.startYear,
-            endYear: payload.endYear,
-            semester: payload.semester,
-            semesterStartDate: payload.semesterStartDate,
-            semesterEndDate: payload.semesterEndDate,
-            clearanceStartDate: payload.clearanceStartDate,
-            clearanceEndDate: payload.clearanceEndDate,
-            setAsActive: payload.setAsActive,
-            createdAt,
-          };
+              const nextItem: StoredClearanceTimelineItem = {
+                id,
+                startYear: payload.startYear,
+                endYear: payload.endYear,
+                semester: payload.semester,
+                semesterStartDate: payload.semesterStartDate,
+                semesterEndDate: payload.semesterEndDate,
+                clearanceStartDate: payload.clearanceStartDate,
+                clearanceEndDate: payload.clearanceEndDate,
+                setAsActive: payload.setAsActive,
+                createdAt,
+              };
 
-          setItems((prev) => {
-            const normalized = payload.setAsActive
-              ? prev.map((p) => ({ ...p, setAsActive: false }))
-              : prev;
-            const next = [nextItem, ...normalized];
-            saveTimelineItems(next);
-            return next;
-          });
+              setItems((prev) => {
+                const normalized = payload.setAsActive
+                  ? prev.map((p) => ({ ...p, setAsActive: false }))
+                  : prev;
+                const next = [nextItem, ...normalized];
+                saveTimelineItems(next);
+                return next;
+              });
+            });
         }}
        />
 
@@ -274,29 +291,40 @@ export default function OVPHEClearanceTimeline() {
         initialValues={editInitialValues}
         onSave={(payload) => {
           if (!editingItemId) return;
-          setItems((prev) => {
-            const normalized = payload.setAsActive
-              ? prev.map((p) => ({ ...p, setAsActive: false }))
-              : prev;
+          fetch("/admin/xu-faculty-clearance/api/ovphe/clearance-timelines", {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ id: editingItemId, ...payload }),
+          })
+            .then((r) => (r.ok ? r.json() : Promise.reject()))
+            .then(() => refreshTimelines())
+            .catch(() => {
+              setItems((prev) => {
+                const normalized = payload.setAsActive
+                  ? prev.map((p) => ({ ...p, setAsActive: false }))
+                  : prev;
 
-            const next = normalized.map((p) => {
-              if (p.id !== editingItemId) return p;
-              return {
-                ...p,
-                startYear: payload.startYear,
-                endYear: payload.endYear,
-                semester: payload.semester,
-                semesterStartDate: payload.semesterStartDate,
-                semesterEndDate: payload.semesterEndDate,
-                clearanceStartDate: payload.clearanceStartDate,
-                clearanceEndDate: payload.clearanceEndDate,
-                setAsActive: payload.setAsActive,
-              };
+                const next = normalized.map((p) => {
+                  if (p.id !== editingItemId) return p;
+                  return {
+                    ...p,
+                    startYear: payload.startYear,
+                    endYear: payload.endYear,
+                    semester: payload.semester,
+                    semesterStartDate: payload.semesterStartDate,
+                    semesterEndDate: payload.semesterEndDate,
+                    clearanceStartDate: payload.clearanceStartDate,
+                    clearanceEndDate: payload.clearanceEndDate,
+                    setAsActive: payload.setAsActive,
+                  };
+                });
+
+                saveTimelineItems(next);
+                return next;
+              });
             });
-
-            saveTimelineItems(next);
-            return next;
-          });
         }}
        />
 
