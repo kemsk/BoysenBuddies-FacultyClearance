@@ -161,8 +161,17 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 # Ensure sessions last longer (optional)
 SESSION_COOKIE_AGE = 900
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True  
-SESSION_COOKIE_SECURE = True  
+SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', '0') == '1'
 SESSION_SAVE_EVERY_REQUEST = True
+
+# Email (OTP)
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', '')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', '1') == '1'
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 
 # Google OAuth Settings
 AUTHENTICATION_BACKENDS = (

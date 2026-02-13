@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "../../index.css"; // ensure index.css is accessible from src
 import { Progress } from "../../stories/components/progress";
-import { Button } from "../../stories/components/button";
 
 export default function LoginPrompt() {
   const [progress, setProgress] = useState(0);

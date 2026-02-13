@@ -3,7 +3,7 @@ import "../../index.css"; // ensure index.css is accessible from src
 import { Button } from "../../stories/components/button";
 import { Divider } from "../../stories/components/divider";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "../../stories/components/input-otp";
-import { authService, LoginResponse } from "../../services/authService";
+import { authService } from "../../services/authService";
 
 export default function Otp() {
   const [email, setEmail] = useState<string>("");
@@ -17,8 +17,14 @@ export default function Otp() {
   useEffect(() => {
     const getUserInfo = async () => {
       try {
+        const storedEmail = localStorage.getItem('otp_email');
+        if (storedEmail) {
+          setEmail(storedEmail);
+          return;
+        }
+
         const authStatus = await authService.getAuthStatus();
-        if (authStatus.user_info) {
+        if (authStatus.user_info?.email) {
           setEmail(authStatus.user_info.email);
         }
       } catch (error) {
@@ -70,29 +76,39 @@ export default function Otp() {
     setError("");
 
     try {
-      const response: LoginResponse = await authService.verifyPin(pin);
+      const response = await authService.verifyOtp(pin);
       
       if (response.success && response.user_info?.dashboard_url) {
         // Login successful, redirect to role-specific dashboard
         window.location.href = response.user_info.dashboard_url;
       } else if (response.success) {
         // Fallback to default dashboard
-        window.location.href = "/dashboard";
+        window.location.href = "/faculty-dashboard";
       } else {
         setError(response.message || "PIN verification failed");
       }
-    } catch (err: any) {
-      setError(err.message || "An error occurred during PIN verification");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "An error occurred during OTP verification";
+      setError(message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     if (secondsLeft > 0) return;
-    // TODO: implement resend PIN functionality
-    // For now, just reset timer
-    setSecondsLeft(180);
+    setIsLoading(true);
+    setError("");
+    try {
+      if (!email) throw new Error('Email not found. Please go back to login.');
+      await authService.requestOtp(email);
+      setSecondsLeft(180);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to resend OTP';
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handlePinChange = (value: string) => {

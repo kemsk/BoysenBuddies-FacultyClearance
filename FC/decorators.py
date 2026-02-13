@@ -15,13 +15,13 @@ ROLE_MAPPING = {
 
 # Dashboard file paths for each role
 ROLE_DASHBOARD_PATHS = {
-    1: '/pages/HRO/HRO-dashboard',
-    2: '/pages/CISO/CISO-dashboard',
-    3: '/pages/OVPHE/OVPHE-dashboard',
-    4: '/pages/approver/approver-dashboard',
-    5: '/pages/assistant-approver/assistant-approver-dashboard',
-    6: '/pages/faculty/faculty_member_dashboard',
-    7: '/pages/dual-role/dual-approver-dashboard'
+    1: '/HRO-dashboard',
+    2: '/CISO-dashboard',
+    3: '/OVPHE-dashboard',
+    4: '/approver-dashboard',
+    5: '/assistant-approver-dashboard',
+    6: '/faculty-dashboard',
+    7: '/dual-role-approver-dashboard'
 }
 
 # View folder access mapping

@@ -1,4 +1,4 @@
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '';
+const API_BASE_URL = '';
 
 export interface LoginResponse {
   success: boolean;
@@ -37,6 +37,54 @@ class AuthService {
       }
     }
     return '';
+  }
+
+  async requestOtp(email: string): Promise<LoginResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/login/request-otp/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': this.getCSRFToken(),
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json().catch(() => null);
+      const message = data && typeof data === 'object' && 'message' in data ? String((data as { message?: unknown }).message || '') : '';
+      if (!response.ok) {
+        throw new Error(message || 'Failed to request OTP');
+      }
+      return data as LoginResponse;
+    } catch (error) {
+      console.error('Request OTP error:', error);
+      throw error;
+    }
+  }
+
+  async verifyOtp(otp: string): Promise<LoginResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/login/verify-otp/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': this.getCSRFToken(),
+        },
+        credentials: 'include',
+        body: JSON.stringify({ otp }),
+      });
+
+      const data = await response.json().catch(() => null);
+      const message = data && typeof data === 'object' && 'message' in data ? String((data as { message?: unknown }).message || '') : '';
+      if (!response.ok) {
+        throw new Error(message || 'OTP verification failed');
+      }
+      return data as LoginResponse;
+    } catch (error) {
+      console.error('Verify OTP error:', error);
+      throw error;
+    }
   }
 
   async login(email: string, password: string): Promise<LoginResponse> {
@@ -286,15 +334,15 @@ class AuthService {
   // Get dashboard URL for role
   getDashboardUrl(roleValue: number): string {
     const dashboardPaths = {
-      1: '/pages/HRO/HRO-dashboard',
-      2: '/pages/CISO/CISO-dashboard',
-      3: '/pages/OVPHE/OVPHE-dashboard',
-      4: '/pages/approver/approver-dashboard',
-      5: '/pages/assistant-approver/assistant-approver-dashboard',
-      6: '/pages/faculty/faculty_member_dashboard',
-      7: '/pages/dual-role/dual-approver-dashboard'
+      1: '/HRO-dashboard',
+      2: '/CISO-dashboard',
+      3: '/OVPHE-dashboard',
+      4: '/approver-dashboard',
+      5: '/assistant-approver-dashboard',
+      6: '/faculty-dashboard',
+      7: '/dual-role-approver-dashboard'
     };
-    return dashboardPaths[roleValue as keyof typeof dashboardPaths] || '/pages/faculty/faculty_member_dashboard';
+    return dashboardPaths[roleValue as keyof typeof dashboardPaths] || '/faculty-dashboard';
   }
 
   // Get current user's dashboard URL

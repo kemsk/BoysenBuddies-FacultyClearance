@@ -5,6 +5,8 @@ app_name = 'fc'
 
 urlpatterns = [
     path('login', views.login_view, name='login'),
+    path('login/request-otp/', views.request_otp_view, name='request_otp'),
+    path('login/verify-otp/', views.verify_otp_view, name='verify_otp'),
     path('login/sso/', views.sso_login, name='sso_login'),
     path('login/google/', views.google_login, name='google_login'),
     path('accounts/login/google/callback/', views.google_callback, name='google_callback'),

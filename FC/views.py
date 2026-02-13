@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import secrets
 import requests as http_requests
@@ -6,14 +6,19 @@ from urllib.parse import urlencode
 from dotenv import load_dotenv
 from google.oauth2 import id_token
 import google.auth.transport.requests as google_requests
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
 import hashlib
 import base64
+from email.message import EmailMessage
 
 from django.db import models
 from django.http import JsonResponse
 from django.shortcuts import redirect
-from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.utils import timezone
+from django.conf import settings
+from django.urls import reverse
 
 from .models import *
 
@@ -22,6 +27,37 @@ load_dotenv()
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
+
+GMAIL_SENDER = os.getenv("GMAIL_SENDER")
+GMAIL_CLIENT_ID = os.getenv("GMAIL_CLIENT_ID")
+GMAIL_CLIENT_SECRET = os.getenv("GMAIL_CLIENT_SECRET")
+GMAIL_REFRESH_TOKEN = os.getenv("GMAIL_REFRESH_TOKEN")
+
+
+def _send_gmail_api_email(*, to_email: str, subject: str, body: str) -> None:
+    if not (GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET and GMAIL_REFRESH_TOKEN and GMAIL_SENDER):
+        raise ValueError("Gmail API not configured")
+
+    creds = Credentials(
+        token=None,
+        refresh_token=GMAIL_REFRESH_TOKEN,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=GMAIL_CLIENT_ID,
+        client_secret=GMAIL_CLIENT_SECRET,
+        scopes=["https://www.googleapis.com/auth/gmail.send"],
+    )
+
+    creds.refresh(google_requests.Request())
+    service = build("gmail", "v1", credentials=creds, cache_discovery=False)
+
+    msg = EmailMessage()
+    msg["To"] = to_email
+    msg["From"] = GMAIL_SENDER
+    msg["Subject"] = subject
+    msg.set_content(body)
+
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
+    service.users().messages().send(userId="me", body={"raw": raw}).execute()
 
 def dashboard_view(request):
     # Return dashboard data as JSON for React frontend
@@ -704,14 +740,144 @@ def login_view(request):
         })
 
 
+@csrf_exempt
+def request_otp_view(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
+
+    import json
+    data = json.loads(request.body) if request.headers.get('Content-Type') == 'application/json' else request.POST
+    email = (data.get('email') or '').strip().lower()
+    if not email:
+        return JsonResponse({'success': False, 'message': 'Email is required.'}, status=400)
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'User not found.'}, status=404)
+
+    if not request.session.session_key:
+        request.session.save()
+
+    otp = f"{secrets.randbelow(1_000_000):06d}"
+    otp_hash = hashlib.sha256(f"{otp}:{settings.SECRET_KEY}:{request.session.session_key}".encode('utf-8')).hexdigest()
+    expires_at = timezone.now() + timedelta(minutes=3)
+
+    request.session['otp_user_id'] = user.id
+    request.session['otp_email'] = user.email
+    request.session['otp_hash'] = otp_hash
+    request.session['otp_expires_at'] = expires_at.isoformat()
+    request.session.modified = True
+
+    subject = 'Your XU Faculty ClearTrack OTP'
+    message = f"Your verification code is: {otp}\n\nThis code expires in 3 minutes."
+
+    try:
+        if GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET and GMAIL_REFRESH_TOKEN and GMAIL_SENDER:
+            _send_gmail_api_email(to_email=user.email, subject=subject, body=message)
+        else:
+            from django.core.mail import send_mail
+            from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None) or os.getenv('DEFAULT_FROM_EMAIL')
+            send_mail(subject, message, from_email, [user.email], fail_silently=False)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Failed to send OTP email: {str(e)}'}, status=500)
+
+    return JsonResponse({
+        'success': True,
+        'message': 'OTP sent. Please check your email.',
+        'user_info': {
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+        }
+    })
+
+
+@csrf_exempt
+def verify_otp_view(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
+
+    import json
+    data = json.loads(request.body) if request.headers.get('Content-Type') == 'application/json' else request.POST
+    otp = (data.get('otp') or '').strip()
+    if not otp:
+        return JsonResponse({'success': False, 'message': 'OTP is required.'}, status=400)
+
+    stored_hash = request.session.get('otp_hash')
+    stored_user_id = request.session.get('otp_user_id')
+    expires_at_raw = request.session.get('otp_expires_at')
+
+    if not stored_hash or not stored_user_id or not expires_at_raw:
+        return JsonResponse({'success': False, 'message': 'No OTP request found. Please request a new OTP.'}, status=400)
+
+    try:
+        expires_at = datetime.fromisoformat(expires_at_raw)
+        if timezone.is_naive(expires_at):
+            expires_at = timezone.make_aware(expires_at)
+    except Exception:
+        return JsonResponse({'success': False, 'message': 'OTP session is invalid. Please request a new OTP.'}, status=400)
+
+    if timezone.now() > expires_at:
+        request.session.pop('otp_hash', None)
+        request.session.pop('otp_expires_at', None)
+        request.session.pop('otp_user_id', None)
+        request.session.pop('otp_email', None)
+        request.session.modified = True
+        return JsonResponse({'success': False, 'message': 'OTP expired. Please request a new OTP.'}, status=401)
+
+    if not request.session.session_key:
+        return JsonResponse({'success': False, 'message': 'OTP session is invalid. Please request a new OTP.'}, status=400)
+
+    computed_hash = hashlib.sha256(f"{otp}:{settings.SECRET_KEY}:{request.session.session_key}".encode('utf-8')).hexdigest()
+    if computed_hash != stored_hash:
+        return JsonResponse({'success': False, 'message': 'Invalid OTP.'}, status=401)
+
+    try:
+        user = User.objects.get(id=stored_user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'User not found.'}, status=404)
+
+    request.session['user_authenticated'] = True
+    request.session['user_id'] = user.id
+    request.session['user_email'] = user.email
+    request.session['user_role_value'] = user.role_value
+    request.session['user_first_name'] = user.first_name
+    request.session['user_last_name'] = user.last_name
+
+    request.session.pop('otp_hash', None)
+    request.session.pop('otp_expires_at', None)
+    request.session.pop('otp_user_id', None)
+    request.session.pop('otp_email', None)
+    request.session.modified = True
+
+    from .decorators import get_role_dashboard_url
+    return JsonResponse({
+        'success': True,
+        'message': 'Login successful!',
+        'user_info': {
+            'id': user.id,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'role_value': user.role_value,
+            'role_name': user.get_role_value_display(),
+            'university_id': user.university_id,
+            'dashboard_url': get_role_dashboard_url(user.role_value)
+        }
+    })
+
+
 def google_login(request):
     state = secrets.token_urlsafe(32)
     request.session['google_oauth_state'] = state
     request.session.modified = True
 
+    redirect_uri = GOOGLE_REDIRECT_URI or request.build_absolute_uri(reverse('fc:google_callback'))
+
     params = {
         'client_id': GOOGLE_CLIENT_ID,
-        'redirect_uri': GOOGLE_REDIRECT_URI,
+        'redirect_uri': redirect_uri,
         'response_type': 'code',
         'scope': 'openid email profile',
         'access_type': 'offline',
@@ -740,11 +906,12 @@ def google_callback(request):
         }, status=400)
 
     token_url = 'https://oauth2.googleapis.com/token'
+    redirect_uri = GOOGLE_REDIRECT_URI or request.build_absolute_uri(reverse('fc:google_callback'))
     data = {
         'code': code,
         'client_id': os.getenv('GOOGLE_CLIENT_ID'),
         'client_secret': os.getenv('GOOGLE_CLIENT_SECRET'),
-        'redirect_uri': os.getenv('GOOGLE_REDIRECT_URI'),
+        'redirect_uri': redirect_uri,
         'grant_type': 'authorization_code',
     }
 
@@ -806,20 +973,7 @@ def google_callback(request):
     request.session.modified = True
 
     from .decorators import get_role_dashboard_url
-    return JsonResponse({
-        'success': True,
-        'message': 'Google login successful!',
-        'user_info': {
-            'id': user.id,
-            'email': user.email,
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-            'role_value': user.role_value,
-            'role_name': user.get_role_value_display(),
-            'university_id': user.university_id,
-            'dashboard_url': get_role_dashboard_url(user.role_value)
-        }
-    })
+    return redirect(get_role_dashboard_url(user.role_value))
 
 
 def sso_login(request):
