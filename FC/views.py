@@ -1,9 +1,13 @@
 from datetime import datetime
 
-from django.db import models
-from django.http import JsonResponse
+import csv
+import io
+
+from django.db import models, transaction
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 
 from .models import *
 
@@ -98,6 +102,177 @@ def _term_to_label(term: str | None):
     if term == Clearance.Term.INTERSESSION:
         return "Intersession"
     return ""
+
+
+def ciso_faculty_dump_template_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    headers = [
+        "email",
+        "university_id",
+        "employee_id",
+        "first_name",
+        "middle_name",
+        "last_name",
+        "faculty_type",
+        "phone_number",
+        "office",
+        "college",
+        "department",
+    ]
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(headers)
+
+    resp = HttpResponse(output.getvalue(), content_type="text/csv")
+    resp["Content-Disposition"] = 'attachment; filename="faculty_template.csv"'
+    return resp
+
+
+@csrf_exempt
+def ciso_faculty_dump_import_api(request):
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    upload = request.FILES.get("file")
+    if not upload:
+        return JsonResponse({"detail": "Missing file"}, status=400)
+
+    if not upload.name.lower().endswith(".csv"):
+        return JsonResponse({"detail": "Only CSV files are supported"}, status=400)
+
+    raw = upload.read()
+    try:
+        text = raw.decode("utf-8-sig")
+    except Exception:
+        return JsonResponse({"detail": "Unable to decode CSV; please upload a UTF-8 CSV"}, status=400)
+
+    reader = csv.DictReader(io.StringIO(text))
+    required_cols = {"email", "university_id", "employee_id"}
+    header_cols = set((reader.fieldnames or []))
+    missing_cols = sorted(required_cols - header_cols)
+    if missing_cols:
+        return JsonResponse(
+            {"detail": "Missing required columns", "missing": missing_cols},
+            status=400,
+        )
+
+    active_timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-id").first()
+
+    created_count = 0
+    updated_count = 0
+    skipped_count = 0
+    errors: list[dict] = []
+
+    def _clean(value: str | None):
+        return (value or "").strip()
+
+    with transaction.atomic():
+        for idx, row in enumerate(reader, start=2):
+            email = _clean(row.get("email"))
+            university_id = _clean(row.get("university_id"))
+            employee_id = _clean(row.get("employee_id"))
+
+            if not employee_id:
+                errors.append({"row": idx, "message": "employee_id is required"})
+                skipped_count += 1
+                continue
+            if not email:
+                errors.append({"row": idx, "message": "email is required"})
+                skipped_count += 1
+                continue
+            if not university_id:
+                errors.append({"row": idx, "message": "university_id is required"})
+                skipped_count += 1
+                continue
+
+            first_name = _clean(row.get("first_name"))
+            middle_name = _clean(row.get("middle_name"))
+            last_name = _clean(row.get("last_name"))
+            faculty_type = _clean(row.get("faculty_type"))
+            phone_number = _clean(row.get("phone_number"))
+            office_name = _clean(row.get("office"))
+            college_name = _clean(row.get("college"))
+            department_name = _clean(row.get("department"))
+
+            faculty = Faculty.objects.select_related("user").filter(employee_id=employee_id).first()
+
+            if faculty:
+                user = faculty.user
+                updated_count += 1
+            else:
+                user = User.objects.filter(email=email).first() or User.objects.filter(
+                    university_id=university_id
+                ).first()
+
+                if not user:
+                    user = User.objects.create(
+                        email=email,
+                        university_id=university_id,
+                        user_type=User.UserType.FACULTY,
+                        is_active=True,
+                    )
+                    user.set_password(employee_id)
+                    user.save(update_fields=["password"])
+                    created_count += 1
+                else:
+                    # Reuse existing user record
+                    updated_count += 1
+
+                faculty = Faculty.objects.filter(user=user).first()
+                if not faculty:
+                    faculty = Faculty.objects.create(user=user, employee_id=employee_id)
+                else:
+                    faculty.employee_id = employee_id
+
+            user.email = email
+            user.university_id = university_id
+            user.user_type = User.UserType.FACULTY
+            user.is_active = True
+            user.first_name = first_name or user.first_name
+            user.middle_name = middle_name or user.middle_name
+            user.last_name = last_name or user.last_name
+            user.save()
+
+            faculty.first_name = first_name
+            faculty.middle_name = middle_name
+            faculty.last_name = last_name
+            faculty.faculty_type = faculty_type
+            faculty.phone_number = phone_number
+
+            if office_name:
+                office_obj, _ = Office.objects.get_or_create(name=office_name)
+                faculty.office = office_obj
+            if college_name:
+                college_obj, _ = College.objects.get_or_create(name=college_name)
+                faculty.college = college_obj
+            if department_name and faculty.college:
+                dept_obj, _ = Department.objects.get_or_create(
+                    college=faculty.college,
+                    name=department_name,
+                )
+                faculty.department = dept_obj
+
+            faculty.save()
+
+            if active_timeline and active_timeline.academic_year and active_timeline.term:
+                Clearance.objects.get_or_create(
+                    faculty=faculty,
+                    academic_year=active_timeline.academic_year,
+                    term=active_timeline.term,
+                    defaults={"status": Clearance.Status.PENDING},
+                )
+
+    return JsonResponse(
+        {
+            "created_count": created_count,
+            "updated_count": updated_count,
+            "skipped_count": skipped_count,
+            "errors": errors,
+        }
+    )
 
 
 def ovphe_system_guidelines_api(request):
