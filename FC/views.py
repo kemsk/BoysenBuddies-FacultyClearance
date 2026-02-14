@@ -245,6 +245,7 @@ def ovphe_notifications_api(request):
             {
                 "id": str(n.notification_id),
                 "title": n.title or "",
+                "description": n.body or "",
                 "status": n.status,
                 "details": list(n.details or []),
                 "timestamp": _format_timestamp(n.created_at),
@@ -367,6 +368,8 @@ def ovphe_activity_logs_api(request):
                 "dateLabel": dt.strftime("%m/%d/%Y"),
                 "timeLabel": _format_time_label(dt),
                 "variant": log.event_type,
+                "title": log.title or "",
+                "description": log.description or "",
                 "actorFirstName": (log.actor_user.first_name if log.actor_user else "")
                 or (log.actor_admin.user.first_name if log.actor_admin else ""),
                 "actorLastName": (log.actor_user.last_name if log.actor_user else "")
@@ -439,6 +442,7 @@ def ciso_notifications_api(request):
             {
                 "id": str(n.notification_id),
                 "title": n.title or "",
+                "description": n.body or "",
                 "status": n.status,
                 "details": list(n.details or []),
                 "timestamp": _format_timestamp(n.created_at),
@@ -487,6 +491,8 @@ def ciso_activity_logs_api(request):
                 "dateLabel": dt.strftime("%m/%d/%Y"),
                 "timeLabel": _format_time_label(dt),
                 "variant": log.event_type,
+                "title": log.title or "",
+                "description": log.description or "",
                 "actorFirstName": (log.actor_user.first_name if log.actor_user else "")
                 or (log.actor_admin.user.first_name if log.actor_admin else ""),
                 "actorLastName": (log.actor_user.last_name if log.actor_user else "")
@@ -571,26 +577,6 @@ def ciso_system_users_api(request):
                 "universityId": u.university_id or "",
                 "college": sa.college.name if sa.college else "N/A",
                 "department": sa.department.name if sa.department else "N/A",
-                "email": u.email,
-            }
-        )
-
-    faculty_members = (
-        Faculty.objects.select_related("user", "college", "department")
-        .filter(user__is_active=True)
-        .order_by("id")
-    )
-    for f in faculty_members:
-        u = f.user
-        items.append(
-            {
-                "id": str(u.id),
-                "name": _full_name(u),
-                "systemId": f"SYS-{u.id}",
-                "userRole": "Faculty",
-                "universityId": u.university_id or "",
-                "college": f.college.name if f.college else "N/A",
-                "department": f.department.name if f.department else "N/A",
                 "email": u.email,
             }
         )
@@ -701,6 +687,7 @@ def faculty_notifications_api(request):
             {
                 "id": str(n.notification_id),
                 "title": n.title or "",
+                "description": n.body or "",
                 "status": n.status,
                 "details": list(n.details or []),
                 "timestamp": _format_timestamp(n.created_at),
