@@ -66,7 +66,7 @@ export default function CISOSystemGuideline() {
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
   const [confirm, setConfirm] = React.useState<
-    | { open: true; type: "enable" | "disable" | "deactivate"; index: number }
+    | { open: true; type: "enable" | "disable" | "delete"; index: number }
     | { open: false }
   >({ open: false });
 
@@ -203,10 +203,10 @@ export default function CISOSystemGuideline() {
                             size="sm"
                             className="h-9 w-[120px] rounded-md"
                             onClick={() => {
-                              setConfirm({ open: true, type: "deactivate", index: idx });
+                              setConfirm({ open: true, type: "delete", index: idx });
                             }}
                           >
-                            DEACTIVATE
+                            DELETE
                           </Button>
                         )}
                       </div>
@@ -229,20 +229,20 @@ export default function CISOSystemGuideline() {
           >
             <AlertDialogContent className="w-[420px] max-w-[calc(100vw-3rem)] rounded-xl bg-background p-0">
               {(() => {
-                const type = confirm.open ? confirm.type : "deactivate";
+                const type = confirm.open ? confirm.type : "delete";
                 const index = confirm.open ? confirm.index : -1;
                 const title =
                   index >= 0 && index < items.length ? items[index]?.title ?? "" : "";
 
+                const isDelete = type === "delete";
                 const isDisable = type === "disable";
                 const isEnable = type === "enable";
-                const isDeactivate = type === "deactivate";
 
-                const headingWord = isDisable || isDeactivate ? "DEACTIVATE" : "ACTIVATE";
+                const headingWord = isDelete ? "DELETE" : isDisable ? "DEACTIVATE" : "ACTIVATE";
 
                 const headingColor = isEnable ? "text-primary" : "text-destructive";
 
-                const actionLabel = isDisable || isDeactivate ? "Deactivate" : "Activate";
+                const actionLabel = isDelete ? "Delete" : isDisable ? "Deactivate" : "Activate";
 
                 const actionClass = isEnable
                   ? "h-11 w-full rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
@@ -283,6 +283,17 @@ export default function CISOSystemGuideline() {
                             const current = items[confirm.index];
                             if (!current?.id) {
                               setConfirm({ open: false });
+                              return;
+                            }
+
+                            if (confirm.type === "delete") {
+                              fetch(
+                                `/admin/xu-faculty-clearance/api/ciso/system-guidelines/${current.id}`,
+                                { method: "DELETE" }
+                              ).finally(() => {
+                                setConfirm({ open: false });
+                                refresh().catch(() => null);
+                              });
                               return;
                             }
 
