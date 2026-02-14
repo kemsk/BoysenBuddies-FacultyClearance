@@ -31,6 +31,13 @@ export default function CISODashboard() {
     return items.filter((g) => g.enabled ?? true);
   }, [items]);
 
+  const dashboardGuidelinesNoEmail = React.useMemo(() => {
+    return dashboardGuidelines.map((g) => ({
+      ...g,
+      email: "",
+    }));
+  }, [dashboardGuidelines]);
+
   const dashboardAnnouncements = React.useMemo(() => {
     return announcementItems
       .filter((a) => a.enabled ?? true)
@@ -89,7 +96,7 @@ export default function CISODashboard() {
         
 
           <SystemGuidlinesCard
-            items={dashboardGuidelines}
+            items={dashboardGuidelinesNoEmail}
             headerActionHref="/CISO-system-guideline"
             headerActionImgSrc="/_WhiteArrowIcon.png"
             headerActionImgAlt="Open Requirements"
