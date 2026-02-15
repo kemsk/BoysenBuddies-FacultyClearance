@@ -77,7 +77,7 @@ export default function OVPHEDashboard() {
       {/* DASHBOARD CONTENT */}
       <main className="dashboard p-4 mt-2 space-y-3">
         <WelcomeAcademicCard
-          name={displayName || "John Doe"}
+          name={displayName}
           topLeft={{ label: "Academic Year", value: "2025–2026" }}
           topRight={{ label: "Semester", value: "1" }}
           rows={[{ label: "System Admin Role", value: profile?.role ?? "" }]}
