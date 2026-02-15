@@ -20,6 +20,13 @@ load_dotenv('.env')
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
@@ -28,10 +35,13 @@ SECRET_KEY = 'django-insecure-as&5jz2$03*p=rtk#v1efq7o0&vp#k-=1^w6i8ifn-qvmyq$ii
 
 CSRF_TRUSTED_ORIGINS = json.loads(os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '[]'))
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = bool(os.getenv("DEBUG", default = True))
+GOOGLE_OAUTH_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID', '')
 
-ALLOWED_HOSTS = ['*']
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = _env_bool("DEBUG", default=True)
+
+_allowed_hosts_env = os.environ.get("ALLOWED_HOSTS", "").strip()
+ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(",") if h.strip()] if _allowed_hosts_env else ["*"]
 
 
 # Application definition
@@ -54,7 +64,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'FC.middleware.SessionTimeoutMiddleware',
 ]
 
 ROOT_URLCONF = 'XUFC.urls'
@@ -138,43 +147,11 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = 'static/'
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "static"),
-    # os.path.join(BASE_DIR, "Frontend", "build", "static")  # React build static files - commented out until build exists
-]
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# Google OAuth Feature Settings
-LOGIN_REDIRECT_URL = 'fc:Dashboard'     
-LOGIN_URL = 'fc:login'            
-LOGOUT_REDIRECT_URL = 'fc:login' 
-
-# Use database-backed sessions (default setting)
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'
-
-# Ensure sessions last longer (optional)
-SESSION_COOKIE_AGE = 900
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True  
-SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', '0') == '1'
-SESSION_SAVE_EVERY_REQUEST = True
-
-# Email (OTP)
-EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
-EMAIL_HOST = os.getenv('EMAIL_HOST', '')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', '1') == '1'
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
-
-# Google OAuth Settings
-AUTHENTICATION_BACKENDS = (
-    'social_core.backends.google.GoogleOAuth2',
-    'django.contrib.auth.backends.ModelBackend',
-)

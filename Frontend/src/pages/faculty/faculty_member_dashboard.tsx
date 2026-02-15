@@ -20,6 +20,32 @@ export default function Facultydashboard() {
   const isClearanceApproved = clearancePercent >= 100;
 
   const [openStep, setOpenStep] = React.useState<number | null>(null);
+  const [profile, setProfile] = React.useState<{
+    email: string;
+    university_id: string;
+    first_name: string | null;
+    middle_name: string | null;
+    last_name: string | null;
+    role_value: number | null;
+  } | null>(null);
+
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/me")
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load profile");
+        return res.json();
+      })
+      .then((data) => setProfile(data))
+      .catch(() => setProfile(null));
+  }, []);
+
+  const displayName = React.useMemo(() => {
+    if (!profile) return "";
+    const parts = [profile.first_name, profile.middle_name, profile.last_name]
+      .map((p) => (p ?? "").trim())
+      .filter(Boolean);
+    return parts.length ? parts.join(" ") : profile.email;
+  }, [profile]);
   const toggleStep = (index: number) => {
     setOpenStep((prev) => (prev === index ? null : index));
   };
@@ -35,7 +61,7 @@ export default function Facultydashboard() {
       {/* DASHBOARD CONTENT */}
       <main className="dashboard p-4">
         <WelcomeAcademicCard
-          name="John Doe"
+          name={displayName}
           topLeft={{ label: "Academic Year", value: "2025–2026" }}
           topRight={{ label: "Semester", value: "1" }}
           rows={[

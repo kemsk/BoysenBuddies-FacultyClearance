@@ -4,14 +4,12 @@ from . import views
 app_name = 'fc'
 
 urlpatterns = [
-    path('login', views.login_view, name='login'),
-    path('login/request-otp/', views.request_otp_view, name='request_otp'),
-    path('login/verify-otp/', views.verify_otp_view, name='verify_otp'),
-    path('login/sso/', views.sso_login, name='sso_login'),
-    path('login/google/', views.google_login, name='google_login'),
-    path('accounts/login/google/callback/', views.google_callback, name='google_callback'),
-    path('logout', views.logout_view, name='logout'),
+    path('api/me', views.me_api, name='Me'),
+    path('api/auth/google', views.google_sign_in_api, name='GoogleSignIn'),
+    path('api/auth/logout', views.logout_api, name='Logout'),
     path('dashboard', views.dashboard_view, name='Dashboard'),
+    path('api/clearance-requests', views.clearance_requests_api, name='ClearanceRequests'),
+    path('api/active-clearance-timeline', views.active_clearance_timeline_api, name='ActiveClearanceTimeline'),
     path('api/ciso-profile', views.ciso_profile_api, name='CISOProfile'),
     path('api/ciso/system-guidelines', views.ciso_system_guidelines_api, name='CISOSystemGuidelines'),
     path('api/ciso/announcements', views.ciso_announcements_api, name='CISOAnnouncements'),
@@ -27,6 +25,4 @@ urlpatterns = [
     path('api/ovphe/notifications', views.ovphe_notifications_api, name='OVPHENotifications'),
     path('api/ovphe/system-analytics', views.ovphe_system_analytics_api, name='OVPHESystemAnalytics'),
     path('api/ovphe/activity-logs', views.ovphe_activity_logs_api, name='OVPHEActivityLogs'),
-    # Serve React app for all other routes (catch-all)
-    path('<path:path>', views.serve_react_app, name='react_app'),
 ]

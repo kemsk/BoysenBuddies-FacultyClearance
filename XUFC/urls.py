@@ -15,8 +15,11 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.urls import path, include
+from FC import views as fc_views
 
 urlpatterns = [
-    path('', include('FC.urls')),  # Serve React app for root and other routes
+    path('admin/xu-faculty-clearance/', include('FC.urls')),
+    path('accounts/login/google/', fc_views.google_oauth_start, name='google_oauth_start'),
+    path('accounts/login/google/callback/', fc_views.google_oauth_callback, name='google_oauth_callback'),
 ]
 

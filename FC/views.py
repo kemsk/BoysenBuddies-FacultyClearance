@@ -1,100 +1,289 @@
-from datetime import datetime, timedelta
+from datetime import datetime
+import json
 import os
 import secrets
-import requests as http_requests
 from urllib.parse import urlencode
-from dotenv import load_dotenv
-from google.oauth2 import id_token
-import google.auth.transport.requests as google_requests
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
-import hashlib
-import base64
-from email.message import EmailMessage
+
+import urllib.request
+import urllib.error
 
 from django.db import models
-from django.http import JsonResponse
-from django.shortcuts import redirect
-from django.views.decorators.csrf import csrf_exempt, csrf_protect
+from django.http import JsonResponse, HttpResponseRedirect
+from django.shortcuts import render
 from django.utils import timezone
-from django.conf import settings
-from django.urls import reverse
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth import login as django_login, logout as django_logout
 
 from .models import *
 
-load_dotenv()
 
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
-
-GMAIL_SENDER = os.getenv("GMAIL_SENDER")
-GMAIL_CLIENT_ID = os.getenv("GMAIL_CLIENT_ID")
-GMAIL_CLIENT_SECRET = os.getenv("GMAIL_CLIENT_SECRET")
-GMAIL_REFRESH_TOKEN = os.getenv("GMAIL_REFRESH_TOKEN")
+def _json_error(detail: str, status: int = 400):
+    return JsonResponse({"detail": detail}, status=status)
 
 
-def _send_gmail_api_email(*, to_email: str, subject: str, body: str) -> None:
-    if not (GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET and GMAIL_REFRESH_TOKEN and GMAIL_SENDER):
-        raise ValueError("Gmail API not configured")
+def _dashboard_route_for_user(user: "User") -> str:
+    role_value = getattr(user, "role_value", None)
 
-    creds = Credentials(
-        token=None,
-        refresh_token=GMAIL_REFRESH_TOKEN,
-        token_uri="https://oauth2.googleapis.com/token",
-        client_id=GMAIL_CLIENT_ID,
-        client_secret=GMAIL_CLIENT_SECRET,
-        scopes=["https://www.googleapis.com/auth/gmail.send"],
+    if role_value == User.RoleChoices.FACULTY:
+        return "/faculty-dashboard"
+
+    if role_value == User.RoleChoices.APPROVER:
+        return "/approver-dashboard"
+
+    if role_value == User.RoleChoices.ASSISTANT_APPROVER:
+        return "/assistant-approver-dashboard"
+
+    if role_value == User.RoleChoices.HRO:
+        return "/HRO-dashboard"
+
+    if role_value == User.RoleChoices.CISO:
+        return "/CISO-dashboard"
+
+    if role_value == User.RoleChoices.OVPHE:
+        return "/OVPHE-dashboard"
+
+    if role_value == User.RoleChoices.DUAL_ROLE:
+        if hasattr(user, "approver_profile") and getattr(user.approver_profile, "is_dual_role", False):
+            return "/dual-role-approver-dashboard"
+        return "/dual-role-faculty-member-dashboard"
+
+    if hasattr(user, "admin_profile"):
+        role = getattr(user.admin_profile, "admin_role", None)
+        if role == SystemAdmin.AdminRole.CISO:
+            return "/CISO-dashboard"
+        if role == SystemAdmin.AdminRole.OVPHE:
+            return "/OVPHE-dashboard"
+
+    return "/"
+
+
+def _verify_google_id_token(id_token: str, expected_aud: str | None):
+    query = urlencode({"id_token": id_token})
+    url = f"https://oauth2.googleapis.com/tokeninfo?{query}"
+    try:
+        with urllib.request.urlopen(url, timeout=10) as resp:
+            body = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as e:
+        try:
+            body = e.read().decode("utf-8")
+        except Exception:
+            body = ""
+        raise ValueError(f"Token verification failed: {body or str(e)}")
+    except Exception as e:
+        raise ValueError(f"Token verification failed: {str(e)}")
+
+    try:
+        payload = json.loads(body)
+    except Exception:
+        raise ValueError("Token verification failed: invalid response")
+
+    email = (payload.get("email") or "").strip().lower()
+    aud = (payload.get("aud") or "").strip()
+    email_verified = str(payload.get("email_verified") or "").lower() == "true"
+
+    if not email:
+        raise ValueError("Token verification failed: missing email")
+    if expected_aud and aud and aud != expected_aud:
+        raise ValueError("Token verification failed: audience mismatch")
+    if not email_verified:
+        raise ValueError("Email not verified")
+
+    return {"email": email, "payload": payload}
+
+
+def _get_google_redirect_uri() -> str:
+    raw = (os.getenv("GOOGLE_OAUTH_REDIRECT_URIS") or "").strip()
+    if not raw:
+        return ""
+    return raw.split(",")[0].strip()
+
+
+def _google_token_exchange(code: str, redirect_uri: str, client_id: str, client_secret: str) -> dict:
+    data = urlencode(
+        {
+            "code": code,
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "redirect_uri": redirect_uri,
+            "grant_type": "authorization_code",
+        }
+    ).encode("utf-8")
+
+    req = urllib.request.Request(
+        url="https://oauth2.googleapis.com/token",
+        data=data,
+        method="POST",
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
 
-    creds.refresh(google_requests.Request())
-    service = build("gmail", "v1", credentials=creds, cache_discovery=False)
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as e:
+        try:
+            body = e.read().decode("utf-8")
+        except Exception:
+            body = ""
+        raise ValueError(f"Token exchange failed: {body or str(e)}")
+    except Exception as e:
+        raise ValueError(f"Token exchange failed: {str(e)}")
 
-    msg = EmailMessage()
-    msg["To"] = to_email
-    msg["From"] = GMAIL_SENDER
-    msg["Subject"] = subject
-    msg.set_content(body)
+    try:
+        return json.loads(body)
+    except Exception:
+        raise ValueError("Token exchange failed: invalid response")
 
-    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
-    service.users().messages().send(userId="me", body={"raw": raw}).execute()
+
+def google_oauth_start(request):
+    client_id = (os.getenv("GOOGLE_OAUTH_CLIENT_ID") or "").strip()
+    redirect_uri = _get_google_redirect_uri()
+    if not client_id or not redirect_uri:
+        return _json_error("Google OAuth is not configured", status=500)
+
+    state = secrets.token_urlsafe(24)
+    request.session["google_oauth_state"] = state
+
+    params = {
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": state,
+        "prompt": "select_account",
+    }
+    url = f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}"
+    return HttpResponseRedirect(url)
+
+
+def google_oauth_callback(request):
+    code = (request.GET.get("code") or "").strip()
+    state = (request.GET.get("state") or "").strip()
+    expected_state = request.session.get("google_oauth_state")
+
+    if not code:
+        return _json_error("Missing code", status=400)
+    if not state or not expected_state or state != expected_state:
+        return _json_error("Invalid state", status=400)
+
+    client_id = (os.getenv("GOOGLE_OAUTH_CLIENT_ID") or "").strip()
+    client_secret = (os.getenv("GOOGLE_OAUTH_CLIENT_SECRET") or "").strip()
+    redirect_uri = _get_google_redirect_uri()
+    if not client_id or not client_secret or not redirect_uri:
+        return _json_error("Google OAuth is not configured", status=500)
+
+    try:
+        token_data = _google_token_exchange(
+            code=code,
+            redirect_uri=redirect_uri,
+            client_id=client_id,
+            client_secret=client_secret,
+        )
+    except ValueError as e:
+        return _json_error(str(e), status=401)
+
+    id_token = (token_data.get("id_token") or "").strip()
+    if not id_token:
+        return _json_error("Missing id_token from Google", status=401)
+
+    try:
+        verified = _verify_google_id_token(id_token=id_token, expected_aud=client_id)
+    except ValueError as e:
+        return _json_error(str(e), status=401)
+
+    email = verified["email"]
+    user = User.objects.filter(email__iexact=email, is_active=True).first()
+    if not user:
+        return _json_error("Email is not registered in the system", status=403)
+
+    django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    redirect_to = _dashboard_route_for_user(user)
+    return HttpResponseRedirect(redirect_to)
+
+
+@csrf_exempt
+def google_sign_in_api(request):
+    if request.method != "POST":
+        return _json_error("Method not allowed", status=405)
+
+    try:
+        data = json.loads(request.body.decode("utf-8") or "{}")
+    except Exception:
+        data = {}
+
+    id_token = (data.get("id_token") or "").strip()
+    if not id_token:
+        return _json_error("Missing id_token", status=400)
+
+    expected_aud = (os.getenv("GOOGLE_OAUTH_CLIENT_ID") or "").strip() or None
+    try:
+        verified = _verify_google_id_token(id_token=id_token, expected_aud=expected_aud)
+    except ValueError as e:
+        return _json_error(str(e), status=401)
+
+    email = verified["email"]
+    user = User.objects.filter(email__iexact=email, is_active=True).first()
+    if not user:
+        return _json_error("Email is not registered in the system", status=403)
+
+    django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    redirect_to = _dashboard_route_for_user(user)
+    return JsonResponse(
+        {
+            "ok": True,
+            "email": user.email,
+            "role_value": user.role_value,
+            "redirect": redirect_to,
+        }
+    )
+
+
+@csrf_exempt
+def logout_api(request):
+    if request.method not in {"POST", "GET"}:
+        return _json_error("Method not allowed", status=405)
+    django_logout(request)
+    return JsonResponse({"ok": True})
+
+
+def me_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    user = getattr(request, "user", None)
+    if not user or not getattr(user, "is_authenticated", False):
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    return JsonResponse(
+        {
+            "email": user.email,
+            "university_id": getattr(user, "university_id", ""),
+            "first_name": getattr(user, "first_name", None),
+            "middle_name": getattr(user, "middle_name", None),
+            "last_name": getattr(user, "last_name", None),
+            "role_value": getattr(user, "role_value", None),
+        }
+    )
 
 def dashboard_view(request):
-    # Return dashboard data as JSON for React frontend
-    if request.session.get('user_authenticated'):
-        from .decorators import ROLE_MAPPING
-        role_value = request.session.get('user_role_value')
-        return JsonResponse({
-            'success': True,
-            'message': 'Dashboard access granted',
-            'user_info': {
-                'id': request.session.get('user_id'),
-                'email': request.session.get('user_email'),
-                'role_value': role_value,
-                'role_name': ROLE_MAPPING.get(role_value, 'Unknown'),
-                'first_name': request.session.get('user_first_name'),
-                'last_name': request.session.get('user_last_name')
-            }
-        })
-    else:
-        return JsonResponse({
-            'success': False,
-            'message': 'Authentication required',
-            'redirect': '/login'
-        }, status=401)
+    return render(request, 'system/dashboard.html')
 
 
 def ciso_profile_api(request):
-    ciso_admin = (
-        SystemAdmin.objects.select_related("user")
-        .filter(admin_role=SystemAdmin.AdminRole.CISO, is_active=True)
-        .first()
-    )
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
 
+    user = getattr(request, "user", None)
+    if not user or not getattr(user, "is_authenticated", False):
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    ciso_admin = SystemAdmin.objects.select_related("user").filter(
+        user=user,
+        admin_role=SystemAdmin.AdminRole.CISO,
+        is_active=True,
+    ).first()
     if not ciso_admin:
-        return JsonResponse({"detail": "CISO user not found"}, status=404)
+        return JsonResponse({"detail": "Forbidden"}, status=403)
 
-    user = ciso_admin.user
     return JsonResponse(
         {
             "email": user.email,
@@ -108,16 +297,21 @@ def ciso_profile_api(request):
 
 
 def ovphe_profile_api(request):
-    ovphe_admin = (
-        SystemAdmin.objects.select_related("user")
-        .filter(admin_role=SystemAdmin.AdminRole.OVPHE, is_active=True)
-        .first()
-    )
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
 
+    user = getattr(request, "user", None)
+    if not user or not getattr(user, "is_authenticated", False):
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    ovphe_admin = SystemAdmin.objects.select_related("user").filter(
+        user=user,
+        admin_role=SystemAdmin.AdminRole.OVPHE,
+        is_active=True,
+    ).first()
     if not ovphe_admin:
-        return JsonResponse({"detail": "OVPHE user not found"}, status=404)
+        return JsonResponse({"detail": "Forbidden"}, status=403)
 
-    user = ovphe_admin.user
     return JsonResponse(
         {
             "email": user.email,
@@ -173,6 +367,117 @@ def _term_to_label(term: str | None):
     return ""
 
 
+def _label_to_term(label: str | None):
+    if label == "First Semester":
+        return Clearance.Term.FIRST
+    if label == "Second Semester":
+        return Clearance.Term.SECOND
+    if label == "Intersession":
+        return Clearance.Term.INTERSESSION
+    return None
+
+
+def _parse_iso_date(value: str | None):
+    value = (value or "").strip()
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value).date()
+    except Exception:
+        return None
+
+
+def _parse_int(value: str | None):
+    value = (value or "").strip()
+    if not value:
+        return None
+    try:
+        return int(value)
+    except Exception:
+        return None
+
+
+def _get_active_timeline():
+    return ClearanceTimeline.objects.filter(is_active=True).order_by("-id").first()
+
+
+def _to_request_status(value: str | None):
+    if value == ClearanceRequest.Status.APPROVED:
+        return "approved"
+    if value == ClearanceRequest.Status.REJECTED:
+        return "rejected"
+    return "pending"
+
+
+def clearance_requests_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    active_timeline = _get_active_timeline()
+    if not active_timeline:
+        return JsonResponse({"items": []})
+
+    qs = (
+        ClearanceRequest.objects.select_related(
+            "clearance",
+            "clearance__faculty",
+            "clearance__faculty__college",
+            "clearance__faculty__department",
+        )
+        .filter(timeline=active_timeline)
+        .order_by("-id")
+    )
+
+    items = []
+    for r in qs:
+        faculty = getattr(r.clearance, "faculty", None)
+
+        first_name = (getattr(faculty, "first_name", "") or "").strip()
+        middle_name = (getattr(faculty, "middle_name", "") or "").strip()
+        last_name = (getattr(faculty, "last_name", "") or "").strip()
+
+        parts = [p for p in [first_name, middle_name, last_name] if p]
+        full_name = " ".join(parts)
+
+        college = getattr(getattr(faculty, "college", None), "name", "") or ""
+        department = getattr(getattr(faculty, "department", None), "name", "") or ""
+        faculty_type = getattr(faculty, "faculty_type", "") or ""
+
+        employee_id = getattr(faculty, "employee_id", "") or ""
+
+        items.append(
+            {
+                "id": str(r.id),
+                "requestId": str(r.id),
+                "employeeId": employee_id,
+                "name": full_name,
+                "college": college,
+                "department": department,
+                "facultyType": faculty_type,
+                "status": _to_request_status(r.status),
+            }
+        )
+
+    return JsonResponse({"items": items})
+
+
+def active_clearance_timeline_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    t = _get_active_timeline()
+    if not t:
+        return JsonResponse({"academicYear": "", "semester": ""})
+
+    if t.academic_year is not None:
+        academic_year = f"{t.academic_year}–{t.academic_year + 1}"
+    else:
+        academic_year = ""
+
+    semester = _term_to_label(t.term)
+    return JsonResponse({"academicYear": academic_year, "semester": semester})
+
+
 def ovphe_system_guidelines_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
@@ -213,30 +518,95 @@ def ovphe_announcements_api(request):
     return JsonResponse({"items": items})
 
 
+@csrf_exempt
 def ovphe_clearance_timelines_api(request):
-    if request.method != "GET":
-        return JsonResponse({"detail": "Method not allowed"}, status=405)
+    if request.method == "GET":
+        timelines = ClearanceTimeline.objects.order_by("-is_active", "-academic_year", "-id")
+        items = []
+        for t in timelines:
+            start_year = str(t.academic_year or "")
+            end_year = str((t.academic_year + 1) if t.academic_year else "")
+            items.append(
+                {
+                    "id": str(t.id),
+                    "startYear": start_year,
+                    "endYear": end_year,
+                    "semester": _term_to_label(t.term),
+                    "semesterStartDate": t.term_start_date.isoformat() if t.term_start_date else "",
+                    "semesterEndDate": t.term_end_date.isoformat() if t.term_end_date else "",
+                    "clearanceStartDate": t.clearance_start_date.isoformat() if t.clearance_start_date else "",
+                    "clearanceEndDate": t.clearance_end_date.isoformat() if t.clearance_end_date else "",
+                    "setAsActive": bool(t.is_active),
+                    "createdAt": _format_timestamp(t.created_at),
+                }
+            )
+        return JsonResponse({"items": items})
 
-    timelines = ClearanceTimeline.objects.order_by("-is_active", "-academic_year", "-id")
-    items = []
-    for t in timelines:
-        start_year = str(t.academic_year or "")
-        end_year = str((t.academic_year + 1) if t.academic_year else "")
-        items.append(
-            {
-                "id": str(t.id),
-                "startYear": start_year,
-                "endYear": end_year,
-                "semester": _term_to_label(t.term),
-                "semesterStartDate": t.term_start_date.isoformat() if t.term_start_date else "",
-                "semesterEndDate": t.term_end_date.isoformat() if t.term_end_date else "",
-                "clearanceStartDate": t.clearance_start_date.isoformat() if t.clearance_start_date else "",
-                "clearanceEndDate": t.clearance_end_date.isoformat() if t.clearance_end_date else "",
-                "setAsActive": bool(t.is_active),
-                "createdAt": _format_timestamp(t.created_at),
-            }
-        )
-    return JsonResponse({"items": items})
+    if request.method in {"POST", "PUT"}:
+        try:
+            payload = json.loads((request.body or b"{}").decode("utf-8"))
+        except Exception:
+            payload = {}
+
+        start_year = _parse_int(payload.get("startYear"))
+        term = _label_to_term(payload.get("semester"))
+        term_start_date = _parse_iso_date(payload.get("semesterStartDate"))
+        term_end_date = _parse_iso_date(payload.get("semesterEndDate"))
+        clearance_start_date = _parse_iso_date(payload.get("clearanceStartDate"))
+        clearance_end_date = _parse_iso_date(payload.get("clearanceEndDate"))
+        set_as_active = bool(payload.get("setAsActive"))
+
+        admin = _get_active_ovphe_admin()
+        if not admin:
+            return JsonResponse({"detail": "OVPHE user not found"}, status=404)
+
+        if request.method == "POST":
+            if set_as_active:
+                ClearanceTimeline.objects.filter(is_active=True).update(is_active=False)
+
+            t = ClearanceTimeline.objects.create(
+                academic_year=start_year,
+                term=term,
+                term_start_date=term_start_date,
+                term_end_date=term_end_date,
+                clearance_start_date=clearance_start_date,
+                clearance_end_date=clearance_end_date,
+                created_by=admin,
+                is_active=set_as_active,
+            )
+            return JsonResponse({"id": str(t.id)}, status=201)
+
+        timeline_id = payload.get("id")
+        if not timeline_id:
+            return JsonResponse({"detail": "Missing id"}, status=400)
+
+        t = ClearanceTimeline.objects.filter(id=timeline_id).first()
+        if not t:
+            return JsonResponse({"detail": "Timeline not found"}, status=404)
+
+        if set_as_active:
+            ClearanceTimeline.objects.exclude(id=t.id).filter(is_active=True).update(is_active=False)
+
+        t.academic_year = start_year
+        t.term = term
+        t.term_start_date = term_start_date
+        t.term_end_date = term_end_date
+        t.clearance_start_date = clearance_start_date
+        t.clearance_end_date = clearance_end_date
+        t.is_active = set_as_active
+        t.save(update_fields=[
+            "academic_year",
+            "term",
+            "term_start_date",
+            "term_end_date",
+            "clearance_start_date",
+            "clearance_end_date",
+            "is_active",
+        ])
+
+        return JsonResponse({"id": str(t.id)})
+
+    return JsonResponse({"detail": "Method not allowed"}, status=405)
 
 
 def ovphe_org_structure_api(request):
@@ -598,498 +968,3 @@ def ciso_system_users_api(request):
         )
 
     return JsonResponse({"items": items})
-
-
-# Authentication Helper Functions
-def hash_password(value):
-    salt = os.urandom(16)
-    value_salt_combined = value.encode('utf-8') + salt
-    hashed_value = hashlib.sha256(value_salt_combined).hexdigest()
-    stored_hash = base64.b64encode(salt + hashed_value.encode('utf-8')).decode('utf-8')
-    return stored_hash
-
-def verify_password(stored_hash, input_value):
-    decoded = base64.b64decode(stored_hash)
-    salt = decoded[:16]
-    stored_hashed_value = decoded[16:].decode('utf-8')
-    value_salt_combined = input_value.encode('utf-8') + salt
-    hashed_input_value = hashlib.sha256(value_salt_combined).hexdigest()
-    return hashed_input_value == stored_hashed_value
-
-# Authentication Views
-@csrf_protect
-def login_view(request):
-    if request.method == 'POST':
-        # Check if this is an API request (from React frontend)
-        is_api = request.headers.get('Content-Type') == 'application/json'
-        
-        if is_api:
-            import json
-            data = json.loads(request.body)
-        else:
-            data = request.POST
-
-        # Step 1: Handle Email + Password
-        if data.get('email') and data.get('password'):
-            email = data.get('email')
-            password = data.get('password')
-
-            try:
-                user = User.objects.get(email=email)
-
-                if user.check_password(password):
-                    request.session['temp_user_id'] = user.id
-                    request.session['user_email'] = user.email
-                    request.session['user_role_value'] = user.role_value
-                    request.session['user_authenticated'] = True
-                    request.session.modified = True
-
-                    return JsonResponse({
-                            'success': True,
-                            'message': 'Password verified. Please enter PIN.',
-                            'requires_pin': True,
-                            'user_info': {
-                                'email': user.email,
-                                'first_name': user.first_name,
-                                'last_name': user.last_name
-                            }
-                        })
-                else:
-                    return JsonResponse({
-                        'success': False,
-                        'message': 'Invalid email or password.'
-                    }, status=401)
-            except User.DoesNotExist:
-                return JsonResponse({
-                    'success': False,
-                    'message': 'User not found.'
-                }, status=404)
-
-        # Step 2: Handle PIN
-        elif request.session.get('temp_user_id') and data.get('user_pin'):
-            entered_pin = data.get('user_pin')
-            stored_user_id = request.session.get('temp_user_id')
-            
-            try:
-                user = User.objects.get(id=stored_user_id)
-                
-                if hasattr(user, 'user_pin') and verify_password(user.user_pin, entered_pin):
-                    # Save permanent session data
-                    request.session['user_authenticated'] = True
-                    request.session['user_id'] = user.id
-                    request.session['user_email'] = user.email
-                    request.session['user_role_value'] = user.role_value
-                    request.session['user_first_name'] = user.first_name
-                    request.session['user_last_name'] = user.last_name
-                    # Remove temp session key
-                    request.session.pop('temp_user_id', None)
-                    request.session.modified = True
-
-                    from .decorators import get_role_dashboard_url
-                    return JsonResponse({
-                        'success': True,
-                        'message': 'Login successful!',
-                        'user_info': {
-                            'id': user.id,
-                            'email': user.email,
-                            'first_name': user.first_name,
-                            'last_name': user.last_name,
-                            'role_value': user.role_value,
-                            'role_name': user.get_role_value_display(),
-                            'university_id': user.university_id,
-                            'dashboard_url': get_role_dashboard_url(user.role_value)
-                        }
-                    })
-                else:
-                    return JsonResponse({
-                        'success': False,
-                        'message': 'Invalid PIN.'
-                    }, status=401)
-            except User.DoesNotExist:
-                return JsonResponse({
-                    'success': False,
-                    'message': 'User not found.'
-                }, status=404)
-        
-        if is_api:
-            return JsonResponse({
-                'success': False,
-                'message': 'Invalid request.'
-            }, status=400)
-        else:
-            return redirect('fc:login')
-
-    # Handle GET requests - API only since React frontend is used
-    if request.session.get('user_authenticated'):
-        from .decorators import ROLE_MAPPING
-        role_value = request.session.get('user_role_value')
-        return JsonResponse({
-            'authenticated': True,
-            'user_info': {
-                'email': request.session.get('user_email'),
-                'role_value': role_value,
-                'role_name': ROLE_MAPPING.get(role_value, 'Unknown'),
-                'first_name': request.session.get('user_first_name'),
-                'last_name': request.session.get('user_last_name')
-            }
-        })
-    else:
-        return JsonResponse({
-            'authenticated': False,
-            'user_info': None
-        })
-
-
-@csrf_exempt
-def request_otp_view(request):
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
-
-    import json
-    data = json.loads(request.body) if request.headers.get('Content-Type') == 'application/json' else request.POST
-    email = (data.get('email') or '').strip().lower()
-    if not email:
-        return JsonResponse({'success': False, 'message': 'Email is required.'}, status=400)
-
-    try:
-        user = User.objects.get(email=email)
-    except User.DoesNotExist:
-        return JsonResponse({'success': False, 'message': 'User not found.'}, status=404)
-
-    if not request.session.session_key:
-        request.session.save()
-
-    otp = f"{secrets.randbelow(1_000_000):06d}"
-    otp_hash = hashlib.sha256(f"{otp}:{settings.SECRET_KEY}:{request.session.session_key}".encode('utf-8')).hexdigest()
-    expires_at = timezone.now() + timedelta(minutes=3)
-
-    request.session['otp_user_id'] = user.id
-    request.session['otp_email'] = user.email
-    request.session['otp_hash'] = otp_hash
-    request.session['otp_expires_at'] = expires_at.isoformat()
-    request.session.modified = True
-
-    subject = 'Your XU Faculty ClearTrack OTP'
-    message = f"Your verification code is: {otp}\n\nThis code expires in 3 minutes."
-
-    try:
-        if GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET and GMAIL_REFRESH_TOKEN and GMAIL_SENDER:
-            _send_gmail_api_email(to_email=user.email, subject=subject, body=message)
-        else:
-            from django.core.mail import send_mail
-            from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None) or os.getenv('DEFAULT_FROM_EMAIL')
-            send_mail(subject, message, from_email, [user.email], fail_silently=False)
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': f'Failed to send OTP email: {str(e)}'}, status=500)
-
-    return JsonResponse({
-        'success': True,
-        'message': 'OTP sent. Please check your email.',
-        'user_info': {
-            'email': user.email,
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-        }
-    })
-
-
-@csrf_exempt
-def verify_otp_view(request):
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
-
-    import json
-    data = json.loads(request.body) if request.headers.get('Content-Type') == 'application/json' else request.POST
-    otp = (data.get('otp') or '').strip()
-    if not otp:
-        return JsonResponse({'success': False, 'message': 'OTP is required.'}, status=400)
-
-    stored_hash = request.session.get('otp_hash')
-    stored_user_id = request.session.get('otp_user_id')
-    expires_at_raw = request.session.get('otp_expires_at')
-
-    if not stored_hash or not stored_user_id or not expires_at_raw:
-        return JsonResponse({'success': False, 'message': 'No OTP request found. Please request a new OTP.'}, status=400)
-
-    try:
-        expires_at = datetime.fromisoformat(expires_at_raw)
-        if timezone.is_naive(expires_at):
-            expires_at = timezone.make_aware(expires_at)
-    except Exception:
-        return JsonResponse({'success': False, 'message': 'OTP session is invalid. Please request a new OTP.'}, status=400)
-
-    if timezone.now() > expires_at:
-        request.session.pop('otp_hash', None)
-        request.session.pop('otp_expires_at', None)
-        request.session.pop('otp_user_id', None)
-        request.session.pop('otp_email', None)
-        request.session.modified = True
-        return JsonResponse({'success': False, 'message': 'OTP expired. Please request a new OTP.'}, status=401)
-
-    if not request.session.session_key:
-        return JsonResponse({'success': False, 'message': 'OTP session is invalid. Please request a new OTP.'}, status=400)
-
-    computed_hash = hashlib.sha256(f"{otp}:{settings.SECRET_KEY}:{request.session.session_key}".encode('utf-8')).hexdigest()
-    if computed_hash != stored_hash:
-        return JsonResponse({'success': False, 'message': 'Invalid OTP.'}, status=401)
-
-    try:
-        user = User.objects.get(id=stored_user_id)
-    except User.DoesNotExist:
-        return JsonResponse({'success': False, 'message': 'User not found.'}, status=404)
-
-    request.session['user_authenticated'] = True
-    request.session['user_id'] = user.id
-    request.session['user_email'] = user.email
-    request.session['user_role_value'] = user.role_value
-    request.session['user_first_name'] = user.first_name
-    request.session['user_last_name'] = user.last_name
-
-    request.session.pop('otp_hash', None)
-    request.session.pop('otp_expires_at', None)
-    request.session.pop('otp_user_id', None)
-    request.session.pop('otp_email', None)
-    request.session.modified = True
-
-    from .decorators import get_role_dashboard_url
-    return JsonResponse({
-        'success': True,
-        'message': 'Login successful!',
-        'user_info': {
-            'id': user.id,
-            'email': user.email,
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-            'role_value': user.role_value,
-            'role_name': user.get_role_value_display(),
-            'university_id': user.university_id,
-            'dashboard_url': get_role_dashboard_url(user.role_value)
-        }
-    })
-
-
-def google_login(request):
-    state = secrets.token_urlsafe(32)
-    request.session['google_oauth_state'] = state
-    request.session.modified = True
-
-    redirect_uri = GOOGLE_REDIRECT_URI or request.build_absolute_uri(reverse('fc:google_callback'))
-
-    params = {
-        'client_id': GOOGLE_CLIENT_ID,
-        'redirect_uri': redirect_uri,
-        'response_type': 'code',
-        'scope': 'openid email profile',
-        'access_type': 'offline',
-        'prompt': 'select_account consent',
-        'state': state
-    }
-    google_auth_url = 'https://accounts.google.com/o/oauth2/v2/auth?' + urlencode(params)
-    return redirect(google_auth_url)
-
-
-def google_callback(request):
-    returned_state = request.GET.get('state')
-    expected_state = request.session.pop('google_oauth_state', None)
-
-    if not expected_state or not returned_state or returned_state != expected_state:
-        return JsonResponse({
-            'success': False,
-            'message': 'Invalid or missing state. Possible CSRF attack.'
-        }, status=400)
-
-    code = request.GET.get('code')
-    if not code:
-        return JsonResponse({
-            'success': False,
-            'message': 'Authorization failed. No code provided.'
-        }, status=400)
-
-    token_url = 'https://oauth2.googleapis.com/token'
-    redirect_uri = GOOGLE_REDIRECT_URI or request.build_absolute_uri(reverse('fc:google_callback'))
-    data = {
-        'code': code,
-        'client_id': os.getenv('GOOGLE_CLIENT_ID'),
-        'client_secret': os.getenv('GOOGLE_CLIENT_SECRET'),
-        'redirect_uri': redirect_uri,
-        'grant_type': 'authorization_code',
-    }
-
-    try:
-        response = http_requests.post(token_url, data=data, timeout=10)
-        response.raise_for_status()
-        token_info = response.json()
-    except http_requests.exceptions.RequestException as e:
-        return JsonResponse({
-            'success': False,
-            'message': f"Failed to connect to Google: {str(e)}"
-        }, status=500)
-
-    id_token_jwt = token_info.get('id_token')
-    if not id_token_jwt:
-        return JsonResponse({
-            'success': False,
-            'message': "No ID token received from Google."
-        }, status=400)
-
-    try:
-        user_data = id_token.verify_oauth2_token(
-            id_token_jwt,
-            google_requests.Request(),
-            audience=os.getenv('GOOGLE_CLIENT_ID')
-        )
-
-        if not user_data['iss'].endswith("accounts.google.com"):
-            raise ValueError(f"Issuer not allowed: {user_data['iss']}")
-
-    except ValueError as e:
-        return JsonResponse({
-            'success': False,
-            'message': f"Invalid ID token: {e}"
-        }, status=400)
-
-    email = user_data.get('email')
-    if not email:
-        return JsonResponse({
-            'success': False,
-            'message': "Google did not return an email address."
-        }, status=400)
-
-    try:
-        user = User.objects.get(email=email)
-    except User.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'message': "This Google account is not registered in our system."
-        }, status=404)
-
-    # Set Session Data
-    request.session['user_authenticated'] = True
-    request.session['user_id'] = user.id
-    request.session['user_email'] = user.email
-    request.session['user_role_value'] = user.role_value
-    request.session['user_first_name'] = user.first_name
-    request.session['user_last_name'] = user.last_name
-    request.session.modified = True
-
-    from .decorators import get_role_dashboard_url
-    return redirect(get_role_dashboard_url(user.role_value))
-
-
-def sso_login(request):
-    """
-    Handle SSO login requests
-    This can be integrated with institutional SSO systems like SAML, LDAP, or other identity providers
-    """
-    if request.method == 'POST':
-        import json
-        data = json.loads(request.body) if request.headers.get('Content-Type') == 'application/json' else request.POST
-
-        # Get SSO token or credentials from request
-        sso_token = data.get('sso_token')
-        sso_provider = data.get('sso_provider', 'default')
-        
-        if not sso_token:
-            return JsonResponse({
-                'success': False,
-                'message': 'SSO token is required.'
-            }, status=400)
-
-        try:
-            # TODO: Implement actual SSO verification logic here
-            # This would depend on your SSO provider (SAML, LDAP, ADFS, etc.)
-            # For now, we'll simulate SSO verification
-            
-            # Example SSO verification (replace with actual implementation):
-            # user_info = verify_sso_token(sso_token, sso_provider)
-            # user = User.objects.get(email=user_info['email'])
-            
-            # For demonstration, we'll use a mock user lookup
-            # In production, this should be replaced with actual SSO verification
-            user = User.objects.filter(email__endswith='@xu.edu.ph').first()
-            
-            if not user:
-                return JsonResponse({
-                    'success': False,
-                    'message': 'User not found in system.'
-                }, status=404)
-
-            # Set session data for SSO login
-            request.session['user_authenticated'] = True
-            request.session['user_id'] = user.id
-            request.session['user_email'] = user.email
-            request.session['user_role_value'] = user.role_value
-            request.session['user_first_name'] = user.first_name
-            request.session['user_last_name'] = user.last_name
-            request.session['sso_provider'] = sso_provider
-            request.session.modified = True
-
-            from .decorators import get_role_dashboard_url
-            return JsonResponse({
-                'success': True,
-                'message': 'SSO login successful!',
-                'user_info': {
-                    'id': user.id,
-                    'email': user.email,
-                    'first_name': user.first_name,
-                    'last_name': user.last_name,
-                    'role_value': user.role_value,
-                    'role_name': user.get_role_value_display(),
-                    'university_id': user.university_id,
-                    'dashboard_url': get_role_dashboard_url(user.role_value)
-                }
-            })
-
-        except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'message': f'SSO login failed: {str(e)}'
-            }, status=500)
-    
-    # Handle GET request - return SSO login info
-    return JsonResponse({
-        'message': 'SSO login endpoint. POST with sso_token to authenticate.',
-        'supported_providers': ['saml', 'ldap', 'adfs', 'azure', 'default']
-    })
-
-
-def serve_react_app(request, path=None):
-    """
-    Serve the React frontend application
-    This view serves the React app for all non-API routes
-    """
-    from django.http import HttpResponse
-    from pathlib import Path
-    
-    base_dir = Path(__file__).resolve().parent.parent
-    candidate_paths = [
-        base_dir / "frontend_dist" / "index.html",
-        base_dir / "Frontend" / "dist" / "index.html",
-        base_dir / "Frontend" / "build" / "index.html",
-    ]
-    
-    try:
-        for p in candidate_paths:
-            if p.is_file():
-                return HttpResponse(p.read_text(encoding="utf-8"), content_type="text/html")
-        raise FileNotFoundError
-    except FileNotFoundError:
-        return HttpResponse("""
-        <html>
-            <head><title>XU Faculty Clearance</title></head>
-            <body>
-                <h1>XU Faculty Clearance System</h1>
-                <p>React frontend not built yet. Please run:</p>
-                <pre>cd Frontend && npm run build</pre>
-            </body>
-        </html>
-        """, content_type='text/html')
-
-
-def logout_view(request):
-    request.session.flush()
-    
-    return JsonResponse({
-        'success': True,
-        'message': 'Logged out successfully.'
-    })
