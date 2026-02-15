@@ -5,7 +5,6 @@ import { ChevronDownIcon } from "lucide-react"
 
 import { Button } from "./button"
 import { Calendar } from "./calendar"
-import { Label } from "./label";
 
 import {
   Popover,
@@ -18,6 +17,8 @@ export type DatePickerProps = {
   containerClassName?: string;
   value?: string;
   onChange?: (value: string) => void;
+  fromYear?: number;
+  toYear?: number;
 };
 
 function parseDateValue(value: string | undefined) {
@@ -34,11 +35,24 @@ function toDateValue(date: Date) {
   return `${y}-${m}-${d}`
 }
 
-export function DatePicker({ buttonClassName, containerClassName, value, onChange }: DatePickerProps) {
+export function DatePicker({
+  buttonClassName,
+  containerClassName,
+  value,
+  onChange,
+  fromYear,
+  toYear,
+}: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
   const [dateUncontrolled, setDateUncontrolled] = React.useState<Date | undefined>(undefined)
   const isControlled = typeof value === "string"
   const date = isControlled ? parseDateValue(value) : dateUncontrolled
+
+  const defaultMonth = React.useMemo(() => {
+    if (date) return date;
+    if (typeof fromYear === "number" && Number.isFinite(fromYear)) return new Date(fromYear, 0, 1);
+    return undefined;
+  }, [date, fromYear]);
 
   React.useEffect(() => {
     if (!isControlled) return
@@ -74,6 +88,9 @@ export function DatePicker({ buttonClassName, containerClassName, value, onChang
             mode="single"
             selected={date}
             captionLayout="dropdown"
+            fromYear={fromYear}
+            toYear={toYear}
+            defaultMonth={defaultMonth}
             onSelect={(date) => {
               if (!date) return
               if (!isControlled) setDateUncontrolled(date)
