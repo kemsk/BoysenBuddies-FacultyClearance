@@ -1,3 +1,4 @@
+import * as React from "react";
 import "../../index.css"; 
 import { ApprovalHeader } from "../../stories/components/header";
 
@@ -15,6 +16,8 @@ export default function Approverdashboard() {
   const totalClearanceRequests = 1;
   const approverOffice = "College of Computer Studies";
 
+   type AnnouncementsResponse = { items: AnnouncementItem[] };
+
   const requirementItems: RequirementListItem[] = [
     {
       title: "Reporting of Borrowed Books",
@@ -25,15 +28,17 @@ export default function Approverdashboard() {
     },
   ];
 
-  const announcementItems: AnnouncementItem[] = [
-    {
-      pinned: true,
-      title: "System Maintenance Notice",
-      description:
-        "The faculty clearance portal will be unavailable this Saturday from 8:00 AM to 12:00 NN for scheduled maintenance",
-      timestamp: "December 1, 2025, 12:00 PM",
-    },
-  ];
+  const [announcementItems, setAnnouncementItems] = React.useState<AnnouncementItem[]>([]);
+
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/ovphe/announcements")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: AnnouncementsResponse) => {
+        const active = (data.items ?? []).filter((item) => item.enabled !== false);
+        setAnnouncementItems(active);
+      })
+      .catch(() => setAnnouncementItems([]));
+  }, []);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
