@@ -73,7 +73,6 @@ class College(models.Model):
     name = models.CharField(max_length=150)
     abbreviation = models.CharField(max_length=20, null=True, blank=True)
     is_active = models.BooleanField(default=True)
-    display_order = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return self.name
@@ -84,7 +83,6 @@ class Department(models.Model):
     name = models.CharField(max_length=150)
     abbreviation = models.CharField(max_length=20, null=True, blank=True)
     is_active = models.BooleanField(default=True)
-    display_order = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return self.name
@@ -265,6 +263,13 @@ class ApproverFlowStep(models.Model):
     )
     order = models.PositiveIntegerField(default=0)
     category = models.CharField(max_length=150)
+    office = models.ForeignKey(
+        Office,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approver_flow_steps",
+    )
     colleges = models.ManyToManyField(College, blank=True, related_name="approver_flow_steps")
 
     class Meta:
