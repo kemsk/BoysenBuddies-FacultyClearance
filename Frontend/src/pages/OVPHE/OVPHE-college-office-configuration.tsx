@@ -71,11 +71,6 @@ type OfficeItem = {
   short: string;
 };
 
-const COLLEGES_STORAGE_KEY = "OVPHE_colleges_v1";
-const DEPARTMENTS_STORAGE_KEY = "OVPHE_college_departments_v1";
-const OFFICES_STORAGE_KEY = "OVPHE_offices_v1";
-const APPROVER_FLOW_STORAGE_KEY = "OVPHE_approver_flow_v1";
-
 type ApproverFlowItem = {
   id: string;
   category: string;
@@ -83,70 +78,6 @@ type ApproverFlowItem = {
 };
 
 type DraftDepartment = { name: string; short: string };
-
-const DEFAULT_COLLEGES: CollegeItem[] = [
-  { id: "coa", name: "College of Agriculture", short: "COA" },
-  { id: "cas", name: "College of Arts and Sciences", short: "CAS" },
-  { id: "ccs", name: "College of Computer Studies", short: "CCS" },
-  { id: "coe", name: "College of Engineering", short: "COE" },
-  { id: "con", name: "College of Nursing", short: "CON" },
-  { id: "sbm", name: "School of Business and Management", short: "SBM" },
-  { id: "soe", name: "School of Education", short: "SOE" },
-  { id: "sol", name: "School of Law", short: "SOL" },
-  { id: "som", name: "School of Medicine", short: "SOM" },
-];
-
-const DEFAULT_DEPARTMENTS: DepartmentItem[] = [
-  { id: "cs", collegeId: "ccs", name: "Computer Science", short: "CS" },
-  {
-    id: "emc",
-    collegeId: "ccs",
-    name: "Entertainment and Multimedia Computing",
-    short: "EMC",
-  },
-  { id: "it", collegeId: "ccs", name: "Information Technology", short: "IT" },
-  { id: "is", collegeId: "ccs", name: "Information System", short: "IS" },
-];
-
-const DEFAULT_OFFICES: OfficeItem[] = [
-  { id: "reg", name: "University Registrar", short: "REG" },
-  { id: "ubry", name: "University Library", short: "LIB" },
-  {
-    id: "OVPHE",
-    name: "Office of the Vice President for Higher Education",
-    short: "OVPHE",
-  },
-  { id: "hro", name: "Human Resources Office", short: "HRO" },
-];
-
-const APPROVER_CATEGORIES = [
-  "Department Chair",
-  "College Dean",
-  "University Registrar",
-  "University Library",
-  "Office of the Vice President for Higher Education",
-  "Human Resources Office",
-];
-
-const DEFAULT_APPROVER_FLOW: ApproverFlowItem[] = APPROVER_CATEGORIES.map((category) => ({
-  id: `approver-${category.toLowerCase().replace(/\s+/g, "-")}`,
-  category,
-  collegeIds: [],
-}));
-
-function loadList<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}
-
-function saveList(key: string, value: unknown) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
 
 function makeId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -667,13 +598,10 @@ export default function OVPHECollegeOfficeConfiguration() {
         setSelectedCollegeId(initialColleges[0]?.id ?? "");
       })
       .catch(() => {
-        const initialColleges = loadList<CollegeItem[]>(COLLEGES_STORAGE_KEY, DEFAULT_COLLEGES);
-        const initialDepartments = loadList<DepartmentItem[]>(DEPARTMENTS_STORAGE_KEY, DEFAULT_DEPARTMENTS);
-        const initialOffices = loadList<OfficeItem[]>(OFFICES_STORAGE_KEY, DEFAULT_OFFICES);
-        setColleges(initialColleges);
-        setDepartments(initialDepartments);
-        setOffices(initialOffices);
-        setSelectedCollegeId(initialColleges[2]?.id ?? initialColleges[0]?.id ?? "");
+        setColleges([]);
+        setDepartments([]);
+        setOffices([]);
+        setSelectedCollegeId("");
       });
 
     fetch("/admin/xu-faculty-clearance/api/ovphe/approver-flow")
@@ -682,10 +610,14 @@ export default function OVPHECollegeOfficeConfiguration() {
         setApproverFlow(data.steps ?? []);
       })
       .catch(() => {
-        const initialApproverFlow = loadList<ApproverFlowItem[]>(APPROVER_FLOW_STORAGE_KEY, DEFAULT_APPROVER_FLOW);
-        setApproverFlow(initialApproverFlow);
+        setApproverFlow([]);
       });
   }, []);
+
+  const approverCategories = React.useMemo(() => {
+    const raw = approverFlow.map((s) => (s.category ?? "").trim()).filter(Boolean);
+    return Array.from(new Set(raw));
+  }, [approverFlow]);
 
   const filteredDepartments = React.useMemo(
     () => departments.filter((d) => d.collegeId === selectedCollegeId),
@@ -1038,9 +970,7 @@ export default function OVPHECollegeOfficeConfiguration() {
             };
 
             setColleges((prev) => {
-              const next = [...prev, nextCollege];
-              saveList(COLLEGES_STORAGE_KEY, next);
-              return next;
+              return [...prev, nextCollege];
             });
 
             setSelectedCollegeId(collegeId);
@@ -1055,9 +985,7 @@ export default function OVPHECollegeOfficeConfiguration() {
                     name: d.name,
                     short: d.short,
                   }));
-                const next = [...prev, ...additions];
-                saveList(DEPARTMENTS_STORAGE_KEY, next);
-                return next;
+                return [...prev, ...additions];
               });
             }
           }}
@@ -1067,7 +995,7 @@ export default function OVPHECollegeOfficeConfiguration() {
           open={addApproverOpen}
           onOpenChange={setAddApproverOpen}
           colleges={colleges}
-          categories={APPROVER_CATEGORIES}
+          categories={approverCategories}
           onCreate={(payload) => {
             const nextItem: ApproverFlowItem = {
               id: makeId("approver"),
@@ -1076,9 +1004,7 @@ export default function OVPHECollegeOfficeConfiguration() {
             };
 
             setApproverFlow((prev) => {
-              const next = [...prev, nextItem];
-              saveList(APPROVER_FLOW_STORAGE_KEY, next);
-              return next;
+              return [...prev, nextItem];
             });
           }}
         />
@@ -1097,9 +1023,7 @@ export default function OVPHECollegeOfficeConfiguration() {
             };
 
             setDepartments((prev) => {
-              const next = [...prev, nextItem];
-              saveList(DEPARTMENTS_STORAGE_KEY, next);
-              return next;
+              return [...prev, nextItem];
             });
           }}
         />
@@ -1115,9 +1039,7 @@ export default function OVPHECollegeOfficeConfiguration() {
             };
 
             setOffices((prev) => {
-              const next = [...prev, nextItem];
-              saveList(OFFICES_STORAGE_KEY, next);
-              return next;
+              return [...prev, nextItem];
             });
           }}
         />
@@ -1139,7 +1061,6 @@ export default function OVPHECollegeOfficeConfiguration() {
               const next = prev.map((c) =>
                 c.id === editingCollegeId ? { ...c, name: payload.name, short: payload.short } : c
               );
-              saveList(COLLEGES_STORAGE_KEY, next);
               return next;
             });
           }}
@@ -1162,7 +1083,6 @@ export default function OVPHECollegeOfficeConfiguration() {
               const next = prev.map((d) =>
                 d.id === editingDepartmentId ? { ...d, name: payload.name, short: payload.short } : d
               );
-              saveList(DEPARTMENTS_STORAGE_KEY, next);
               return next;
             });
           }}
@@ -1183,7 +1103,6 @@ export default function OVPHECollegeOfficeConfiguration() {
               const next = prev.map((o) =>
                 o.id === editingOfficeId ? { ...o, name: payload.name, short: payload.short } : o
               );
-              saveList(OFFICES_STORAGE_KEY, next);
               return next;
             });
           }}
@@ -1196,7 +1115,7 @@ export default function OVPHECollegeOfficeConfiguration() {
             if (!open) setEditingApproverId(null);
           }}
           colleges={colleges}
-          categories={APPROVER_CATEGORIES}
+          categories={approverCategories}
           initialValues={
             editingApprover
               ? {
@@ -1213,7 +1132,6 @@ export default function OVPHECollegeOfficeConfiguration() {
                   ? { ...a, category: payload.category, collegeIds: payload.collegeIds }
                   : a
               );
-              saveList(APPROVER_FLOW_STORAGE_KEY, next);
               return next;
             });
           }}
@@ -1225,7 +1143,6 @@ export default function OVPHECollegeOfficeConfiguration() {
           items={approverFlow}
           onSave={(next) => {
             setApproverFlow(next);
-            saveList(APPROVER_FLOW_STORAGE_KEY, next);
           }}
         />
 
@@ -1261,12 +1178,10 @@ export default function OVPHECollegeOfficeConfiguration() {
                     if (confirmDelete.type === "college") {
                       setColleges((prev) => {
                         const next = prev.filter((c) => c.id !== confirmDelete.id);
-                        saveList(COLLEGES_STORAGE_KEY, next);
                         return next;
                       });
                       setDepartments((prev) => {
                         const next = prev.filter((d) => d.collegeId !== confirmDelete.id);
-                        saveList(DEPARTMENTS_STORAGE_KEY, next);
                         return next;
                       });
                       setSelectedCollegeId((prev) => (prev === confirmDelete.id ? "" : prev));
@@ -1275,7 +1190,6 @@ export default function OVPHECollegeOfficeConfiguration() {
                     if (confirmDelete.type === "department") {
                       setDepartments((prev) => {
                         const next = prev.filter((d) => d.id !== confirmDelete.id);
-                        saveList(DEPARTMENTS_STORAGE_KEY, next);
                         return next;
                       });
                     }
@@ -1283,7 +1197,6 @@ export default function OVPHECollegeOfficeConfiguration() {
                     if (confirmDelete.type === "office") {
                       setOffices((prev) => {
                         const next = prev.filter((o) => o.id !== confirmDelete.id);
-                        saveList(OFFICES_STORAGE_KEY, next);
                         return next;
                       });
                     }
@@ -1291,7 +1204,6 @@ export default function OVPHECollegeOfficeConfiguration() {
                     if (confirmDelete.type === "approver") {
                       setApproverFlow((prev) => {
                         const next = prev.filter((a) => a.id !== confirmDelete.id);
-                        saveList(APPROVER_FLOW_STORAGE_KEY, next);
                         return next;
                       });
                     }

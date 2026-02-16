@@ -6,7 +6,6 @@ import {
   WelcomeAcademicCard,
   ClearanceStatusCard,
   ClearanceProgressCard,
-  ExpandableClearanceStepCard,
   ApprovedCard,
 } from "../../stories/components/cards";
 
@@ -31,12 +30,12 @@ export default function Facultydashboard() {
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => setProfile(data))
       .catch(() => {
-        // fallback to hardcoded UI values
+        setProfile(null);
       });
   }, []);
 
-  const clearanceCurrent = profile?.clearance.approvedCount ?? 1;
-  const clearanceTotal = profile?.clearance.totalCount ?? 6;
+  const clearanceCurrent = profile?.clearance.approvedCount ?? 0;
+  const clearanceTotal = profile?.clearance.totalCount ?? 0;
   const clearancePercent =
     clearanceTotal > 0
       ? Math.round((clearanceCurrent / clearanceTotal) * 100)
@@ -52,23 +51,18 @@ export default function Facultydashboard() {
         .filter(Boolean)
         .join(" ")
         .trim() || profile.faculty.email
-    : "John Doe";
+    : "";
 
   const academicYearLabel = profile?.timeline.academicYear
     ? `${profile.timeline.academicYear}–${profile.timeline.academicYear + 1}`
-    : "2025–2026";
+    : "";
 
-  const termLabel = profile?.timeline.term ?? "1";
+  const termLabel = profile?.timeline.term ?? "";
 
-  const collegeLabel = profile?.faculty.college || "College of Computer Studies";
-  const departmentLabel = profile?.faculty.department || "Information Technology";
-  const facultyTypeLabel = profile?.faculty.facultyType || "";
-  const statusLabel = profile?.clearance.status ?? "Pending";
-
-  const [openStep, setOpenStep] = React.useState<number | null>(null);
-  const toggleStep = (index: number) => {
-    setOpenStep((prev) => (prev === index ? null : index));
-  };
+  const collegeLabel = profile?.faculty.college ?? "";
+  const departmentLabel = profile?.faculty.department ?? "";
+  const facultyTypeLabel = profile?.faculty.facultyType ?? "";
+  const statusLabel = profile?.clearance.status ?? "";
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -107,95 +101,7 @@ export default function Facultydashboard() {
           <div className="mt-5">
             <ApprovedCard />
           </div>
-        ) : (
-          <>
-            <div className="mt-5">
-              <ExpandableClearanceStepCard
-                index={1}
-                title="Department Chair"
-                statusLabel="PENDING"
-                statusVariant="warning"
-                expanded={openStep === 1}
-                onToggle={() => toggleStep(1)}
-                submittedTo="Maria Jimenez"
-                submittedOn="11/22/2025, 3:02:21 PM"
-                requirements={[
-                  {
-                    title: "Grades Roster",
-                    description: "Submit screenshot via this link:\ngoogleforms.com",
-                  },
-                  {
-                    title: "Laboratory Manual",
-                    description:
-                      "Physical submission to the Department Office\nOffice Lorem Ipsum Dolore es Amut",
-                  },
-                ]}
-              />
-            </div>
-
-            <div className="mt-2">
-              <ExpandableClearanceStepCard
-                index={2}
-                title="College Dean"
-                statusLabel="PENDING"
-                statusVariant="warning"
-                expanded={openStep === 2}
-                onToggle={() => toggleStep(2)}
-                requirements={[]}
-              />
-            </div>
-
-            <div className="mt-2">
-              <ExpandableClearanceStepCard
-                index={3}
-                title="University Registrar"
-                statusLabel="PENDING"
-                statusVariant="warning"
-                expanded={openStep === 3}
-                onToggle={() => toggleStep(3)}
-                requirements={[]}
-              />
-            </div>
-
-            <div className="mt-2">
-              <ExpandableClearanceStepCard
-                index={4}
-                title="University Library"
-                statusLabel="PENDING"
-                statusVariant="warning"
-                expanded={openStep === 4}
-                onToggle={() => toggleStep(4)}
-                requirements={[]}
-              />
-            </div>
-
-            <div className="mt-2">
-              <ExpandableClearanceStepCard
-                index={5}
-                title="OVPHE"
-                statusLabel="PENDING"
-                statusVariant="warning"
-                collapsedType= "dropdownOnly"
-                expanded={openStep === 5}
-                onToggle={() => toggleStep(5)}
-                requirements={[]}
-              />
-            </div>
-
-            <div className="mt-2">
-              <ExpandableClearanceStepCard
-                index={6}
-                title="Human Resources Office"
-                statusLabel="PENDING"
-                statusVariant="warning"
-                collapsedType=  "locked"
-                expanded={openStep === 6}
-                onToggle={() => toggleStep(6)}
-                requirements={[]}
-              />
-            </div>
-          </>
-        )}
+        ) : null}
 
       </main>
 

@@ -12,22 +12,7 @@ import {
 export default function Notification() {
   const [readAll, setReadAll] = React.useState(false);
 
-  const fallbackItems: NotificationItem[] = [
-    {
-      title: "Department Chair",
-      status: "approved",
-      details: ["Submission of Syllabus", "Submission of Grades"],
-      timestamp: "December 3, 2025, 9:30 AM",
-    },
-    {
-      title: "University Registrar",
-      status: "rejected",
-      details: ["Submission of Grades", "Remarks: incomplete submission"],
-      timestamp: "December 1, 2025, 9:30 AM",
-    },
-  ];
-
-  const [items, setItems] = React.useState<NotificationItem[]>(fallbackItems);
+  const [items, setItems] = React.useState<NotificationItem[]>([]);
 
   React.useEffect(() => {
     fetch("/admin/xu-faculty-clearance/api/faculty/notifications")
@@ -53,10 +38,10 @@ export default function Notification() {
               is_read: !!n.is_read,
             }))
           : [];
-        if (mapped.length) setItems(mapped);
+        setItems(mapped);
       })
       .catch(() => {
-        // keep fallback
+        setItems([]);
       });
   }, []);
 

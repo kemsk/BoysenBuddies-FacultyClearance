@@ -25,8 +25,6 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../../stories/components/button";
 
-const CLEARANCE_TIMELINE_STORAGE_KEY = "clearance_timeline_items_v1";
-
 type StoredClearanceTimelineItem = {
   id: string;
   startYear: string;
@@ -40,60 +38,6 @@ type StoredClearanceTimelineItem = {
   createdAt: string;
 };
 
-const DEFAULT_TIMELINE_ITEMS: StoredClearanceTimelineItem[] = [
-  {
-    id: "ct-default-1",
-    startYear: "2025",
-    endYear: "2026",
-    semester: "First Semester",
-    semesterStartDate: "",
-    semesterEndDate: "",
-    clearanceStartDate: "2025-12-01",
-    clearanceEndDate: "2025-12-31",
-    setAsActive: true,
-    createdAt: "November 1, 2025, 04:02 PM",
-  },
-  {
-    id: "ct-default-2",
-    startYear: "2024",
-    endYear: "2025",
-    semester: "Intersession",
-    semesterStartDate: "",
-    semesterEndDate: "",
-    clearanceStartDate: "2025-12-01",
-    clearanceEndDate: "2025-12-31",
-    setAsActive: false,
-    createdAt: "November 1, 2025, 04:02 PM",
-  },
-  {
-    id: "ct-default-3",
-    startYear: "2024",
-    endYear: "2025",
-    semester: "Second Semester",
-    semesterStartDate: "",
-    semesterEndDate: "",
-    clearanceStartDate: "2025-12-01",
-    clearanceEndDate: "2025-12-31",
-    setAsActive: false,
-    createdAt: "November 1, 2025, 04:02 PM",
-  },
-];
-
-function loadTimelineItems(): StoredClearanceTimelineItem[] {
-  try {
-    const raw = localStorage.getItem(CLEARANCE_TIMELINE_STORAGE_KEY);
-    if (!raw) return DEFAULT_TIMELINE_ITEMS;
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return DEFAULT_TIMELINE_ITEMS;
-    return parsed as StoredClearanceTimelineItem[];
-  } catch {
-    return DEFAULT_TIMELINE_ITEMS;
-  }
-}
-
-function saveTimelineItems(items: StoredClearanceTimelineItem[]) {
-  localStorage.setItem(CLEARANCE_TIMELINE_STORAGE_KEY, JSON.stringify(items));
-}
 
 type OVPHEClearanceTimelinesResponse = { items: StoredClearanceTimelineItem[] };
 
@@ -146,8 +90,7 @@ export default function OVPHEClearanceTimeline() {
         setItems(Array.isArray(data.items) ? data.items : []);
       })
       .catch(() => {
-        const initial = loadTimelineItems();
-        setItems(initial);
+        setItems([]);
       });
   }, []);
 
@@ -258,9 +201,7 @@ export default function OVPHEClearanceTimeline() {
             const normalized = payload.setAsActive
               ? prev.map((p) => ({ ...p, setAsActive: false }))
               : prev;
-            const next = [nextItem, ...normalized];
-            saveTimelineItems(next);
-            return next;
+            return [nextItem, ...normalized];
           });
         }}
        />
@@ -293,8 +234,6 @@ export default function OVPHEClearanceTimeline() {
                 setAsActive: payload.setAsActive,
               };
             });
-
-            saveTimelineItems(next);
             return next;
           });
         }}
