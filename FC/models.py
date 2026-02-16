@@ -264,7 +264,7 @@ class ApproverFlowStep(models.Model):
     colleges = models.ManyToManyField(College, blank=True, related_name="approver_flow_steps")
 
     class Meta:
-        ordering = ["order", "pk"]
+        ordering = ["order", "id"]
 
     def __str__(self):
         return f"{self.category} ({self.order})"
@@ -278,42 +278,8 @@ class ActivityLog(models.Model):
         CREATED_REQUIREMENTS = "created_requirements", "created_requirements"
         EDITED_REQUIREMENTS = "edited_requirements", "edited_requirements"
         DELETED_REQUIREMENTS = "deleted_requirements", "deleted_requirements"
-        USER_LOGIN = "user_login", "user_login"
         USER_LOGOUT = "user_logout", "user_logout"
         EDITED_ANNOUNCEMENT = "edited_announcement", "edited_announcement"
-
-        CREATED_GUIDELINE = "created_guideline", "created_guideline"
-        EDITED_GUIDELINE = "edited_guideline", "edited_guideline"
-        SET_GUIDELINE_STATUS_ACTIVE = "set_guideline_status_active", "set_guideline_status_active"
-        SET_GUIDELINE_STATUS_INACTIVE = "set_guideline_status_inactive", "set_guideline_status_inactive"
-        ARCHIVED_GUIDELINE = "archived_guideline", "archived_guideline"
-
-        CREATED_ANNOUNCEMENT = "created_announcement", "created_announcement"
-        SET_ANNOUNCEMENT_STATUS_ACTIVE = "set_announcement_status_active", "set_announcement_status_active"
-        SET_ANNOUNCEMENT_STATUS_INACTIVE = "set_announcement_status_inactive", "set_announcement_status_inactive"
-
-        CREATED_TIMELINE = "created_timeline", "created_timeline"
-        EDITED_TIMELINE = "edited_timeline", "edited_timeline"
-        SET_TIMELINE_STATUS_ACTIVE = "set_timeline_status_active", "set_timeline_status_active"
-        SET_TIMELINE_STATUS_INACTIVE = "set_timeline_status_inactive", "set_timeline_status_inactive"
-
-        CREATED_COLLEGE = "created_college", "created_college"
-        EDITED_COLLEGE = "edited_college", "edited_college"
-        DELETED_COLLEGE = "deleted_college", "deleted_college"
-
-        CREATED_DEPARTMENT = "created_department", "created_department"
-        EDITED_DEPARTMENT = "edited_department", "edited_department"
-        DELETED_DEPARTMENT = "deleted_department", "deleted_department"
-
-        CREATED_OFFICE = "created_office", "created_office"
-        EDITED_OFFICE = "edited_office", "edited_office"
-        DELETED_OFFICE = "deleted_office", "deleted_office"
-
-        ADDED_TO_APPROVER_FLOW = "added_to_approver_flow", "added_to_approver_flow"
-        EDITED_APPROVER_FLOW = "edited_approver_flow", "edited_approver_flow"
-        REMOVED_FROM_APPROVER_FLOW = "removed_from_approver_flow", "removed_from_approver_flow"
-
-        EXPORTED_CLEARANCE_RESULTS = "exported_clearance_results", "exported_clearance_results"
         ADDED_ASSISTANT_APPROVER = "added_assistant_approver", "added_assistant_approver"
         UPDATED_ASSISTANT_APPROVER = "updated_assistant_approver", "updated_assistant_approver"
         REMOVED_ASSISTANT_APPROVER = "removed_assistant_approver", "removed_assistant_approver"
@@ -351,20 +317,17 @@ class ActivityLog(models.Model):
     approver_department = models.CharField(max_length=150, null=True, blank=True)
     university_id = models.CharField(max_length=50, null=True, blank=True)
     request_id = models.CharField(max_length=50, null=True, blank=True)
-    title = models.CharField(max_length=200, null=True, blank=True)
-    description = models.TextField(null=True, blank=True)
     details = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["-created_at", "pk"]
+        ordering = ["-created_at", "-id"]
 
     def __str__(self):
         return f"{self.event_type} ({self.created_at})"
 
 
 class ClearanceTimeline(models.Model):
-    timeline_id = models.BigAutoField(primary_key=True)
     academic_year = models.IntegerField(null=True, blank=True)
     term = models.CharField(max_length=20, choices=Clearance.Term.choices, null=True, blank=True)
     term_start_date = models.DateField(null=True, blank=True)
@@ -388,7 +351,6 @@ class ClearanceTimeline(models.Model):
 
 
 class SystemGuideline(models.Model):
-    guideline_id = models.BigAutoField(primary_key=True)
     title = models.CharField(max_length=200, null=True, blank=True)
     body = models.TextField(null=True, blank=True)
     created_by = models.ForeignKey(
@@ -406,7 +368,6 @@ class SystemGuideline(models.Model):
 
 
 class SystemAnalytics(models.Model):
-    analytics_id = models.BigAutoField(primary_key=True)
     academic_year = models.IntegerField(null=True, blank=True)
     term = models.CharField(max_length=20, choices=Clearance.Term.choices, null=True, blank=True)
     college = models.ForeignKey(
@@ -416,9 +377,6 @@ class SystemAnalytics(models.Model):
         blank=True,
         related_name="analytics",
     )
-    completed_count = models.PositiveIntegerField(null=True, blank=True)
-    incomplete_count = models.PositiveIntegerField(null=True, blank=True)
-    total_count = models.PositiveIntegerField(null=True, blank=True)
     completion_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     generated_at = models.DateTimeField(auto_now_add=True)
     generated_by = models.ForeignKey(
@@ -434,7 +392,6 @@ class SystemAnalytics(models.Model):
 
 
 class Archive(models.Model):
-    archive_id = models.BigAutoField(primary_key=True)
     class Status(models.TextChoices):
         COMPLETED = "COMPLETED", "COMPLETED"
         INCOMPLETE = "INCOMPLETE", "INCOMPLETE"
@@ -473,7 +430,6 @@ class Archive(models.Model):
 
 
 class Notification(models.Model):
-    notification_id = models.BigAutoField(primary_key=True)
     class Status(models.TextChoices):
         APPROVED = "approved", "approved"
         REJECTED = "rejected", "rejected"
