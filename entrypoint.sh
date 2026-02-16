@@ -251,9 +251,9 @@ WHERE NOT EXISTS (
 );
 
 -- Seed minimal Requirement + ClearanceRequest for the latest clearance row
-INSERT INTO FC_requirement (requirement_id, title, description, required_physical, created_date, is_active)
+INSERT INTO FC_requirement (id, title, description, required_physical, created_date, deadline_date, is_active, created_by_id)
 SELECT * FROM (
-    SELECT 1 AS requirement_id, 'Grades Roster' AS title, 'Submit screenshot via this link: googleforms.com' AS description, 0 AS required_physical, NOW() AS created_date, 1 AS is_active
+    SELECT 1 AS id, 'Grades Roster' AS title, 'Submit screenshot via this link: googleforms.com' AS description, 0 AS required_physical, NOW() AS created_date, NULL AS deadline_date, 1 AS is_active, NULL AS created_by_id
 ) AS v
 ON DUPLICATE KEY UPDATE
     title = VALUES(title),

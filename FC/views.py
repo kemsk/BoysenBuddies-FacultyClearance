@@ -105,12 +105,12 @@ def ovphe_system_guidelines_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
-    guidelines = SystemGuideline.objects.select_related("created_by").order_by("-created_at", "-guideline_id")
+    guidelines = SystemGuideline.objects.select_related("created_by").order_by("-created_at", "-id")
     items = []
     for g in guidelines:
         items.append(
             {
-                "id": g.guideline_id,
+                "id": str(g.id),
                 "title": g.title or "",
                 "description": g.body or "",
                 "email": g.created_by.email if g.created_by else "",
@@ -145,14 +145,14 @@ def ovphe_clearance_timelines_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
-    timelines = ClearanceTimeline.objects.order_by("-is_active", "-academic_year", "-timeline_id")
+    timelines = ClearanceTimeline.objects.order_by("-is_active", "-academic_year", "-id")
     items = []
     for t in timelines:
         start_year = str(t.academic_year or "")
         end_year = str((t.academic_year + 1) if t.academic_year else "")
         items.append(
             {
-                "id": str(t.timeline_id),
+                "id": str(t.id),
                 "startYear": start_year,
                 "endYear": end_year,
                 "semester": _term_to_label(t.term),
@@ -238,12 +238,12 @@ def ovphe_notifications_api(request):
     if not admin:
         return JsonResponse({"detail": "OVPHE user not found"}, status=404)
 
-    qs = Notification.objects.filter(user=admin.user).order_by("-created_at", "-notification_id")
+    qs = Notification.objects.filter(user=admin.user).order_by("-created_at", "-id")
     items = []
     for n in qs:
         items.append(
             {
-                "id": str(n.notification_id),
+                "id": str(n.id),
                 "title": n.title or "",
                 "description": n.body or "",
                 "status": n.status,
@@ -273,7 +273,7 @@ def ovphe_system_analytics_api(request):
     term_val = term or None
 
     if not year_val or not term_val:
-        active_timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year", "-timeline_id").first()
+        active_timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year", "-id").first()
         if active_timeline:
             year_val = year_val or active_timeline.academic_year
             term_val = term_val or active_timeline.term
@@ -306,29 +306,27 @@ def ovphe_system_analytics_api(request):
         incomplete = max(0, total - completed)
         rate = (Decimal(completed) / Decimal(total) * Decimal("100")) if total else Decimal("0")
 
-        obj, _ = SystemAnalytics.objects.update_or_create(
-            academic_year=year_val,
-            term=term_val,
-            college_id=c_id,
-            defaults={
-                "completed_count": completed,
-                "incomplete_count": incomplete,
-                "total_count": total,
-                "completion_rate": rate,
-                "generated_by": admin,
-            },
-        )
+        if c_id:
+            SystemAnalytics.objects.update_or_create(
+                academic_year=year_val,
+                term=term_val,
+                college_id=c_id,
+                defaults={
+                    "completion_rate": rate,
+                    "generated_by": admin,
+                },
+            )
 
         rows.append(
             {
                 "collegeId": str(c_id) if c_id else "",
                 "collegeName": c_name,
-                "completionRate": float(obj.completion_rate or 0),
-                "academicYear": obj.academic_year,
-                "term": obj.term,
-                "completedCount": int(obj.completed_count or 0),
-                "incompleteCount": int(obj.incomplete_count or 0),
-                "totalCount": int(obj.total_count or 0),
+                "completionRate": float(rate),
+                "academicYear": year_val,
+                "term": term_val,
+                "completedCount": completed,
+                "incompleteCount": incomplete,
+                "totalCount": total,
             }
         )
 
@@ -362,14 +360,20 @@ def ovphe_activity_logs_api(request):
     items = []
     for log in logs:
         dt = timezone.localtime(log.created_at)
+        title = str(log.event_type)
+        if log.approver_department:
+            title = f"{title} - {log.approver_department}"
+        description = ""
+        if log.request_id:
+            description = f"Request: {log.request_id}"
         items.append(
             {
                 "id": str(log.id),
                 "dateLabel": dt.strftime("%m/%d/%Y"),
                 "timeLabel": _format_time_label(dt),
                 "variant": log.event_type,
-                "title": log.title or "",
-                "description": log.description or "",
+                "title": title,
+                "description": description,
                 "actorFirstName": (log.actor_user.first_name if log.actor_user else "")
                 or (log.actor_admin.user.first_name if log.actor_admin else ""),
                 "actorLastName": (log.actor_user.last_name if log.actor_user else "")
@@ -391,12 +395,12 @@ def ciso_system_guidelines_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
-    guidelines = SystemGuideline.objects.select_related("created_by").order_by("-created_at", "-guideline_id")
+    guidelines = SystemGuideline.objects.select_related("created_by").order_by("-created_at", "-id")
     items = []
     for g in guidelines:
         items.append(
             {
-                "id": g.guideline_id,
+                "id": str(g.id),
                 "title": g.title or "",
                 "description": g.body or "",
                 "email": g.created_by.email if g.created_by else "",
@@ -435,12 +439,12 @@ def ciso_notifications_api(request):
     if not admin:
         return JsonResponse({"detail": "CISO user not found"}, status=404)
 
-    qs = Notification.objects.filter(user=admin.user).order_by("-created_at", "-notification_id")
+    qs = Notification.objects.filter(user=admin.user).order_by("-created_at", "-id")
     items = []
     for n in qs:
         items.append(
             {
-                "id": str(n.notification_id),
+                "id": str(n.id),
                 "title": n.title or "",
                 "description": n.body or "",
                 "status": n.status,
@@ -485,14 +489,20 @@ def ciso_activity_logs_api(request):
     items = []
     for log in logs:
         dt = timezone.localtime(log.created_at)
+        title = str(log.event_type)
+        if log.approver_department:
+            title = f"{title} - {log.approver_department}"
+        description = ""
+        if log.request_id:
+            description = f"Request: {log.request_id}"
         items.append(
             {
                 "id": str(log.id),
                 "dateLabel": dt.strftime("%m/%d/%Y"),
                 "timeLabel": _format_time_label(dt),
                 "variant": log.event_type,
-                "title": log.title or "",
-                "description": log.description or "",
+                "title": title,
+                "description": description,
                 "actorFirstName": (log.actor_user.first_name if log.actor_user else "")
                 or (log.actor_admin.user.first_name if log.actor_admin else ""),
                 "actorLastName": (log.actor_user.last_name if log.actor_user else "")
@@ -604,7 +614,7 @@ def faculty_dashboard_api(request):
     if not faculty:
         return JsonResponse({"detail": "Faculty not found"}, status=404)
 
-    timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year", "-timeline_id").first()
+    timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year", "-id").first()
     academic_year = timeline.academic_year if timeline else None
     term = timeline.term if timeline else None
 
@@ -680,12 +690,12 @@ def faculty_notifications_api(request):
     if not user:
         return JsonResponse({"detail": "Faculty user not found"}, status=404)
 
-    notifications = Notification.objects.filter(user=user).order_by("-created_at", "-notification_id")
+    notifications = Notification.objects.filter(user=user).order_by("-created_at", "-id")
     items = []
     for n in notifications:
         items.append(
             {
-                "id": str(n.notification_id),
+                "id": str(n.id),
                 "title": n.title or "",
                 "description": n.body or "",
                 "status": n.status,
