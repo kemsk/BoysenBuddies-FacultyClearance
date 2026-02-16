@@ -126,6 +126,38 @@ def ciso_faculty_dump_template_api(request):
     writer = csv.writer(output)
     writer.writerow(headers)
 
+    sample_rows = [
+        {
+            "email": "jane.doe@xu.edu.ph",
+            "university_id": "2024-00001",
+            "employee_id": "EMP-00001",
+            "first_name": "Jane",
+            "middle_name": "A.",
+            "last_name": "Doe",
+            "faculty_type": "Full-time",
+            "phone_number": "09171234567",
+            "office": "Department Chair",
+            "college": "College of Computer Studies",
+            "department": "Information Technology",
+        },
+        {
+            "email": "john.santos@xu.edu.ph",
+            "university_id": "2024-00002",
+            "employee_id": "EMP-00002",
+            "first_name": "John",
+            "middle_name": "B.",
+            "last_name": "Santos",
+            "faculty_type": "Part-time",
+            "phone_number": "09987654321",
+            "office": "",
+            "college": "College of Arts and Sciences",
+            "department": "Mathematics",
+        },
+    ]
+
+    for row in sample_rows:
+        writer.writerow([row.get(h, "") for h in headers])
+
     resp = HttpResponse(output.getvalue(), content_type="text/csv")
     resp["Content-Disposition"] = 'attachment; filename="faculty_template.csv"'
     return resp
