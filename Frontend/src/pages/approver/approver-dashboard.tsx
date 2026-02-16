@@ -12,6 +12,7 @@ import {
 } from "../../stories/components/cards";
 
 export default function Approverdashboard() {
+  const [timeline, setTimeline] = React.useState<{ academicYear: string; semester: string } | null>(null);
   const pendingClearance = 0;
   const totalClearanceRequests = 1;
   const approverOffice = "College of Computer Studies";
@@ -75,9 +76,11 @@ export default function Approverdashboard() {
       <main className="dashboard p-4 mt-2 space-y-3">
         <WelcomeAcademicCard
           name={displayName}
-          topLeft={{ label: "Academic Year", value: "2025–2026" }}
-          topRight={{ label: "Semester", value: "1" }}
-          rows={[{ label: "Approver Office", value: approverOffice }]}
+          topLeft={{ label: "Academic Year", value: timeline?.academicYear || "" }}
+          topRight={{ label: "Semester", value: timeline?.semester || "" }}
+          rows={[
+            { label: "Approver Office", value: approverOffice },
+          ]}
         />
 
         <ApproverWelcomeMetrics

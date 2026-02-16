@@ -12,6 +12,7 @@ import {
 } from "../../stories/components/cards";
 
 export default function HRODashboard() {
+  const [timeline, setTimeline] = React.useState<{ academicYear: string; semester: string } | null>(null);
   const pendingClearance = 0;
   const totalClearanceRequests = 1;
   const approverOffice = "College of Computer Studies";
@@ -42,6 +43,13 @@ export default function HRODashboard() {
       .filter(Boolean);
     return parts.length ? parts.join(" ") : profile.email;
   }, [profile]);
+
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/active-clearance-timeline")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => setTimeline(data))
+      .catch(() => setTimeline(null));
+  }, []);
 
   const requirementItems: RequirementListItem[] = [
     {
@@ -75,9 +83,11 @@ export default function HRODashboard() {
       <main className="dashboard p-4 mt-2 space-y-3">
         <WelcomeAcademicCard
           name={displayName}
-          topLeft={{ label: "Academic Year", value: "2025–2026" }}
-          topRight={{ label: "Semester", value: "1" }}
-          rows={[{ label: "Approver Office", value: approverOffice }]}
+          topLeft={{ label: "Academic Year", value: timeline?.academicYear || "" }}
+          topRight={{ label: "Semester", value: timeline?.semester || "" }}
+          rows={[
+            { label: "Approver Office", value: approverOffice },
+          ]}
         />
 
         <ApproverWelcomeMetrics

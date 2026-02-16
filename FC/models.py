@@ -199,6 +199,13 @@ class ClearanceRequest(models.Model):
         REJECTED = "REJECTED", "REJECTED"
 
     clearance = models.ForeignKey(Clearance, on_delete=models.CASCADE, related_name="requests")
+    timeline = models.ForeignKey(
+        "ClearanceTimeline",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="clearance_requests",
+    )
     requirement = models.ForeignKey(Requirement, on_delete=models.CASCADE, related_name="clearance_requests")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     remarks = models.TextField(null=True, blank=True)

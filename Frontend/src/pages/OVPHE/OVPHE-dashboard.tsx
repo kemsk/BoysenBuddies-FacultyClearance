@@ -15,6 +15,15 @@ type OVPHEGuidelinesResponse = { items: SystemGuidlinesItem[] };
 type OVPHEAnnouncementsResponse = { items: AnnouncementItem[] };
 
 export default function OVPHEDashboard() {
+  const [me, setMe] = React.useState<{
+    email: string;
+    university_id: string;
+    first_name: string | null;
+    middle_name: string | null;
+    last_name: string | null;
+    role_value: number | null;
+  } | null>(null);
+  const [timeline, setTimeline] = React.useState<{ academicYear: string; semester: string } | null>(null);
   const [profile, setProfile] = React.useState<{
     email: string;
     university_id: string;
@@ -35,6 +44,19 @@ export default function OVPHEDashboard() {
   }, [announcementItems]);
 
   React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/me")
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load profile");
+        return res.json();
+      })
+      .then((data) => setMe(data))
+      .catch(() => setMe(null));
+
+    fetch("/admin/xu-faculty-clearance/api/active-clearance-timeline")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => setTimeline(data))
+      .catch(() => setTimeline(null));
+
     fetch("/admin/xu-faculty-clearance/api/ovphe/system-guidelines")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: OVPHEGuidelinesResponse) => setItems(data.items ?? []))
@@ -59,12 +81,24 @@ export default function OVPHEDashboard() {
   }, []);
 
   const displayName = React.useMemo(() => {
-    if (!profile) return "";
-    const parts = [profile.first_name, profile.middle_name, profile.last_name]
+    if (!me) return "";
+    const parts = [me.first_name, me.middle_name, me.last_name]
       .map((p) => (p ?? "").trim())
       .filter(Boolean);
-    return parts.length ? parts.join(" ") : profile.email;
-  }, [profile]);
+    return parts.length ? parts.join(" ") : me.email;
+  }, [me]);
+
+  const roleLabel = React.useMemo(() => {
+    if (profile?.role) return profile.role;
+    if (me?.role_value === 2) return "CISO";
+    if (me?.role_value === 3) return "OVPHE";
+    if (me?.role_value === 1) return "HRO";
+    if (me?.role_value === 4) return "APPROVER";
+    if (me?.role_value === 5) return "ASSISTANT_APPROVER";
+    if (me?.role_value === 6) return "FACULTY";
+    if (me?.role_value === 7) return "DUAL_ROLE";
+    return "";
+  }, [me, profile]);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -78,9 +112,9 @@ export default function OVPHEDashboard() {
       <main className="dashboard p-4 mt-2 space-y-3">
         <WelcomeAcademicCard
           name={displayName}
-          topLeft={{ label: "Academic Year", value: "2025–2026" }}
-          topRight={{ label: "Semester", value: "1" }}
-          rows={[{ label: "System Admin Role", value: profile?.role ?? "" }]}
+          topLeft={{ label: "Academic Year", value: timeline?.academicYear || "" }}
+          topRight={{ label: "Semester", value: timeline?.semester || "" }}
+          rows={[{ label: "System Admin Role", value: roleLabel }]}
         />
         
 

@@ -24,6 +24,7 @@ export default function CISODashboard() {
     role_value: number | null;
   } | null>(null);
 
+  const [timeline, setTimeline] = React.useState<{ academicYear: string; semester: string } | null>(null);
   const [profile, setProfile] = React.useState<{
     email: string;
     university_id: string;
@@ -51,6 +52,10 @@ export default function CISODashboard() {
       })
       .then((data) => setMe(data))
       .catch(() => setMe(null));
+    fetch("/admin/xu-faculty-clearance/api/active-clearance-timeline")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => setTimeline(data))
+      .catch(() => setTimeline(null));
 
     fetch("/admin/xu-faculty-clearance/api/ciso/system-guidelines")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
@@ -107,8 +112,8 @@ export default function CISODashboard() {
       <main className="dashboard p-4 mt-2 space-y-3">
         <WelcomeAcademicCard
           name={displayName}
-          topLeft={{ label: "Academic Year", value: "2025–2026" }}
-          topRight={{ label: "Semester", value: "1" }}
+          topLeft={{ label: "Academic Year", value: timeline?.academicYear || "" }}
+          topRight={{ label: "Semester", value: timeline?.semester || "" }}
           rows={[{ label: "System Admin Role", value: roleLabel }]}
         />
         

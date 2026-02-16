@@ -5,8 +5,8 @@ import { ArrowLeft, Calendar, X } from "lucide-react";
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";
 import { Dialog, DialogContent, DialogTrigger } from "./dialog";
-import { Input } from "./input";
 import { DatePicker } from "./picker";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import {
   Select,
   SelectContent,
@@ -47,20 +47,66 @@ function YearField(props: {
   value: string;
   onChange: (v: string) => void;
   clearable?: boolean;
+  minYear?: number;
 }) {
-  const { label, value, onChange, clearable } = props;
+  const { label, value, onChange, clearable, minYear } = props;
+  const [open, setOpen] = React.useState(false);
+
+  const nowYear = new Date().getFullYear();
+  const baseYear = (() => {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && numeric > 0) return numeric;
+    if (typeof minYear === "number" && Number.isFinite(minYear)) return minYear;
+    return nowYear;
+  })();
+
+  const start = Math.floor(baseYear / 12) * 12;
+  const years = Array.from({ length: 24 }, (_, i) => start + i);
   return (
     <div>
       <div className="text-xs font-semibold text-foreground">{label}</div>
       <div className="relative mt-2">
-        <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          inputMode="numeric"
-          placeholder=""
-          className="h-10 pl-9 pr-9"
-        />
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="action"
+              className="h-10 w-full justify-between pl-9 pr-9 font-normal"
+            >
+              <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <span>{value ? value : "Year"}</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            className="w-auto max-w-[calc(100vw-3rem)] overflow-hidden p-3 border border-primary"
+            align="center"
+            collisionPadding={24}
+          >
+            <div className="grid grid-cols-4 gap-2">
+              {years.map((y) => {
+                const disabled = typeof minYear === "number" ? y < minYear : false;
+                const selected = String(y) === value;
+                return (
+                  <Button
+                    key={y}
+                    type="button"
+                    variant={selected ? "default" : "cancel"}
+                    className="h-9"
+                    disabled={disabled}
+                    onClick={() => {
+                      if (disabled) return;
+                      onChange(String(y));
+                      setOpen(false);
+                    }}
+                  >
+                    {y}
+                  </Button>
+                );
+              })}
+            </div>
+          </PopoverContent>
+        </Popover>
+
         {clearable && value ? (
           <button
             type="button"
@@ -79,8 +125,10 @@ function DateField(props: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  fromYear?: number;
+  toYear?: number;
 }) {
-  const { label, value, onChange } = props;
+  const { label, value, onChange, fromYear, toYear } = props;
   return (
     <div>
       <div className="text-xs font-semibold text-foreground">{label}</div>
@@ -88,6 +136,8 @@ function DateField(props: {
         <DatePicker
           value={value}
           onChange={onChange}
+          fromYear={fromYear}
+          toYear={toYear}
           buttonClassName="h-10 w-full min-w-0 justify-between font-normal"
         />
       </div>
@@ -123,6 +173,25 @@ function TimelineDialogShell(props: {
   const [clearanceStartDate, setClearanceStartDate] = React.useState("");
   const [clearanceEndDate, setClearanceEndDate] = React.useState("");
   const [setAsActive, setSetAsActive] = React.useState(false);
+
+  const numericStartYear = React.useMemo(() => {
+    const n = Number(startYear);
+    if (!Number.isFinite(n)) return undefined;
+    if (String(Math.trunc(n)).length !== 4) return undefined;
+    return Math.trunc(n);
+  }, [startYear]);
+
+  const minEndYear = React.useMemo(() => {
+    if (typeof numericStartYear !== "number") return undefined;
+    return numericStartYear + 1;
+  }, [numericStartYear]);
+
+  const numericEndYear = React.useMemo(() => {
+    const n = Number(endYear);
+    if (!Number.isFinite(n)) return undefined;
+    if (String(Math.trunc(n)).length !== 4) return undefined;
+    return Math.trunc(n);
+  }, [endYear]);
 
   React.useEffect(() => {
     if (!effectiveOpen) return;
@@ -179,11 +248,30 @@ function TimelineDialogShell(props: {
                 <YearField
                   label="Start Year"
                   value={startYear}
-                  onChange={setStartYear}
+                  onChange={(next) => {
+                    setStartYear(next);
+                    const n = Number(next);
+                    if (Number.isFinite(n) && String(Math.trunc(n)).length === 4) {
+                      setEndYear(String(Math.trunc(n) + 1));
+                      return;
+                    }
+                    setEndYear("");
+                  }}
                   clearable
                 />
 
-                <YearField label="End Year" value={endYear} onChange={setEndYear} />
+                <YearField
+                  label="End Year"
+                  value={endYear}
+                  minYear={minEndYear}
+                  onChange={(next) => {
+                    if (typeof minEndYear === "number") {
+                      const n = Number(next);
+                      if (Number.isFinite(n) && n < minEndYear) return;
+                    }
+                    setEndYear(next);
+                  }}
+                />
               </div>
             ) : (
               <div className="mt-6 space-y-4">
@@ -212,24 +300,32 @@ function TimelineDialogShell(props: {
                   label="Semester Start Date"
                   value={semesterStartDate}
                   onChange={setSemesterStartDate}
+                  fromYear={numericStartYear}
+                  toYear={numericEndYear}
                 />
 
                 <DateField
                   label="Semester End Date"
                   value={semesterEndDate}
                   onChange={setSemesterEndDate}
+                  fromYear={numericStartYear}
+                  toYear={numericEndYear}
                 />
 
                 <DateField
                   label="Clearance Period Start Date"
                   value={clearanceStartDate}
                   onChange={setClearanceStartDate}
+                  fromYear={numericStartYear}
+                  toYear={numericEndYear}
                 />
 
                 <DateField
                   label="Clearance Period End Date"
                   value={clearanceEndDate}
                   onChange={setClearanceEndDate}
+                  fromYear={numericStartYear}
+                  toYear={numericEndYear}
                 />
 
                 <div className="pt-2">

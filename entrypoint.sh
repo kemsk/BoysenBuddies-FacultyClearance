@@ -15,7 +15,7 @@ INSERT INTO FC_user (email, university_id, password, first_name, last_name, role
 VALUES 
 ('20220025546@my.xu.edu.ph', '20220025546', 'capstone', 'Albert Floyd', 'Villanueva', 2, NOW(), 1, 1, 1),
 ('20190016375@my.xu.edu.ph', '20190016375', 'kemeru', 'Nesyl', 'Ylanan', 3, NOW(), 1, 1, 1),
-('20220024573@my.xu.edu.ph', '20220024573', 'kim', 'Kim', 'Flores', 2, NOW(), 1, 0, 0),
+('20220024573@my.xu.edu.ph', '20220024573', 'kim', 'Kim', 'Flores', 3, NOW(), 1, 0, 0),
 ('approver.seed@xu.edu.ph', 'APPROVER-SEED-1', 'capstone', 'Angela', 'Santos', 4, NOW(), 1, 1, 0),
 ('assistant.seed@xu.edu.ph', 'ASSISTANT-SEED-1', 'capstone', 'Seed', 'Assistant', 5, NOW(), 1, 1, 0),
 ('faculty.seed@xu.edu.ph', 'FACULTY-SEED-1', 'capstone', 'John', 'Doe', 6, NOW(), 1, 0, 0),

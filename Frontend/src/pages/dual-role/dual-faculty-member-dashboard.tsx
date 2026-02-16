@@ -46,9 +46,19 @@ export default function DualRoleFacultyDashboard() {
       .filter(Boolean);
     return parts.length ? parts.join(" ") : profile.email;
   }, [profile]);
+
   const toggleStep = (index: number) => {
     setOpenStep((prev) => (prev === index ? null : index));
   };
+
+  const [timeline, setTimeline] = React.useState<{ academicYear: string; semester: string } | null>(null);
+
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/active-clearance-timeline")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => setTimeline(data))
+      .catch(() => setTimeline(null));
+  }, []);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -62,8 +72,8 @@ export default function DualRoleFacultyDashboard() {
       <main className="dashboard p-4">
         <WelcomeAcademicCard
           name={displayName}
-          topLeft={{ label: "Academic Year", value: "2025–2026" }}
-          topRight={{ label: "Semester", value: "1" }}
+          topLeft={{ label: "Academic Year", value: timeline?.academicYear || "" }}
+          topRight={{ label: "Semester", value: timeline?.semester || "" }}
           rows={[
             { label: "College", value: "College of Computer Studies" },
             { label: "Department", value: "Information Technology" },
