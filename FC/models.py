@@ -166,7 +166,6 @@ class Clearance(models.Model):
 
 
 class Requirement(models.Model):
-    requirement_id = models.BigAutoField(primary_key=True)
     title = models.CharField(max_length=200)
     description = models.TextField(null=True, blank=True)
     required_physical = models.BooleanField(default=False)
@@ -190,7 +189,6 @@ class Requirement(models.Model):
 
 
 class ClearanceRequest(models.Model):
-    request_id = models.BigAutoField(primary_key=True)
     class Status(models.TextChoices):
         PENDING = "PENDING", "PENDING"
         APPROVED = "APPROVED", "APPROVED"
@@ -278,8 +276,8 @@ class ActivityLog(models.Model):
         CREATED_REQUIREMENTS = "created_requirements", "created_requirements"
         EDITED_REQUIREMENTS = "edited_requirements", "edited_requirements"
         DELETED_REQUIREMENTS = "deleted_requirements", "deleted_requirements"
-        USER_LOGOUT = "user_logout", "user_logout"
         EDITED_ANNOUNCEMENT = "edited_announcement", "edited_announcement"
+        USER_LOGOUT = "user_logout", "user_logout"
         ADDED_ASSISTANT_APPROVER = "added_assistant_approver", "added_assistant_approver"
         UPDATED_ASSISTANT_APPROVER = "updated_assistant_approver", "updated_assistant_approver"
         REMOVED_ASSISTANT_APPROVER = "removed_assistant_approver", "removed_assistant_approver"
