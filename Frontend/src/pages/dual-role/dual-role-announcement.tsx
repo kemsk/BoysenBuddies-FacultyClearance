@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import "../../index.css"; 
-import { CISOHeader } from "../../stories/components/header";
+import { DualRoleHeader } from "../../stories/components/header";
 
 import {
   type AnnouncementItem,
@@ -80,7 +80,7 @@ export default function DualRoleAnnouncements() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <CISOHeader />
+        <DualRoleHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
@@ -92,7 +92,7 @@ export default function DualRoleAnnouncements() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/system-admin-dashboard">Dashboard</Link>
+                <Link to="/dual-role-approver-dashboard">Dashboard</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -103,7 +103,7 @@ export default function DualRoleAnnouncements() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/system-admin-dashboard")}> 
+          <Button variant="back" onClick={() => navigate("/dual-role-approver-dashboard")}> 
             <img src="BlackArrowIcon.png" alt="back" />Back
           </Button>
         </div>

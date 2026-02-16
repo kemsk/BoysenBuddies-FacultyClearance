@@ -19,7 +19,7 @@ export default function HROAction() {
             icon={<Users className="h-9 w-9" />}
             title="View Student Assistants"
             description="Check the list of Student Assistants\nin your department"
-            to="/student-assistant-list"
+            to="/HRO-assistant-list"
           />
 
           <ActionNavCard
@@ -30,9 +30,9 @@ export default function HROAction() {
               className="h-9 w-9"
             />
           }
-            title="Check Activity Logs"
-            description="Check the previous actions"
-            to="/activity-logs"
+            title="Export & Archive Clearance"
+            description="Export and archive clearance"
+            to="/HRO-export-archive-clearance"
           />
 
 

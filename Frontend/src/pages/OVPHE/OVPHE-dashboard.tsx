@@ -86,7 +86,7 @@ export default function OVPHEDashboard() {
 
           <SystemGuidlinesCard
             items={items}
-            headerActionHref="/system-guideline"
+            headerActionHref="/OVPHE-system-guideline"
             headerActionImgSrc="/_WhiteArrowIcon.png"
             headerActionImgAlt="Open Requirements"
             cardName="System Guidelines"
@@ -96,7 +96,7 @@ export default function OVPHEDashboard() {
 
           <AnnouncementsCard 
           items={dashboardAnnouncements} 
-          headerActionHref="/announcement"
+          headerActionHref="/OVPHE-announcements"
           headerActionImgSrc="/BlackChevronIcon.png"
           headerActionImgAlt="Open Announcements"
           

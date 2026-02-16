@@ -60,7 +60,7 @@ export default function Approverdashboard() {
 
           <RequirementsListCard
             items={requirementItems}
-            headerActionHref="/requirement-list"
+            headerActionHref="/approver-requirement-list"
             headerActionImgSrc="/_WhiteArrowIcon.png"
             headerActionImgAlt="Open Requirements"
           />
