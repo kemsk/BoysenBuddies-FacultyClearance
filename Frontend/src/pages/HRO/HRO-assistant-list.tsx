@@ -1,5 +1,5 @@
 import "../../index.css";
-import { ApprovalHeader, HROHeader } from "../../stories/components/header";
+import { ApprovalHeader } from "../../stories/components/header";
 
 import {
   Select,
@@ -32,12 +32,9 @@ import { SearchInputGroup } from "../../stories/components/input-group";
 
 import { useState } from "react";
 
-import { Link, useNavigate } from "react-router-dom";
-
-import { Button } from "../../stories/components/button";
+import { Link } from "react-router-dom";
 
 export default function HROAssistantList() {
-  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<StudentAssistantItem[]>([
     {
@@ -87,7 +84,7 @@ export default function HROAssistantList() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <HROHeader />
+        <ApprovalHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
@@ -100,7 +97,7 @@ export default function HROAssistantList() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/HRO-action">Action</Link>
+                <Link to="/action">Action</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -109,13 +106,7 @@ export default function HROAssistantList() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-
-        <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/HRO-action")}> 
-            <img src="BlackArrowIcon.png" alt="back" />Back
-          </Button>
-        </div>
-
+       
        <div className="mt-5 space-y-5">
           <div className="w-full max-w-[520px]">
             <SearchInputGroup
@@ -126,7 +117,6 @@ export default function HROAssistantList() {
             />
           </div>
         </div>
-
 
         <div className="flex flex-wrap items-left gap-3 overflow-x-auto mt-4">
 

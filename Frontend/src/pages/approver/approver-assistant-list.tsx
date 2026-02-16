@@ -31,11 +31,10 @@ import {
 import { SearchInputGroup } from "../../stories/components/input-group";
 
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Button } from "../../stories/components/button";
+
+import { Link } from "react-router-dom";
 
 export default function ApproverAssistantList() {
-  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<StudentAssistantItem[]>([
     {
@@ -98,7 +97,7 @@ export default function ApproverAssistantList() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/approver-action">Action</Link>
+                <Link to="/action">Action</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -107,12 +106,6 @@ export default function ApproverAssistantList() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-
-        <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/Approver-Action")}> 
-            <img src="BlackArrowIcon.png" alt="back" />Back
-          </Button>
-        </div>
        
        <div className="mt-5 space-y-5">
           <div className="w-full max-w-[520px]">

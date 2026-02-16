@@ -103,7 +103,7 @@ export default function CISOAnnouncements() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/CISO-dashboard">Dashboard</Link>
+                <Link to="/system-admin-dashboard">Dashboard</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -114,7 +114,7 @@ export default function CISOAnnouncements() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/CISO-dashboard")}> 
+          <Button variant="back" onClick={() => navigate("/system-admin-dashboard")}> 
             <img src="BlackArrowIcon.png" alt="back" />Back
           </Button>
         </div>

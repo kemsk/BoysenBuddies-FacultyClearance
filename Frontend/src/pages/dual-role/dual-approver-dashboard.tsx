@@ -74,7 +74,7 @@ export default function DualRoleApproverDashboard() {
             icon={<img src="PrimarySendIcon.png" alt="Clearance Requests" className="h-9 w-9" />}
             title="Clearance Requests"
             description="View all clearance requests for your Department or Office"
-            to="/dual-role-clearance"
+            to="/clearance-requests"
           />
 
         <ActionNavCard

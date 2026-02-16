@@ -1,10 +1,6 @@
 import "../../index.css";
 import { DualRoleHeader } from "../../stories/components/header";
 
-
-import { Button } from "../../stories/components/button";
-
-import { Link, useNavigate } from "react-router-dom";
 import {
   Select,
   SelectContent,
@@ -36,10 +32,10 @@ import { SearchInputGroup } from "../../stories/components/input-group";
 
 import { useState } from "react";
 
+import { Link } from "react-router-dom";
+import DualRoleAction from "./dual-role-action";
 
 export default function DualRoleApproverAssistantList() {
-  
-  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<StudentAssistantItem[]>([
     {
@@ -140,12 +136,6 @@ export default function DualRoleApproverAssistantList() {
               </SelectContent>
             </Select>
           </div>
-         
-         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/dual-role-action")}> 
-            <img src="BlackArrowIcon.png" alt="back" />Back
-          </Button>
-        </div>
 
         <div className="mt-7">
           <StudentAssistantsCard

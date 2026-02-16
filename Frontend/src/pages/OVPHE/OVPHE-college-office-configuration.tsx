@@ -21,7 +21,7 @@ import {
 
 import { Dialog, DialogContent } from "../../stories/components/dialog";
 import { Input } from "../../stories/components/input";
-
+import { Checkbox } from "../../stories/components/checkbox";
 import { Badge } from "../../stories/components/badge";
 
 import {

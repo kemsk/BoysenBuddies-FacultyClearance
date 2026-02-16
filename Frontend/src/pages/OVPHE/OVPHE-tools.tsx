@@ -25,7 +25,7 @@ export default function OVPHETools() {
             }
             title="Clearance Timeline"
             description="View and set the clearance timeline"
-            to="/OVPHE-clearance-timeline"
+            to="/clearance-timeline"
           />
 
           <ActionNavCard
@@ -38,7 +38,7 @@ export default function OVPHETools() {
             }
             title="College & Office Configuration"
             description="View and set the clearance timeline"
-            to="/OVPHE-college-office-configuration"
+            to="/college-office-configuration"
           />
 
 
@@ -52,14 +52,14 @@ export default function OVPHETools() {
             }
             title="System Analytics"
             description="Check the completion rate per college"
-            to="/OVPHE-system-analytics"
+            to="/system-analytics"
           />
 
           <ActionNavCard
             icon={<Eye className="h-9 w-9" />}
             title="Check Activity Logs"
             description="Check the previous actions"
-            to="/OVPHE-activity-logs"
+            to="/activity-logs"
           />
         </div>
       </main>

@@ -26,7 +26,7 @@ export default function CISOTools() {
             }
             title="Faculty Data Dump"
             description="Check current system user dump"
-            to="/CISO-faculty-data-dump"
+            to="/faculty-data-dump"
           />
 
 
@@ -40,14 +40,14 @@ export default function CISOTools() {
             }
             title="Manage System Users"
             description="View and set the system approvers"
-            to="/CISO-manage-system-user"
+            to="/manage-system-user"
           />
 
           <ActionNavCard
             icon={<Eye className="h-9 w-9" />}
             title="Check Activity Logs"
             description="Check the previous actions"
-            to="/CISO-activity-logs"
+            to="/activity-logs"
           />
         </div>
       </main>

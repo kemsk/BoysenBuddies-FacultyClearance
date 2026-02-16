@@ -39,7 +39,7 @@ export default function HRORequirementList() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/HRO-dashboard">Dashboard</Link>
+                <Link to="/approver-dashboard">Dashboard</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -50,7 +50,7 @@ export default function HRORequirementList() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/HRO-dashboard")}> 
+          <Button variant="back" onClick={() => navigate("/approver-dashboard")}> 
             <img src="BlackArrowIcon.png" alt="back" />Back
           </Button>
         </div>

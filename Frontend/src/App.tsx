@@ -46,7 +46,6 @@ import HROExportArchiveClearance from "./pages/HRO/HRO-export-archive-clearance"
 import HRONotification from "./pages/HRO/HRO-notification";
 import HROAssistantList from "./pages/HRO/HRO-assistant-list";
 import HROActivityLogs from "./pages/HRO/HRO-activity-logs";
-import HROClearance from "./pages/HRO/HRO-clearance";
 
 import DualRoleAction from "./pages/dual-role/dual-role-action";
 import DualRoleClearance from "./pages/dual-role/dual-role-clearance";
@@ -58,6 +57,9 @@ import DualRoleFacultyDashboard from "./pages/dual-role/dual-faculty-member-dash
 import DualRoleApproverDashboard from "./pages/dual-role/dual-approver-dashboard";
 import DualRoleActivityLogs from "./pages/dual-role/dual-role-activity-logs";
 
+import SystemAdminDashboard from "./pages/system-admin/system-admin-dashboard";
+import SystemGuideline from "./pages/system-admin/system-guideline";
+import Announcements from "./pages/system-admin/announcement";
 
 function App() {
   return (
@@ -101,7 +103,6 @@ function App() {
         { <Route path="/HRO-notification" element={<HRONotification />} />}
         { <Route path="/HRO-assistant-list" element={<HROAssistantList />} />}
         {<Route path="/HRO-activity-logs" element={<HROActivityLogs />} />}
-        { <Route path="/HRO-clearance" element={<HROClearance />} />}
 
         { <Route path="/OVPHE-dashboard" element={<OVPHEDashboard />} />} 
         { <Route path="/OVPHE-tools" element={<OVPHETools />} />}
@@ -109,6 +110,7 @@ function App() {
         { <Route path="/OVPHE-college-office-configuration" element={<OVPHECollegeOfficeConfiguration />} />}
         { <Route path="/OVPHE-system-analytics" element={<OVPHESystemAnalytics />} />}
         { <Route path="/OVPHE-system-guideline" element={<OVPHESystemGuideline />} />}
+        { <Route path="/OVPHE-announcement" element={<OVPHEAnnouncements />} />}
         { <Route path="/OVPHE-announcements" element={<OVPHEAnnouncements />} />}
         { <Route path="/OVPHE-notification" element={<OVPHENotification />} />}
         {<Route path="/OVPHE-activity-logs" element={<OVPHEActivityLogs />} />}
@@ -122,7 +124,9 @@ function App() {
         { <Route path="/CISO-notification" element={<CISONotification />} />}
         {<Route path="/CISO-activity-logs" element={<CISOActivityLogs />} />}
 
-
+        { <Route path="/system-admin-dashboard" element={<SystemAdminDashboard />} />}
+        { <Route path="/system-guideline" element={<SystemGuideline />} />}
+        { <Route path="/announcement" element={<Announcements />} />}
 
         <Route path="*" element={<Login />} /> {/* fallback route */}
       </Routes>

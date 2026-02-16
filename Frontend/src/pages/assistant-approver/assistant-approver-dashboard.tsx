@@ -60,7 +60,7 @@ export default function AssistantApproverDashboard() {
 
           <RequirementsListCard
             items={requirementItems}
-            headerActionHref="/assistant-approver-requirement-list"
+            headerActionHref="/requirement-list"
             headerActionImgSrc="/_WhiteArrowIcon.png"
             headerActionImgAlt="Open Requirements"
           />

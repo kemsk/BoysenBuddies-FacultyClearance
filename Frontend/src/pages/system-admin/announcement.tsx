@@ -1,18 +1,16 @@
 import * as React from "react";
 
 import "../../index.css"; 
-import { OVPHEHeader } from "../../stories/components/header";
+import { CISOHeader } from "../../stories/components/header";
 
 import {
-  AnnouncementsCard,
   type AnnouncementItem,
-  WelcomeAcademicCard,
   SectionListCard,
-  type SystemGuidlinesItem,
 } from "../../stories/components/cards";
 
 import { Button } from "../../stories/components/button";
 import { Divider } from "../../stories/components/divider";
+import { Checkbox } from "../../stories/components/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,10 +19,10 @@ import {
 } from "../../stories/components/alert-dialog";
 
 import {
-  EditSystemGuidelinesDialog,
-  loadSystemGuidelinesItems,
-  saveSystemGuidelinesItems,
-} from "../../stories/components/edit-system-guidelines-dialog";
+  EditAnnouncementsDialog,
+  loadAnnouncementsItems,
+  saveAnnouncementsItems,
+} from "../../stories/components/edit-announcements-dialog";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -58,10 +56,10 @@ function GuidelinesToggle({
   );
 }
 
-export default function OVPHESystemGuideline() {
+export default function Announcements() {
   const navigate = useNavigate();
 
-  const [items, setItems] = React.useState<SystemGuidlinesItem[]>([]);
+  const [items, setItems] = React.useState<AnnouncementItem[]>([]);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
   const [confirm, setConfirm] = React.useState<
@@ -70,40 +68,25 @@ export default function OVPHESystemGuideline() {
   >({ open: false });
 
   React.useEffect(() => {
-    fetch("/admin/xu-faculty-clearance/api/ovphe/system-guidelines")
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: { items: SystemGuidlinesItem[] }) => {
-        const initial = (data.items ?? []).map((item) => ({
-          ...item,
-          enabled: item.enabled ?? true,
-        }));
-        setItems(initial);
-      })
-      .catch(() => {
-        const initial = loadSystemGuidelinesItems().map((item) => ({
-          ...item,
-          enabled: item.enabled ?? true,
-        }));
-        setItems(initial);
-      });
+    const initial = loadAnnouncementsItems().map((item) => ({
+      ...item,
+      enabled: item.enabled ?? true,
+    }));
+    setItems(initial);
   }, []);
-
-
-
-
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
       
       {/* HEADER */}
       <div className="header mb-3">
-        <OVPHEHeader />
+        <CISOHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
       <main className="dashboard p-4 mt-2 space-y-3">
 
-        <h1 className="text-2xl text-left text-primary font-bold">System Guidelines</h1>
+        <h1 className="text-2xl text-left text-primary font-bold">Announcements</h1>
 
         <Breadcrumb className="mt-2">
           <BreadcrumbList>
@@ -114,19 +97,19 @@ export default function OVPHESystemGuideline() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>System Guidelines</BreadcrumbPage>
+              <BreadcrumbPage>Announcements</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/approver-dashboard")}> 
+          <Button variant="back" onClick={() => navigate("/system-admin-dashboard")}> 
             <img src="BlackArrowIcon.png" alt="back" />Back
           </Button>
         </div>
 
           <SectionListCard
-            title="System Guidelines"
+            title="Announcements"
             headerActionImgSrc="/WhitePlusIcon.png"
             headerActionImgAlt="Add Maintenance Window"
             headerActionOnClick={() => {
@@ -134,30 +117,30 @@ export default function OVPHESystemGuideline() {
               setDialogOpen(true);
             }}
           >
-            <div className="p-0">
-              {items.map((item, idx) => {
-                const enabled = item.enabled ?? true;
-                const descriptionText = Array.isArray(item.description)
-                  ? item.description
-                      .map((d) => (typeof d === "string" ? d : d.text))
-                      .join("\n")
-                  : item.description;
+            <div className="p-4">
+              <div className="space-y-6">
+                {items.map((item, idx) => {
+                  const enabled = item.enabled ?? true;
+                  const descriptionText = item.description;
 
-                return (
-                  <div key={`${item.title}-${idx}`} className="bg-muted m-4">
-                    <div className="flex items-center justify-between bg-muted px-4 py-3">
-                      <div className="text-md font-bold text-foreground">{item.title}</div>
-                      <GuidelinesToggle
-                        checked={enabled}
-                        onChange={(next) => {
-                          setConfirm({
-                            open: true,
-                            type: next ? "enable" : "disable",
-                            index: idx,
-                          });
-                        }}
-                      />
-                    </div>
+                  return (
+                    <div
+                      key={`${item.title}-${idx}`}
+                      className="overflow-hidden rounded-md bg-muted"
+                    >
+                      <div className="flex items-center justify-between bg-muted px-4 py-4">
+                        <div className="text-lg font-bold text-foreground">{item.title}</div>
+                        <GuidelinesToggle
+                          checked={enabled}
+                          onChange={(next) => {
+                            setConfirm({
+                              open: true,
+                              type: next ? "enable" : "disable",
+                              index: idx,
+                            });
+                          }}
+                        />
+                      </div>
 
                     <Divider color="border-[hsl(var(--white))]" />
 
@@ -169,47 +152,54 @@ export default function OVPHESystemGuideline() {
                       <div className="mt-3 text-sm text-muted-foreground">
                         Created: {item.timestamp}
                       </div>
-                    </div>
 
-                    <Divider color="border-[hsl(var(--whiter))]" />
 
-                    <div className="bg-muted px-4 py-4">
-                      <div className="flex items-center justify-center">
-                        {enabled ? (
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            className="h-9 w-[120px] rounded-md bg-muted-foreground/20 text-foreground hover:bg-muted-foreground/20"
-                            onClick={() => {
-                              setEditingIndex(idx);
-                              setDialogOpen(true);
-                            }}
-                          >
-                            EDIT
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="sm"
-                            className="h-9 w-[120px] rounded-md"
-                            onClick={() => {
-                              setConfirm({ open: true, type: "delete", index: idx });
-                            }}
-                          >
-                            DELETE
-                          </Button>
-                        )}
+                      <div className="mt-4 flex items-center gap-2 text-sm text-foreground">
+                        <Checkbox
+                          variant="primary"
+                          checked={!!item.pinned}
+                          disabled
+                        />
+                        <span className="font-semibold">Pin announcement</span>
                       </div>
                     </div>
 
-                    {idx < items.length - 1 ? (
-                      <Divider  />
-                    ) : null}
-                  </div>
-                );
-              })}
+                    <Divider color="border-[hsl(var(--white))]" className="mt-3"/>
+
+                      <div className="bg-muted px-4 py-5">
+                        <div className="flex items-center justify-center">
+                          {enabled ? (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              className="h-9 w-[120px] rounded-md bg-muted-foreground/20 text-foreground hover:bg-muted-foreground/20"
+                              onClick={() => {
+                                setEditingIndex(idx);
+                                setDialogOpen(true);
+                              }}
+                            >
+                              EDIT
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="h-9 w-[120px] rounded-md"
+                              onClick={() => {
+                                setConfirm({ open: true, type: "delete", index: idx });
+                              }}
+                            >
+                              DELETE
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </SectionListCard>
 
@@ -283,7 +273,7 @@ export default function OVPHESystemGuideline() {
                             if (confirm.type === "delete") {
                               const updated = items.filter((_, i) => i !== confirm.index);
                               setItems(updated);
-                              saveSystemGuidelinesItems(updated);
+                              saveAnnouncementsItems(updated);
                               setConfirm({ open: false });
                               return;
                             }
@@ -293,17 +283,15 @@ export default function OVPHESystemGuideline() {
                               i === confirm.index ? { ...it, enabled: nextEnabled } : it
                             );
                             setItems(updated);
-                            saveSystemGuidelinesItems(updated);
+                            saveAnnouncementsItems(updated);
                             setConfirm({ open: false });
                           }}
                         >
                           {actionLabel}
                         </AlertDialogAction>
 
-                        <AlertDialogCancel className="h-11 w-full rounded-md ">
-                          <Button variant="action" className="h-11 w-full rounded-md bg-muted text-muted-foreground hover:bg-muted">
-                            Cancel
-                          </Button>
+                        <AlertDialogCancel className="h-11 w-full ">
+                          Cancel
                         </AlertDialogCancel>
                       </div>
                     </div>
@@ -313,7 +301,7 @@ export default function OVPHESystemGuideline() {
             </AlertDialogContent>
           </AlertDialog>
 
-          <EditSystemGuidelinesDialog
+          <EditAnnouncementsDialog
             open={dialogOpen}
             onOpenChange={setDialogOpen}
             initialValues={
@@ -321,13 +309,12 @@ export default function OVPHESystemGuideline() {
                 ? {
                     title: items[editingIndex]?.title ?? "",
                     description:
-                      typeof items[editingIndex]?.description === "string"
-                        ? items[editingIndex]?.description
-                        : "",
+                      items[editingIndex]?.description ?? "",
+                    pinned: items[editingIndex]?.pinned ?? false,
                   }
                 : undefined
             }
-            onSave={({ title, description }) => {
+            onSave={({ title, description, pinned }) => {
               if (editingIndex !== null) {
                 const updated = items.map((it, idx) =>
                   idx === editingIndex
@@ -335,27 +322,28 @@ export default function OVPHESystemGuideline() {
                         ...it,
                         title,
                         description,
+                        pinned,
                       }
                     : it
                 );
                 setItems(updated);
-                saveSystemGuidelinesItems(updated);
+                saveAnnouncementsItems(updated);
                 setEditingIndex(null);
                 return;
               }
 
-              const next: SystemGuidlinesItem[] = [
+              const next: AnnouncementItem[] = [
                 {
+                  pinned,
                   title,
                   description,
-                  email: "ciso@xu.edu.ph",
                   timestamp: new Date().toLocaleString(),
                   enabled: true,
                 },
                 ...items,
               ];
               setItems(next);
-              saveSystemGuidelinesItems(next);
+              saveAnnouncementsItems(next);
             }}
           />
   

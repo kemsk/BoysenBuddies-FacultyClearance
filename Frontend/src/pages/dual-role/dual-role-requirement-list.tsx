@@ -2,6 +2,12 @@ import "../../index.css";
 import { DualRoleHeader } from "../../stories/components/header";
 
 import {
+  AnnouncementsCard,
+  type AnnouncementItem,
+  WelcomeAcademicCard,
+  ApproverWelcomeMetrics,
+  RequirementsListCard,
+  type RequirementListItem,
   RequirementEditCard,
 } from "../../stories/components/cards";
 
@@ -50,7 +56,7 @@ export default function DualRoleRequirementList() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/dual-role-approver-dashboard")}> 
+          <Button variant="back" onClick={() => navigate("/approver-dashboard")}> 
             <img src="BlackArrowIcon.png" alt="back" />Back
           </Button>
         </div>

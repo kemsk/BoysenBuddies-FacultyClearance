@@ -81,7 +81,7 @@ export default function ExportArchiveClearance() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/HRO-action">Action</Link>
+                <Link to="/CISO-tools">Tools</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -92,7 +92,7 @@ export default function ExportArchiveClearance() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/HRO-action")}> 
+          <Button variant="back" onClick={() => navigate("/CISO-tools")}> 
             <img src="BlackArrowIcon.png" alt="back" />Back
           </Button>
         </div>

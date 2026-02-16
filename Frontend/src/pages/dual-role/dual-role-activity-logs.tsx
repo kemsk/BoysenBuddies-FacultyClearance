@@ -1,7 +1,6 @@
 import "../../index.css";
-import { ApprovalHeader, DualRoleHeader } from "../../stories/components/header";
+import { ApprovalHeader } from "../../stories/components/header";
 
-import { Button } from "../../stories/components/button";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -22,13 +21,12 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useEffect, useMemo, useState } from "react";
 
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 export default function DualRoleActivityLogs() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 40;
-    const navigate = useNavigate();
 
   const items: ActivityLogItem[] = [
     {
@@ -348,7 +346,7 @@ export default function DualRoleActivityLogs() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <DualRoleHeader />
+        <ApprovalHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
@@ -361,7 +359,7 @@ export default function DualRoleActivityLogs() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/dual-role-action">Action</Link>
+                <Link to="/action">Action</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -370,12 +368,6 @@ export default function DualRoleActivityLogs() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-
-        <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/dual-role-action")}> 
-            <img src="BlackArrowIcon.png" alt="back" />Back
-          </Button>
-        </div>
        
        <div className="mt-5 space-y-5">
           <div className="w-full max-w-[520px]">

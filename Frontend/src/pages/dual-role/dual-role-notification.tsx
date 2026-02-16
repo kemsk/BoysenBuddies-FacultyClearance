@@ -1,7 +1,7 @@
 import React from "react";
 import "../../index.css"; // ensure index.css is accessible from src
 import { Button } from "../../stories/components/button";
-import { DualRoleHeader } from "../../stories/components/header";
+import { FacultyHeader } from "../../stories/components/header";
 
 import {
   NotificationsCard,
@@ -50,7 +50,7 @@ export default function DualRoleNotification() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <DualRoleHeader />
+        <FacultyHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
