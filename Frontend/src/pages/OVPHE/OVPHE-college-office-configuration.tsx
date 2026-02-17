@@ -81,42 +81,7 @@ type ApproverFlowItem = {
 
 type DraftDepartment = { name: string; short: string };
 
-const DEFAULT_COLLEGES: CollegeItem[] = [
-  { id: "coa", name: "College of Agriculture", short: "COA" },
-  { id: "cas", name: "College of Arts and Sciences", short: "CAS" },
-  { id: "ccs", name: "College of Computer Studies", short: "CCS" },
-  { id: "coe", name: "College of Engineering", short: "COE" },
-  { id: "con", name: "College of Nursing", short: "CON" },
-  { id: "sbm", name: "School of Business and Management", short: "SBM" },
-  { id: "soe", name: "School of Education", short: "SOE" },
-  { id: "sol", name: "School of Law", short: "SOL" },
-  { id: "som", name: "School of Medicine", short: "SOM" },
-];
-
-const DEFAULT_DEPARTMENTS: DepartmentItem[] = [
-  { id: "cs", collegeId: "ccs", name: "Computer Science", short: "CS" },
-  {
-    id: "emc",
-    collegeId: "ccs",
-    name: "Entertainment and Multimedia Computing",
-    short: "EMC",
-  },
-  { id: "it", collegeId: "ccs", name: "Information Technology", short: "IT" },
-  { id: "is", collegeId: "ccs", name: "Information System", short: "IS" },
-];
-
-const DEFAULT_OFFICES: OfficeItem[] = [
-  { id: "reg", name: "University Registrar", short: "REG" },
-  { id: "ubry", name: "University Library", short: "LIB" },
-  {
-    id: "OVPHE",
-    name: "Office of the Vice President for Higher Education",
-    short: "OVPHE",
-  },
-  { id: "hro", name: "Human Resources Office", short: "HRO" },
-];
-
-const APPROVER_CATEGORIES = [
+const FALLBACK_APPROVER_CATEGORIES = [
   "Department Chair",
   "College Dean",
   "University Registrar",
@@ -124,12 +89,6 @@ const APPROVER_CATEGORIES = [
   "Office of the Vice President for Higher Education",
   "Human Resources Office",
 ];
-
-const DEFAULT_APPROVER_FLOW: ApproverFlowItem[] = APPROVER_CATEGORIES.map((category) => ({
-  id: `approver-${category.toLowerCase().replace(/\s+/g, "-")}`,
-  category,
-  collegeIds: [],
-}));
 
 async function apiJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const r = await fetch(input, {
@@ -661,10 +620,10 @@ export default function OVPHECollegeOfficeConfiguration() {
         setSelectedCollegeId(initialColleges[0]?.id ?? "");
       })
       .catch(() => {
-        setColleges(DEFAULT_COLLEGES);
-        setDepartments(DEFAULT_DEPARTMENTS);
-        setOffices(DEFAULT_OFFICES);
-        setSelectedCollegeId(DEFAULT_COLLEGES[2]?.id ?? DEFAULT_COLLEGES[0]?.id ?? "");
+        setColleges([]);
+        setDepartments([]);
+        setOffices([]);
+        setSelectedCollegeId("");
       });
 
     fetch("/admin/xu-faculty-clearance/api/ovphe/approver-flow")
@@ -674,9 +633,15 @@ export default function OVPHECollegeOfficeConfiguration() {
         setApproverFlow(steps);
       })
       .catch(() => {
-        setApproverFlow(DEFAULT_APPROVER_FLOW);
+        setApproverFlow([]);
       });
   }, []);
+
+  const approverCategories = React.useMemo(() => {
+    const raw = approverFlow.map((s) => (s.category ?? "").trim()).filter(Boolean);
+    const unique = Array.from(new Set(raw));
+    return unique.length ? unique : FALLBACK_APPROVER_CATEGORIES;
+  }, [approverFlow]);
 
   const filteredDepartments = React.useMemo(
     () => departments.filter((d) => d.collegeId === selectedCollegeId),
@@ -970,7 +935,7 @@ export default function OVPHECollegeOfficeConfiguration() {
                           </div>
                           <div className="mt-2 flex flex-wrap items-center gap-2">
                             {badges.map((b) => (
-                              <Badge key={b} variant="default" className="h-5 rounded-full px-2 text-[10px]">
+                              <Badge key={b} className="h-5 rounded-full px-2 text-[10px]">
                                 {b}
                               </Badge>
                             ))}
@@ -1059,7 +1024,7 @@ export default function OVPHECollegeOfficeConfiguration() {
           open={addApproverOpen}
           onOpenChange={setAddApproverOpen}
           colleges={colleges}
-          categories={APPROVER_CATEGORIES}
+          categories={approverCategories}
           onCreate={(payload) => {
             (async () => {
               const created = await apiJson<ApproverFlowItem>(
@@ -1173,7 +1138,9 @@ export default function OVPHECollegeOfficeConfiguration() {
                   body: JSON.stringify({ name: payload.name, short: payload.short }),
                 }
               );
-              setDepartments((prev) => prev.map((d) => (d.id === editingDepartmentId ? { ...d, ...updated } : d)));
+              setDepartments((prev) =>
+                prev.map((d) => (d.id === editingDepartmentId ? { ...d, ...updated } : d))
+              );
             })().catch(() => {
               // ignore; can be handled by UI later
             });
@@ -1213,7 +1180,7 @@ export default function OVPHECollegeOfficeConfiguration() {
             if (!open) setEditingApproverId(null);
           }}
           colleges={colleges}
-          categories={APPROVER_CATEGORIES}
+          categories={approverCategories}
           initialValues={
             editingApprover
               ? {

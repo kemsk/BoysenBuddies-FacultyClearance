@@ -77,9 +77,9 @@ export default function CISODashboard() {
       {/* DASHBOARD CONTENT */}
       <main className="dashboard p-4 mt-2 space-y-3">
         <WelcomeAcademicCard
-          name={displayName || "John Doe"}
-          topLeft={{ label: "Academic Year", value: "2025–2026" }}
-          topRight={{ label: "Semester", value: "1" }}
+          name={displayName}
+          topLeft={{ label: "Academic Year", value: "" }}
+          topRight={{ label: "Semester", value: "" }}
           rows={[{ label: "System Admin Role", value: profile?.role ?? "" }]}
         />
         
