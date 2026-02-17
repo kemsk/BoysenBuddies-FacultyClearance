@@ -12,38 +12,38 @@ import {
 export default function Notification() {
   const [readAll, setReadAll] = React.useState(false);
 
-  const items: NotificationItem[] = [
-    {
-      title: "Department Chair",
-      status: "approved",
-      details: ["Submission of Syllabus", "Submission of Grades"],
-      timestamp: "December 3, 2025, 9:30 AM",
-    },
-    {
-      title: "University Registrar",
-      status: "rejected",
-      details: ["Submission of Grades", "Remarks: incomplete submission"],
-      timestamp: "December 1, 2025, 9:30 AM",
-    },
-    {
-      title: "University Registrar",
-      status: "submitted",
-      details: ["Submission of Grades"],
-      timestamp: "November 28, 2025, 9:30 AM",
-    },
-    {
-      title: "University Registrar",
-      status: "submitted",
-      details: ["Submission of Grades"],
-      timestamp: "November 28, 2025, 9:30 AM",
-    },
-    {
-      title: "University Registrar",
-      status: "submitted",
-      details: ["Submission of Grades"],
-      timestamp: "November 28, 2025, 9:30 AM",
-    },
-  ];
+  const [items, setItems] = React.useState<NotificationItem[]>([]);
+
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/faculty/notifications")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then(
+        (data: {
+          items: Array<{
+            title: string;
+            description?: string;
+            status?: string;
+            details: string[];
+            timestamp: string;
+            is_read?: boolean;
+          }>;
+        }) => {
+        const mapped = Array.isArray(data.items)
+          ? data.items.map((n) => ({
+              title: n.title,
+              status: n.status as any,
+              description: n.description ?? "",
+              details: Array.isArray(n.details) ? n.details : [],
+              timestamp: n.timestamp,
+              is_read: !!n.is_read,
+            }))
+          : [];
+        setItems(mapped);
+      })
+      .catch(() => {
+        setItems([]);
+      });
+  }, []);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -62,7 +62,6 @@ export default function Notification() {
         <div className="flex items-center justify-end">
           <Button
             className="h-8 px-3 text-xs"
-            variant="default"
             type="button"
             onClick={() => setReadAll(true)}
           >

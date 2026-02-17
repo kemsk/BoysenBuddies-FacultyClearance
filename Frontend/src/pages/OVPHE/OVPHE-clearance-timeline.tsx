@@ -25,8 +25,6 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../../stories/components/button";
 
-const CLEARANCE_TIMELINE_STORAGE_KEY = "clearance_timeline_items_v1";
-
 type StoredClearanceTimelineItem = {
   id: string;
   startYear: string;
@@ -40,59 +38,25 @@ type StoredClearanceTimelineItem = {
   createdAt: string;
 };
 
-const DEFAULT_TIMELINE_ITEMS: StoredClearanceTimelineItem[] = [
-  {
-    id: "ct-default-1",
-    startYear: "2025",
-    endYear: "2026",
-    semester: "First Semester",
-    semesterStartDate: "",
-    semesterEndDate: "",
-    clearanceStartDate: "2025-12-01",
-    clearanceEndDate: "2025-12-31",
-    setAsActive: true,
-    createdAt: "November 1, 2025, 04:02 PM",
-  },
-  {
-    id: "ct-default-2",
-    startYear: "2024",
-    endYear: "2025",
-    semester: "Intersession",
-    semesterStartDate: "",
-    semesterEndDate: "",
-    clearanceStartDate: "2025-12-01",
-    clearanceEndDate: "2025-12-31",
-    setAsActive: false,
-    createdAt: "November 1, 2025, 04:02 PM",
-  },
-  {
-    id: "ct-default-3",
-    startYear: "2024",
-    endYear: "2025",
-    semester: "Second Semester",
-    semesterStartDate: "",
-    semesterEndDate: "",
-    clearanceStartDate: "2025-12-01",
-    clearanceEndDate: "2025-12-31",
-    setAsActive: false,
-    createdAt: "November 1, 2025, 04:02 PM",
-  },
-];
+const CLEARANCE_TIMELINES_STORAGE_KEY = "ovphe_clearance_timelines";
 
 function loadTimelineItems(): StoredClearanceTimelineItem[] {
   try {
-    const raw = localStorage.getItem(CLEARANCE_TIMELINE_STORAGE_KEY);
-    if (!raw) return DEFAULT_TIMELINE_ITEMS;
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return DEFAULT_TIMELINE_ITEMS;
-    return parsed as StoredClearanceTimelineItem[];
+    const raw = localStorage.getItem(CLEARANCE_TIMELINES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? (parsed as StoredClearanceTimelineItem[]) : [];
   } catch {
-    return DEFAULT_TIMELINE_ITEMS;
+    return [];
   }
 }
 
 function saveTimelineItems(items: StoredClearanceTimelineItem[]) {
-  localStorage.setItem(CLEARANCE_TIMELINE_STORAGE_KEY, JSON.stringify(items));
+  try {
+    localStorage.setItem(CLEARANCE_TIMELINES_STORAGE_KEY, JSON.stringify(items));
+  } catch {
+    // ignore persistence errors (e.g. private mode / storage full)
+  }
 }
 
 type OVPHEClearanceTimelinesResponse = { items: StoredClearanceTimelineItem[] };
@@ -133,7 +97,7 @@ function createNowTimestamp() {
 export default function OVPHEClearanceTimeline() {
   const navigate = useNavigate();
 
-  const [items, setItems] = React.useState<StoredClearanceTimelineItem[]>([]);
+  const [items, setItems] = React.useState<StoredClearanceTimelineItem[]>(() => loadTimelineItems());
 
   const [createOpen, setCreateOpen] = React.useState(false);
   const [editOpen, setEditOpen] = React.useState(false);
@@ -148,8 +112,7 @@ export default function OVPHEClearanceTimeline() {
         saveTimelineItems(nextItems);
       })
       .catch(() => {
-        const initial = loadTimelineItems();
-        setItems(initial);
+        setItems([]);
       });
   }, []);
 
