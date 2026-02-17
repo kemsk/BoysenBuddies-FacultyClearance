@@ -883,14 +883,17 @@ export type NotificationItemStatus = "approved" | "rejected" | "submitted";
 
 export type NotificationItem = {
   title: string;
-  status: NotificationItemStatus;
+  status?: NotificationItemStatus;
+  description?: string;
   details: string[];
   timestamp: string;
+  is_read?: boolean;
 };
 
 export type NotificationsCardProps = {
   items: NotificationItem[];
   className?: string;
+
   pageSize?: number;
   showMarkAsReadButton?: boolean;
   readAll?: boolean;

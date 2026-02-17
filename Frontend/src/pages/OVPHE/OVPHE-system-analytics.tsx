@@ -72,26 +72,35 @@ export default function SystemAnalytics() {
 
     fetch(`/admin/xu-faculty-clearance/api/ovphe/system-analytics?${params.toString()}`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: { rows: { collegeName: string; completionRate: number }[] }) => {
+      .then(
+        (data: {
+          rows: {
+            collegeName: string;
+            completionRate: number;
+            completedCount?: number;
+            incompleteCount?: number;
+            totalCount?: number;
+          }[];
+        }) => {
         const rows = data.rows ?? [];
         if (rows.length) {
           const first = rows[0];
-          const pct = Math.round((first.completionRate ?? 0) * 100);
           setDonutTitle(first.collegeName || "College");
-          setDonutCompleted(pct);
+          setDonutCompleted(Math.max(0, Number(first.completedCount ?? 0)));
+          setDonutTotal(Math.max(0, Number(first.totalCount ?? 0)));
         } else {
           setDonutTitle("College");
           setDonutCompleted(0);
+          setDonutTotal(0);
         }
-        setDonutTotal(100);
 
         setCompletionSections([
           {
             title: "Completion Rate",
             items: rows.map((r) => ({
               label: r.collegeName || "",
-              completed: Math.round((r.completionRate ?? 0) * 100),
-              total: 100,
+              completed: Math.max(0, Number(r.completedCount ?? 0)),
+              total: Math.max(0, Number(r.totalCount ?? 0)),
             })),
           },
         ]);
@@ -99,7 +108,7 @@ export default function SystemAnalytics() {
       .catch(() => {
         setDonutTitle("College");
         setDonutCompleted(0);
-        setDonutTotal(100);
+        setDonutTotal(0);
         setCompletionSections([]);
       });
   }, [selectedClearance, selectedTerm, selectedCollege, colleges]);
