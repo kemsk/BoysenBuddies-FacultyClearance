@@ -883,9 +883,11 @@ export type NotificationItemStatus = "approved" | "rejected" | "submitted";
 
 export type NotificationItem = {
   title: string;
-  status: NotificationItemStatus;
+  status?: NotificationItemStatus;
+  description?: string;
   details: string[];
   timestamp: string;
+  is_read?: boolean;
 };
 
 export type NotificationsCardProps = {
@@ -957,11 +959,19 @@ export function NotificationsCard({
                 <div className="min-w-0">
                   <div className="text-base font-bold text-black">{item.title}</div>
                   <div className="mt-1 text-sm text-black">
-                    Your submission has been <span className="font-bold">{statusText(item.status)}.</span>
+                    {item.description ? (
+                      item.description
+                    ) : item.status ? (
+                      <>
+                        Your submission has been <span className="font-bold">{statusText(item.status)}.</span>
+                      </>
+                    ) : (
+                      ""
+                    )}
                   </div>
                 </div>
 
-                {!readAll ? <div className="mt-1 h-4 w-4 shrink-0 rounded-full bg-red-500" /> : null}
+                {!readAll && !item.is_read ? <div className="mt-1 h-4 w-4 shrink-0 rounded-full bg-red-500" /> : null}
               </div>
 
               <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-black">

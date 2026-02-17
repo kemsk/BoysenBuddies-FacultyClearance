@@ -373,6 +373,121 @@ def ovphe_clearance_timelines_api(request):
     return JsonResponse({"items": items})
 
 
+def faculty_dashboard_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    email = (request.GET.get("email") or "").strip()
+    university_id = (request.GET.get("university_id") or "").strip()
+
+    if not email and not university_id:
+        email = "faculty.seed@xu.edu.ph"
+
+    qs = Faculty.objects.select_related("user", "college", "department").filter(user__is_active=True)
+    if email:
+        qs = qs.filter(user__email=email)
+    if university_id:
+        qs = qs.filter(user__university_id=university_id)
+
+    faculty = qs.order_by("id").first()
+    if not faculty:
+        return JsonResponse({"detail": "Faculty not found"}, status=404)
+
+    timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year", "-id").first()
+    academic_year = timeline.academic_year if timeline else None
+    term = timeline.term if timeline else None
+
+    clearance = None
+    if academic_year and term:
+        clearance = (
+            Clearance.objects.filter(faculty=faculty, academic_year=academic_year, term=term)
+            .order_by("-id")
+            .first()
+        )
+
+    total_reqs = 0
+    approved_reqs = 0
+    status = "Pending"
+    if clearance:
+        if clearance.status == Clearance.Status.PENDING:
+            status = "Pending"
+        elif clearance.status == Clearance.Status.IN_PROGRESS:
+            status = "In Progress"
+        elif clearance.status == Clearance.Status.COMPLETED:
+            status = "Completed"
+        elif clearance.status == Clearance.Status.REJECTED:
+            status = "Rejected"
+        else:
+            status = str(clearance.status)
+
+        total_reqs = ClearanceRequest.objects.filter(clearance=clearance).count()
+        approved_reqs = ClearanceRequest.objects.filter(
+            clearance=clearance, status=ClearanceRequest.Status.APPROVED
+        ).count()
+
+    return JsonResponse(
+        {
+            "faculty": {
+                "email": faculty.user.email,
+                "universityId": faculty.user.university_id or "",
+                "firstName": faculty.user.first_name or faculty.first_name or "",
+                "middleName": faculty.user.middle_name or faculty.middle_name or "",
+                "lastName": faculty.user.last_name or faculty.last_name or "",
+                "college": faculty.college.name if faculty.college else "",
+                "department": faculty.department.name if faculty.department else "",
+                "facultyType": faculty.faculty_type or "",
+            },
+            "timeline": {
+                "academicYear": academic_year,
+                "term": term,
+            },
+            "clearance": {
+                "status": status,
+                "approvedCount": approved_reqs,
+                "totalCount": total_reqs,
+            },
+        }
+    )
+
+
+def faculty_notifications_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    email = (request.GET.get("email") or "").strip()
+    university_id = (request.GET.get("university_id") or "").strip()
+
+    if not email and not university_id:
+        email = "faculty.seed@xu.edu.ph"
+
+    qs = User.objects.filter(is_active=True, user_type=User.UserType.FACULTY)
+    if email:
+        qs = qs.filter(email=email)
+    if university_id:
+        qs = qs.filter(university_id=university_id)
+
+    user = qs.order_by("id").first()
+    if not user:
+        return JsonResponse({"detail": "Faculty user not found"}, status=404)
+
+    notifications = Notification.objects.filter(user=user).order_by("-created_at", "-id")
+    items = []
+    for n in notifications:
+        items.append(
+            {
+                "id": str(n.id),
+                "title": n.title or "",
+                "description": n.body or "",
+                "status": n.status,
+                "details": list(n.details or []),
+                "timestamp": _format_timestamp(n.created_at),
+                "is_read": bool(n.is_read),
+            }
+        )
+
+    return JsonResponse({"items": items})
+
+
 def ovphe_org_structure_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
@@ -464,29 +579,61 @@ def ovphe_system_analytics_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
-    academic_year = request.GET.get("academic_year")
-    term = request.GET.get("term")
-    college_id = request.GET.get("college_id")
+    academic_year = (request.GET.get("academic_year") or "").strip()
+    term = (request.GET.get("term") or "").strip()
+    college_id = (request.GET.get("college_id") or "").strip()
 
-    qs = SystemAnalytics.objects.select_related("college").all()
-    if academic_year:
-        qs = qs.filter(academic_year=academic_year)
-    if term:
-        qs = qs.filter(term=term)
+    try:
+        academic_year_int = int(academic_year) if academic_year else None
+    except Exception:
+        academic_year_int = None
+
+    term_upper = term.upper()
+    if term_upper == "FIRST":
+        term_normalized = Clearance.Term.FIRST
+    elif term_upper == "SECOND":
+        term_normalized = Clearance.Term.SECOND
+    elif term_upper in {"INTERSESSION", str(Clearance.Term.INTERSESSION)}:
+        term_normalized = Clearance.Term.INTERSESSION
+    elif term:
+        term_normalized = term
+    else:
+        term_normalized = None
+
+    colleges_qs = College.objects.order_by("name")
     if college_id:
-        qs = qs.filter(college_id=college_id)
+        colleges_qs = colleges_qs.filter(id=college_id)
 
     rows = []
-    for a in qs.order_by("college__name"):
+    for c in colleges_qs:
+        faculty_qs = Faculty.objects.select_related("user").filter(user__is_active=True, college=c)
+        total_count = faculty_qs.count()
+
+        completed_count = 0
+        if academic_year_int and term_normalized:
+            completed_count = Clearance.objects.filter(
+                faculty__in=faculty_qs,
+                academic_year=academic_year_int,
+                term=term_normalized,
+                status=Clearance.Status.COMPLETED,
+            ).count()
+
+        incomplete_count = max(0, total_count - completed_count)
+        completion_rate = float(completed_count / total_count) if total_count else 0.0
+
         rows.append(
             {
-                "collegeId": str(a.college_id) if a.college_id else "",
-                "collegeName": a.college.name if a.college else "",
-                "completionRate": float(a.completion_rate or 0),
-                "academicYear": a.academic_year,
-                "term": a.term,
+                "collegeId": str(c.id),
+                "collegeName": c.name,
+                "completionRate": completion_rate,
+                "completedCount": completed_count,
+                "incompleteCount": incomplete_count,
+                "totalCount": total_count,
+                "academicYear": academic_year_int,
+                "term": term_normalized,
             }
         )
+
     return JsonResponse({"rows": rows})
 
 
