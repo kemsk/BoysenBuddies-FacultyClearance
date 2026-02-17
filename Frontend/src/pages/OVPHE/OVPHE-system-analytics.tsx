@@ -72,26 +72,49 @@ export default function SystemAnalytics() {
 
     fetch(`/admin/xu-faculty-clearance/api/ovphe/system-analytics?${params.toString()}`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: { rows: { collegeName: string; completionRate: number }[] }) => {
+      .then(
+        (data: {
+          rows: {
+            collegeName: string;
+            completionRate: number;
+            completedCount?: number;
+            totalCount?: number;
+          }[];
+        }) => {
         const rows = data.rows ?? [];
         if (rows.length) {
           const first = rows[0];
-          const pct = Math.round((first.completionRate ?? 0) * 100);
+          const pct = Math.round(first.completionRate ?? 0);
           setDonutTitle(first.collegeName || "College");
-          setDonutCompleted(pct);
+          if (
+            typeof first.completedCount === "number" &&
+            typeof first.totalCount === "number"
+          ) {
+            setDonutCompleted(Math.max(0, first.completedCount));
+            setDonutTotal(Math.max(0, first.totalCount));
+          } else {
+            setDonutCompleted(pct);
+            setDonutTotal(100);
+          }
         } else {
           setDonutTitle("College");
           setDonutCompleted(0);
+          setDonutTotal(100);
         }
-        setDonutTotal(100);
 
         setCompletionSections([
           {
             title: "Completion Rate",
             items: rows.map((r) => ({
               label: r.collegeName || "",
-              completed: Math.round((r.completionRate ?? 0) * 100),
-              total: 100,
+              completed:
+                typeof r.completedCount === "number"
+                  ? Math.max(0, r.completedCount)
+                  : Math.max(0, Math.round(r.completionRate ?? 0)),
+              total:
+                typeof r.totalCount === "number"
+                  ? Math.max(0, r.totalCount)
+                  : 100,
             })),
           },
         ]);

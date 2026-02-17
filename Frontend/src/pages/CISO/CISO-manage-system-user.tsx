@@ -40,60 +40,18 @@ export default function CISOManageSystemUser() {
   const [page, setPage] = React.useState(1);
   const pageSize = 2;
 
-  const STORAGE_KEY = "CISO_system_users_v1";
-
-  const defaultUsers: SystemUser[] = [
-    {
-      id: "1",
-      name: "Angela Santos",
-      systemId: "SA2526-1-001",
-      userRole: "Assistant Approver",
-      universityId: "20190016375",
-      college: "College of Arts and Sciences",
-      department: "College Admin",
-      email: "angela.santos@xu.edu.ph",
-    },
-    {
-      id: "2",
-      name: "Example 2",
-      systemId: "SA2526-1-001",
-      userRole: "Approver",
-      universityId: "20190016375",
-      college: "College of Arts and Sciences",
-      department: "College Dean",
-      email: "example2@xu.edu.ph",
-    },
-  ];
-
-  const [users, setUsers] = React.useState<SystemUser[]>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return defaultUsers;
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? (parsed as SystemUser[]) : defaultUsers;
-    } catch {
-      return defaultUsers;
-    }
-  });
+  const [users, setUsers] = React.useState<SystemUser[]>([]);
 
   React.useEffect(() => {
     fetch("/admin/xu-faculty-clearance/api/ciso/system-users")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: { items: SystemUser[] }) => {
-        setUsers(Array.isArray(data.items) && data.items.length ? data.items : defaultUsers);
+        setUsers(Array.isArray(data.items) ? data.items : []);
       })
       .catch(() => {
-        // keep local storage/default behavior
+        setUsers([]);
       });
   }, []);
-
-  React.useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
-    } catch {
-      // ignore
-    }
-  }, [users]);
 
   const [addApproverOpen, setAddApproverOpen] = React.useState(false);
   const [addAdminOpen, setAddAdminOpen] = React.useState(false);

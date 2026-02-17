@@ -22,4 +22,6 @@ urlpatterns = [
     path('api/ovphe/notifications', views.ovphe_notifications_api, name='OVPHENotifications'),
     path('api/ovphe/system-analytics', views.ovphe_system_analytics_api, name='OVPHESystemAnalytics'),
     path('api/ovphe/activity-logs', views.ovphe_activity_logs_api, name='OVPHEActivityLogs'),
+    path('api/faculty/dashboard', views.faculty_dashboard_api, name='FacultyDashboard'),
+    path('api/faculty/notifications', views.faculty_notifications_api, name='FacultyNotifications'),
 ]

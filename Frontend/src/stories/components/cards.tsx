@@ -883,9 +883,11 @@ export type NotificationItemStatus = "approved" | "rejected" | "submitted";
 
 export type NotificationItem = {
   title: string;
-  status: NotificationItemStatus;
+  status?: NotificationItemStatus;
+  description?: string;
   details: string[];
   timestamp: string;
+  is_read?: boolean;
 };
 
 export type NotificationsCardProps = {
@@ -957,18 +959,30 @@ export function NotificationsCard({
                 <div className="min-w-0">
                   <div className="text-base font-bold text-black">{item.title}</div>
                   <div className="mt-1 text-sm text-black">
-                    Your submission has been <span className="font-bold">{statusText(item.status)}.</span>
+                    {item.description?.trim()
+                      ? item.description
+                      : item.status
+                        ? (
+                            <>
+                              Your submission has been <span className="font-bold">{statusText(item.status)}.</span>
+                            </>
+                          )
+                        : null}
                   </div>
                 </div>
 
-                {!readAll ? <div className="mt-1 h-4 w-4 shrink-0 rounded-full bg-red-500" /> : null}
+                {!readAll && !item.is_read ? (
+                  <div className="mt-1 h-4 w-4 shrink-0 rounded-full bg-red-500" />
+                ) : null}
               </div>
 
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-black">
-                {item.details.map((d) => (
-                  <li key={d}>{d}</li>
-                ))}
-              </ul>
+              {item.details.length ? (
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-black">
+                  {item.details.map((d) => (
+                    <li key={d}>{d}</li>
+                  ))}
+                </ul>
+              ) : null}
               <div className="mt-3 text-xs italic text-muted-foreground">{item.timestamp}</div>
             </div>
 
@@ -1040,6 +1054,7 @@ export type ActivityLogVariant =
   | "set_announcement_status_inactive"
   | "edited_announcement"
   | "created_timeline"
+  | "edited_timeline"
   | "set_timeline_status_active"
   | "set_timeline_status_inactive"
   | "created_college"
@@ -1048,6 +1063,9 @@ export type ActivityLogVariant =
   | "created_department"
   | "edited_department"
   | "deleted_department"
+  | "created_office"
+  | "edited_office"
+  | "deleted_office"
   | "added_to_approver_flow"
   | "edited_approver_flow"
   | "removed_from_approver_flow"
@@ -1119,7 +1137,7 @@ function getActivityIcon(variant: ActivityLogVariant) {
     );
   }
 
-  if (variant === "edited_requirements" || variant === "edited_approver_flow" || variant === "edited_guideline" || variant === "edited_announcement" || variant === "edited_college" || variant === "edited_department") {
+  if (variant === "edited_requirements" || variant === "edited_approver_flow" || variant === "edited_guideline" || variant === "edited_announcement" || variant === "edited_college" || variant === "edited_department" || variant === "edited_office" || variant === "edited_approver" || variant === "edited_timeline") {
     return (
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-primary p-0.5">
         <Pencil strokeWidth={4} className="h-3 w-3 text-white" />
@@ -1129,7 +1147,7 @@ function getActivityIcon(variant: ActivityLogVariant) {
 
 
 
-  if (variant === "updated_assistant_approver" || variant === "edited_approver") {
+  if (variant === "updated_assistant_approver") {
     return (
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-primary p-0.5">
         <UserCheck strokeWidth={4} className="h-3 w-3 text-white" />
@@ -1209,7 +1227,7 @@ function getActivityIcon(variant: ActivityLogVariant) {
   }
 
 
-  if (variant === "deleted_college" || variant === "deleted_department" || variant === "removed_from_approver_flow" || variant === "removed_faculty_data_dump" || variant === "deleted_requirements") {
+  if (variant === "deleted_college" || variant === "deleted_department" || variant === "removed_from_approver_flow" || variant === "removed_faculty_data_dump" || variant === "deleted_requirements" || variant === "deleted_office") {
     return (
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-[hsl(var(--destructive))] p-0.5">
         <Trash2 strokeWidth={3} className="h-3 w-3 text-white" />
@@ -1329,6 +1347,14 @@ function formatActivityLogText(item: ActivityLogItem) {
     const timelineLabel = [schoolYear, semester].filter(Boolean).join(" ").trim();
     const labelTail = timelineLabel ? `: ${timelineLabel}.` : ".";
     const description = `User ${userName} created timeline${labelTail}`;
+    return { title, description };
+  }
+
+  if (item.variant === "edited_timeline") {
+    const title = "Edited Timeline";
+    const timelineLabel = [schoolYear, semester].filter(Boolean).join(" ").trim();
+    const labelTail = timelineLabel ? `: ${timelineLabel}.` : ".";
+    const description = `User ${userName} edited timeline${labelTail}`;
     return { title, description };
   }
 
