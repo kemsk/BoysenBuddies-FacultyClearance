@@ -21,7 +21,6 @@ import {
 import {
   EditAnnouncementsDialog,
   loadAnnouncementsItems,
-  saveAnnouncementsItems,
 } from "../../stories/components/edit-announcements-dialog";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
@@ -59,7 +58,9 @@ function GuidelinesToggle({
 export default function CISOAnnouncements() {
   const navigate = useNavigate();
 
-  const [items, setItems] = React.useState<AnnouncementItem[]>([]);
+  type AnnouncementApiItem = AnnouncementItem & { id: number; email?: string };
+
+  const [items, setItems] = React.useState<AnnouncementApiItem[]>([]);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
   const [confirm, setConfirm] = React.useState<
@@ -67,24 +68,28 @@ export default function CISOAnnouncements() {
     | { open: false }
   >({ open: false });
 
-  React.useEffect(() => {
-    fetch("/admin/xu-faculty-clearance/api/ciso/announcements")
+  const refresh = React.useCallback(() => {
+    return fetch("/admin/xu-faculty-clearance/api/ciso/announcements")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: { items: AnnouncementItem[] }) => {
+      .then((data: { items: AnnouncementApiItem[] }) => {
         const initial = (data.items ?? []).map((item) => ({
-          ...item,
-          enabled: item.enabled ?? true,
-        }));
-        setItems(initial);
-      })
-      .catch(() => {
-        const initial = loadAnnouncementsItems().map((item) => ({
           ...item,
           enabled: item.enabled ?? true,
         }));
         setItems(initial);
       });
   }, []);
+
+  React.useEffect(() => {
+    refresh()
+      .catch(() => {
+        const initial = loadAnnouncementsItems().map((item) => ({
+          ...item,
+          enabled: item.enabled ?? true,
+        }));
+        setItems(initial as AnnouncementApiItem[]);
+      });
+  }, [refresh]);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -161,7 +166,10 @@ export default function CISOAnnouncements() {
                       </p>
 
                       <div className="mt-3 text-sm text-muted-foreground">
-                        Created: {item.timestamp}
+                        Last updated: {item.timestamp}
+                      </div>
+                      <div className="mt-1 text-sm text-muted-foreground">
+                        Updated by: {item.email}
                       </div>
 
 
@@ -216,7 +224,7 @@ export default function CISOAnnouncements() {
 
           <AlertDialog
             open={confirm.open}
-            onOpenChange={(open) => {
+            onOpenChange={(open: boolean) => {
               if (!open) setConfirm({ open: false });
             }}
           >
@@ -231,19 +239,11 @@ export default function CISOAnnouncements() {
                 const isDisable = type === "disable";
                 const isEnable = type === "enable";
 
-                const headingWord = isDelete
-                  ? "DELETE"
-                  : isDisable
-                    ? "DEACTIVATE"
-                    : "ACTIVATE";
+                const headingWord = isDelete ? "DELETE" : isDisable ? "DEACTIVATE" : "ACTIVATE";
 
                 const headingColor = isEnable ? "text-primary" : "text-destructive";
 
-                const actionLabel = isDelete
-                  ? "Delete"
-                  : isDisable
-                    ? "Deactivate"
-                    : "Activate";
+                const actionLabel = isDelete ? "Delete" : isDisable ? "Deactivate" : "Activate";
 
                 const actionClass = isEnable
                   ? "h-11 w-full rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
@@ -281,21 +281,35 @@ export default function CISOAnnouncements() {
                           onClick={() => {
                             if (!confirm.open) return;
 
-                            if (confirm.type === "delete") {
-                              const updated = items.filter((_, i) => i !== confirm.index);
-                              setItems(updated);
-                              saveAnnouncementsItems(updated);
+                            const current = items[confirm.index];
+                            if (!current?.id) {
                               setConfirm({ open: false });
                               return;
                             }
 
+                            if (confirm.type === "delete") {
+                              fetch(
+                                `/admin/xu-faculty-clearance/api/ciso/announcements/${current.id}`,
+                                { method: "DELETE" }
+                              ).finally(() => {
+                                setConfirm({ open: false });
+                                refresh().catch(() => null);
+                              });
+                              return;
+                            }
+
                             const nextEnabled = confirm.type === "enable";
-                            const updated = items.map((it, i) =>
-                              i === confirm.index ? { ...it, enabled: nextEnabled } : it
-                            );
-                            setItems(updated);
-                            saveAnnouncementsItems(updated);
-                            setConfirm({ open: false });
+                            fetch(
+                              `/admin/xu-faculty-clearance/api/ciso/announcements/${current.id}`,
+                              {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ enabled: nextEnabled }),
+                              }
+                            ).finally(() => {
+                              setConfirm({ open: false });
+                              refresh().catch(() => null);
+                            });
                           }}
                         >
                           {actionLabel}
@@ -327,34 +341,29 @@ export default function CISOAnnouncements() {
             }
             onSave={({ title, description, pinned }) => {
               if (editingIndex !== null) {
-                const updated = items.map((it, idx) =>
-                  idx === editingIndex
-                    ? {
-                        ...it,
-                        title,
-                        description,
-                        pinned,
-                      }
-                    : it
-                );
-                setItems(updated);
-                saveAnnouncementsItems(updated);
-                setEditingIndex(null);
+                const current = items[editingIndex];
+                if (!current?.id) {
+                  setEditingIndex(null);
+                  return;
+                }
+                fetch(`/admin/xu-faculty-clearance/api/ciso/announcements/${current.id}`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ title, description, pinned }),
+                }).finally(() => {
+                  setEditingIndex(null);
+                  refresh().catch(() => null);
+                });
                 return;
               }
 
-              const next: AnnouncementItem[] = [
-                {
-                  pinned,
-                  title,
-                  description,
-                  timestamp: new Date().toLocaleString(),
-                  enabled: true,
-                },
-                ...items,
-              ];
-              setItems(next);
-              saveAnnouncementsItems(next);
+              fetch("/admin/xu-faculty-clearance/api/ciso/announcements", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title, description, pinned }),
+              }).finally(() => {
+                refresh().catch(() => null);
+              });
             }}
           />
   

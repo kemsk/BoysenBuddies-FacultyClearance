@@ -35,7 +35,7 @@ import {
   type ManageSystemApproverPayload,
 } from "../../stories/components/manage-system-user-dialogs";
 
-export default function CISOManageSystemUser() {
+ export default function CISOManageSystemUser() {
   const navigate = useNavigate();
   const [page, setPage] = React.useState(1);
   const pageSize = 2;

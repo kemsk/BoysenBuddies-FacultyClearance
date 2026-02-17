@@ -238,7 +238,7 @@ ON DUPLICATE KEY UPDATE
     college_id = VALUES(college_id),
     department_id = VALUES(department_id);
 
--- Seed Faculty (needed for real faculty dashboard + analytics)
+-- Seed Faculty (needed for real analytics)
 INSERT INTO FC_faculty (user_id, employee_id, first_name, last_name, college_id, department_id)
 SELECT * FROM (
     SELECT @faculty_user_id AS user_id, 'EMP-SEED-1' AS employee_id, 'Faye' AS first_name, 'Faculty' AS last_name, @ccs_id AS college_id, @cs_id AS department_id
@@ -277,56 +277,6 @@ ON DUPLICATE KEY UPDATE
     required_physical = VALUES(required_physical),
     is_active = VALUES(is_active);
 
-INSERT INTO FC_requirement (id, title, description, required_physical, created_date, deadline_date, is_active, created_by_id)
-SELECT * FROM (
-    SELECT 2 AS id, 'Department Clearance Form' AS title, 'Submit your signed department clearance form.' AS description, 0 AS required_physical, NOW() AS created_date, NULL AS deadline_date, 1 AS is_active, NULL AS created_by_id
-) AS v
-ON DUPLICATE KEY UPDATE
-    title = VALUES(title),
-    description = VALUES(description),
-    required_physical = VALUES(required_physical),
-    is_active = VALUES(is_active);
-
-INSERT INTO FC_requirement (id, title, description, required_physical, created_date, deadline_date, is_active, created_by_id)
-SELECT * FROM (
-    SELECT 3 AS id, 'Dean Endorsement' AS title, 'Secure endorsement from the College Dean.' AS description, 0 AS required_physical, NOW() AS created_date, NULL AS deadline_date, 1 AS is_active, NULL AS created_by_id
-) AS v
-ON DUPLICATE KEY UPDATE
-    title = VALUES(title),
-    description = VALUES(description),
-    required_physical = VALUES(required_physical),
-    is_active = VALUES(is_active);
-
-INSERT INTO FC_requirement (id, title, description, required_physical, created_date, deadline_date, is_active, created_by_id)
-SELECT * FROM (
-    SELECT 4 AS id, 'Registrar Clearance' AS title, 'Clear any pending registrar items.' AS description, 0 AS required_physical, NOW() AS created_date, NULL AS deadline_date, 1 AS is_active, NULL AS created_by_id
-) AS v
-ON DUPLICATE KEY UPDATE
-    title = VALUES(title),
-    description = VALUES(description),
-    required_physical = VALUES(required_physical),
-    is_active = VALUES(is_active);
-
-INSERT INTO FC_requirement (id, title, description, required_physical, created_date, deadline_date, is_active, created_by_id)
-SELECT * FROM (
-    SELECT 5 AS id, 'Library Clearance' AS title, 'Return borrowed materials and settle balances.' AS description, 0 AS required_physical, NOW() AS created_date, NULL AS deadline_date, 1 AS is_active, NULL AS created_by_id
-) AS v
-ON DUPLICATE KEY UPDATE
-    title = VALUES(title),
-    description = VALUES(description),
-    required_physical = VALUES(required_physical),
-    is_active = VALUES(is_active);
-
-INSERT INTO FC_requirement (id, title, description, required_physical, created_date, deadline_date, is_active, created_by_id)
-SELECT * FROM (
-    SELECT 6 AS id, 'HRO Exit Checklist' AS title, 'Submit completed HRO exit checklist.' AS description, 0 AS required_physical, NOW() AS created_date, NULL AS deadline_date, 1 AS is_active, NULL AS created_by_id
-) AS v
-ON DUPLICATE KEY UPDATE
-    title = VALUES(title),
-    description = VALUES(description),
-    required_physical = VALUES(required_physical),
-    is_active = VALUES(is_active);
-
 SET @latest_clearance_id = (
     SELECT id FROM FC_clearance WHERE faculty_id = @faculty_id ORDER BY id DESC LIMIT 1
 );
@@ -338,56 +288,6 @@ SELECT * FROM (
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_clearancerequest cr WHERE cr.clearance_id = v.clearance_id AND cr.requirement_id = v.requirement_id
 );
-
-INSERT INTO FC_clearancerequest (clearance_id, requirement_id, status, remarks, approved_by_id, approved_date)
-SELECT * FROM (
-    SELECT @latest_clearance_id AS clearance_id, 2 AS requirement_id, 'PENDING' AS status, '' AS remarks, NULL AS approved_by_id, NULL AS approved_date
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_clearancerequest cr WHERE cr.clearance_id = v.clearance_id AND cr.requirement_id = v.requirement_id
-);
-
-INSERT INTO FC_clearancerequest (clearance_id, requirement_id, status, remarks, approved_by_id, approved_date)
-SELECT * FROM (
-    SELECT @latest_clearance_id AS clearance_id, 3 AS requirement_id, 'PENDING' AS status, '' AS remarks, NULL AS approved_by_id, NULL AS approved_date
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_clearancerequest cr WHERE cr.clearance_id = v.clearance_id AND cr.requirement_id = v.requirement_id
-);
-
-INSERT INTO FC_clearancerequest (clearance_id, requirement_id, status, remarks, approved_by_id, approved_date)
-SELECT * FROM (
-    SELECT @latest_clearance_id AS clearance_id, 4 AS requirement_id, 'PENDING' AS status, '' AS remarks, NULL AS approved_by_id, NULL AS approved_date
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_clearancerequest cr WHERE cr.clearance_id = v.clearance_id AND cr.requirement_id = v.requirement_id
-);
-
-INSERT INTO FC_clearancerequest (clearance_id, requirement_id, status, remarks, approved_by_id, approved_date)
-SELECT * FROM (
-    SELECT @latest_clearance_id AS clearance_id, 5 AS requirement_id, 'PENDING' AS status, '' AS remarks, NULL AS approved_by_id, NULL AS approved_date
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_clearancerequest cr WHERE cr.clearance_id = v.clearance_id AND cr.requirement_id = v.requirement_id
-);
-
-INSERT INTO FC_clearancerequest (clearance_id, requirement_id, status, remarks, approved_by_id, approved_date)
-SELECT * FROM (
-    SELECT @latest_clearance_id AS clearance_id, 6 AS requirement_id, 'PENDING' AS status, '' AS remarks, NULL AS approved_by_id, NULL AS approved_date
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_clearancerequest cr WHERE cr.clearance_id = v.clearance_id AND cr.requirement_id = v.requirement_id
-);
-
--- Link requirements to department/college/offices so faculty step list can be derived dynamically
-INSERT IGNORE INTO FC_requirement_departments (requirement_id, department_id)
-VALUES (1, @cs_id), (2, @cs_id);
-
-INSERT IGNORE INTO FC_requirement_colleges (requirement_id, college_id)
-VALUES (3, @ccs_id);
-
-INSERT IGNORE INTO FC_requirement_offices (requirement_id, office_id)
-VALUES (4, @reg_office_id), (5, @lib_office_id), (6, @hro_office_id);
 
 -- Seed Announcements
 INSERT INTO FC_announcement (title, body, created_by_id, pin_announcement, is_active, start_date, created_at)
@@ -439,6 +339,13 @@ SET @seed_days_left = '7 days';
 SET @seed_announcement_title = 'System Maintenance Notice';
 
 -- Seed Notifications for OVPHE user
+SET @seed_school_year_label = CONCAT('S.Y. ', YEAR(NOW()), '-', YEAR(NOW()) + 1);
+SET @seed_term_label = 'First Semester';
+SET @seed_dept_office_name = 'University Registrar';
+SET @seed_days_left = '7 days';
+SET @seed_announcement_title = 'System Maintenance Notice';
+
+-- Seed Notifications for OVPHE user
 INSERT INTO FC_notification (user_id, title, status, body, details, is_read, created_at)
 SELECT * FROM (
     SELECT @ovphe_user_id AS user_id, 'Clearance Timeline Started' AS title, 'submitted' AS status, CONCAT('The clearance timeline for ', @seed_school_year_label, ' ', @seed_term_label, ' is now active. Faculty Members may begin submitting requests.') AS body, '[]' AS details, 0 AS is_read, NOW() AS created_at
@@ -467,6 +374,15 @@ WHERE NOT EXISTS (
 INSERT INTO FC_notification (user_id, title, status, body, details, is_read, created_at)
 SELECT * FROM (
     SELECT @ciso_user_id AS user_id, 'Faculty Data Dump Uploaded' AS title, 'submitted' AS status, CONCAT('A new faculty data dump has been successfully downloaded for ', @seed_school_year_label, ' ', @seed_term_label, '.') AS body, '[]' AS details, 0 AS is_read, NOW() AS created_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_notification n WHERE n.user_id = v.user_id AND n.title = v.title AND n.status = v.status
+);
+
+-- Seed Notifications for Faculty user
+INSERT INTO FC_notification (user_id, title, status, body, details, is_read, created_at)
+SELECT * FROM (
+    SELECT @faculty_user_id AS user_id, 'Deadline Approaching' AS title, 'submitted' AS status, CONCAT('The clearance period is coming to end in ', @seed_days_left, '. Ensure to submit your requirements on time to maintain timely submissions.') AS body, '["Submission of Requirement 1", "Submission of Requirement 2"]' AS details, 0 AS is_read, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_notification n WHERE n.user_id = v.user_id AND n.title = v.title AND n.status = v.status

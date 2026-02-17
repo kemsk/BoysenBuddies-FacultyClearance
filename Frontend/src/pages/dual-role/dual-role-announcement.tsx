@@ -63,7 +63,7 @@ export default function DualRoleAnnouncements() {
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
   const [confirm, setConfirm] = React.useState<
-    | { open: true; type: "enable" | "disable" | "delete"; index: number }
+    | { open: true; type: "enable" | "disable" | "deactivate"; index: number }
     | { open: false }
   >({ open: false });
 
@@ -188,10 +188,10 @@ export default function DualRoleAnnouncements() {
                               size="sm"
                               className="h-9 w-[120px] rounded-md"
                               onClick={() => {
-                                setConfirm({ open: true, type: "delete", index: idx });
+                                setConfirm({ open: true, type: "deactivate", index: idx });
                               }}
                             >
-                              DELETE
+                              DEACTIVATE
                             </Button>
                           )}
                         </div>
@@ -205,34 +205,26 @@ export default function DualRoleAnnouncements() {
 
           <AlertDialog
             open={confirm.open}
-            onOpenChange={(open) => {
+            onOpenChange={(open: boolean) => {
               if (!open) setConfirm({ open: false });
             }}
           >
             <AlertDialogContent className="w-[420px] max-w-[calc(100vw-3rem)] rounded-xl bg-background p-0">
               {(() => {
-                const type = confirm.open ? confirm.type : "delete";
+                const type = confirm.open ? confirm.type : "deactivate";
                 const index = confirm.open ? confirm.index : -1;
                 const title =
                   index >= 0 && index < items.length ? items[index]?.title ?? "" : "";
 
-                const isDelete = type === "delete";
                 const isDisable = type === "disable";
                 const isEnable = type === "enable";
+                const isDeactivate = type === "deactivate";
 
-                const headingWord = isDelete
-                  ? "DELETE"
-                  : isDisable
-                    ? "DEACTIVATE"
-                    : "ACTIVATE";
+                const headingWord = isDisable || isDeactivate ? "DEACTIVATE" : "ACTIVATE";
 
                 const headingColor = isEnable ? "text-primary" : "text-destructive";
 
-                const actionLabel = isDelete
-                  ? "Delete"
-                  : isDisable
-                    ? "Deactivate"
-                    : "Activate";
+                const actionLabel = isDisable || isDeactivate ? "Deactivate" : "Activate";
 
                 const actionClass = isEnable
                   ? "h-11 w-full rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
@@ -269,14 +261,6 @@ export default function DualRoleAnnouncements() {
                           className={actionClass}
                           onClick={() => {
                             if (!confirm.open) return;
-
-                            if (confirm.type === "delete") {
-                              const updated = items.filter((_, i) => i !== confirm.index);
-                              setItems(updated);
-                              saveAnnouncementsItems(updated);
-                              setConfirm({ open: false });
-                              return;
-                            }
 
                             const nextEnabled = confirm.type === "enable";
                             const updated = items.map((it, i) =>
