@@ -52,17 +52,17 @@ ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
 
 -- Seed Colleges
-INSERT INTO FC_college (name, abbreviation)
+INSERT INTO FC_college (name, abbreviation, is_active)
 SELECT * FROM (
-    SELECT 'College of Computer Studies' AS name, 'CCS' AS abbreviation
+    SELECT 'College of Computer Studies' AS name, 'CCS' AS abbreviation, 1 AS is_active
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_college c WHERE c.abbreviation = v.abbreviation
 );
 
-INSERT INTO FC_college (name, abbreviation)
+INSERT INTO FC_college (name, abbreviation, is_active)
 SELECT * FROM (
-    SELECT 'College of Arts and Sciences' AS name, 'CAS' AS abbreviation
+    SELECT 'College of Arts and Sciences' AS name, 'CAS' AS abbreviation, 1 AS is_active
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_college c WHERE c.abbreviation = v.abbreviation
@@ -73,17 +73,17 @@ SET @ccs_id = (SELECT id FROM FC_college WHERE abbreviation = 'CCS' LIMIT 1);
 SET @cas_id = (SELECT id FROM FC_college WHERE abbreviation = 'CAS' LIMIT 1);
 
 -- Seed Departments for CCS
-INSERT INTO FC_department (college_id, name, abbreviation)
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
 SELECT * FROM (
-    SELECT @ccs_id AS college_id, 'Computer Science' AS name, 'CS' AS abbreviation
+    SELECT @ccs_id AS college_id, 'Computer Science' AS name, 'CS' AS abbreviation, 1 AS is_active
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
 );
 
-INSERT INTO FC_department (college_id, name, abbreviation)
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
 SELECT * FROM (
-    SELECT @ccs_id AS college_id, 'Information Technology' AS name, 'IT' AS abbreviation
+    SELECT @ccs_id AS college_id, 'Information Technology' AS name, 'IT' AS abbreviation, 1 AS is_active
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
@@ -93,37 +93,43 @@ WHERE NOT EXISTS (
 SET @cs_id = (SELECT id FROM FC_department WHERE abbreviation = 'CS' AND college_id = @ccs_id LIMIT 1);
 
 -- Seed Offices
-INSERT INTO FC_office (name, abbreviation)
+INSERT INTO FC_office (name, abbreviation, is_active, display_order)
 SELECT * FROM (
-    SELECT 'Office of the Vice President for Higher Education' AS name, 'OVPHE' AS abbreviation
+    SELECT 'Office of the Vice President for Higher Education' AS name, 'OVPHE' AS abbreviation, 1 AS is_active, 2 AS display_order
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_office o WHERE o.abbreviation = v.abbreviation
 );
 
-INSERT INTO FC_office (name, abbreviation)
+INSERT INTO FC_office (name, abbreviation, is_active, display_order)
 SELECT * FROM (
-    SELECT 'University Registrar' AS name, 'REG' AS abbreviation
+    SELECT 'University Registrar' AS name, 'REG' AS abbreviation, 1 AS is_active, 0 AS display_order
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_office o WHERE o.abbreviation = v.abbreviation
 );
 
-INSERT INTO FC_office (name, abbreviation)
+INSERT INTO FC_office (name, abbreviation, is_active, display_order)
 SELECT * FROM (
-    SELECT 'University Library' AS name, 'LIB' AS abbreviation
+    SELECT 'University Library' AS name, 'LIB' AS abbreviation, 1 AS is_active, 1 AS display_order
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_office o WHERE o.abbreviation = v.abbreviation
 );
 
-INSERT INTO FC_office (name, abbreviation)
+INSERT INTO FC_office (name, abbreviation, is_active, display_order)
 SELECT * FROM (
-    SELECT 'Human Resources Office' AS name, 'HRO' AS abbreviation
+    SELECT 'Human Resources Office' AS name, 'HRO' AS abbreviation, 1 AS is_active, 3 AS display_order
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_office o WHERE o.abbreviation = v.abbreviation
 );
+
+-- Enforce Office display_order alignment with current approver flow office-step order
+UPDATE FC_office SET display_order = 0 WHERE abbreviation = 'REG';
+UPDATE FC_office SET display_order = 1 WHERE abbreviation = 'LIB';
+UPDATE FC_office SET display_order = 2 WHERE abbreviation = 'OVPHE';
+UPDATE FC_office SET display_order = 3 WHERE abbreviation = 'HRO';
 
 -- Get admin IDs
 SET @ciso_admin_id = (SELECT sa.id FROM FC_systemadmin sa 
@@ -169,33 +175,39 @@ WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
 );
 
-INSERT INTO FC_approverflowstep (config_id, `order`, category)
+-- Link office-based steps to actual Office rows
+SET @reg_office_id = (SELECT id FROM FC_office WHERE abbreviation = 'REG' LIMIT 1);
+SET @lib_office_id = (SELECT id FROM FC_office WHERE abbreviation = 'LIB' LIMIT 1);
+SET @ovphe_office_id = (SELECT id FROM FC_office WHERE abbreviation = 'OVPHE' LIMIT 1);
+SET @hro_office_id = (SELECT id FROM FC_office WHERE abbreviation = 'HRO' LIMIT 1);
+
+INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
 SELECT * FROM (
-    SELECT @config_id AS config_id, 2 AS `order`, 'University Registrar' AS category
+    SELECT @config_id AS config_id, 2 AS `order`, 'University Registrar' AS category, @reg_office_id AS office_id
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
 );
 
-INSERT INTO FC_approverflowstep (config_id, `order`, category)
+INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
 SELECT * FROM (
-    SELECT @config_id AS config_id, 3 AS `order`, 'University Library' AS category
+    SELECT @config_id AS config_id, 3 AS `order`, 'University Library' AS category, @lib_office_id AS office_id
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
 );
 
-INSERT INTO FC_approverflowstep (config_id, `order`, category)
+INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
 SELECT * FROM (
-    SELECT @config_id AS config_id, 4 AS `order`, 'OVPHE' AS category
+    SELECT @config_id AS config_id, 4 AS `order`, 'Office of the Vice President for Higher Education' AS category, @ovphe_office_id AS office_id
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
 );
 
-INSERT INTO FC_approverflowstep (config_id, `order`, category)
+INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
 SELECT * FROM (
-    SELECT @config_id AS config_id, 5 AS `order`, 'Human Resources Office' AS category
+    SELECT @config_id AS config_id, 5 AS `order`, 'Human Resources Office' AS category, @hro_office_id AS office_id
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
@@ -226,7 +238,7 @@ ON DUPLICATE KEY UPDATE
     college_id = VALUES(college_id),
     department_id = VALUES(department_id);
 
--- Seed Faculty (needed for real analytics)
+-- Seed Faculty (needed for real faculty dashboard + analytics)
 INSERT INTO FC_faculty (user_id, employee_id, first_name, last_name, college_id, department_id)
 SELECT * FROM (
     SELECT @faculty_user_id AS user_id, 'EMP-SEED-1' AS employee_id, 'Faye' AS first_name, 'Faculty' AS last_name, @ccs_id AS college_id, @cs_id AS department_id
@@ -265,6 +277,56 @@ ON DUPLICATE KEY UPDATE
     required_physical = VALUES(required_physical),
     is_active = VALUES(is_active);
 
+INSERT INTO FC_requirement (id, title, description, required_physical, created_date, deadline_date, is_active, created_by_id)
+SELECT * FROM (
+    SELECT 2 AS id, 'Department Clearance Form' AS title, 'Submit your signed department clearance form.' AS description, 0 AS required_physical, NOW() AS created_date, NULL AS deadline_date, 1 AS is_active, NULL AS created_by_id
+) AS v
+ON DUPLICATE KEY UPDATE
+    title = VALUES(title),
+    description = VALUES(description),
+    required_physical = VALUES(required_physical),
+    is_active = VALUES(is_active);
+
+INSERT INTO FC_requirement (id, title, description, required_physical, created_date, deadline_date, is_active, created_by_id)
+SELECT * FROM (
+    SELECT 3 AS id, 'Dean Endorsement' AS title, 'Secure endorsement from the College Dean.' AS description, 0 AS required_physical, NOW() AS created_date, NULL AS deadline_date, 1 AS is_active, NULL AS created_by_id
+) AS v
+ON DUPLICATE KEY UPDATE
+    title = VALUES(title),
+    description = VALUES(description),
+    required_physical = VALUES(required_physical),
+    is_active = VALUES(is_active);
+
+INSERT INTO FC_requirement (id, title, description, required_physical, created_date, deadline_date, is_active, created_by_id)
+SELECT * FROM (
+    SELECT 4 AS id, 'Registrar Clearance' AS title, 'Clear any pending registrar items.' AS description, 0 AS required_physical, NOW() AS created_date, NULL AS deadline_date, 1 AS is_active, NULL AS created_by_id
+) AS v
+ON DUPLICATE KEY UPDATE
+    title = VALUES(title),
+    description = VALUES(description),
+    required_physical = VALUES(required_physical),
+    is_active = VALUES(is_active);
+
+INSERT INTO FC_requirement (id, title, description, required_physical, created_date, deadline_date, is_active, created_by_id)
+SELECT * FROM (
+    SELECT 5 AS id, 'Library Clearance' AS title, 'Return borrowed materials and settle balances.' AS description, 0 AS required_physical, NOW() AS created_date, NULL AS deadline_date, 1 AS is_active, NULL AS created_by_id
+) AS v
+ON DUPLICATE KEY UPDATE
+    title = VALUES(title),
+    description = VALUES(description),
+    required_physical = VALUES(required_physical),
+    is_active = VALUES(is_active);
+
+INSERT INTO FC_requirement (id, title, description, required_physical, created_date, deadline_date, is_active, created_by_id)
+SELECT * FROM (
+    SELECT 6 AS id, 'HRO Exit Checklist' AS title, 'Submit completed HRO exit checklist.' AS description, 0 AS required_physical, NOW() AS created_date, NULL AS deadline_date, 1 AS is_active, NULL AS created_by_id
+) AS v
+ON DUPLICATE KEY UPDATE
+    title = VALUES(title),
+    description = VALUES(description),
+    required_physical = VALUES(required_physical),
+    is_active = VALUES(is_active);
+
 SET @latest_clearance_id = (
     SELECT id FROM FC_clearance WHERE faculty_id = @faculty_id ORDER BY id DESC LIMIT 1
 );
@@ -276,6 +338,56 @@ SELECT * FROM (
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_clearancerequest cr WHERE cr.clearance_id = v.clearance_id AND cr.requirement_id = v.requirement_id
 );
+
+INSERT INTO FC_clearancerequest (clearance_id, requirement_id, status, remarks, approved_by_id, approved_date)
+SELECT * FROM (
+    SELECT @latest_clearance_id AS clearance_id, 2 AS requirement_id, 'PENDING' AS status, '' AS remarks, NULL AS approved_by_id, NULL AS approved_date
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_clearancerequest cr WHERE cr.clearance_id = v.clearance_id AND cr.requirement_id = v.requirement_id
+);
+
+INSERT INTO FC_clearancerequest (clearance_id, requirement_id, status, remarks, approved_by_id, approved_date)
+SELECT * FROM (
+    SELECT @latest_clearance_id AS clearance_id, 3 AS requirement_id, 'PENDING' AS status, '' AS remarks, NULL AS approved_by_id, NULL AS approved_date
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_clearancerequest cr WHERE cr.clearance_id = v.clearance_id AND cr.requirement_id = v.requirement_id
+);
+
+INSERT INTO FC_clearancerequest (clearance_id, requirement_id, status, remarks, approved_by_id, approved_date)
+SELECT * FROM (
+    SELECT @latest_clearance_id AS clearance_id, 4 AS requirement_id, 'PENDING' AS status, '' AS remarks, NULL AS approved_by_id, NULL AS approved_date
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_clearancerequest cr WHERE cr.clearance_id = v.clearance_id AND cr.requirement_id = v.requirement_id
+);
+
+INSERT INTO FC_clearancerequest (clearance_id, requirement_id, status, remarks, approved_by_id, approved_date)
+SELECT * FROM (
+    SELECT @latest_clearance_id AS clearance_id, 5 AS requirement_id, 'PENDING' AS status, '' AS remarks, NULL AS approved_by_id, NULL AS approved_date
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_clearancerequest cr WHERE cr.clearance_id = v.clearance_id AND cr.requirement_id = v.requirement_id
+);
+
+INSERT INTO FC_clearancerequest (clearance_id, requirement_id, status, remarks, approved_by_id, approved_date)
+SELECT * FROM (
+    SELECT @latest_clearance_id AS clearance_id, 6 AS requirement_id, 'PENDING' AS status, '' AS remarks, NULL AS approved_by_id, NULL AS approved_date
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_clearancerequest cr WHERE cr.clearance_id = v.clearance_id AND cr.requirement_id = v.requirement_id
+);
+
+-- Link requirements to department/college/offices so faculty step list can be derived dynamically
+INSERT IGNORE INTO FC_requirement_departments (requirement_id, department_id)
+VALUES (1, @cs_id), (2, @cs_id);
+
+INSERT IGNORE INTO FC_requirement_colleges (requirement_id, college_id)
+VALUES (3, @ccs_id);
+
+INSERT IGNORE INTO FC_requirement_offices (requirement_id, office_id)
+VALUES (4, @reg_office_id), (5, @lib_office_id), (6, @hro_office_id);
 
 -- Seed Announcements
 INSERT INTO FC_announcement (title, body, created_by_id, pin_announcement, is_active, start_date, created_at)
@@ -355,6 +467,15 @@ WHERE NOT EXISTS (
 INSERT INTO FC_notification (user_id, title, status, body, details, is_read, created_at)
 SELECT * FROM (
     SELECT @ciso_user_id AS user_id, 'Faculty Data Dump Uploaded' AS title, 'submitted' AS status, CONCAT('A new faculty data dump has been successfully downloaded for ', @seed_school_year_label, ' ', @seed_term_label, '.') AS body, '[]' AS details, 0 AS is_read, NOW() AS created_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_notification n WHERE n.user_id = v.user_id AND n.title = v.title AND n.status = v.status
+);
+
+-- Seed Notifications for Faculty user
+INSERT INTO FC_notification (user_id, title, status, body, details, is_read, created_at)
+SELECT * FROM (
+    SELECT @faculty_user_id AS user_id, 'Deadline Approaching' AS title, 'submitted' AS status, CONCAT('The clearance period is coming to end in ', @seed_days_left, '. Ensure to submit your requirements on time to maintain timely submissions.') AS body, '["Submission of Requirement 1", "Submission of Requirement 2"]' AS details, 0 AS is_read, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_notification n WHERE n.user_id = v.user_id AND n.title = v.title AND n.status = v.status

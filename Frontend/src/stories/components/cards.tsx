@@ -893,6 +893,7 @@ export type NotificationItem = {
 export type NotificationsCardProps = {
   items: NotificationItem[];
   className?: string;
+
   pageSize?: number;
   showMarkAsReadButton?: boolean;
   readAll?: boolean;

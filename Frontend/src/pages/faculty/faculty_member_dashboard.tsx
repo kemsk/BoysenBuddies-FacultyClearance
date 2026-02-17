@@ -6,6 +6,7 @@ import {
   WelcomeAcademicCard,
   ClearanceStatusCard,
   ClearanceProgressCard,
+  ExpandableClearanceStepCard,
   ApprovedCard,
 } from "../../stories/components/cards";
 
@@ -23,6 +24,16 @@ export default function Facultydashboard() {
     };
     timeline: { academicYear: number | null; term: string | null };
     clearance: { status: string; approvedCount: number; totalCount: number };
+    steps?: Array<{
+      index: number;
+      title: string;
+      statusLabel?: string;
+      statusVariant?: any;
+      collapsedType?: "status" | "dropdownOnly" | "locked";
+      submittedTo?: string;
+      submittedOn?: string;
+      requirements?: Array<{ title: string; description: string; completed?: boolean }>;
+    }>;
   }>(null);
 
   React.useEffect(() => {
@@ -82,6 +93,12 @@ export default function Facultydashboard() {
       .then((data) => setTimeline(data))
       .catch(() => setTimeline(null));
   }, []);
+  const [openStep, setOpenStep] = React.useState<number | null>(null);
+  const toggleStep = (index: number) => {
+    setOpenStep((prev) => (prev === index ? null : index));
+  };
+
+  const steps = profile?.steps ?? [];
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -120,7 +137,26 @@ export default function Facultydashboard() {
           <div className="mt-5">
             <ApprovedCard />
           </div>
-        ) : null}
+        ) : (
+          <>
+            {steps.map((s, idx) => (
+              <div key={`${s.index}-${s.title}-${idx}`} className={idx === 0 ? "mt-5" : "mt-2"}>
+                <ExpandableClearanceStepCard
+                  index={Number(s.index) || idx + 1}
+                  title={s.title}
+                  statusLabel={s.statusLabel}
+                  statusVariant={s.statusVariant}
+                  collapsedType={s.collapsedType}
+                  expanded={openStep === (Number(s.index) || idx + 1)}
+                  onToggle={() => toggleStep(Number(s.index) || idx + 1)}
+                  submittedTo={s.submittedTo}
+                  submittedOn={s.submittedOn}
+                  requirements={Array.isArray(s.requirements) ? s.requirements : []}
+                />
+              </div>
+            ))}
+          </>
+        )}
 
       </main>
 

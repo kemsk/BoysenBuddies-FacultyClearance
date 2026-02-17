@@ -69,18 +69,40 @@ type OfficeItem = {
   id: string;
   name: string;
   short: string;
+  displayOrder?: number;
 };
 
 type ApproverFlowItem = {
   id: string;
   category: string;
   collegeIds: string[];
+  order?: number;
 };
 
 type DraftDepartment = { name: string; short: string };
 
-function makeId(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+const FALLBACK_APPROVER_CATEGORIES = [
+  "Department Chair",
+  "College Dean",
+  "University Registrar",
+  "University Library",
+  "Office of the Vice President for Higher Education",
+  "Human Resources Office",
+];
+
+async function apiJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
+  const r = await fetch(input, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+    ...init,
+  });
+  if (!r.ok) {
+    const text = await r.text().catch(() => "");
+    throw new Error(text || `Request failed: ${r.status}`);
+  }
+  return (await r.json()) as T;
 }
 
 function AddCollegeDialog(props: {
@@ -607,7 +629,8 @@ export default function OVPHECollegeOfficeConfiguration() {
     fetch("/admin/xu-faculty-clearance/api/ovphe/approver-flow")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: { steps: ApproverFlowItem[] }) => {
-        setApproverFlow(data.steps ?? []);
+        const steps = (data.steps ?? []).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        setApproverFlow(steps);
       })
       .catch(() => {
         setApproverFlow([]);
@@ -616,7 +639,8 @@ export default function OVPHECollegeOfficeConfiguration() {
 
   const approverCategories = React.useMemo(() => {
     const raw = approverFlow.map((s) => (s.category ?? "").trim()).filter(Boolean);
-    return Array.from(new Set(raw));
+    const unique = Array.from(new Set(raw));
+    return unique.length ? unique : FALLBACK_APPROVER_CATEGORIES;
   }, [approverFlow]);
 
   const filteredDepartments = React.useMemo(
@@ -911,7 +935,7 @@ export default function OVPHECollegeOfficeConfiguration() {
                           </div>
                           <div className="mt-2 flex flex-wrap items-center gap-2">
                             {badges.map((b) => (
-                              <Badge key={b} variant="default" className="h-5 rounded-full px-2 text-[10px]">
+                              <Badge key={b} className="h-5 rounded-full px-2 text-[10px]">
                                 {b}
                               </Badge>
                             ))}
@@ -962,32 +986,37 @@ export default function OVPHECollegeOfficeConfiguration() {
           open={addCollegeOpen}
           onOpenChange={setAddCollegeOpen}
           onCreate={({ college, departments: newDepartments }) => {
-            const collegeId = makeId("college");
-            const nextCollege: CollegeItem = {
-              id: collegeId,
-              name: college.name,
-              short: college.short,
-            };
+            (async () => {
+              const created = await apiJson<CollegeItem>(
+                "/admin/xu-faculty-clearance/api/ovphe/colleges",
+                {
+                  method: "POST",
+                  body: JSON.stringify({ name: college.name, short: college.short }),
+                }
+              );
 
-            setColleges((prev) => {
-              return [...prev, nextCollege];
+              setColleges((prev) => [...prev, created]);
+              setSelectedCollegeId(created.id);
+
+              const deptDrafts = (newDepartments || []).filter((d) => d.name.trim() || d.short.trim());
+              if (deptDrafts.length) {
+                const createdDepts = await Promise.all(
+                  deptDrafts.map((d) =>
+                    apiJson<DepartmentItem>("/admin/xu-faculty-clearance/api/ovphe/departments", {
+                      method: "POST",
+                      body: JSON.stringify({
+                        collegeId: created.id,
+                        name: d.name,
+                        short: d.short,
+                      }),
+                    })
+                  )
+                );
+                setDepartments((prev) => [...prev, ...createdDepts]);
+              }
+            })().catch(() => {
+              // ignore; can be handled by UI later
             });
-
-            setSelectedCollegeId(collegeId);
-
-            if (newDepartments.length) {
-              setDepartments((prev) => {
-                const additions: DepartmentItem[] = newDepartments
-                  .filter((d) => d.name.trim() || d.short.trim())
-                  .map((d) => ({
-                    id: makeId("dept"),
-                    collegeId,
-                    name: d.name,
-                    short: d.short,
-                  }));
-                return [...prev, ...additions];
-              });
-            }
           }}
         />
 
@@ -997,14 +1026,21 @@ export default function OVPHECollegeOfficeConfiguration() {
           colleges={colleges}
           categories={approverCategories}
           onCreate={(payload) => {
-            const nextItem: ApproverFlowItem = {
-              id: makeId("approver"),
-              category: payload.category,
-              collegeIds: payload.collegeIds,
-            };
-
-            setApproverFlow((prev) => {
-              return [...prev, nextItem];
+            (async () => {
+              const created = await apiJson<ApproverFlowItem>(
+                "/admin/xu-faculty-clearance/api/ovphe/approver-flow/steps",
+                {
+                  method: "POST",
+                  body: JSON.stringify({
+                    category: payload.category,
+                    collegeIds: payload.collegeIds,
+                    order: approverFlow.length,
+                  }),
+                }
+              );
+              setApproverFlow((prev) => [...prev, created]);
+            })().catch(() => {
+              // ignore; can be handled by UI later
             });
           }}
         />
@@ -1015,15 +1051,21 @@ export default function OVPHECollegeOfficeConfiguration() {
           collegeName={selectedCollegeName}
           onCreate={(payload) => {
             if (!selectedCollegeId) return;
-            const nextItem: DepartmentItem = {
-              id: makeId("dept"),
-              collegeId: selectedCollegeId,
-              name: payload.name,
-              short: payload.short,
-            };
-
-            setDepartments((prev) => {
-              return [...prev, nextItem];
+            (async () => {
+              const created = await apiJson<DepartmentItem>(
+                "/admin/xu-faculty-clearance/api/ovphe/departments",
+                {
+                  method: "POST",
+                  body: JSON.stringify({
+                    collegeId: selectedCollegeId,
+                    name: payload.name,
+                    short: payload.short,
+                  }),
+                }
+              );
+              setDepartments((prev) => [...prev, created]);
+            })().catch(() => {
+              // ignore; can be handled by UI later
             });
           }}
         />
@@ -1032,14 +1074,17 @@ export default function OVPHECollegeOfficeConfiguration() {
           open={addOfficeOpen}
           onOpenChange={setAddOfficeOpen}
           onCreate={(payload) => {
-            const nextItem: OfficeItem = {
-              id: makeId("office"),
-              name: payload.name,
-              short: payload.short,
-            };
-
-            setOffices((prev) => {
-              return [...prev, nextItem];
+            (async () => {
+              const created = await apiJson<OfficeItem>(
+                "/admin/xu-faculty-clearance/api/ovphe/offices",
+                {
+                  method: "POST",
+                  body: JSON.stringify({ name: payload.name, short: payload.short }),
+                }
+              );
+              setOffices((prev) => [...prev, created]);
+            })().catch(() => {
+              // ignore; can be handled by UI later
             });
           }}
         />
@@ -1057,11 +1102,17 @@ export default function OVPHECollegeOfficeConfiguration() {
           }
           onSave={(payload) => {
             if (!editingCollegeId) return;
-            setColleges((prev) => {
-              const next = prev.map((c) =>
-                c.id === editingCollegeId ? { ...c, name: payload.name, short: payload.short } : c
+            (async () => {
+              const updated = await apiJson<CollegeItem>(
+                `/admin/xu-faculty-clearance/api/ovphe/colleges/${editingCollegeId}`,
+                {
+                  method: "PATCH",
+                  body: JSON.stringify({ name: payload.name, short: payload.short }),
+                }
               );
-              return next;
+              setColleges((prev) => prev.map((c) => (c.id === editingCollegeId ? { ...c, ...updated } : c)));
+            })().catch(() => {
+              // ignore; can be handled by UI later
             });
           }}
         />
@@ -1079,11 +1130,19 @@ export default function OVPHECollegeOfficeConfiguration() {
           }
           onSave={(payload) => {
             if (!editingDepartmentId) return;
-            setDepartments((prev) => {
-              const next = prev.map((d) =>
-                d.id === editingDepartmentId ? { ...d, name: payload.name, short: payload.short } : d
+            (async () => {
+              const updated = await apiJson<DepartmentItem>(
+                `/admin/xu-faculty-clearance/api/ovphe/departments/${editingDepartmentId}`,
+                {
+                  method: "PATCH",
+                  body: JSON.stringify({ name: payload.name, short: payload.short }),
+                }
               );
-              return next;
+              setDepartments((prev) =>
+                prev.map((d) => (d.id === editingDepartmentId ? { ...d, ...updated } : d))
+              );
+            })().catch(() => {
+              // ignore; can be handled by UI later
             });
           }}
         />
@@ -1099,11 +1158,17 @@ export default function OVPHECollegeOfficeConfiguration() {
           }
           onSave={(payload) => {
             if (!editingOfficeId) return;
-            setOffices((prev) => {
-              const next = prev.map((o) =>
-                o.id === editingOfficeId ? { ...o, name: payload.name, short: payload.short } : o
+            (async () => {
+              const updated = await apiJson<OfficeItem>(
+                `/admin/xu-faculty-clearance/api/ovphe/offices/${editingOfficeId}`,
+                {
+                  method: "PATCH",
+                  body: JSON.stringify({ name: payload.name, short: payload.short }),
+                }
               );
-              return next;
+              setOffices((prev) => prev.map((o) => (o.id === editingOfficeId ? { ...o, ...updated } : o)));
+            })().catch(() => {
+              // ignore; can be handled by UI later
             });
           }}
         />
@@ -1126,13 +1191,17 @@ export default function OVPHECollegeOfficeConfiguration() {
           }
           onSave={(payload) => {
             if (!editingApproverId) return;
-            setApproverFlow((prev) => {
-              const next = prev.map((a) =>
-                a.id === editingApproverId
-                  ? { ...a, category: payload.category, collegeIds: payload.collegeIds }
-                  : a
+            (async () => {
+              const updated = await apiJson<ApproverFlowItem>(
+                `/admin/xu-faculty-clearance/api/ovphe/approver-flow/steps/${editingApproverId}`,
+                {
+                  method: "PATCH",
+                  body: JSON.stringify({ category: payload.category, collegeIds: payload.collegeIds }),
+                }
               );
-              return next;
+              setApproverFlow((prev) => prev.map((a) => (a.id === editingApproverId ? { ...a, ...updated } : a)));
+            })().catch(() => {
+              // ignore; can be handled by UI later
             });
           }}
         />
@@ -1142,13 +1211,24 @@ export default function OVPHECollegeOfficeConfiguration() {
           onOpenChange={setEditApproverFlowOpen}
           items={approverFlow}
           onSave={(next) => {
-            setApproverFlow(next);
+            (async () => {
+              setApproverFlow(next);
+              await apiJson<{ ok: boolean }>(
+                "/admin/xu-faculty-clearance/api/ovphe/approver-flow/order",
+                {
+                  method: "PUT",
+                  body: JSON.stringify({ stepIds: next.map((s) => s.id) }),
+                }
+              );
+            })().catch(() => {
+              // ignore; can be handled by UI later
+            });
           }}
         />
 
         <AlertDialog
           open={confirmDelete.open}
-          onOpenChange={(open) => {
+          onOpenChange={(open: boolean) => {
             if (!open) setConfirmDelete({ open: false });
           }}
         >
@@ -1176,35 +1256,52 @@ export default function OVPHECollegeOfficeConfiguration() {
                     if (!confirmDelete.open) return;
 
                     if (confirmDelete.type === "college") {
-                      setColleges((prev) => {
-                        const next = prev.filter((c) => c.id !== confirmDelete.id);
-                        return next;
+                      (async () => {
+                        await apiJson(
+                          `/admin/xu-faculty-clearance/api/ovphe/colleges/${confirmDelete.id}`,
+                          { method: "DELETE" }
+                        );
+                        setColleges((prev) => prev.filter((c) => c.id !== confirmDelete.id));
+                        setDepartments((prev) => prev.filter((d) => d.collegeId !== confirmDelete.id));
+                        setSelectedCollegeId((prev) => (prev === confirmDelete.id ? "" : prev));
+                      })().catch(() => {
+                        // ignore; can be handled by UI later
                       });
-                      setDepartments((prev) => {
-                        const next = prev.filter((d) => d.collegeId !== confirmDelete.id);
-                        return next;
-                      });
-                      setSelectedCollegeId((prev) => (prev === confirmDelete.id ? "" : prev));
                     }
 
                     if (confirmDelete.type === "department") {
-                      setDepartments((prev) => {
-                        const next = prev.filter((d) => d.id !== confirmDelete.id);
-                        return next;
+                      (async () => {
+                        await apiJson(
+                          `/admin/xu-faculty-clearance/api/ovphe/departments/${confirmDelete.id}`,
+                          { method: "DELETE" }
+                        );
+                        setDepartments((prev) => prev.filter((d) => d.id !== confirmDelete.id));
+                      })().catch(() => {
+                        // ignore; can be handled by UI later
                       });
                     }
 
                     if (confirmDelete.type === "office") {
-                      setOffices((prev) => {
-                        const next = prev.filter((o) => o.id !== confirmDelete.id);
-                        return next;
+                      (async () => {
+                        await apiJson(
+                          `/admin/xu-faculty-clearance/api/ovphe/offices/${confirmDelete.id}`,
+                          { method: "DELETE" }
+                        );
+                        setOffices((prev) => prev.filter((o) => o.id !== confirmDelete.id));
+                      })().catch(() => {
+                        // ignore; can be handled by UI later
                       });
                     }
 
                     if (confirmDelete.type === "approver") {
-                      setApproverFlow((prev) => {
-                        const next = prev.filter((a) => a.id !== confirmDelete.id);
-                        return next;
+                      (async () => {
+                        await apiJson(
+                          `/admin/xu-faculty-clearance/api/ovphe/approver-flow/steps/${confirmDelete.id}`,
+                          { method: "DELETE" }
+                        );
+                        setApproverFlow((prev) => prev.filter((a) => a.id !== confirmDelete.id));
+                      })().catch(() => {
+                        // ignore; can be handled by UI later
                       });
                     }
 
@@ -1230,3 +1327,4 @@ export default function OVPHECollegeOfficeConfiguration() {
     </div>
   );
 }
+

@@ -8,6 +8,7 @@ import urllib.request
 import urllib.error
 from decimal import Decimal
 
+from django.db import transaction
 from django.db import models
 from django.http import JsonResponse, HttpResponseRedirect
 from django.shortcuts import render
@@ -330,6 +331,62 @@ def _get_active_ovphe_admin():
         SystemAdmin.objects.select_related("user")
         .filter(admin_role=SystemAdmin.AdminRole.OVPHE, is_active=True)
         .first()
+    )
+
+
+def _require_ovphe_admin():
+    admin = _get_active_ovphe_admin()
+    if not admin:
+        return None, JsonResponse({"detail": "OVPHE user not found"}, status=404)
+    return admin, None
+
+
+def _parse_json_body(request):
+    try:
+        raw = request.body.decode("utf-8") if request.body else ""
+        if not raw:
+            return {}, None
+        return json.loads(raw), None
+    except Exception:
+        return None, JsonResponse({"detail": "Invalid JSON"}, status=400)
+
+
+def _json_method_not_allowed():
+    return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+
+def _as_int(v, default=0):
+    try:
+        return int(v)
+    except Exception:
+        return default
+
+
+def _is_college_referenced(college: College):
+    return (
+        Faculty.objects.filter(college=college).exists()
+        or Approver.objects.filter(college=college).exists()
+        or StudentAssistant.objects.filter(college=college).exists()
+        or Requirement.colleges.through.objects.filter(college_id=college.id).exists()
+        or ApproverFlowStep.colleges.through.objects.filter(college_id=college.id).exists()
+        or Department.objects.filter(college=college).exists()
+    )
+
+
+def _is_department_referenced(dept: Department):
+    return (
+        Faculty.objects.filter(department=dept).exists()
+        or Approver.objects.filter(department=dept).exists()
+        or StudentAssistant.objects.filter(department=dept).exists()
+        or Requirement.departments.through.objects.filter(department_id=dept.id).exists()
+    )
+
+
+def _is_office_referenced(office: Office):
+    return (
+        Faculty.objects.filter(office=office).exists()
+        or Approver.objects.filter(office=office).exists()
+        or Requirement.offices.through.objects.filter(office_id=office.id).exists()
     )
 
 
@@ -811,20 +868,33 @@ def ovphe_clearance_timelines_api(request):
 
 def ovphe_org_structure_api(request):
     if request.method != "GET":
-        return JsonResponse({"detail": "Method not allowed"}, status=405)
+        return _json_method_not_allowed()
 
-    colleges = list(College.objects.order_by("name").values("id", "name", "abbreviation"))
+    colleges = list(
+        College.objects.filter(is_active=True)
+        .order_by("name", "id")
+        .values("id", "name", "abbreviation")
+    )
     departments = list(
         Department.objects.select_related("college")
-        .order_by("college__name", "name")
+        .filter(is_active=True, college__is_active=True)
+        .order_by("college__name", "name", "id")
         .values("id", "college_id", "name", "abbreviation")
     )
-    offices = list(Office.objects.order_by("name").values("id", "name", "abbreviation"))
+    offices = list(
+        Office.objects.filter(is_active=True)
+        .order_by("display_order", "name", "id")
+        .values("id", "name", "abbreviation", "display_order")
+    )
 
     return JsonResponse(
         {
             "colleges": [
-                {"id": str(c["id"]), "name": c["name"], "short": c["abbreviation"] or ""}
+                {
+                    "id": str(c["id"]),
+                    "name": c["name"],
+                    "short": c["abbreviation"] or "",
+                }
                 for c in colleges
             ],
             "departments": [
@@ -837,7 +907,12 @@ def ovphe_org_structure_api(request):
                 for d in departments
             ],
             "offices": [
-                {"id": str(o["id"]), "name": o["name"], "short": o["abbreviation"] or ""}
+                {
+                    "id": str(o["id"]),
+                    "name": o["name"],
+                    "short": o["abbreviation"] or "",
+                    "displayOrder": int(o.get("display_order") or 0),
+                }
                 for o in offices
             ],
         }
@@ -846,17 +921,22 @@ def ovphe_org_structure_api(request):
 
 def ovphe_approver_flow_api(request):
     if request.method != "GET":
-        return JsonResponse({"detail": "Method not allowed"}, status=405)
+        return _json_method_not_allowed()
 
-    admin = _get_active_ovphe_admin()
-    if not admin:
-        return JsonResponse({"detail": "OVPHE user not found"}, status=404)
+    admin, err = _require_ovphe_admin()
+    if err:
+        return err
 
     config = ApproverFlowConfig.objects.order_by("-updated_at", "pk").first()
     if not config:
         config = ApproverFlowConfig.objects.create(created_by=admin)
 
-    steps = config.steps.prefetch_related("colleges").all()
+    steps = (
+        config.steps.select_related("office")
+        .prefetch_related("colleges")
+        .all()
+        .order_by("order", "id")
+    )
     return JsonResponse(
         {
             "id": str(config.id),
@@ -864,12 +944,523 @@ def ovphe_approver_flow_api(request):
                 {
                     "id": str(s.id),
                     "category": s.category,
+                    "officeId": str(s.office_id) if s.office_id else "",
                     "collegeIds": [str(c.id) for c in s.colleges.all()],
+                    "order": int(s.order),
                 }
                 for s in steps
             ],
         }
     )
+
+
+def _resolve_office_for_flow_step(*, category: str, office_id):
+    if office_id:
+        return Office.objects.filter(pk=office_id, is_active=True).first()
+
+    cat = (category or "").strip()
+    if not cat:
+        return None
+
+    return (
+        Office.objects.filter(is_active=True)
+        .filter(models.Q(name__iexact=cat) | models.Q(abbreviation__iexact=cat))
+        .first()
+    )
+
+
+def _relink_flow_steps_for_office(*, office: Office):
+    if not office or not office.is_active:
+        return
+
+    config = ApproverFlowConfig.objects.order_by("-updated_at", "-id").first()
+    if not config:
+        return
+
+    config.steps.filter(office__isnull=True).filter(
+        models.Q(category__iexact=office.name)
+        | models.Q(category__iexact=(office.abbreviation or ""))
+    ).update(office=office)
+
+
+@csrf_exempt
+def ovphe_colleges_api(request):
+    admin, err = _require_ovphe_admin()
+    if err:
+        return err
+
+    if request.method == "POST":
+        data, jerr = _parse_json_body(request)
+        if jerr:
+            return jerr
+        name = (data.get("name") or "").strip()
+        short = (data.get("short") or "").strip()
+        if not name:
+            return JsonResponse({"detail": "name is required"}, status=400)
+
+        existing_active = College.objects.filter(name__iexact=name, is_active=True).first()
+        if existing_active:
+            return JsonResponse(
+                {"detail": "A college with this name already exists", "id": str(existing_active.id)},
+                status=409,
+            )
+
+        existing_inactive = College.objects.filter(name__iexact=name, is_active=False).first()
+        if existing_inactive:
+            existing_inactive.is_active = True
+            existing_inactive.abbreviation = short or None
+            existing_inactive.save(update_fields=["is_active", "abbreviation"])
+            return JsonResponse(
+                {
+                    "id": str(existing_inactive.id),
+                    "name": existing_inactive.name,
+                    "short": existing_inactive.abbreviation or "",
+                    "isActive": bool(existing_inactive.is_active),
+                    "reactivated": True,
+                },
+                status=200,
+            )
+
+        obj = College.objects.create(
+            name=name,
+            abbreviation=short or None,
+            is_active=True,
+        )
+        return JsonResponse(
+            {
+                "id": str(obj.id),
+                "name": obj.name,
+                "short": obj.abbreviation or "",
+                "isActive": bool(obj.is_active),
+            },
+            status=201,
+        )
+
+    return _json_method_not_allowed()
+
+
+@csrf_exempt
+def ovphe_college_detail_api(request, college_id: int):
+    admin, err = _require_ovphe_admin()
+    if err:
+        return err
+
+    try:
+        obj = College.objects.get(pk=college_id)
+    except College.DoesNotExist:
+        return JsonResponse({"detail": "Not found"}, status=404)
+
+    if request.method == "PATCH":
+        data, jerr = _parse_json_body(request)
+        if jerr:
+            return jerr
+
+        if "name" in data:
+            obj.name = (data.get("name") or "").strip()
+        if "short" in data:
+            short = (data.get("short") or "").strip()
+            obj.abbreviation = short or None
+        if "isActive" in data:
+            obj.is_active = bool(data.get("isActive"))
+
+        if not (obj.name or "").strip():
+            return JsonResponse({"detail": "name is required"}, status=400)
+        obj.save(update_fields=["name", "abbreviation", "is_active"])
+        return JsonResponse(
+            {
+                "id": str(obj.id),
+                "name": obj.name,
+                "short": obj.abbreviation or "",
+                "isActive": bool(obj.is_active),
+            }
+        )
+
+    if request.method == "DELETE":
+        if _is_college_referenced(obj):
+            if obj.is_active:
+                obj.is_active = False
+                obj.save(update_fields=["is_active"])
+            return JsonResponse({"id": str(obj.id), "softDeleted": True})
+        obj.delete()
+        return JsonResponse({"id": str(college_id), "deleted": True})
+
+    return _json_method_not_allowed()
+
+
+@csrf_exempt
+def ovphe_departments_api(request):
+    admin, err = _require_ovphe_admin()
+    if err:
+        return err
+
+    if request.method == "POST":
+        data, jerr = _parse_json_body(request)
+        if jerr:
+            return jerr
+        name = (data.get("name") or "").strip()
+        short = (data.get("short") or "").strip()
+        college_id = data.get("collegeId")
+        if not name:
+            return JsonResponse({"detail": "name is required"}, status=400)
+        if not college_id:
+            return JsonResponse({"detail": "collegeId is required"}, status=400)
+        try:
+            college = College.objects.get(pk=college_id)
+        except College.DoesNotExist:
+            return JsonResponse({"detail": "college not found"}, status=404)
+
+        existing_active = Department.objects.filter(
+            college=college, name__iexact=name, is_active=True
+        ).first()
+        if existing_active:
+            return JsonResponse(
+                {"detail": "A department with this name already exists", "id": str(existing_active.id)},
+                status=409,
+            )
+
+        existing_inactive = Department.objects.filter(
+            college=college, name__iexact=name, is_active=False
+        ).first()
+        if existing_inactive:
+            existing_inactive.is_active = True
+            existing_inactive.abbreviation = short or None
+            existing_inactive.save(update_fields=["is_active", "abbreviation"])
+            return JsonResponse(
+                {
+                    "id": str(existing_inactive.id),
+                    "collegeId": str(existing_inactive.college_id),
+                    "name": existing_inactive.name,
+                    "short": existing_inactive.abbreviation or "",
+                    "isActive": bool(existing_inactive.is_active),
+                    "reactivated": True,
+                },
+                status=200,
+            )
+
+        obj = Department.objects.create(
+            college=college,
+            name=name,
+            abbreviation=short or None,
+            is_active=True,
+        )
+        return JsonResponse(
+            {
+                "id": str(obj.id),
+                "collegeId": str(obj.college_id),
+                "name": obj.name,
+                "short": obj.abbreviation or "",
+                "isActive": bool(obj.is_active),
+            },
+            status=201,
+        )
+
+    return _json_method_not_allowed()
+
+
+@csrf_exempt
+def ovphe_department_detail_api(request, department_id: int):
+    admin, err = _require_ovphe_admin()
+    if err:
+        return err
+
+    try:
+        obj = Department.objects.select_related("college").get(pk=department_id)
+    except Department.DoesNotExist:
+        return JsonResponse({"detail": "Not found"}, status=404)
+
+    if request.method == "PATCH":
+        data, jerr = _parse_json_body(request)
+        if jerr:
+            return jerr
+
+        if "name" in data:
+            obj.name = (data.get("name") or "").strip()
+        if "short" in data:
+            short = (data.get("short") or "").strip()
+            obj.abbreviation = short or None
+        if "isActive" in data:
+            obj.is_active = bool(data.get("isActive"))
+        if "collegeId" in data and data.get("collegeId"):
+            try:
+                obj.college = College.objects.get(pk=data.get("collegeId"))
+            except College.DoesNotExist:
+                return JsonResponse({"detail": "college not found"}, status=404)
+
+        if not (obj.name or "").strip():
+            return JsonResponse({"detail": "name is required"}, status=400)
+        obj.save(update_fields=["name", "abbreviation", "is_active", "college"])
+        return JsonResponse(
+            {
+                "id": str(obj.id),
+                "collegeId": str(obj.college_id),
+                "name": obj.name,
+                "short": obj.abbreviation or "",
+                "isActive": bool(obj.is_active),
+            }
+        )
+
+    if request.method == "DELETE":
+        if _is_department_referenced(obj):
+            if obj.is_active:
+                obj.is_active = False
+                obj.save(update_fields=["is_active"])
+            return JsonResponse({"id": str(obj.id), "softDeleted": True})
+        obj.delete()
+        return JsonResponse({"id": str(department_id), "deleted": True})
+
+    return _json_method_not_allowed()
+
+
+@csrf_exempt
+def ovphe_offices_api(request):
+    admin, err = _require_ovphe_admin()
+    if err:
+        return err
+
+    if request.method == "POST":
+        data, jerr = _parse_json_body(request)
+        if jerr:
+            return jerr
+        name = (data.get("name") or "").strip()
+        short = (data.get("short") or "").strip()
+        display_order = _as_int(data.get("displayOrder"), 0)
+        if not name:
+            return JsonResponse({"detail": "name is required"}, status=400)
+
+        existing_active = Office.objects.filter(name__iexact=name, is_active=True).first()
+        if existing_active:
+            return JsonResponse(
+                {"detail": "An office with this name already exists", "id": str(existing_active.id)},
+                status=409,
+            )
+
+        existing_inactive = Office.objects.filter(name__iexact=name, is_active=False).first()
+        if existing_inactive:
+            existing_inactive.is_active = True
+            existing_inactive.abbreviation = short or None
+            existing_inactive.display_order = display_order
+            existing_inactive.save(update_fields=["is_active", "abbreviation", "display_order"])
+            _relink_flow_steps_for_office(office=existing_inactive)
+            return JsonResponse(
+                {
+                    "id": str(existing_inactive.id),
+                    "name": existing_inactive.name,
+                    "short": existing_inactive.abbreviation or "",
+                    "displayOrder": int(existing_inactive.display_order),
+                    "isActive": bool(existing_inactive.is_active),
+                    "reactivated": True,
+                },
+                status=200,
+            )
+
+        obj = Office.objects.create(
+            name=name,
+            abbreviation=short or None,
+            is_active=True,
+            display_order=display_order,
+        )
+        _relink_flow_steps_for_office(office=obj)
+        return JsonResponse(
+            {
+                "id": str(obj.id),
+                "name": obj.name,
+                "short": obj.abbreviation or "",
+                "displayOrder": int(obj.display_order),
+                "isActive": bool(obj.is_active),
+            },
+            status=201,
+        )
+
+    return _json_method_not_allowed()
+
+
+@csrf_exempt
+def ovphe_office_detail_api(request, office_id: int):
+    admin, err = _require_ovphe_admin()
+    if err:
+        return err
+
+    try:
+        obj = Office.objects.get(pk=office_id)
+    except Office.DoesNotExist:
+        return JsonResponse({"detail": "Not found"}, status=404)
+
+    if request.method == "PATCH":
+        data, jerr = _parse_json_body(request)
+        if jerr:
+            return jerr
+
+        if "name" in data:
+            obj.name = (data.get("name") or "").strip()
+        if "short" in data:
+            short = (data.get("short") or "").strip()
+            obj.abbreviation = short or None
+        if "displayOrder" in data:
+            obj.display_order = _as_int(data.get("displayOrder"), obj.display_order)
+        if "isActive" in data:
+            obj.is_active = bool(data.get("isActive"))
+
+        if not (obj.name or "").strip():
+            return JsonResponse({"detail": "name is required"}, status=400)
+        obj.save(update_fields=["name", "abbreviation", "display_order", "is_active"])
+        _relink_flow_steps_for_office(office=obj)
+        return JsonResponse(
+            {
+                "id": str(obj.id),
+                "name": obj.name,
+                "short": obj.abbreviation or "",
+                "displayOrder": int(obj.display_order),
+                "isActive": bool(obj.is_active),
+            }
+        )
+
+    if request.method == "DELETE":
+        if _is_office_referenced(obj):
+            if obj.is_active:
+                obj.is_active = False
+                obj.save(update_fields=["is_active"])
+                ApproverFlowStep.objects.filter(office=obj).update(office=None)
+            return JsonResponse({"id": str(obj.id), "softDeleted": True})
+        obj.delete()
+        return JsonResponse({"id": str(office_id), "deleted": True})
+
+    return _json_method_not_allowed()
+
+
+@csrf_exempt
+def ovphe_org_structure_order_api(request):
+    admin, err = _require_ovphe_admin()
+    if err:
+        return err
+
+    if request.method != "PUT":
+        return _json_method_not_allowed()
+
+    data, jerr = _parse_json_body(request)
+    if jerr:
+        return jerr
+
+    office_ids = data.get("offices") or []
+
+    with transaction.atomic():
+        for idx, oid in enumerate(office_ids):
+            Office.objects.filter(pk=oid).update(display_order=idx)
+
+    return JsonResponse({"ok": True})
+
+
+@csrf_exempt
+def ovphe_approver_flow_steps_api(request):
+    admin, err = _require_ovphe_admin()
+    if err:
+        return err
+
+    config = ApproverFlowConfig.objects.order_by("-updated_at", "-id").first()
+    if not config:
+        config = ApproverFlowConfig.objects.create(created_by=admin)
+
+    if request.method == "POST":
+        data, jerr = _parse_json_body(request)
+        if jerr:
+            return jerr
+        category = (data.get("category") or "").strip()
+        office_id = data.get("officeId") or None
+        college_ids = data.get("collegeIds") or []
+        order = _as_int(data.get("order"), 0)
+        if not category:
+            return JsonResponse({"detail": "category is required"}, status=400)
+
+        office = _resolve_office_for_flow_step(category=category, office_id=office_id)
+        step = ApproverFlowStep.objects.create(
+            config=config,
+            category=category,
+            order=order,
+            office=office,
+        )
+        if college_ids:
+            step.colleges.set(College.objects.filter(pk__in=college_ids, is_active=True))
+        return JsonResponse(
+            {
+                "id": str(step.id),
+                "category": step.category,
+                "officeId": str(step.office_id) if step.office_id else "",
+                "collegeIds": [str(c.id) for c in step.colleges.all()],
+                "order": int(step.order),
+            },
+            status=201,
+        )
+
+    return _json_method_not_allowed()
+
+
+@csrf_exempt
+def ovphe_approver_flow_step_detail_api(request, step_id: int):
+    admin, err = _require_ovphe_admin()
+    if err:
+        return err
+
+    try:
+        step = ApproverFlowStep.objects.select_related("config").prefetch_related("colleges").get(pk=step_id)
+    except ApproverFlowStep.DoesNotExist:
+        return JsonResponse({"detail": "Not found"}, status=404)
+
+    if request.method == "PATCH":
+        data, jerr = _parse_json_body(request)
+        if jerr:
+            return jerr
+        if "category" in data:
+            step.category = (data.get("category") or "").strip()
+        if "order" in data:
+            step.order = _as_int(data.get("order"), step.order)
+        if "officeId" in data:
+            office_id = data.get("officeId") or None
+            step.office = _resolve_office_for_flow_step(category=step.category, office_id=office_id)
+        elif "category" in data and not step.office_id:
+            step.office = _resolve_office_for_flow_step(category=step.category, office_id=None)
+        if not (step.category or "").strip():
+            return JsonResponse({"detail": "category is required"}, status=400)
+        step.save(update_fields=["category", "order", "office"])
+
+        if "collegeIds" in data:
+            college_ids = data.get("collegeIds") or []
+            step.colleges.set(College.objects.filter(pk__in=college_ids, is_active=True))
+
+        return JsonResponse(
+            {
+                "id": str(step.id),
+                "category": step.category,
+                "officeId": str(step.office_id) if step.office_id else "",
+                "collegeIds": [str(c.id) for c in step.colleges.all()],
+                "order": int(step.order),
+            }
+        )
+
+    if request.method == "DELETE":
+        step.delete()
+        return JsonResponse({"id": str(step_id), "deleted": True})
+
+    return _json_method_not_allowed()
+
+
+@csrf_exempt
+def ovphe_approver_flow_order_api(request):
+    admin, err = _require_ovphe_admin()
+    if err:
+        return err
+
+    if request.method != "PUT":
+        return _json_method_not_allowed()
+
+    data, jerr = _parse_json_body(request)
+    if jerr:
+        return jerr
+    step_ids = data.get("stepIds") or []
+
+    with transaction.atomic():
+        for idx, sid in enumerate(step_ids):
+            ApproverFlowStep.objects.filter(pk=sid).update(order=idx)
+
+    return JsonResponse({"ok": True})
 
 
 def ovphe_notifications_api(request):
@@ -1271,6 +1862,7 @@ def faculty_dashboard_api(request):
     total_reqs = 0
     approved_reqs = 0
     status = "Pending"
+    steps_payload = []
     if clearance:
         if clearance.status == Clearance.Status.PENDING:
             status = "Pending"
@@ -1286,6 +1878,95 @@ def faculty_dashboard_api(request):
         approved_reqs = ClearanceRequest.objects.filter(
             clearance=clearance, status=ClearanceRequest.Status.APPROVED
         ).count()
+
+        config = ApproverFlowConfig.objects.order_by("id").first()
+        if config:
+            flow_steps = (
+                ApproverFlowStep.objects.select_related("office")
+                .prefetch_related("colleges")
+                .filter(config=config)
+                .order_by("order", "id")
+            )
+
+            # Collect applicable requirements per step based on requirement associations.
+            # Department Chair: requirements tied to the faculty department
+            # College Dean: requirements tied to the faculty college
+            # Office-based steps: requirements tied to that office
+            dept_reqs = Requirement.objects.filter(departments=faculty.department).distinct() if faculty.department_id else Requirement.objects.none()
+            college_reqs = Requirement.objects.filter(colleges=faculty.college).distinct() if faculty.college_id else Requirement.objects.none()
+            office_requirements = {}
+            office_ids = [fs.office_id for fs in flow_steps if fs.office_id]
+            if office_ids:
+                for office_id in set(office_ids):
+                    office_requirements[office_id] = list(
+                        Requirement.objects.filter(offices__id=office_id).distinct().order_by("id")
+                    )
+
+            # Map clearance request status by requirement
+            req_status_by_id = {
+                cr.requirement_id: cr.status
+                for cr in ClearanceRequest.objects.select_related("requirement").filter(clearance=clearance)
+            }
+
+            def _step_status_label(req_statuses):
+                if not req_statuses:
+                    return "PENDING"
+                if any(s == ClearanceRequest.Status.REJECTED for s in req_statuses):
+                    return "REJECTED"
+                if all(s == ClearanceRequest.Status.APPROVED for s in req_statuses):
+                    return "APPROVED"
+                return "PENDING"
+
+            def _status_variant(label: str) -> str:
+                if label == "APPROVED":
+                    return "success"
+                if label == "REJECTED":
+                    return "destructive"
+                return "warning"
+
+            index = 1
+            for fs in flow_steps:
+                # Apply college scoping if the step has explicit colleges assigned
+                step_college_ids = {c.id for c in fs.colleges.all()}
+                if step_college_ids and faculty.college_id and faculty.college_id not in step_college_ids:
+                    continue
+
+                if (fs.category or "").strip().lower() == "department chair":
+                    reqs = list(dept_reqs.order_by("id"))
+                elif (fs.category or "").strip().lower() == "college dean":
+                    reqs = list(college_reqs.order_by("id"))
+                elif fs.office_id:
+                    reqs = office_requirements.get(fs.office_id, [])
+                else:
+                    reqs = []
+
+                req_items = []
+                req_statuses = []
+                for r in reqs:
+                    s = req_status_by_id.get(r.id, ClearanceRequest.Status.PENDING)
+                    req_statuses.append(s)
+                    req_items.append(
+                        {
+                            "id": str(r.id),
+                            "title": r.title,
+                            "description": r.description or "",
+                            "status": s,
+                            "completed": s == ClearanceRequest.Status.APPROVED,
+                        }
+                    )
+
+                step_label = _step_status_label(req_statuses)
+                steps_payload.append(
+                    {
+                        "index": index,
+                        "title": fs.category or (fs.office.name if fs.office else ""),
+                        "statusLabel": step_label,
+                        "statusVariant": _status_variant(step_label),
+                        "collapsedType": "status",
+                        "requirements": req_items,
+                    }
+                )
+                index += 1
 
     return JsonResponse(
         {
@@ -1308,6 +1989,7 @@ def faculty_dashboard_api(request):
                 "approvedCount": approved_reqs,
                 "totalCount": total_reqs,
             },
+            "steps": steps_payload,
         }
     )
 

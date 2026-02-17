@@ -28,18 +28,19 @@ export default function Notification() {
             is_read?: boolean;
           }>;
         }) => {
-        const mapped = Array.isArray(data.items)
-          ? data.items.map((n) => ({
-              title: n.title,
-              status: n.status as any,
-              description: n.description ?? "",
-              details: Array.isArray(n.details) ? n.details : [],
-              timestamp: n.timestamp,
-              is_read: !!n.is_read,
-            }))
-          : [];
-        setItems(mapped);
-      })
+          const mapped = Array.isArray(data.items)
+            ? data.items.map((n) => ({
+                title: n.title,
+                status: n.status as any,
+                description: n.description ?? "",
+                details: Array.isArray(n.details) ? n.details : [],
+                timestamp: n.timestamp,
+                is_read: !!n.is_read,
+              }))
+            : [];
+          setItems(mapped);
+        }
+      )
       .catch(() => {
         setItems([]);
       });

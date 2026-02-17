@@ -77,9 +77,9 @@ export default function SystemAnalytics() {
           rows: {
             collegeName: string;
             completionRate: number;
-            completedCount: number;
-            incompleteCount: number;
-            totalCount: number;
+            completedCount?: number;
+            incompleteCount?: number;
+            totalCount?: number;
           }[];
         }) => {
         const rows = data.rows ?? [];
