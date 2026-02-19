@@ -142,13 +142,9 @@ export function ManageSystemApproverDialog({
   submitLabel,
   initialValues,
   onSubmit,
-  colleges = [
-    "College of Arts and Sciences",
-    "College of Computer Studies",
-    "College of Agriculture",
-  ],
-  departments = ["College Admin", "College Dean", "Computer Science", "Information Technology"],
-  offices = ["University Registrar", "University Library", "Human Resources Office"],
+  colleges = [],
+  departments = [],
+  offices = [],
 }: ManageSystemApproverDialogProps) {
   const [internalOpen, setInternalOpen] = React.useState(false);
   const isControlled = typeof open === "boolean";

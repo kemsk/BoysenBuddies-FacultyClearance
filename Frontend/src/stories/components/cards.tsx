@@ -2382,6 +2382,7 @@ export type SystemUser = {
   college: string;
   department: string;
   email: string;
+  isActive?: boolean;
 };
 
 export type SystemUsersCardProps = {

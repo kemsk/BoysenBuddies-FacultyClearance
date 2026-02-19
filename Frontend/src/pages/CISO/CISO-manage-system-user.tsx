@@ -41,17 +41,82 @@ import {
   const pageSize = 2;
 
   const [users, setUsers] = React.useState<SystemUser[]>([]);
+  const [orgColleges, setOrgColleges] = React.useState<string[]>([]);
+  const [orgDepartments, setOrgDepartments] = React.useState<string[]>([]);
+  const [orgOffices, setOrgOffices] = React.useState<string[]>([]);
+
+  const apiBase = "/admin/xu-faculty-clearance/api/ciso/system-users";
+  const orgStructureApi = "/admin/xu-faculty-clearance/api/ovphe/org-structure";
+
+  function isXuEmail(email: string) {
+    const e = (email || "").trim().toLowerCase();
+    return e.endsWith("@xu.edu.ph") || e.endsWith("@my.xu.edu.ph");
+  }
+
+  async function readErrorDetail(r: Response) {
+    try {
+      const data = (await r.json()) as { detail?: string };
+      if (data?.detail) return data.detail;
+    } catch {
+      // ignore
+    }
+
+    try {
+      const t = (await r.text()) || "";
+      if (t.trim()) return t;
+    } catch {
+      // ignore
+    }
+
+    return `Request failed (HTTP ${r.status})`;
+  }
+
+  const fetchUsers = React.useCallback(async () => {
+    try {
+      const r = await fetch(apiBase, { method: "GET", credentials: "include" });
+      if (!r.ok) throw new Error("Failed to load users");
+      const data = (await r.json()) as { items?: SystemUser[] };
+      setUsers(Array.isArray(data.items) ? data.items : []);
+    } catch {
+      setUsers([]);
+    }
+  }, [apiBase]);
+
+  const fetchOrgStructure = React.useCallback(async () => {
+    try {
+      const r = await fetch(orgStructureApi, { method: "GET", credentials: "include" });
+      if (!r.ok) throw new Error("Failed to load org structure");
+
+      const data = (await r.json()) as {
+        colleges?: Array<{ name?: string }>;
+        departments?: Array<{ name?: string }>;
+        offices?: Array<{ name?: string }>;
+      };
+
+      const colleges = (data.colleges || [])
+        .map((c) => (c?.name || "").trim())
+        .filter(Boolean);
+      const departments = (data.departments || [])
+        .map((d) => (d?.name || "").trim())
+        .filter(Boolean);
+      const offices = (data.offices || [])
+        .map((o) => (o?.name || "").trim())
+        .filter(Boolean);
+
+      setOrgColleges(colleges);
+      setOrgDepartments(departments);
+      setOrgOffices(offices);
+    } catch {
+      setOrgColleges([]);
+      setOrgDepartments([]);
+      setOrgOffices([]);
+    }
+  }, [orgStructureApi]);
 
   React.useEffect(() => {
-    fetch("/admin/xu-faculty-clearance/api/ciso/system-users")
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: { items: SystemUser[] }) => {
-        setUsers(Array.isArray(data.items) ? data.items : []);
-      })
-      .catch(() => {
-        setUsers([]);
-      });
-  }, []);
+    fetchUsers();
+    fetchOrgStructure();
+  }, [fetchUsers, fetchOrgStructure]);
 
   const [addApproverOpen, setAddApproverOpen] = React.useState(false);
   const [addAdminOpen, setAddAdminOpen] = React.useState(false);
@@ -79,10 +144,6 @@ import {
       middleName: parts.slice(1, -1).join(" "),
       lastName: parts[parts.length - 1],
     };
-  }
-
-  function createSystemUserId() {
-    return `SYS-${Date.now()}`;
   }
 
   const pageCount = Math.max(1, Math.ceil(users.length / pageSize));
@@ -200,29 +261,42 @@ import {
           onOpenChange={setAddApproverOpen}
           title="Add System Approver"
           submitLabel="Create"
+          colleges={orgColleges}
+          departments={orgDepartments}
+          offices={orgOffices}
           onSubmit={(payload: ManageSystemApproverPayload) => {
-            const name = [payload.firstName, payload.middleName, payload.lastName]
-              .filter(Boolean)
-              .join(" ")
-              .trim();
+            (async () => {
+              if (!isXuEmail(payload.email)) {
+                window.alert("Email must be an XU email (@xu.edu.ph or @my.xu.edu.ph)");
+                return;
+              }
+              const r = await fetch(apiBase, {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  firstName: payload.firstName,
+                  middleName: payload.middleName,
+                  lastName: payload.lastName,
+                  universityId: payload.universityId,
+                  email: payload.email,
+                  isActive: payload.isActive,
+                  approverType: payload.approverType,
+                  college: payload.college,
+                  department: payload.department,
+                  office: payload.office,
+                }),
+              });
 
-            setUsers((prev) => [
-              {
-                id: `${Date.now()}`,
-                name: name || "New Approver",
-                systemId: createSystemUserId(),
-                userRole: "Approver",
-                universityId: payload.universityId,
-                college: payload.approverType === "College" ? payload.college ?? "" : "N/A",
-                department:
-                  payload.approverType === "College"
-                    ? payload.department ?? ""
-                    : payload.office ?? "",
-                email: payload.email,
-              },
-              ...prev,
-            ]);
-            setPage(1);
+              if (!r.ok) {
+                window.alert(await readErrorDetail(r));
+                return;
+              }
+
+              setAddApproverOpen(false);
+              setPage(1);
+              await fetchUsers();
+            })();
           }}
         />
 
@@ -234,6 +308,9 @@ import {
           }}
           title="Edit Approver"
           submitLabel="Create"
+          colleges={orgColleges}
+          departments={orgDepartments}
+          offices={orgOffices}
           initialValues={
             activeUser
               ? {
@@ -244,35 +321,44 @@ import {
                   college: activeUser.college === "N/A" ? "" : activeUser.college,
                   department: activeUser.college === "N/A" ? "" : activeUser.department,
                   office: activeUser.college === "N/A" ? activeUser.department : "",
-                  isActive: true,
+                  isActive: Boolean(activeUser.isActive),
                 }
               : undefined
           }
           onSubmit={(payload: ManageSystemApproverPayload) => {
             if (!activeUser) return;
-            const name = [payload.firstName, payload.middleName, payload.lastName]
-              .filter(Boolean)
-              .join(" ")
-              .trim();
+            (async () => {
+              if (!isXuEmail(payload.email)) {
+                window.alert("Email must be an XU email (@xu.edu.ph or @my.xu.edu.ph)");
+                return;
+              }
+              const r = await fetch(`${apiBase}/${activeUser.id}`, {
+                method: "PUT",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  firstName: payload.firstName,
+                  middleName: payload.middleName,
+                  lastName: payload.lastName,
+                  universityId: payload.universityId,
+                  email: payload.email,
+                  isActive: payload.isActive,
+                  approverType: payload.approverType,
+                  college: payload.college,
+                  department: payload.department,
+                  office: payload.office,
+                }),
+              });
 
-            setUsers((prev) =>
-              prev.map((u) =>
-                u.id !== activeUser.id
-                  ? u
-                  : {
-                      ...u,
-                      name: name || u.name,
-                      userRole: "Approver",
-                      universityId: payload.universityId,
-                      email: payload.email,
-                      college: payload.approverType === "College" ? payload.college ?? "" : "N/A",
-                      department:
-                        payload.approverType === "College"
-                          ? payload.department ?? ""
-                          : payload.office ?? "",
-                    }
-              )
-            );
+              if (!r.ok) {
+                window.alert(await readErrorDetail(r));
+                return;
+              }
+
+              setEditApproverOpen(false);
+              setActiveUserId(null);
+              await fetchUsers();
+            })();
           }}
         />
 
@@ -282,25 +368,35 @@ import {
           title="Add System Admin"
           submitLabel="Create"
           onSubmit={(payload: ManageSystemAdminPayload) => {
-            const name = [payload.firstName, payload.middleName, payload.lastName]
-              .filter(Boolean)
-              .join(" ")
-              .trim();
+            (async () => {
+              if (!isXuEmail(payload.email)) {
+                window.alert("Email must be an XU email (@xu.edu.ph or @my.xu.edu.ph)");
+                return;
+              }
+              const r = await fetch(apiBase, {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  firstName: payload.firstName,
+                  middleName: payload.middleName,
+                  lastName: payload.lastName,
+                  universityId: payload.universityId,
+                  email: payload.email,
+                  isActive: payload.isActive,
+                  systemAdminOffice: payload.systemAdminOffice,
+                }),
+              });
 
-            setUsers((prev) => [
-              {
-                id: `${Date.now()}`,
-                name: name || "New Admin",
-                systemId: createSystemUserId(),
-                userRole: "System Admin",
-                universityId: payload.universityId,
-                college: payload.systemAdminOffice,
-                department: "System Admin Office",
-                email: payload.email,
-              },
-              ...prev,
-            ]);
-            setPage(1);
+              if (!r.ok) {
+                window.alert(await readErrorDetail(r));
+                return;
+              }
+
+              setAddAdminOpen(false);
+              setPage(1);
+              await fetchUsers();
+            })();
           }}
         />
 
@@ -319,31 +415,41 @@ import {
                   universityId: activeUser.universityId,
                   email: activeUser.email,
                   systemAdminOffice: activeUser.college === "CISO" ? "CISO" : "OVPHE",
-                  isActive: true,
+                  isActive: Boolean(activeUser.isActive),
                 }
               : undefined
           }
           onSubmit={(payload: ManageSystemAdminPayload) => {
             if (!activeUser) return;
-            const name = [payload.firstName, payload.middleName, payload.lastName]
-              .filter(Boolean)
-              .join(" ")
-              .trim();
+            (async () => {
+              if (!isXuEmail(payload.email)) {
+                window.alert("Email must be an XU email (@xu.edu.ph or @my.xu.edu.ph)");
+                return;
+              }
+              const r = await fetch(`${apiBase}/${activeUser.id}`, {
+                method: "PUT",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  firstName: payload.firstName,
+                  middleName: payload.middleName,
+                  lastName: payload.lastName,
+                  universityId: payload.universityId,
+                  email: payload.email,
+                  isActive: payload.isActive,
+                  systemAdminOffice: payload.systemAdminOffice,
+                }),
+              });
 
-            setUsers((prev) =>
-              prev.map((u) =>
-                u.id !== activeUser.id
-                  ? u
-                  : {
-                      ...u,
-                      name: name || u.name,
-                      userRole: "System Admin",
-                      universityId: payload.universityId,
-                      email: payload.email,
-                      college: payload.systemAdminOffice,
-                    }
-              )
-            );
+              if (!r.ok) {
+                window.alert(await readErrorDetail(r));
+                return;
+              }
+
+              setEditAdminOpen(false);
+              setActiveUserId(null);
+              await fetchUsers();
+            })();
           }}
         />
 
@@ -357,7 +463,21 @@ import {
           userEmail={activeUser?.email ?? ""}
           onRemove={() => {
             if (!activeUser) return;
-            setUsers((prev) => prev.filter((u) => u.id !== activeUser.id));
+            (async () => {
+              const r = await fetch(`${apiBase}/${activeUser.id}`, {
+                method: "DELETE",
+                credentials: "include",
+              });
+
+              if (!r.ok) {
+                window.alert(await readErrorDetail(r));
+                return;
+              }
+
+              setRemoveOpen(false);
+              setActiveUserId(null);
+              await fetchUsers();
+            })();
           }}
         />
 
