@@ -11,10 +11,116 @@
       rel="stylesheet"
     />
     <title>my-project</title>
-    <script type="module" crossorigin src="/assets/index-D62PkVUn.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-u8XOyyaw.css">
+    <script type="module" crossorigin src="/assets/index-afQrqRrt.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DDAc0IuQ.css">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"></div>
+    
+    <!-- Temporary fix for logout API URL -->
+    <script>
+      // Test if script is running
+      console.log('SCRIPT LOADED: Logout fix script is active!');
+      
+      // Override the authService logout function with correct API URL
+      window.addEventListener('load', function() {
+        // Wait for the app to load, then override the logout function
+        setTimeout(function() {
+          console.log('Setting up logout fix...');
+          
+          // Create a global logout function that calls the correct API
+          window.fixedLogout = async function() {
+            try {
+              console.log('Calling logout API...');
+              const response = await fetch('/admin/xu-faculty-clearance/api/auth/logout', {
+                method: 'POST',
+                headers: {
+                  'Accept': 'application/json',
+                  'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+              });
+              
+              console.log('Logout response:', response);
+              
+              if (response.ok) {
+                const result = await response.json();
+                console.log('Logout successful:', result);
+                // Navigate to login after successful logout
+                window.location.href = '/login';
+              } else {
+                console.error('Logout failed:', response.status);
+              }
+            } catch (error) {
+              console.error('Logout error:', error);
+            }
+          };
+          
+          // Set up a MutationObserver to watch for new buttons (like in dialogs)
+          const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+              if (mutation.addedNodes) {
+                mutation.addedNodes.forEach(function(node) {
+                  if (node.nodeType === 1) { // Element node
+                    const buttons = node.querySelectorAll ? node.querySelectorAll('button') : [];
+                    buttons.forEach(button => {
+                      const buttonText = button.textContent || '';
+                      if (buttonText && buttonText.toLowerCase().includes('logout')) {
+                        console.log('DEBUG: Found new logout button:', button);
+                        
+                        // Remove existing listeners to avoid duplicates
+                        button.removeEventListener('click', handleLogoutClick);
+                        button.addEventListener('click', handleLogoutClick);
+                      }
+                    });
+                  }
+                });
+              }
+            });
+          });
+
+          // Start observing the entire document
+          observer.observe(document.body, {
+            childList: true,
+            subtree: true
+          });
+
+          // Also check existing buttons
+          const existingButtons = document.querySelectorAll('button');
+          console.log('DEBUG: Total existing buttons found:', existingButtons.length);
+          
+          existingButtons.forEach((button, index) => {
+            const buttonText = button.textContent || '';
+            console.log(`DEBUG: Button ${index}: "${buttonText}" - In dialog:`, button.closest('[role="dialog"]'));
+            
+            if (buttonText && buttonText.toLowerCase().includes('logout')) {
+              console.log('DEBUG: Found existing logout button:', button);
+              button.addEventListener('click', handleLogoutClick);
+            }
+          });
+
+          // Separate click handler function
+          function handleLogoutClick(e) {
+            console.log('DEBUG: Logout button clicked!');
+            console.log('DEBUG: Event target:', e.target);
+            console.log('DEBUG: Button element:', e.target);
+            
+            // Check if this is in a dialog confirmation
+            const isInDialog = e.target.closest('[role="dialog"]');
+            console.log('DEBUG: Is in dialog:', isInDialog);
+            
+            if (isInDialog) {
+              console.log('DEBUG: Logout clicked in dialog, calling fixed logout...');
+              e.preventDefault();
+              e.stopPropagation();
+              window.fixedLogout();
+            } else {
+              console.log('DEBUG: Logout clicked but not in dialog, ignoring...');
+            }
+          }
+          
+        }, 2000); // Wait 2 seconds for app to load
+      });
+    </script>
   </body>
 </html>
