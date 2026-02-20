@@ -25,6 +25,15 @@ import {
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
 
+function postOVPHEActivityLog(payload: { event_type: string; details?: string[] }) {
+  fetch("/admin/xu-faculty-clearance/api/ovphe/activity-logs", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).catch(() => {});
+}
+
 function GuidelinesToggle({
   checked,
   onChange,
@@ -288,6 +297,10 @@ export default function OVPHEAnnouncements() {
                             }
 
                             if (confirm.type === "delete") {
+                              postOVPHEActivityLog({
+                                event_type: "deleted_announcement",
+                                details: title ? [`Announcement: ${title}`] : [],
+                              });
                               fetch(
                                 `/admin/xu-faculty-clearance/api/ovphe/announcements/${current.id}`,
                                 { method: "DELETE" }
@@ -299,6 +312,10 @@ export default function OVPHEAnnouncements() {
                             }
 
                             const nextEnabled = confirm.type === "enable";
+                            postOVPHEActivityLog({
+                              event_type: nextEnabled ? "enabled_announcement" : "disabled_announcement",
+                              details: title ? [`Announcement: ${title}`] : [],
+                            });
                             fetch(
                               `/admin/xu-faculty-clearance/api/ovphe/announcements/${current.id}`,
                               {
@@ -346,6 +363,10 @@ export default function OVPHEAnnouncements() {
                   setEditingIndex(null);
                   return;
                 }
+                postOVPHEActivityLog({
+                  event_type: "edited_announcement",
+                  details: title ? [`Announcement: ${title}`] : [],
+                });
                 fetch(`/admin/xu-faculty-clearance/api/ovphe/announcements/${current.id}`, {
                   method: "PUT",
                   headers: { "Content-Type": "application/json" },
@@ -357,6 +378,10 @@ export default function OVPHEAnnouncements() {
                 return;
               }
 
+              postOVPHEActivityLog({
+                event_type: "created_announcement",
+                details: title ? [`Announcement: ${title}`] : [],
+              });
               fetch("/admin/xu-faculty-clearance/api/ovphe/announcements", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

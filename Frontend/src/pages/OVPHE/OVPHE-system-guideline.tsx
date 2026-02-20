@@ -24,6 +24,15 @@ import {
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
 
+function postOVPHEActivityLog(payload: { event_type: string; details?: string[] }) {
+  fetch("/admin/xu-faculty-clearance/api/ovphe/activity-logs", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).catch(() => {});
+}
+
 function GuidelinesToggle({
   checked,
   onChange,
@@ -284,6 +293,10 @@ export default function OVPHESystemGuideline() {
                             }
 
                             if (confirm.type === "delete") {
+                              postOVPHEActivityLog({
+                                event_type: "archived_guideline",
+                                details: title ? [`Guideline: ${title}`] : [],
+                              });
                               fetch(
                                 `/admin/xu-faculty-clearance/api/ovphe/system-guidelines/${current.id}`,
                                 { method: "DELETE" }
@@ -295,6 +308,16 @@ export default function OVPHESystemGuideline() {
                             }
 
                             const nextEnabled = confirm.type === "enable";
+                            postOVPHEActivityLog({
+                              event_type: nextEnabled ? "enabled_guideline" : "disabled_guideline",
+                              details: title ? [`Guideline: ${title}`] : [],
+                            });
+                            if (!nextEnabled) {
+                              postOVPHEActivityLog({
+                                event_type: "archived_guideline",
+                                details: title ? [`Guideline: ${title}`] : [],
+                              });
+                            }
                             fetch(
                               `/admin/xu-faculty-clearance/api/ovphe/system-guidelines/${current.id}`,
                               {
@@ -345,6 +368,10 @@ export default function OVPHESystemGuideline() {
                   setEditingIndex(null);
                   return;
                 }
+                postOVPHEActivityLog({
+                  event_type: "edited_guideline",
+                  details: title ? [`Guideline: ${title}`] : [],
+                });
                 fetch(`/admin/xu-faculty-clearance/api/ovphe/system-guidelines/${current.id}`, {
                   method: "PUT",
                   headers: { "Content-Type": "application/json" },
@@ -356,6 +383,10 @@ export default function OVPHESystemGuideline() {
                 return;
               }
 
+              postOVPHEActivityLog({
+                event_type: "created_guideline",
+                details: title ? [`Guideline: ${title}`] : [],
+              });
               fetch("/admin/xu-faculty-clearance/api/ovphe/system-guidelines", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
