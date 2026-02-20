@@ -4,9 +4,38 @@ import { Checkbox } from "../../stories/components/checkbox";
 import { Divider } from "../../stories/components/divider";
 import { Button } from "../../stories/components/button";
 import { Input } from "../../stories/components/input";
+import { authService } from "../../services/authService";
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
   const [error, setError] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const navigate = useNavigate();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setError("Please enter your XU Email");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await authService.checkEmail(normalizedEmail);
+      localStorage.setItem('otp_email', normalizedEmail);
+      localStorage.setItem('otp_should_send', '1');
+      navigate('/otp');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Login failed";
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="login-container bg-primary text-primary-foreground min-h-screen flex justify-center items-center p-4">
@@ -36,7 +65,7 @@ export default function Login() {
       
 
       {/* Login Form */}
-      <form className="mt-5 p-8 w-full max-w-md">
+      <form className="mt-5 p-8 w-full max-w-md" onSubmit={handleLogin}>
 
         {error ? (
           <div className="mb-4 text-sm text-red-200">{error}</div>
@@ -50,6 +79,8 @@ export default function Login() {
             required
             className="input-field"
             placeholder="Enter your XU Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             ></Input>
 
           <div className="flex items-center gap-2 mt-2">
@@ -63,7 +94,9 @@ export default function Login() {
         {/* Buttons + Divider */}
         <div className="login-input flex flex-col gap-4">
           {/* Primary login button */}
-          <Button variant="secondary">Login</Button>
+          <Button variant="secondary" type="submit" disabled={isLoading}>
+            {isLoading ? "Checking..." : "Login"}
+          </Button>
 
           {/* Divider with OR */}
           <div className="flex items-center gap-2">

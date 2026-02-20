@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import "../../index.css"; // ensure index.css is accessible from src
 import { Progress } from "../../stories/components/progress";
 
@@ -12,6 +12,54 @@ export default function LoginPrompt() {
 
     return () => clearInterval(interval); // cleanup on unmount
   }, []);
+
+  useEffect(() => {
+    if (progress < 100) return;
+
+    const roleDashboardMap: Record<number, string> = {
+      1: '/HRO-dashboard',
+      2: '/CISO-dashboard',
+      3: '/OVPHE-dashboard',
+      4: '/approver-dashboard',
+      5: '/assistant-approver-dashboard',
+      6: '/faculty-dashboard',
+      7: '/dual-role-approver-dashboard',
+    };
+
+    const resolveAndRedirect = async () => {
+      const raw = localStorage.getItem('login_user_info');
+      let userInfo: { role_value?: number; dashboard_url?: string } | null = null;
+      try {
+        userInfo = raw ? (JSON.parse(raw) as { role_value?: number; dashboard_url?: string }) : null;
+      } catch {
+        userInfo = null;
+      }
+
+      if (!userInfo) {
+        try {
+          const resp = await fetch('/admin/xu-faculty-clearance/api/me', { credentials: 'include' });
+          const me = (await resp.json().catch(() => null)) as { role_value?: number } | null;
+          if (resp.ok && me && typeof me === 'object') {
+            userInfo = { role_value: me.role_value };
+          }
+        } catch {
+          userInfo = null;
+        }
+      }
+
+      const roleValue = userInfo?.role_value;
+      const dashboardUrl = userInfo?.dashboard_url;
+
+      const target = dashboardUrl || (roleValue ? roleDashboardMap[roleValue] : undefined) || '/';
+
+      localStorage.removeItem('otp_should_send');
+      localStorage.removeItem('otp_requested_at');
+
+      window.location.replace(target);
+    };
+
+    resolveAndRedirect();
+  }, [progress]);
 
   return (
     <div className="login-container bg-primary text-primary-foreground min-h-screen flex justify-center items-center p-0">

@@ -39,6 +39,26 @@ class AuthService {
     return '';
   }
 
+  async checkEmail(email: string): Promise<{ success: boolean; message: string }>
+  {
+    const response = await fetch(`${API_BASE_URL}/login/check-email/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': this.getCSRFToken(),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await response.json().catch(() => null);
+    const message = data && typeof data === 'object' && 'message' in data ? String((data as { message?: unknown }).message || '') : '';
+    if (!response.ok) {
+      throw new Error(message || 'Email check failed');
+    }
+    return data as { success: boolean; message: string };
+  }
+
   async requestOtp(email: string): Promise<LoginResponse> {
     try {
       const response = await fetch(`${API_BASE_URL}/login/request-otp/`, {
