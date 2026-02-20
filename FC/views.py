@@ -13,12 +13,210 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import login as django_login, logout as django_logout
+from django.core.mail import send_mail
+from django.conf import settings
 
 from .models import *
 
 
 def _json_error(detail: str, status: int = 400):
     return JsonResponse({"detail": detail}, status=status)
+
+
+def _normalize_email(value: str | None) -> str:
+    return (value or "").strip().lower()
+
+
+def _generate_otp(length: int = 6) -> str:
+    import random
+
+    return "".join(str(random.randint(0, 9)) for _ in range(length))
+
+
+def _otp_session_key(email: str) -> str:
+    return f"otp:{email}"
+
+
+def _hash_otp(otp: str) -> str:
+    import hashlib
+
+    return hashlib.sha256(otp.encode("utf-8")).hexdigest()
+
+
+@csrf_exempt
+def check_email_api(request):
+    if request.method != "POST":
+        return _json_error("Method not allowed", status=405)
+
+    try:
+        payload = json.loads((request.body or b"{}").decode("utf-8"))
+    except Exception:
+        payload = {}
+
+    email = _normalize_email(payload.get("email"))
+    if not email:
+        return _json_error("Email is required", status=400)
+
+    user = User.objects.filter(email__iexact=email, is_active=True).first()
+    if not user:
+        return JsonResponse({"success": False, "message": "Email is not registered in the system"}, status=404)
+
+    return JsonResponse({"success": True, "message": "Email found"})
+
+
+@csrf_exempt
+def request_otp_api(request):
+    if request.method != "POST":
+        return _json_error("Method not allowed", status=405)
+
+    try:
+        payload = json.loads((request.body or b"{}").decode("utf-8"))
+    except Exception:
+        payload = {}
+
+    email = _normalize_email(payload.get("email"))
+    if not email:
+        return _json_error("Email is required", status=400)
+
+    user = User.objects.filter(email__iexact=email, is_active=True).first()
+    if not user:
+        return JsonResponse({"success": False, "message": "Email is not registered in the system"}, status=404)
+
+    otp = _generate_otp(6)
+    from datetime import timedelta
+
+    expires_at = timezone.now() + timedelta(minutes=3)
+    request.session[_otp_session_key(email)] = {
+        "otp_hash": _hash_otp(otp),
+        "expires_at": expires_at.isoformat(),
+        "user_id": user.id,
+    }
+    request.session["otp_email"] = email
+    request.session.modified = True
+
+    subject = "Your verification code"
+    body = f"Your verification code is: {otp}. This code will expire in 3 minutes."
+    html_body = f"""
+<!doctype html>
+<html lang=\"en\">
+  <head>
+    <meta charset=\"utf-8\" />
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+    <title>{subject}</title>
+  </head>
+  <body style=\"margin:0;padding:0;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;\">
+    <div style=\"max-width:520px;margin:0 auto;padding:24px;\">
+      <div style=\"background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e6e8eb;\">
+        <div style=\"padding:18px 20px;background:#0b3a82;color:#ffffff;\">
+          <div style=\"font-size:16px;font-weight:700;letter-spacing:0.2px;\">XU Faculty ClearTrack</div>
+          <div style=\"font-size:13px;opacity:0.9;margin-top:6px;\">Email Verification</div>
+        </div>
+        <div style=\"padding:22px 20px;color:#111827;\">
+          <div style=\"font-size:16px;font-weight:700;margin-bottom:8px;\">Your verification code</div>
+          <div style=\"font-size:14px;line-height:1.5;color:#374151;\">Use the code below to continue signing in. This code expires in <strong>3 minutes</strong>.</div>
+          <div style=\"margin:18px 0 14px 0;padding:14px 16px;border-radius:12px;background:#f3f4f6;border:1px dashed #cbd5e1;text-align:center;\">
+            <div style=\"font-size:28px;letter-spacing:6px;font-weight:800;color:#111827;\"><strong>{otp}</strong></div>
+          </div>
+          <div style=\"font-size:12px;line-height:1.5;color:#6b7280;\">If you did not request this code, you can safely ignore this email.</div>
+        </div>
+      </div>
+      <div style=\"font-size:11px;color:#9ca3af;text-align:center;margin-top:14px;\">Please do not reply to this email.</div>
+    </div>
+  </body>
+</html>
+"""
+
+    try:
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None) or None,
+            recipient_list=[email],
+            html_message=html_body,
+            fail_silently=False,
+        )
+    except Exception:
+        return JsonResponse({"success": False, "message": "Failed to send OTP email"}, status=500)
+
+    return JsonResponse(
+        {
+            "success": True,
+            "message": "OTP sent",
+            "requires_pin": True,
+            "user_info": {
+                "email": user.email,
+                "first_name": user.first_name or "",
+                "last_name": user.last_name or "",
+            },
+        }
+    )
+
+
+@csrf_exempt
+def verify_otp_api(request):
+    if request.method != "POST":
+        return _json_error("Method not allowed", status=405)
+
+    try:
+        payload = json.loads((request.body or b"{}").decode("utf-8"))
+    except Exception:
+        payload = {}
+
+    otp = (payload.get("otp") or "").strip()
+    email = _normalize_email(payload.get("email") or request.session.get("otp_email"))
+
+    if not email:
+        return JsonResponse({"success": False, "message": "Email not found. Please go back to login."}, status=400)
+    if not otp or len(otp) != 6 or not otp.isdigit():
+        return JsonResponse({"success": False, "message": "Invalid OTP"}, status=400)
+
+    entry = request.session.get(_otp_session_key(email))
+    if not isinstance(entry, dict):
+        return JsonResponse({"success": False, "message": "OTP expired. Please request a new code."}, status=400)
+
+    expires_raw = entry.get("expires_at")
+    expires_at = None
+    if expires_raw:
+        try:
+            parsed = datetime.fromisoformat(expires_raw)
+            expires_at = timezone.make_aware(parsed) if timezone.is_naive(parsed) else parsed
+        except Exception:
+            expires_at = None
+
+    if not expires_at or timezone.now() > expires_at:
+        request.session.pop(_otp_session_key(email), None)
+        request.session.modified = True
+        return JsonResponse({"success": False, "message": "OTP expired. Please request a new code."}, status=400)
+
+    from django.utils.crypto import constant_time_compare
+
+    if not constant_time_compare(str(entry.get("otp_hash") or ""), _hash_otp(otp)):
+        return JsonResponse({"success": False, "message": "Wrong OTP"}, status=401)
+
+    user_id = entry.get("user_id")
+    user = User.objects.filter(id=user_id, is_active=True).first()
+    if not user:
+        return JsonResponse({"success": False, "message": "User not found"}, status=404)
+
+    request.session.pop(_otp_session_key(email), None)
+    request.session.modified = True
+
+    django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    dashboard_url = _dashboard_route_for_user(user)
+
+    return JsonResponse(
+        {
+            "success": True,
+            "message": "OTP verified",
+            "user_info": {
+                "email": user.email,
+                "first_name": user.first_name or "",
+                "last_name": user.last_name or "",
+                "role_value": getattr(user, "role_value", None),
+                "dashboard_url": dashboard_url,
+            },
+        }
+    )
 
 
 def _dashboard_route_for_user(user: "User") -> str:
@@ -196,8 +394,7 @@ def google_oauth_callback(request):
         return _json_error("Email is not registered in the system", status=403)
 
     django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-    redirect_to = _dashboard_route_for_user(user)
-    return HttpResponseRedirect(redirect_to)
+    return HttpResponseRedirect("/login-prompt")
 
 
 @csrf_exempt
@@ -226,7 +423,7 @@ def google_sign_in_api(request):
         return _json_error("Email is not registered in the system", status=403)
 
     django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-    redirect_to = _dashboard_route_for_user(user)
+    redirect_to = "/login-prompt"
     return JsonResponse(
         {
             "ok": True,

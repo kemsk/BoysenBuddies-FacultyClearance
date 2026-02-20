@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "../../index.css"; // ensure index.css is accessible from src
 import { Button } from "../../stories/components/button";
 import { Divider } from "../../stories/components/divider";
@@ -12,6 +12,7 @@ export default function Otp() {
   const [error, setError] = useState<string>("");
   const [secondsLeft, setSecondsLeft] = useState<number>(180); // 3 minutes
   const timerRef = useRef<number | null>(null);
+  const didRequestRef = useRef<boolean>(false);
 
   // Get user info from session or previous login attempt
   useEffect(() => {
@@ -36,6 +37,41 @@ export default function Otp() {
     
     getUserInfo();
   }, []);
+
+  useEffect(() => {
+    const sendInitialOtp = async () => {
+      if (!email) return;
+      if (didRequestRef.current) return;
+      didRequestRef.current = true;
+
+      const lastRequestedRaw = localStorage.getItem('otp_requested_at');
+      const lastRequested = lastRequestedRaw ? Number(lastRequestedRaw) : 0;
+      if (lastRequested && Date.now() - lastRequested < 10_000) {
+        return;
+      }
+
+      const shouldSend = localStorage.getItem('otp_should_send') === '1';
+      if (!shouldSend) {
+        return;
+      }
+
+      setIsLoading(true);
+      setError("");
+      try {
+        await authService.requestOtp(email);
+        localStorage.setItem('otp_requested_at', String(Date.now()));
+        localStorage.removeItem('otp_should_send');
+        setSecondsLeft(180);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to send OTP";
+        setError(message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    sendInitialOtp();
+  }, [email]);
 
   useEffect(() => {
     if (secondsLeft <= 0) {
@@ -79,11 +115,13 @@ export default function Otp() {
       const response = await authService.verifyOtp(pin);
       
       if (response.success && response.user_info?.dashboard_url) {
-        // Login successful, redirect to role-specific dashboard
-        window.location.href = response.user_info.dashboard_url;
+        localStorage.setItem('login_user_info', JSON.stringify(response.user_info));
+        window.location.href = "/login-prompt";
       } else if (response.success) {
-        // Fallback to default dashboard
-        window.location.href = "/faculty-dashboard";
+        if (response.user_info) {
+          localStorage.setItem('login_user_info', JSON.stringify(response.user_info));
+        }
+        window.location.href = "/login-prompt";
       } else {
         setError(response.message || "PIN verification failed");
       }
@@ -102,6 +140,7 @@ export default function Otp() {
     try {
       if (!email) throw new Error('Email not found. Please go back to login.');
       await authService.requestOtp(email);
+      localStorage.setItem('otp_requested_at', String(Date.now()));
       setSecondsLeft(180);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to resend OTP';
