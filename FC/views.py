@@ -828,13 +828,21 @@ def ciso_system_user_detail_api(request, user_id: int):
 
     if request.method == "DELETE":
         with transaction.atomic():
-            user.is_active = False
-            user.save(update_fields=["is_active"])
-
+            # Delete related profiles first
             admin_profile = getattr(user, "admin_profile", None)
             if admin_profile:
-                admin_profile.is_active = False
-                admin_profile.save(update_fields=["is_active"])
+                admin_profile.delete()
+            
+            approver_profile = getattr(user, "approver_profile", None)
+            if approver_profile:
+                approver_profile.delete()
+            
+            assistant_profile = getattr(user, "assistant_profile", None)
+            if assistant_profile:
+                assistant_profile.delete()
+            
+            # Delete the user completely
+            user.delete()
 
         return JsonResponse({"ok": True})
 
@@ -856,8 +864,8 @@ def ciso_system_user_detail_api(request, user_id: int):
 
     if not email:
         return JsonResponse({"detail": "Email must be an XU email (@xu.edu.ph or @my.xu.edu.ph)"}, status=400)
-    if not university_id:
-        return JsonResponse({"detail": "University ID is required"}, status=400)
+    if not university_id or not university_id.isdigit():
+        return JsonResponse({"detail": "University ID must be a valid number"}, status=400)
 
     system_admin_office = (data.get("systemAdminOffice") or "").strip()
     approver_type = (data.get("approverType") or "").strip()
@@ -2417,8 +2425,8 @@ def ciso_system_users_api(request):
 
     if not email:
         return JsonResponse({"detail": "Email must be an XU email (@xu.edu.ph or @my.xu.edu.ph)"}, status=400)
-    if not university_id:
-        return JsonResponse({"detail": "University ID is required"}, status=400)
+    if not university_id or not university_id.isdigit():
+        return JsonResponse({"detail": "University ID must be a valid number"}, status=400)
 
     system_admin_office = (data.get("systemAdminOffice") or "").strip()
     approver_type = (data.get("approverType") or "").strip()

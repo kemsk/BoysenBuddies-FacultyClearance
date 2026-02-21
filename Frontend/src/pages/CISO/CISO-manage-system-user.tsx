@@ -44,6 +44,8 @@ import {
   const [orgColleges, setOrgColleges] = React.useState<string[]>([]);
   const [orgDepartments, setOrgDepartments] = React.useState<string[]>([]);
   const [orgOffices, setOrgOffices] = React.useState<string[]>([]);
+  const [collegeDepartmentsMap, setCollegeDepartmentsMap] = React.useState<Record<string, string[]>>({});
+  const [adminEmail, setAdminEmail] = React.useState<string>("");
 
   const apiBase = "/admin/xu-faculty-clearance/api/ciso/system-users";
   const orgStructureApi = "/admin/xu-faculty-clearance/api/ovphe/org-structure";
@@ -88,7 +90,7 @@ import {
       if (!r.ok) throw new Error("Failed to load org structure");
 
       const data = (await r.json()) as {
-        colleges?: Array<{ name?: string }>;
+        colleges?: Array<{ name?: string; departments?: Array<{ name?: string }> }>;
         departments?: Array<{ name?: string }>;
         offices?: Array<{ name?: string }>;
       };
@@ -103,20 +105,46 @@ import {
         .map((o) => (o?.name || "").trim())
         .filter(Boolean);
 
+      const collegeMap: Record<string, string[]> = {};
+      (data.colleges || []).forEach((c) => {
+        const collegeName = (c?.name || "").trim();
+        if (collegeName && Array.isArray(c.departments)) {
+          collegeMap[collegeName] = c.departments
+            .map((d) => (d?.name || "").trim())
+            .filter(Boolean);
+        }
+      });
+
       setOrgColleges(colleges);
       setOrgDepartments(departments);
       setOrgOffices(offices);
+      setCollegeDepartmentsMap(collegeMap);
     } catch {
       setOrgColleges([]);
       setOrgDepartments([]);
       setOrgOffices([]);
+      setCollegeDepartmentsMap({});
     }
   }, [orgStructureApi]);
+
+  const fetchAdminEmail = React.useCallback(async () => {
+    try {
+      const r = await fetch("/admin/xu-faculty-clearance/api/ciso-profile", { method: "GET", credentials: "include" });
+      if (!r.ok) throw new Error("Failed to load admin profile");
+      const data = (await r.json()) as { email?: string };
+      if (data.email) {
+        setAdminEmail(data.email);
+      }
+    } catch {
+      setAdminEmail("");
+    }
+  }, []);
 
   React.useEffect(() => {
     fetchUsers();
     fetchOrgStructure();
-  }, [fetchUsers, fetchOrgStructure]);
+    fetchAdminEmail();
+  }, [fetchUsers, fetchOrgStructure, fetchAdminEmail]);
 
   const [addApproverOpen, setAddApproverOpen] = React.useState(false);
   const [addAdminOpen, setAddAdminOpen] = React.useState(false);
@@ -264,6 +292,7 @@ import {
           colleges={orgColleges}
           departments={orgDepartments}
           offices={orgOffices}
+          collegeDepartmentsMap={collegeDepartmentsMap}
           onSubmit={(payload: ManageSystemApproverPayload) => {
             (async () => {
               if (!isXuEmail(payload.email)) {
@@ -296,6 +325,7 @@ import {
               setAddApproverOpen(false);
               setPage(1);
               await fetchUsers();
+              window.alert("Approver created successfully!");
             })();
           }}
         />
@@ -311,6 +341,7 @@ import {
           colleges={orgColleges}
           departments={orgDepartments}
           offices={orgOffices}
+          collegeDepartmentsMap={collegeDepartmentsMap}
           initialValues={
             activeUser
               ? {
@@ -358,6 +389,7 @@ import {
               setEditApproverOpen(false);
               setActiveUserId(null);
               await fetchUsers();
+              window.alert("Approver updated successfully!");
             })();
           }}
         />
@@ -396,6 +428,7 @@ import {
               setAddAdminOpen(false);
               setPage(1);
               await fetchUsers();
+              window.alert("System Admin created successfully!");
             })();
           }}
         />
@@ -449,6 +482,7 @@ import {
               setEditAdminOpen(false);
               setActiveUserId(null);
               await fetchUsers();
+              window.alert("System Admin updated successfully!");
             })();
           }}
         />
@@ -461,6 +495,7 @@ import {
           }}
           userName={activeUser?.name ?? ""}
           userEmail={activeUser?.email ?? ""}
+          adminEmail={adminEmail}
           onRemove={() => {
             if (!activeUser) return;
             (async () => {
@@ -477,6 +512,7 @@ import {
               setRemoveOpen(false);
               setActiveUserId(null);
               await fetchUsers();
+              window.alert("User removed successfully!");
             })();
           }}
         />
