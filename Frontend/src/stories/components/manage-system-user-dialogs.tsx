@@ -191,15 +191,17 @@ export function ManageSystemApproverDialog({
   }, [approverType]);
 
   React.useEffect(() => {
+    // Reset department when college changes (only for College approver type)
     if (approverType === "College") {
       setDepartment("");
     }
   }, [college, approverType]);
 
   const filteredDepartments = React.useMemo(() => {
+    // Only show departments for the selected college when approverType is "College"
     if (approverType !== "College" || !college) return [];
-    return collegeDepartmentsMap[college] || departments;
-  }, [college, approverType, collegeDepartmentsMap, departments]);
+    return collegeDepartmentsMap[college] || [];
+  }, [college, approverType, collegeDepartmentsMap]);
 
   return (
     <Dialog open={effectiveOpen} onOpenChange={setOpen}>

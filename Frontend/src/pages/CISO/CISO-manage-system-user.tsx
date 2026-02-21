@@ -90,9 +90,9 @@ import {
       if (!r.ok) throw new Error("Failed to load org structure");
 
       const data = (await r.json()) as {
-        colleges?: Array<{ name?: string; departments?: Array<{ name?: string }> }>;
-        departments?: Array<{ name?: string }>;
-        offices?: Array<{ name?: string }>;
+        colleges?: Array<{ id?: string; name?: string; short?: string }>;
+        departments?: Array<{ id?: string; collegeId?: string; name?: string; short?: string }>;
+        offices?: Array<{ id?: string; name?: string; short?: string }>;
       };
 
       const colleges = (data.colleges || [])
@@ -105,13 +105,30 @@ import {
         .map((o) => (o?.name || "").trim())
         .filter(Boolean);
 
+      // Build college-departments map: college name -> array of department names
       const collegeMap: Record<string, string[]> = {};
+      
+      // Initialize all colleges with empty arrays
       (data.colleges || []).forEach((c) => {
         const collegeName = (c?.name || "").trim();
-        if (collegeName && Array.isArray(c.departments)) {
-          collegeMap[collegeName] = c.departments
-            .map((d) => (d?.name || "").trim())
-            .filter(Boolean);
+        if (collegeName) {
+          collegeMap[collegeName] = [];
+        }
+      });
+      
+      // Map departments to their colleges using collegeId
+      (data.departments || []).forEach((d) => {
+        const departmentName = (d?.name || "").trim();
+        const collegeId = d?.collegeId;
+        
+        if (departmentName && collegeId) {
+          // Find college by ID
+          const college = (data.colleges || []).find(c => c?.id === collegeId);
+          const collegeName = college?.name?.trim();
+          
+          if (collegeName && collegeMap[collegeName]) {
+            collegeMap[collegeName].push(departmentName);
+          }
         }
       });
 
