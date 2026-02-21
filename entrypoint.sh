@@ -13,15 +13,15 @@ mysql -h "${DB_HOST}" -u "${DB_USER}" -p"${DB_PASSWORD}" --ssl=0 "${DB_NAME}" <<
 -- Seed Users
 INSERT INTO FC_user (email, university_id, password, first_name, last_name, role_value, created_at, is_active, is_staff, is_superuser)
 VALUES 
-('20220025546@my.xu.edu.ph', '20220025546', 'capstone', 'Albert Floyd', 'Villanueva', 2, NOW(), 1, 1, 1),
-('20190016375@my.xu.edu.ph', '20190016375', 'kemeru', 'Nesyl', 'Ylanan', 3, NOW(), 1, 1, 1),
-('20220024573@my.xu.edu.ph', '20220024573', 'kim', 'Kim', 'Flores', 3, NOW(), 1, 0, 0),
-('approver.seed@xu.edu.ph', 'APPROVER-SEED-1', 'capstone', 'Angela', 'Santos', 4, NOW(), 1, 1, 0),
-('assistant.seed@xu.edu.ph', 'ASSISTANT-SEED-1', 'capstone', 'Seed', 'Assistant', 5, NOW(), 1, 1, 0),
-('faculty.seed@xu.edu.ph', 'FACULTY-SEED-1', 'capstone', 'John', 'Doe', 6, NOW(), 1, 0, 0),
-('hro.seed@xu.edu.ph', 'HRO-SEED-1', 'capstone', 'Jane', 'Smith', 1, NOW(), 1, 1, 0),
-('ovphe.seed@xu.edu.ph', 'OVPHE-SEED-1', 'capstone', 'Maria', 'Reyes', 3, NOW(), 1, 1, 0),
-('dual.seed@xu.edu.ph', 'DUAL-ROLE-SEED-1', 'capstone', 'Carlos', 'Santos', 7, NOW(), 1, 1, 0)
+('20220025546@my.xu.edu.ph', 20220025546, 'capstone', 'Albert Floyd', 'Villanueva', 2, NOW(), 1, 1, 1),
+('20190016375@my.xu.edu.ph', 20190016375, 'kemeru', 'Nesyl', 'Ylanan', 3, NOW(), 1, 1, 1),
+('20220024573@my.xu.edu.ph', 20220024573, 'kim', 'Kim', 'Flores', 2, NOW(), 1, 1, 1),
+('approver.seed@xu.edu.ph', 1000000001, 'capstone', 'Angela', 'Santos', 4, NOW(), 1, 1, 0),
+('assistant.seed@xu.edu.ph', 1000000002, 'capstone', 'Seed', 'Assistant', 5, NOW(), 1, 1, 0),
+('faculty.seed@xu.edu.ph', 1000000003, 'capstone', 'John', 'Doe', 6, NOW(), 1, 0, 0),
+('hro.seed@xu.edu.ph', 1000000004, 'capstone', 'Jane', 'Smith', 1, NOW(), 1, 1, 0),
+('ovphe.seed@xu.edu.ph', 1000000005, 'capstone', 'Maria', 'Reyes', 3, NOW(), 1, 1, 0),
+('dual.seed@xu.edu.ph', 1000000006, 'capstone', 'Carlos', 'Santos', 7, NOW(), 1, 1, 0)
 ON DUPLICATE KEY UPDATE
     first_name = VALUES(first_name),
     last_name = VALUES(last_name),

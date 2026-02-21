@@ -597,6 +597,15 @@ def _parse_json_body(request):
         return None, JsonResponse({"detail": "Invalid JSON"}, status=400)
 
 
+def _validate_xu_email(value: str):
+    e = (value or "").strip().lower()
+    if not e:
+        return None
+    if not (e.endswith("@xu.edu.ph") or e.endswith("@my.xu.edu.ph")):
+        return None
+    return e
+
+
 def _json_method_not_allowed():
     return JsonResponse({"detail": "Method not allowed"}, status=405)
 
@@ -642,6 +651,22 @@ def _get_active_ciso_admin():
         .filter(admin_role=SystemAdmin.AdminRole.CISO, is_active=True)
         .first()
     )
+
+
+def _require_ciso_admin_user(request):
+    user = getattr(request, "user", None)
+    if not user or not getattr(user, "is_authenticated", False):
+        return None, JsonResponse({"detail": "Authentication required"}, status=401)
+
+    ciso_admin = SystemAdmin.objects.select_related("user").filter(
+        user=user,
+        admin_role=SystemAdmin.AdminRole.CISO,
+        is_active=True,
+    ).first()
+    if not ciso_admin:
+        return None, JsonResponse({"detail": "Forbidden"}, status=403)
+
+    return ciso_admin, None
 
 
 def _format_timestamp(dt: datetime | None):
@@ -1076,6 +1101,235 @@ def clearance_requests_api(request):
         )
 
     return JsonResponse({"items": items})
+
+
+@csrf_exempt
+def ciso_system_user_detail_api(request, user_id: int):
+    admin, err = _require_ciso_admin_user(request)
+    if err:
+        return err
+
+    try:
+        user = User.objects.get(pk=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({"detail": "User not found"}, status=404)
+
+    def _full_name(u: User):
+        parts = [(u.first_name or "").strip(), (u.middle_name or "").strip(), (u.last_name or "").strip()]
+        parts = [p for p in parts if p]
+        return " ".join(parts) if parts else u.email
+
+    if request.method == "GET":
+        role = "Unknown"
+        college_label = "N/A"
+        dept_label = "N/A"
+
+        admin_profile = getattr(user, "admin_profile", None)
+        approver_profile = getattr(user, "approver_profile", None)
+        assistant_profile = getattr(user, "assistant_profile", None)
+
+        if admin_profile and admin_profile.is_active:
+            role = "System Admin"
+            dept_label = admin_profile.admin_role
+        elif approver_profile:
+            role = "Approver"
+            college_label = approver_profile.college.name if approver_profile.college else "N/A"
+            dept_label = (
+                approver_profile.department.name
+                if approver_profile.department
+                else (approver_profile.office.name if approver_profile.office else "N/A")
+            )
+        elif assistant_profile:
+            role = "Assistant Approver"
+            college_label = assistant_profile.college.name if assistant_profile.college else "N/A"
+            dept_label = assistant_profile.department.name if assistant_profile.department else "N/A"
+
+        return JsonResponse(
+            {
+                "item": {
+                    "id": str(user.id),
+                    "name": _full_name(user),
+                    "systemId": f"SYS-{user.id}",
+                    "userRole": role,
+                    "universityId": user.university_id or "",
+                    "college": college_label,
+                    "department": dept_label,
+                    "email": user.email,
+                    "isActive": bool(user.is_active),
+                }
+            }
+        )
+
+    if request.method == "DELETE":
+        with transaction.atomic():
+            # Delete related profiles first
+            admin_profile = getattr(user, "admin_profile", None)
+            if admin_profile:
+                admin_profile.delete()
+            
+            approver_profile = getattr(user, "approver_profile", None)
+            if approver_profile:
+                approver_profile.delete()
+            
+            assistant_profile = getattr(user, "assistant_profile", None)
+            if assistant_profile:
+                assistant_profile.delete()
+            
+            # Delete the user completely
+            user.delete()
+
+        return JsonResponse({"ok": True})
+
+    if request.method not in {"PUT", "PATCH"}:
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    data, parse_err = _parse_json_body(request)
+    if parse_err:
+        return parse_err
+    if not isinstance(data, dict):
+        return JsonResponse({"detail": "Invalid payload"}, status=400)
+
+    first_name = (data.get("firstName") or "").strip()
+    middle_name = (data.get("middleName") or "").strip()
+    last_name = (data.get("lastName") or "").strip()
+    university_id = (data.get("universityId") or "").strip()
+    email = _validate_xu_email(data.get("email") or "")
+    is_active = bool(data.get("isActive", True))
+
+    if not email:
+        return JsonResponse({"detail": "Email must be an XU email (@xu.edu.ph or @my.xu.edu.ph)"}, status=400)
+    if not university_id or not university_id.isdigit():
+        return JsonResponse({"detail": "University ID must be a valid number"}, status=400)
+
+    system_admin_office = (data.get("systemAdminOffice") or "").strip()
+    approver_type = (data.get("approverType") or "").strip()
+
+    with transaction.atomic():
+        if User.objects.filter(email__iexact=email).exclude(pk=user.id).exists():
+            return JsonResponse({"detail": "Email already exists"}, status=400)
+        if User.objects.filter(university_id__iexact=university_id).exclude(pk=user.id).exists():
+            return JsonResponse({"detail": "University ID already exists"}, status=400)
+
+        user.email = email
+        user.university_id = university_id
+        user.first_name = first_name
+        user.middle_name = middle_name
+        user.last_name = last_name
+        user.is_active = is_active
+        user.is_staff = True
+        user.save(update_fields=[
+            "email",
+            "university_id",
+            "first_name",
+            "middle_name",
+            "last_name",
+            "is_active",
+            "is_staff",
+        ])
+
+        if system_admin_office:
+            office_norm = system_admin_office.strip().upper()
+            if office_norm not in {"CISO", "OVPHE"}:
+                return JsonResponse({"detail": "Invalid system admin office"}, status=400)
+
+            admin_profile, _ = SystemAdmin.objects.get_or_create(user=user, defaults={"admin_role": office_norm})
+            admin_profile.admin_role = office_norm
+            admin_profile.is_active = is_active
+            admin_profile.save(update_fields=["admin_role", "is_active"])
+
+            if office_norm == "CISO":
+                user.role_value = User.RoleChoices.CISO
+            else:
+                user.role_value = User.RoleChoices.OVPHE
+            user.save(update_fields=["role_value"])
+
+        assistant_profile = getattr(user, "assistant_profile", None)
+        if assistant_profile and not system_admin_office:
+            if approver_type:
+                atype = approver_type.strip().lower()
+                if atype != "college":
+                    return JsonResponse({"detail": "Assistant approvers must be department-based"}, status=400)
+
+            college_name = (data.get("college") or "").strip()
+            dept_name = (data.get("department") or "").strip()
+            if not college_name:
+                return JsonResponse({"detail": "College is required"}, status=400)
+            if not dept_name:
+                return JsonResponse({"detail": "Department is required"}, status=400)
+
+            college = College.objects.filter(name__iexact=college_name, is_active=True).first()
+            if not college:
+                return JsonResponse({"detail": "College not found"}, status=400)
+
+            department = Department.objects.filter(
+                name__iexact=dept_name,
+                college=college,
+                is_active=True,
+            ).first()
+            if not department:
+                return JsonResponse({"detail": "Department not found"}, status=400)
+
+            assistant_profile.college = college
+            assistant_profile.department = department
+            assistant_profile.save(update_fields=["college", "department"])
+
+            approver_profile = getattr(user, "approver_profile", None)
+            if approver_profile:
+                approver_profile.delete()
+
+            user.role_value = User.RoleChoices.ASSISTANT_APPROVER
+            user.save(update_fields=["role_value"])
+
+        elif approver_type:
+            atype = approver_type.strip().lower()
+            if atype not in {"college", "office"}:
+                return JsonResponse({"detail": "Invalid approver type"}, status=400)
+
+            approver_profile, _ = Approver.objects.get_or_create(user=user)
+            approver_profile.approver_type = "College" if atype == "college" else "Office"
+
+            if atype == "college":
+                college_name = (data.get("college") or "").strip()
+                dept_name = (data.get("department") or "").strip()
+                if not college_name:
+                    return JsonResponse({"detail": "College is required"}, status=400)
+                if not dept_name:
+                    return JsonResponse({"detail": "Department is required"}, status=400)
+
+                college = College.objects.filter(name__iexact=college_name, is_active=True).first()
+                if not college:
+                    return JsonResponse({"detail": "College not found"}, status=400)
+
+                department = Department.objects.filter(
+                    name__iexact=dept_name,
+                    college=college,
+                    is_active=True,
+                ).first()
+                if not department:
+                    return JsonResponse({"detail": "Department not found"}, status=400)
+
+                approver_profile.college = college
+                approver_profile.department = department
+                approver_profile.office = None
+
+            if atype == "office":
+                office_name = (data.get("office") or "").strip()
+                if not office_name:
+                    return JsonResponse({"detail": "Office is required"}, status=400)
+
+                office = Office.objects.filter(name__iexact=office_name, is_active=True).first()
+                if not office:
+                    return JsonResponse({"detail": "Office not found"}, status=400)
+
+                approver_profile.office = office
+                approver_profile.college = None
+                approver_profile.department = None
+
+            approver_profile.save(update_fields=["approver_type", "office", "college", "department"])
+            user.role_value = User.RoleChoices.APPROVER
+            user.save(update_fields=["role_value"])
+
+    return JsonResponse({"ok": True})
 
 
 def active_clearance_timeline_api(request):
@@ -2722,9 +2976,11 @@ def ciso_activity_logs_api(request):
     return JsonResponse({"items": items, "total": total})
 
 
+@csrf_exempt
 def ciso_system_users_api(request):
-    if request.method != "GET":
-        return JsonResponse({"detail": "Method not allowed"}, status=405)
+    admin, err = _require_ciso_admin_user(request)
+    if err:
+        return err
 
     def _full_name(u: User):
         parts = [(u.first_name or "").strip(), (u.middle_name or "").strip(), (u.last_name or "").strip()]
@@ -2733,7 +2989,7 @@ def ciso_system_users_api(request):
 
     items = []
 
-    admins = SystemAdmin.objects.select_related("user").filter(is_active=True).order_by("id")
+    admins = SystemAdmin.objects.select_related("user").order_by("id")
     for a in admins:
         u = a.user
         items.append(
@@ -2746,12 +3002,12 @@ def ciso_system_users_api(request):
                 "college": "N/A",
                 "department": a.admin_role,
                 "email": u.email,
+                "isActive": bool(u.is_active),
             }
         )
 
     approvers = (
         Approver.objects.select_related("user", "college", "department", "office")
-        .filter(user__is_active=True)
         .order_by("id")
     )
     for ap in approvers:
@@ -2770,12 +3026,12 @@ def ciso_system_users_api(request):
                     else (ap.office.name if ap.office else "N/A")
                 ),
                 "email": u.email,
+                "isActive": bool(u.is_active),
             }
         )
 
     assistants = (
         StudentAssistant.objects.select_related("user", "college", "department")
-        .filter(user__is_active=True)
         .order_by("id")
     )
     for sa in assistants:
@@ -2790,10 +3046,142 @@ def ciso_system_users_api(request):
                 "college": sa.college.name if sa.college else "N/A",
                 "department": sa.department.name if sa.department else "N/A",
                 "email": u.email,
+                "isActive": bool(u.is_active),
             }
         )
 
-    return JsonResponse({"items": items})
+    def _role_rank(item: dict) -> int:
+        role = (item.get("userRole") or "").strip().lower()
+        if "admin" in role:
+            return 3
+        if "assistant" in role:
+            return 2
+        if "approver" in role:
+            return 1
+        return 0
+
+    deduped: dict[str, dict] = {}
+    for it in items:
+        uid = str(it.get("id") or "")
+        if not uid:
+            continue
+        prev = deduped.get(uid)
+        if not prev or _role_rank(it) > _role_rank(prev):
+            deduped[uid] = it
+
+    items = list(deduped.values())
+
+    if request.method == "GET":
+        return JsonResponse({"items": items})
+
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    data, parse_err = _parse_json_body(request)
+    if parse_err:
+        return parse_err
+    if not isinstance(data, dict):
+        return JsonResponse({"detail": "Invalid payload"}, status=400)
+
+    first_name = (data.get("firstName") or "").strip()
+    middle_name = (data.get("middleName") or "").strip()
+    last_name = (data.get("lastName") or "").strip()
+    university_id = (data.get("universityId") or "").strip()
+    email = _validate_xu_email(data.get("email") or "")
+    is_active = bool(data.get("isActive", True))
+
+    if not email:
+        return JsonResponse({"detail": "Email must be an XU email (@xu.edu.ph or @my.xu.edu.ph)"}, status=400)
+    if not university_id or not university_id.isdigit():
+        return JsonResponse({"detail": "University ID must be a valid number"}, status=400)
+
+    system_admin_office = (data.get("systemAdminOffice") or "").strip()
+    approver_type = (data.get("approverType") or "").strip()
+
+    if not system_admin_office and not approver_type:
+        return JsonResponse({"detail": "Missing user type"}, status=400)
+
+    with transaction.atomic():
+        if User.objects.filter(email__iexact=email).exists():
+            return JsonResponse({"detail": "Email already exists"}, status=400)
+        if User.objects.filter(university_id__iexact=university_id).exists():
+            return JsonResponse({"detail": "University ID already exists"}, status=400)
+
+        user = User.objects.create_user(
+            email=email,
+            university_id=university_id,
+            password=None,
+            first_name=first_name,
+            middle_name=middle_name,
+            last_name=last_name,
+            is_active=is_active,
+            is_staff=bool(system_admin_office or approver_type),
+        )
+
+        if system_admin_office:
+            office_norm = system_admin_office.strip().upper()
+            if office_norm not in {"CISO", "OVPHE"}:
+                return JsonResponse({"detail": "Invalid system admin office"}, status=400)
+
+            SystemAdmin.objects.create(
+                user=user,
+                admin_role=office_norm,
+                is_active=is_active,
+            )
+            if office_norm == "CISO":
+                user.role_value = User.RoleChoices.CISO
+            else:
+                user.role_value = User.RoleChoices.OVPHE
+            user.save(update_fields=["role_value"])
+
+        if approver_type:
+            atype = approver_type.strip().lower()
+            if atype not in {"college", "office"}:
+                return JsonResponse({"detail": "Invalid approver type"}, status=400)
+
+            college = None
+            department = None
+            office = None
+
+            if atype == "college":
+                college_name = (data.get("college") or "").strip()
+                dept_name = (data.get("department") or "").strip()
+                if not college_name:
+                    return JsonResponse({"detail": "College is required"}, status=400)
+                if not dept_name:
+                    return JsonResponse({"detail": "Department is required"}, status=400)
+
+                college = College.objects.filter(name__iexact=college_name, is_active=True).first()
+                if not college:
+                    return JsonResponse({"detail": "College not found"}, status=400)
+
+                department = Department.objects.filter(
+                    name__iexact=dept_name,
+                    college=college,
+                    is_active=True,
+                ).first()
+                if not department:
+                    return JsonResponse({"detail": "Department not found"}, status=400)
+
+            if atype == "office":
+                office_name = (data.get("office") or "").strip()
+                if not office_name:
+                    return JsonResponse({"detail": "Office is required"}, status=400)
+                office = Office.objects.filter(name__iexact=office_name, is_active=True).first()
+                if not office:
+                    return JsonResponse({"detail": "Office not found"}, status=400)
+
+            Approver.objects.create(
+                user=user,
+                approver_type="College" if atype == "college" else "Office",
+                college=college,
+                department=department,
+                office=office,
+            )
+            user.role_value = User.RoleChoices.APPROVER
+            user.save(update_fields=["role_value"])
+
+    return JsonResponse({"ok": True, "id": str(user.id)})
 
 
 def faculty_dashboard_api(request):

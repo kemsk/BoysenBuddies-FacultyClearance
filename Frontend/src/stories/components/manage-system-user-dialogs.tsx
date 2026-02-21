@@ -132,6 +132,7 @@ export type ManageSystemApproverDialogProps = {
   colleges?: string[];
   departments?: string[];
   offices?: string[];
+  collegeDepartmentsMap?: Record<string, string[]>;
 };
 
 export function ManageSystemApproverDialog({
@@ -142,13 +143,10 @@ export function ManageSystemApproverDialog({
   submitLabel,
   initialValues,
   onSubmit,
-  colleges = [
-    "College of Arts and Sciences",
-    "College of Computer Studies",
-    "College of Agriculture",
-  ],
-  departments = ["College Admin", "College Dean", "Computer Science", "Information Technology"],
-  offices = ["University Registrar", "University Library", "Human Resources Office"],
+  colleges = [],
+  departments = [],
+  offices = [],
+  collegeDepartmentsMap = {},
 }: ManageSystemApproverDialogProps) {
   const [internalOpen, setInternalOpen] = React.useState(false);
   const isControlled = typeof open === "boolean";
@@ -192,6 +190,19 @@ export function ManageSystemApproverDialog({
     }
   }, [approverType]);
 
+  React.useEffect(() => {
+    // Reset department when college changes (only for College approver type)
+    if (approverType === "College") {
+      setDepartment("");
+    }
+  }, [college, approverType]);
+
+  const filteredDepartments = React.useMemo(() => {
+    // Only show departments for the selected college when approverType is "College"
+    if (approverType !== "College" || !college) return [];
+    return collegeDepartmentsMap[college] || [];
+  }, [college, approverType, collegeDepartmentsMap]);
+
   return (
     <Dialog open={effectiveOpen} onOpenChange={setOpen}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
@@ -219,12 +230,17 @@ export function ManageSystemApproverDialog({
 
               <div className="space-y-1.5">
                 <div className="text-xs font-semibold text-foreground">University ID</div>
-                <Input value={universityId} onChange={(e) => setUniversityId(e.target.value)} size="sm" />
+                <Input
+                  value={universityId}
+                  onChange={(e) => setUniversityId(e.target.value.replace(/\D/g, ""))}
+                  size="sm"
+                  placeholder="Numbers only"
+                />
               </div>
 
               <div className="space-y-1.5">
                 <div className="text-xs font-semibold text-foreground">Email (@XU.EDU.PH)</div>
-                <Input value={email} onChange={(e) => setEmail(e.target.value)} size="sm" placeholder="username@xu.edu.ph" />
+                <Input value={email} onChange={(e) => setEmail(e.target.value)} size="sm" placeholder="username@xu.edu.ph" disabled={Boolean(initialValues)} />
                 <div className="text-[10px] text-muted-foreground">Only @xu.edu.ph email address is allowed</div>
               </div>
 
@@ -261,7 +277,7 @@ export function ManageSystemApproverDialog({
                     <SelectValue placeholder="Choose from dropdown" />
                   </SelectTrigger>
                   <SelectContent>
-                    {departments.map((d) => (
+                    {filteredDepartments.map((d) => (
                       <SelectItem key={d} value={d}>
                         {d}
                       </SelectItem>
@@ -391,12 +407,17 @@ export function ManageSystemAdminDialog({
 
               <div className="space-y-1.5">
                 <div className="text-xs font-semibold text-foreground">University ID</div>
-                <Input value={universityId} onChange={(e) => setUniversityId(e.target.value)} size="sm" />
+                <Input
+                  value={universityId}
+                  onChange={(e) => setUniversityId(e.target.value.replace(/\D/g, ""))}
+                  size="sm"
+                  placeholder="Numbers only"
+                />
               </div>
 
               <div className="space-y-1.5">
                 <div className="text-xs font-semibold text-foreground">Email (@XU.EDU.PH)</div>
-                <Input value={email} onChange={(e) => setEmail(e.target.value)} size="sm" placeholder="username@xu.edu.ph" />
+                <Input value={email} onChange={(e) => setEmail(e.target.value)} size="sm" placeholder="username@xu.edu.ph" disabled={Boolean(initialValues)} />
                 <div className="text-[10px] text-muted-foreground">Only @xu.edu.ph email address is allowed</div>
               </div>
 
@@ -444,6 +465,7 @@ export type RemoveSystemUserDialogProps = {
   onOpenChange?: (open: boolean) => void;
   userName: string;
   userEmail: string;
+  adminEmail: string;
   onRemove?: () => void;
 };
 
@@ -452,6 +474,7 @@ export function RemoveSystemUserDialog({
   onOpenChange,
   userName,
   userEmail,
+  adminEmail,
   onRemove,
 }: RemoveSystemUserDialogProps) {
   const [step, setStep] = React.useState<1 | 2>(1);
@@ -529,8 +552,12 @@ export function RemoveSystemUserDialog({
                   className="h-11 w-full rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
                   onClick={(e) => {
                     e.preventDefault();
-                    onRemove?.();
-                    onOpenChange?.(false);
+                    if (confirmEmail.trim().toLowerCase() === adminEmail.trim().toLowerCase()) {
+                      onRemove?.();
+                      onOpenChange?.(false);
+                    } else {
+                      alert("Email does not match the logged-in admin's email. Please try again.");
+                    }
                   }}
                 >
                   Confirm
