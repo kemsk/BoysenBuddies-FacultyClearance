@@ -339,7 +339,8 @@ def google_oauth_start(request):
     redirect_uri = _get_google_redirect_uri()
     if not client_id or not redirect_uri:
         return _json_error("Google OAuth is not configured", status=500)
-
+    
+    #session
     state = secrets.token_urlsafe(24)
     request.session["google_oauth_state"] = state
 
@@ -356,9 +357,15 @@ def google_oauth_start(request):
 
 
 def google_oauth_callback(request):
+    print(f"GOOGLE OAUTH: Starting callback...")
+    print(f"GOOGLE OAUTH: Session before login: {dict(request.session)}")
+    print(f"GOOGLE OAUTH: Session key before: {request.session.session_key}")
+    
     code = (request.GET.get("code") or "").strip()
     state = (request.GET.get("state") or "").strip()
     expected_state = request.session.get("google_oauth_state")
+    
+    print(f"GOOGLE OAUTH: OAuth state found: {bool(expected_state)}")
 
     if not code:
         return _json_error("Missing code", status=400)
@@ -395,8 +402,20 @@ def google_oauth_callback(request):
     if not user:
         return _json_error("Email is not registered in the system", status=403)
 
+    print(f"GOOGLE OAUTH: User found: {user.email} (ID: {user.id})")
+    print(f"GOOGLE OAUTH: About to call django_login...")
+    
     django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     return HttpResponseRedirect("/login-prompt")
+    
+    print(f"GOOGLE OAUTH: Session after django_login: {dict(request.session)}")
+    print(f"GOOGLE OAUTH: Session key after: {request.session.session_key}")
+    print(f"GOOGLE OAUTH: User authenticated: {request.user.is_authenticated}")
+    print(f"GOOGLE OAUTH: User ID in session: {request.user.id}")
+    
+    redirect_to = _dashboard_route_for_user(user)
+    print(f"GOOGLE OAUTH: Redirecting to: {redirect_to}")
+    return HttpResponseRedirect(redirect_to)
 
 
 @csrf_exempt
@@ -440,8 +459,35 @@ def google_sign_in_api(request):
 def logout_api(request):
     if request.method not in {"POST", "GET"}:
         return _json_error("Method not allowed", status=405)
-    django_logout(request)
-    return JsonResponse({"ok": True})
+    
+    print(f"LOGOUT: Starting logout...")
+    print(f"LOGOUT: Session before: {dict(request.session)}")
+    print(f"LOGOUT: Session key before: {request.session.session_key}")
+    
+    # Create response first to delete cookies
+    response = JsonResponse({"ok": True, "message": "Logged out successfully"})
+    
+    try:
+        # Django's standard logout
+        django_logout(request)
+        print(f"LOGOUT: Django logout completed successfully")
+        
+        # Force delete session cookie even if session was empty
+        response.delete_cookie('sessionid', path='/')
+        response.delete_cookie('sessionid', path='/', domain='localhost')
+        response.delete_cookie('sessionid', path='/', domain='127.0.0.1')
+        response.delete_cookie('csrftoken', path='/')
+        
+        print(f"LOGOUT: Session cookies force-deleted from response")
+        
+    except Exception as e:
+        print(f"LOGOUT: Django logout error: {e}")
+    
+    print(f"LOGOUT: Session after: {dict(request.session)}")
+    print(f"LOGOUT: Session key after: {getattr(request.session, 'session_key', 'None')}")
+    print(f"LOGOUT: Logout completed with cookie deletion")
+    
+    return response
 
 
 def me_api(request):
@@ -522,17 +568,20 @@ def ovphe_profile_api(request):
         }
     )
 
-
-def _get_active_ovphe_admin():
+#sesson
+def _get_active_ovphe_admin(request):
+    user = getattr(request, "user", None)
+    if not user or not getattr(user, "is_authenticated", False):
+        return None
     return (
         SystemAdmin.objects.select_related("user")
-        .filter(admin_role=SystemAdmin.AdminRole.OVPHE, is_active=True)
+        .filter(admin_role=SystemAdmin.AdminRole.OVPHE, is_active=True, user=user)
         .first()
     )
 
 
-def _require_ovphe_admin():
-    admin = _get_active_ovphe_admin()
+def _require_ovphe_admin(request):
+    admin = _get_active_ovphe_admin(request)
     if not admin:
         return None, JsonResponse({"detail": "OVPHE user not found"}, status=404)
     return admin, None
@@ -638,9 +687,9 @@ def _serialize_announcement(a: Announcement):
     }
 
 
-def _get_active_admin_for_role(role: str | None):
+def _get_active_admin_for_role(request, role: str | None):
     if role == "ovphe":
-        return _get_active_ovphe_admin()
+        return _get_active_ovphe_admin(request)
     if role == "ciso":
         return _get_active_ciso_admin()
     return None
@@ -666,7 +715,7 @@ def _system_guidelines_api(request, role: str):
     if not title:
         return JsonResponse({"detail": "title is required"}, status=400)
 
-    admin = _get_active_admin_for_role(role)
+    admin = _get_active_admin_for_role(request, role)
     created_by = admin.user if admin else None
 
     guideline = SystemGuideline.objects.create(
@@ -675,6 +724,15 @@ def _system_guidelines_api(request, role: str):
         created_by=created_by,
         is_active=bool(enabled) if enabled is not None else True,
     )
+    try:
+        ActivityLog.objects.create(
+            event_type=ActivityLog.EventType.CREATED_GUIDELINE,
+            actor_admin=admin,
+            actor_user=getattr(admin, "user", None),
+            details=[f"Guideline: {title}"],
+        )
+    except Exception:
+        pass
     return JsonResponse({"item": _serialize_guideline(guideline)})
 
 
@@ -685,7 +743,7 @@ def _system_guideline_detail_api(request, role: str, guideline_id: int):
     except SystemGuideline.DoesNotExist:
         return JsonResponse({"detail": "Not found"}, status=404)
 
-    admin = _get_active_admin_for_role(role)
+    admin = _get_active_admin_for_role(request, role)
     editor_user = admin.user if admin else None
 
     if request.method == "PUT":
@@ -704,6 +762,15 @@ def _system_guideline_detail_api(request, role: str, guideline_id: int):
         if editor_user is not None:
             guideline.created_by = editor_user
         guideline.save(update_fields=["title", "body", "created_at", "created_by"])
+        try:
+            ActivityLog.objects.create(
+                event_type=ActivityLog.EventType.EDITED_GUIDELINE,
+                actor_admin=admin,
+                actor_user=getattr(admin, "user", None),
+                details=[f"Guideline: {title}"],
+            )
+        except Exception:
+            pass
         return JsonResponse({"item": _serialize_guideline(guideline)})
 
     if request.method == "PATCH":
@@ -719,9 +786,36 @@ def _system_guideline_detail_api(request, role: str, guideline_id: int):
         if editor_user is not None:
             guideline.created_by = editor_user
         guideline.save(update_fields=["is_active", "created_at", "created_by"])
+        try:
+            evt = ActivityLog.EventType.ENABLED_GUIDELINE if guideline.is_active else ActivityLog.EventType.DISABLED_GUIDELINE
+            ActivityLog.objects.create(
+                event_type=evt,
+                actor_admin=admin,
+                actor_user=getattr(admin, "user", None),
+                details=[f"Guideline: {guideline.title}"],
+            )
+            if not guideline.is_active:
+                ActivityLog.objects.create(
+                    event_type=ActivityLog.EventType.ARCHIVED_GUIDELINE,
+                    actor_admin=admin,
+                    actor_user=getattr(admin, "user", None),
+                    details=[f"Guideline: {guideline.title}"],
+                )
+        except Exception:
+            pass
         return JsonResponse({"item": _serialize_guideline(guideline)})
 
     if request.method == "DELETE":
+        guideline_title = guideline.title
+        try:
+            ActivityLog.objects.create(
+                event_type=ActivityLog.EventType.ARCHIVED_GUIDELINE,
+                actor_admin=admin,
+                actor_user=getattr(admin, "user", None),
+                details=[f"Guideline: {guideline_title}"],
+            )
+        except Exception:
+            pass
         guideline.delete()
         return JsonResponse({"ok": True})
 
@@ -752,7 +846,7 @@ def _announcements_api(request, role: str):
     if not title:
         return JsonResponse({"detail": "title is required"}, status=400)
 
-    admin = _get_active_admin_for_role(role)
+    admin = _get_active_admin_for_role(request, role)
 
     announcement = Announcement.objects.create(
         title=title,
@@ -761,6 +855,15 @@ def _announcements_api(request, role: str):
         pin_announcement=bool(pinned) if pinned is not None else False,
         is_active=bool(enabled) if enabled is not None else True,
     )
+    try:
+        ActivityLog.objects.create(
+            event_type=ActivityLog.EventType.CREATED_ANNOUNCEMENT,
+            actor_admin=admin,
+            actor_user=getattr(admin, "user", None),
+            details=[f"Announcement: {title}"] if title else [],
+        )
+    except Exception:
+        pass
     return JsonResponse({"item": _serialize_announcement(announcement)})
 
 
@@ -771,7 +874,7 @@ def _announcement_detail_api(request, role: str, announcement_id: int):
     except Announcement.DoesNotExist:
         return JsonResponse({"detail": "Not found"}, status=404)
 
-    admin = _get_active_admin_for_role(role)
+    admin = _get_active_admin_for_role(request, role)
 
     if request.method == "PUT":
         payload = _json_body(request)
@@ -793,6 +896,15 @@ def _announcement_detail_api(request, role: str, announcement_id: int):
         if admin is not None:
             announcement.created_by = admin
         announcement.save(update_fields=["title", "body", "pin_announcement", "created_at", "created_by"])
+        try:
+            ActivityLog.objects.create(
+                event_type=ActivityLog.EventType.EDITED_ANNOUNCEMENT,
+                actor_admin=admin,
+                actor_user=getattr(admin, "user", None),
+                details=[f"Announcement: {title}"] if title else [],
+            )
+        except Exception:
+            pass
         return JsonResponse({"item": _serialize_announcement(announcement)})
 
     if request.method == "PATCH":
@@ -818,9 +930,34 @@ def _announcement_detail_api(request, role: str, announcement_id: int):
             return JsonResponse({"detail": "No fields to update"}, status=400)
 
         announcement.save(update_fields=updated_fields)
+        try:
+            if "enabled" in payload:
+                evt = (
+                    ActivityLog.EventType.ENABLED_ANNOUNCEMENT
+                    if announcement.is_active
+                    else ActivityLog.EventType.DISABLED_ANNOUNCEMENT
+                )
+                ActivityLog.objects.create(
+                    event_type=evt,
+                    actor_admin=admin,
+                    actor_user=getattr(admin, "user", None),
+                    details=[f"Announcement: {announcement.title}"] if announcement.title else [],
+                )
+        except Exception:
+            pass
         return JsonResponse({"item": _serialize_announcement(announcement)})
 
     if request.method == "DELETE":
+        announcement_title = announcement.title
+        try:
+            ActivityLog.objects.create(
+                event_type=ActivityLog.EventType.DELETED_ANNOUNCEMENT,
+                actor_admin=admin,
+                actor_user=getattr(admin, "user", None),
+                details=[f"Announcement: {announcement_title}"] if announcement_title else [],
+            )
+        except Exception:
+            pass
         announcement.delete()
         return JsonResponse({"ok": True})
 
@@ -1167,13 +1304,26 @@ def ovphe_clearance_timelines_api(request):
         clearance_end_date = _parse_iso_date(payload.get("clearanceEndDate"))
         set_as_active = bool(payload.get("setAsActive"))
 
-        admin = _get_active_ovphe_admin()
+        admin = _get_active_ovphe_admin(request)
         if not admin:
             return JsonResponse({"detail": "OVPHE user not found"}, status=404)
 
         if request.method == "POST":
             if set_as_active:
+                prev_active = list(ClearanceTimeline.objects.filter(is_active=True))
                 ClearanceTimeline.objects.filter(is_active=True).update(is_active=False)
+                for prev in prev_active:
+                    try:
+                        prev_sy = f"S.Y. {prev.academic_year}-{(prev.academic_year or 0) + 1}"
+                        prev_sem = _term_to_label(prev.term)
+                        ActivityLog.objects.create(
+                            event_type=ActivityLog.EventType.INACTIVE_TIMELINE,
+                            actor_admin=admin,
+                            actor_user=getattr(admin, "user", None),
+                            details=[prev_sy, f"Semester: {prev_sem}", "Replaced with new timeline"],
+                        )
+                    except Exception:
+                        pass
 
             t = ClearanceTimeline.objects.create(
                 academic_year=start_year,
@@ -1185,6 +1335,17 @@ def ovphe_clearance_timelines_api(request):
                 created_by=admin,
                 is_active=set_as_active,
             )
+            try:
+                new_sy = f"S.Y. {start_year}-{(start_year or 0) + 1}"
+                new_sem = _term_to_label(term)
+                ActivityLog.objects.create(
+                    event_type=ActivityLog.EventType.ACTIVE_TIMELINE,
+                    actor_admin=admin,
+                    actor_user=getattr(admin, "user", None),
+                    details=[new_sy, f"Semester: {new_sem}"],
+                )
+            except Exception:
+                pass
             return JsonResponse({"id": str(t.id)}, status=201)
 
         timeline_id = payload.get("id")
@@ -1196,7 +1357,20 @@ def ovphe_clearance_timelines_api(request):
             return JsonResponse({"detail": "Timeline not found"}, status=404)
 
         if set_as_active:
+            prev_active = list(ClearanceTimeline.objects.exclude(id=t.id).filter(is_active=True))
             ClearanceTimeline.objects.exclude(id=t.id).filter(is_active=True).update(is_active=False)
+            for prev in prev_active:
+                try:
+                    prev_sy = f"S.Y. {prev.academic_year}-{(prev.academic_year or 0) + 1}"
+                    prev_sem = _term_to_label(prev.term)
+                    ActivityLog.objects.create(
+                        event_type=ActivityLog.EventType.INACTIVE_TIMELINE,
+                        actor_admin=admin,
+                        actor_user=getattr(admin, "user", None),
+                        details=[prev_sy, f"Semester: {prev_sem}", "Replaced with new timeline"],
+                    )
+                except Exception:
+                    pass
 
         t.academic_year = start_year
         t.term = term
@@ -1233,7 +1407,7 @@ def ovphe_clearance_timelines_api(request):
         clearance_end_date = _parse_iso_date(payload.get("clearanceEndDate"))
         set_as_active = bool(payload.get("setAsActive"))
 
-        admin = _get_active_ovphe_admin()
+        admin = _get_active_ovphe_admin(request)
         if not admin:
             return JsonResponse({"detail": "OVPHE user not found"}, status=404)
 
@@ -1458,7 +1632,7 @@ def ovphe_approver_flow_api(request):
     if request.method != "GET":
         return _json_method_not_allowed()
 
-    admin, err = _require_ovphe_admin()
+    admin, err = _require_ovphe_admin(request)
     if err:
         return err
 
@@ -1520,7 +1694,7 @@ def _relink_flow_steps_for_office(*, office: Office):
 
 @csrf_exempt
 def ovphe_colleges_api(request):
-    admin, err = _require_ovphe_admin()
+    admin, err = _require_ovphe_admin(request)
     if err:
         return err
 
@@ -1545,6 +1719,16 @@ def ovphe_colleges_api(request):
             existing_inactive.is_active = True
             existing_inactive.abbreviation = short or None
             existing_inactive.save(update_fields=["is_active", "abbreviation"])
+
+            try:
+                ActivityLog.objects.create(
+                    event_type=ActivityLog.EventType.CREATED_COLLEGE,
+                    actor_admin=admin,
+                    actor_user=getattr(admin, "user", None),
+                    details=[f"College: {existing_inactive.name}"] if existing_inactive.name else [],
+                )
+            except Exception:
+                pass
             return JsonResponse(
                 {
                     "id": str(existing_inactive.id),
@@ -1561,6 +1745,16 @@ def ovphe_colleges_api(request):
             abbreviation=short or None,
             is_active=True,
         )
+
+        try:
+            ActivityLog.objects.create(
+                event_type=ActivityLog.EventType.CREATED_COLLEGE,
+                actor_admin=admin,
+                actor_user=getattr(admin, "user", None),
+                details=[f"College: {obj.name}"] if obj.name else [],
+            )
+        except Exception:
+            pass
         return JsonResponse(
             {
                 "id": str(obj.id),
@@ -1576,7 +1770,8 @@ def ovphe_colleges_api(request):
 
 @csrf_exempt
 def ovphe_college_detail_api(request, college_id: int):
-    admin, err = _require_ovphe_admin()
+    print(f"[DEBUG] ovphe_college_detail_api called: method={request.method}, college_id={college_id}")
+    admin, err = _require_ovphe_admin(request)
     if err:
         return err
 
@@ -1601,6 +1796,15 @@ def ovphe_college_detail_api(request, college_id: int):
         if not (obj.name or "").strip():
             return JsonResponse({"detail": "name is required"}, status=400)
         obj.save(update_fields=["name", "abbreviation", "is_active"])
+        try:
+            ActivityLog.objects.create(
+                event_type=ActivityLog.EventType.EDITED_COLLEGE,
+                actor_admin=admin,
+                actor_user=getattr(admin, "user", None),
+                details=[f"College: {obj.name}"],
+            )
+        except Exception:
+            pass
         return JsonResponse(
             {
                 "id": str(obj.id),
@@ -1611,6 +1815,18 @@ def ovphe_college_detail_api(request, college_id: int):
         )
 
     if request.method == "DELETE":
+        college_name = getattr(obj, "name", "") or ""
+        print(f"[DEBUG] Deleting college {college_name} (id={college_id}) by admin {admin}")
+        try:
+            log = ActivityLog.objects.create(
+                event_type=ActivityLog.EventType.DELETED_COLLEGE,
+                actor_admin=admin,
+                actor_user=getattr(admin, "user", None),
+                details=[f"College: {college_name}"] if college_name else [],
+            )
+            print(f"[DEBUG] ActivityLog created: id={log.id}, event_type={log.event_type}, details={log.details}")
+        except Exception as e:
+            print(f"[ERROR] Failed to create ActivityLog for deleted_college: {e}")
         if _is_college_referenced(obj):
             if obj.is_active:
                 obj.is_active = False
@@ -1624,7 +1840,7 @@ def ovphe_college_detail_api(request, college_id: int):
 
 @csrf_exempt
 def ovphe_departments_api(request):
-    admin, err = _require_ovphe_admin()
+    admin, err = _require_ovphe_admin(request)
     if err:
         return err
 
@@ -1660,6 +1876,15 @@ def ovphe_departments_api(request):
             existing_inactive.is_active = True
             existing_inactive.abbreviation = short or None
             existing_inactive.save(update_fields=["is_active", "abbreviation"])
+            try:
+                ActivityLog.objects.create(
+                    event_type=ActivityLog.EventType.CREATED_DEPARTMENT,
+                    actor_admin=admin,
+                    actor_user=getattr(admin, "user", None),
+                    details=[f"Department: {existing_inactive.name}", f"College: {college.name}"],
+                )
+            except Exception:
+                pass
             return JsonResponse(
                 {
                     "id": str(existing_inactive.id),
@@ -1678,6 +1903,15 @@ def ovphe_departments_api(request):
             abbreviation=short or None,
             is_active=True,
         )
+        try:
+            ActivityLog.objects.create(
+                event_type=ActivityLog.EventType.CREATED_DEPARTMENT,
+                actor_admin=admin,
+                actor_user=getattr(admin, "user", None),
+                details=[f"Department: {obj.name}", f"College: {college.name}"],
+            )
+        except Exception:
+            pass
         return JsonResponse(
             {
                 "id": str(obj.id),
@@ -1694,7 +1928,7 @@ def ovphe_departments_api(request):
 
 @csrf_exempt
 def ovphe_department_detail_api(request, department_id: int):
-    admin, err = _require_ovphe_admin()
+    admin, err = _require_ovphe_admin(request)
     if err:
         return err
 
@@ -1724,6 +1958,15 @@ def ovphe_department_detail_api(request, department_id: int):
         if not (obj.name or "").strip():
             return JsonResponse({"detail": "name is required"}, status=400)
         obj.save(update_fields=["name", "abbreviation", "is_active", "college"])
+        try:
+            ActivityLog.objects.create(
+                event_type=ActivityLog.EventType.EDITED_DEPARTMENT,
+                actor_admin=admin,
+                actor_user=getattr(admin, "user", None),
+                details=[f"Department: {obj.name}", f"College: {obj.college.name}"],
+            )
+        except Exception:
+            pass
         return JsonResponse(
             {
                 "id": str(obj.id),
@@ -1735,11 +1978,31 @@ def ovphe_department_detail_api(request, department_id: int):
         )
 
     if request.method == "DELETE":
+        dept_name = obj.name
+        college_name = obj.college.name if obj.college else ""
         if _is_department_referenced(obj):
             if obj.is_active:
                 obj.is_active = False
                 obj.save(update_fields=["is_active"])
+            try:
+                ActivityLog.objects.create(
+                    event_type=ActivityLog.EventType.DELETED_DEPARTMENT,
+                    actor_admin=admin,
+                    actor_user=getattr(admin, "user", None),
+                    details=[f"Department: {dept_name}", f"College: {college_name}"],
+                )
+            except Exception:
+                pass
             return JsonResponse({"id": str(obj.id), "softDeleted": True})
+        try:
+            ActivityLog.objects.create(
+                event_type=ActivityLog.EventType.DELETED_DEPARTMENT,
+                actor_admin=admin,
+                actor_user=getattr(admin, "user", None),
+                details=[f"Department: {dept_name}", f"College: {college_name}"],
+            )
+        except Exception:
+            pass
         obj.delete()
         return JsonResponse({"id": str(department_id), "deleted": True})
 
@@ -1748,7 +2011,7 @@ def ovphe_department_detail_api(request, department_id: int):
 
 @csrf_exempt
 def ovphe_offices_api(request):
-    admin, err = _require_ovphe_admin()
+    admin, err = _require_ovphe_admin(request)
     if err:
         return err
 
@@ -1776,6 +2039,15 @@ def ovphe_offices_api(request):
             existing_inactive.display_order = display_order
             existing_inactive.save(update_fields=["is_active", "abbreviation", "display_order"])
             _relink_flow_steps_for_office(office=existing_inactive)
+            try:
+                ActivityLog.objects.create(
+                    event_type=ActivityLog.EventType.CREATED_OFFICE,
+                    actor_admin=admin,
+                    actor_user=getattr(admin, "user", None),
+                    details=[f"Office: {existing_inactive.name}"],
+                )
+            except Exception:
+                pass
             return JsonResponse(
                 {
                     "id": str(existing_inactive.id),
@@ -1795,6 +2067,15 @@ def ovphe_offices_api(request):
             display_order=display_order,
         )
         _relink_flow_steps_for_office(office=obj)
+        try:
+            ActivityLog.objects.create(
+                event_type=ActivityLog.EventType.CREATED_OFFICE,
+                actor_admin=admin,
+                actor_user=getattr(admin, "user", None),
+                details=[f"Office: {obj.name}"],
+            )
+        except Exception:
+            pass
         return JsonResponse(
             {
                 "id": str(obj.id),
@@ -1811,7 +2092,7 @@ def ovphe_offices_api(request):
 
 @csrf_exempt
 def ovphe_office_detail_api(request, office_id: int):
-    admin, err = _require_ovphe_admin()
+    admin, err = _require_ovphe_admin(request)
     if err:
         return err
 
@@ -1839,6 +2120,15 @@ def ovphe_office_detail_api(request, office_id: int):
             return JsonResponse({"detail": "name is required"}, status=400)
         obj.save(update_fields=["name", "abbreviation", "display_order", "is_active"])
         _relink_flow_steps_for_office(office=obj)
+        try:
+            ActivityLog.objects.create(
+                event_type=ActivityLog.EventType.EDITED_OFFICE,
+                actor_admin=admin,
+                actor_user=getattr(admin, "user", None),
+                details=[f"Office: {obj.name}"],
+            )
+        except Exception:
+            pass
         return JsonResponse(
             {
                 "id": str(obj.id),
@@ -1850,12 +2140,31 @@ def ovphe_office_detail_api(request, office_id: int):
         )
 
     if request.method == "DELETE":
+        office_name = obj.name
         if _is_office_referenced(obj):
             if obj.is_active:
                 obj.is_active = False
                 obj.save(update_fields=["is_active"])
                 ApproverFlowStep.objects.filter(office=obj).update(office=None)
+            try:
+                ActivityLog.objects.create(
+                    event_type=ActivityLog.EventType.DELETED_OFFICE,
+                    actor_admin=admin,
+                    actor_user=getattr(admin, "user", None),
+                    details=[f"Office: {office_name}"],
+                )
+            except Exception:
+                pass
             return JsonResponse({"id": str(obj.id), "softDeleted": True})
+        try:
+            ActivityLog.objects.create(
+                event_type=ActivityLog.EventType.DELETED_OFFICE,
+                actor_admin=admin,
+                actor_user=getattr(admin, "user", None),
+                details=[f"Office: {office_name}"],
+            )
+        except Exception:
+            pass
         obj.delete()
         return JsonResponse({"id": str(office_id), "deleted": True})
 
@@ -1864,7 +2173,7 @@ def ovphe_office_detail_api(request, office_id: int):
 
 @csrf_exempt
 def ovphe_org_structure_order_api(request):
-    admin, err = _require_ovphe_admin()
+    admin, err = _require_ovphe_admin(request)
     if err:
         return err
 
@@ -1886,7 +2195,7 @@ def ovphe_org_structure_order_api(request):
 
 @csrf_exempt
 def ovphe_approver_flow_steps_api(request):
-    admin, err = _require_ovphe_admin()
+    admin, err = _require_ovphe_admin(request)
     if err:
         return err
 
@@ -1914,6 +2223,19 @@ def ovphe_approver_flow_steps_api(request):
         )
         if college_ids:
             step.colleges.set(College.objects.filter(pk__in=college_ids, is_active=True))
+        try:
+            college_names = [c.name for c in step.colleges.all()]
+            ActivityLog.objects.create(
+                event_type=ActivityLog.EventType.ADDED_TO_APPROVER_FLOW,
+                actor_admin=admin,
+                actor_user=getattr(admin, "user", None),
+                details=[
+                    f"Category: {step.category}",
+                    f"Colleges: {', '.join(college_names)}" if college_names else "",
+                ],
+            )
+        except Exception:
+            pass
         return JsonResponse(
             {
                 "id": str(step.id),
@@ -1930,7 +2252,7 @@ def ovphe_approver_flow_steps_api(request):
 
 @csrf_exempt
 def ovphe_approver_flow_step_detail_api(request, step_id: int):
-    admin, err = _require_ovphe_admin()
+    admin, err = _require_ovphe_admin(request)
     if err:
         return err
 
@@ -1960,6 +2282,19 @@ def ovphe_approver_flow_step_detail_api(request, step_id: int):
             college_ids = data.get("collegeIds") or []
             step.colleges.set(College.objects.filter(pk__in=college_ids, is_active=True))
 
+        try:
+            college_names = [c.name for c in step.colleges.all()]
+            ActivityLog.objects.create(
+                event_type=ActivityLog.EventType.EDITED_APPROVER_FLOW,
+                actor_admin=admin,
+                actor_user=getattr(admin, "user", None),
+                details=[
+                    f"Category: {step.category}",
+                    f"Colleges: {', '.join(college_names)}" if college_names else "",
+                ],
+            )
+        except Exception:
+            pass
         return JsonResponse(
             {
                 "id": str(step.id),
@@ -1971,6 +2306,16 @@ def ovphe_approver_flow_step_detail_api(request, step_id: int):
         )
 
     if request.method == "DELETE":
+        step_category = step.category
+        try:
+            ActivityLog.objects.create(
+                event_type=ActivityLog.EventType.REMOVED_FROM_APPROVER_FLOW,
+                actor_admin=admin,
+                actor_user=getattr(admin, "user", None),
+                details=[f"Category: {step_category}"],
+            )
+        except Exception:
+            pass
         step.delete()
         return JsonResponse({"id": str(step_id), "deleted": True})
 
@@ -1979,7 +2324,7 @@ def ovphe_approver_flow_step_detail_api(request, step_id: int):
 
 @csrf_exempt
 def ovphe_approver_flow_order_api(request):
-    admin, err = _require_ovphe_admin()
+    admin, err = _require_ovphe_admin(request)
     if err:
         return err
 
@@ -1995,6 +2340,16 @@ def ovphe_approver_flow_order_api(request):
         for idx, sid in enumerate(step_ids):
             ApproverFlowStep.objects.filter(pk=sid).update(order=idx)
 
+    try:
+        ActivityLog.objects.create(
+            event_type=ActivityLog.EventType.EDITED_APPROVER_FLOW,
+            actor_admin=admin,
+            actor_user=getattr(admin, "user", None),
+            details=["Updated approver flow order."],
+        )
+    except Exception:
+        pass
+
     return JsonResponse({"ok": True})
 
 
@@ -2002,7 +2357,7 @@ def ovphe_notifications_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
-    admin = _get_active_ovphe_admin()
+    admin = _get_active_ovphe_admin(request)
     if not admin:
         return JsonResponse({"detail": "OVPHE user not found"}, status=404)
 
@@ -2021,6 +2376,82 @@ def ovphe_notifications_api(request):
             }
         )
     return JsonResponse({"items": items})
+
+
+@csrf_exempt
+def ovphe_export_clearance_results_api(request):
+    admin, err = _require_ovphe_admin(request)
+    if err:
+        return err
+
+    academic_year = (request.GET.get("academic_year") or "").strip()
+    term = (request.GET.get("term") or "").strip()
+    college_id = (request.GET.get("college_id") or "").strip()
+
+    try:
+        academic_year_int = int(academic_year) if academic_year else None
+    except Exception:
+        academic_year_int = None
+
+    term_upper = term.upper()
+    if term_upper == "FIRST":
+        term_normalized = Clearance.Term.FIRST
+    elif term_upper == "SECOND":
+        term_normalized = Clearance.Term.SECOND
+    elif term_upper in {"INTERSESSION", str(Clearance.Term.INTERSESSION)}:
+        term_normalized = Clearance.Term.INTERSESSION
+    elif term:
+        term_normalized = term
+    else:
+        term_normalized = None
+
+    college_name = ""
+    if college_id:
+        try:
+            college = College.objects.get(id=college_id)
+            college_name = college.name
+        except College.DoesNotExist:
+            pass
+
+    # Log the export
+    try:
+        ActivityLog.objects.create(
+            event_type=ActivityLog.EventType.EXPORTED_CLEARANCE_RESULTS,
+            actor_admin=admin,
+            actor_user=getattr(admin, "user", None),
+            details=[
+                college_name or "All Colleges",
+                f"School Year: {academic_year or 'All'}",
+                f"Term: {term_normalized or 'All'}",
+            ],
+        )
+    except Exception:
+        pass
+
+    # Generate Excel file (simplified placeholder - you'd implement actual Excel generation here)
+    import io
+    import openpyxl
+    from openpyxl import Workbook
+    from django.http import HttpResponse
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Clearance Results"
+
+    # Headers
+    ws.append(["Faculty Name", "College", "Department", "Status", "Completion Date"])
+
+    # Sample data - replace with actual query
+    ws.append(["Sample Faculty", college_name or "Sample College", "Sample Dept", "Completed", "2025-01-15"])
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="clearance_results_{academic_year or "all"}_{term or "all"}.xlsx"',
+        },
+    )
+    wb.save(response)
+    return response
 
 
 def ovphe_system_analytics_api(request):
@@ -2085,7 +2516,46 @@ def ovphe_system_analytics_api(request):
     return JsonResponse({"rows": rows})
 
 
+@csrf_exempt
 def ovphe_activity_logs_api(request):
+    if request.method == "POST":
+        admin = _get_active_ovphe_admin(request)
+        if not admin:
+            return JsonResponse({"detail": "OVPHE user not found"}, status=404)
+
+        data, jerr = _parse_json_body(request)
+        if jerr:
+            return jerr
+        if data is None:
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
+
+        event_type = (data.get("event_type") or "").strip()
+        details = data.get("details") or []
+
+        if not event_type:
+            return JsonResponse({"detail": "event_type is required"}, status=400)
+        if event_type not in {c[0] for c in ActivityLog.EventType.choices}:
+            return JsonResponse({"detail": "Invalid event_type"}, status=400)
+        if not isinstance(details, list):
+            return JsonResponse({"detail": "details must be a list"}, status=400)
+
+        obj = ActivityLog.objects.create(
+            event_type=event_type,
+            actor_admin=admin,
+            actor_user=getattr(admin, "user", None),
+            details=[str(x) for x in details if x is not None],
+        )
+
+        return JsonResponse(
+            {
+                "id": str(obj.id),
+                "event_type": obj.event_type,
+                "details": list(obj.details or []),
+                "created_at": obj.created_at.isoformat() if obj.created_at else None,
+            },
+            status=201,
+        )
+
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 

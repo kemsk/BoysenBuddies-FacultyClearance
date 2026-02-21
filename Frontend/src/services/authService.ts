@@ -163,7 +163,7 @@ class AuthService {
           'Accept': 'application/json',
           'X-CSRFToken': this.getCSRFToken(),
         },
-        credentials: 'include',
+        credentials: 'same-origin',
       });
 
       if (!response.ok) {

@@ -27,6 +27,15 @@ import {
   SelectValue,
 } from "../../stories/components/select";
 
+function postOVPHEActivityLog(payload: { event_type: string; details?: string[] }) {
+  fetch("/admin/xu-faculty-clearance/api/ovphe/activity-logs", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).catch(() => {});
+}
+
 export default function SystemAnalytics() {
   const navigate = useNavigate();
 
@@ -202,7 +211,41 @@ export default function SystemAnalytics() {
                   </div>
                 </div>
 
-                <Button type="button" variant="icon" size="icon">
+                <Button 
+                  type="button" 
+                  variant="icon" 
+                  size="icon"
+                  onClick={() => {
+                    postOVPHEActivityLog({
+                      event_type: "exported_clearance_results",
+                      details: [
+                        selectedCollege !== "College" ? `College: ${selectedCollege}` : "",
+                        selectedClearance !== "All Clearances" ? `School Year: ${selectedClearance}` : "",
+                        selectedTerm !== "Term" ? `Term: ${selectedTerm}` : "",
+                      ].filter(Boolean),
+                    });
+                    // Trigger download
+                    const params = new URLSearchParams();
+                    if (selectedClearance && selectedClearance !== "All Clearances") {
+                      const m = selectedClearance.match(/(\d{4})/);
+                      if (m) params.set("academic_year", m[1]);
+                    }
+                    if (selectedTerm && selectedTerm !== "Term") {
+                      const map: Record<string, string> = {
+                        "First Semester": "FIRST",
+                        "Second Semester": "SECOND",
+                        Intersession: "INTERSESSION",
+                      };
+                      if (map[selectedTerm]) params.set("term", map[selectedTerm]);
+                    }
+                    if (selectedCollege && selectedCollege !== "College") {
+                      const found = colleges.find((c) => c.name === selectedCollege);
+                      if (found?.id) params.set("college_id", found.id);
+                    }
+                    const url = `/admin/xu-faculty-clearance/api/ovphe/export-clearance-results?${params.toString()}`;
+                    window.open(url, "_blank");
+                  }}
+                >
                   <img src="/PrimaryChevronIcon.png" alt="Arrow" className="h-10 w-10 object-contain ml-2 mt-2" />
                 </Button>
               </div>

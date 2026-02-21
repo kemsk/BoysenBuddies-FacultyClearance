@@ -25,6 +25,15 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../../stories/components/button";
 
+function postOVPHEActivityLog(payload: { event_type: string; details?: string[] }) {
+  fetch("/admin/xu-faculty-clearance/api/ovphe/activity-logs", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).catch(() => {});
+}
+
 type StoredClearanceTimelineItem = {
   id: string;
   startYear: string;
@@ -207,6 +216,13 @@ export default function OVPHEClearanceTimeline() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreate={(payload) => {
+          postOVPHEActivityLog({
+            event_type: "active_timeline",
+            details: [
+              `S.Y. ${payload.startYear}–${payload.endYear}`,
+              payload.semester ? `Semester: ${payload.semester}` : "",
+            ].filter(Boolean),
+          });
           fetch("/admin/xu-faculty-clearance/api/ovphe/clearance-timelines", {
             method: "POST",
             headers: {
