@@ -3,6 +3,8 @@ from decimal import Decimal
 
 import csv
 import io
+import requests
+import json
 
 from django.db import models, transaction
 from django.http import HttpResponse, JsonResponse
@@ -192,117 +194,104 @@ def ciso_faculty_dump_import_api(request):
             status=400,
         )
 
-    active_timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-id").first()
-
     created_count = 0
     updated_count = 0
     skipped_count = 0
     errors: list[dict] = []
+    ad_success_count = 0
+    ad_error_count = 0
 
     def _clean(value: str | None):
         return (value or "").strip()
 
-    with transaction.atomic():
-        for idx, row in enumerate(reader, start=2):
-            email = _clean(row.get("email"))
-            university_id = _clean(row.get("university_id"))
-            employee_id = _clean(row.get("employee_id"))
+    # Active Directory endpoint
+    ad_url = "http://host.docker.internal:8002/api/faculty/batch"
+    ad_headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
 
-            if not employee_id:
-                errors.append({"row": idx, "message": "employee_id is required"})
-                skipped_count += 1
-                continue
-            if not email:
-                errors.append({"row": idx, "message": "email is required"})
-                skipped_count += 1
-                continue
-            if not university_id:
-                errors.append({"row": idx, "message": "university_id is required"})
-                skipped_count += 1
-                continue
+    faculty_batch_data = []
 
-            first_name = _clean(row.get("first_name"))
-            middle_name = _clean(row.get("middle_name"))
-            last_name = _clean(row.get("last_name"))
-            faculty_type = _clean(row.get("faculty_type"))
-            phone_number = _clean(row.get("phone_number"))
-            office_name = _clean(row.get("office"))
-            college_name = _clean(row.get("college"))
-            department_name = _clean(row.get("department"))
+    # Process CSV and prepare data for Active Directory
+    for idx, row in enumerate(reader, start=2):
+        email = _clean(row.get("email"))
+        university_id = _clean(row.get("university_id"))
+        employee_id = _clean(row.get("employee_id"))
 
-            faculty = Faculty.objects.select_related("user").filter(employee_id=employee_id).first()
+        if not employee_id:
+            errors.append({"row": idx, "message": "employee_id is required"})
+            skipped_count += 1
+            continue
+        if not email:
+            errors.append({"row": idx, "message": "email is required"})
+            skipped_count += 1
+            continue
+        if not university_id:
+            errors.append({"row": idx, "message": "university_id is required"})
+            skipped_count += 1
+            continue
 
-            if faculty:
-                user = faculty.user
-                updated_count += 1
+        first_name = _clean(row.get("first_name"))
+        middle_name = _clean(row.get("middle_name"))
+        last_name = _clean(row.get("last_name"))
+        faculty_type = _clean(row.get("faculty_type"))
+        phone_number = _clean(row.get("phone_number"))
+        office_name = _clean(row.get("office"))
+        college_name = _clean(row.get("college"))
+        department_name = _clean(row.get("department"))
+
+        # Prepare faculty data for Active Directory
+        faculty_data = {
+            "email": email,
+            "university_id": university_id,
+            "employee_id": employee_id,
+            "first_name": first_name,
+            "middle_name": middle_name,
+            "last_name": last_name,
+            "faculty_type": faculty_type,
+            "phone_number": phone_number,
+            "office": office_name,
+            "college": college_name,
+            "department": department_name,
+            "is_active": True
+        }
+        
+        faculty_batch_data.append(faculty_data)
+        created_count += 1
+
+    # Send batch data to Active Directory
+    if faculty_batch_data:
+        try:
+            ad_response = requests.post(
+                ad_url,
+                json={"faculty": faculty_batch_data},
+                headers=ad_headers,
+                timeout=30
+            )
+            
+            if ad_response.status_code == 200 or ad_response.status_code == 201:
+                ad_result = ad_response.json()
+                ad_success_count = len(faculty_batch_data)
+                updated_count = ad_result.get("updated_count", 0)
             else:
-                user = User.objects.filter(email=email).first() or User.objects.filter(
-                    university_id=university_id
-                ).first()
-
-                if not user:
-                    user = User.objects.create(
-                        email=email,
-                        university_id=university_id,
-                        user_type=User.UserType.FACULTY,
-                        is_active=True,
-                    )
-                    user.set_password(employee_id)
-                    user.save(update_fields=["password"])
-                    created_count += 1
-                else:
-                    # Reuse existing user record
-                    updated_count += 1
-
-                faculty = Faculty.objects.filter(user=user).first()
-                if not faculty:
-                    faculty = Faculty.objects.create(user=user, employee_id=employee_id)
-                else:
-                    faculty.employee_id = employee_id
-
-            user.email = email
-            user.university_id = university_id
-            user.user_type = User.UserType.FACULTY
-            user.is_active = True
-            user.first_name = first_name or user.first_name
-            user.middle_name = middle_name or user.middle_name
-            user.last_name = last_name or user.last_name
-            user.save()
-
-            faculty.first_name = first_name
-            faculty.middle_name = middle_name
-            faculty.last_name = last_name
-            faculty.faculty_type = faculty_type
-            faculty.phone_number = phone_number
-
-            if office_name:
-                office_obj, _ = Office.objects.get_or_create(name=office_name)
-                faculty.office = office_obj
-            if college_name:
-                college_obj, _ = College.objects.get_or_create(name=college_name)
-                faculty.college = college_obj
-            if department_name and faculty.college:
-                dept_obj, _ = Department.objects.get_or_create(
-                    college=faculty.college,
-                    name=department_name,
-                )
-                faculty.department = dept_obj
-
-            faculty.save()
-
-            if active_timeline and active_timeline.academic_year and active_timeline.term:
-                Clearance.objects.get_or_create(
-                    faculty=faculty,
-                    academic_year=active_timeline.academic_year,
-                    term=active_timeline.term,
-                    defaults={"status": Clearance.Status.PENDING},
-                )
+                ad_error_count = len(faculty_batch_data)
+                errors.append({
+                    "message": f"Active Directory error: {ad_response.status_code} - {ad_response.text}"
+                })
+        except requests.exceptions.RequestException as e:
+            ad_error_count = len(faculty_batch_data)
+            errors.append({
+                "message": f"Failed to connect to Active Directory: {str(e)}"
+            })
 
     return JsonResponse(
         {
             "created_count": created_count,
             "updated_count": updated_count,
             "skipped_count": skipped_count,
+            "ad_success_count": ad_success_count,
+            "ad_error_count": ad_error_count,
             "errors": errors,
         }
     )
