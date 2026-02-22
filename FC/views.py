@@ -278,12 +278,8 @@ def ciso_profile_api(request):
     if not user or not getattr(user, "is_authenticated", False):
         return JsonResponse({"detail": "Authentication required"}, status=401)
 
-    ciso_admin = SystemAdmin.objects.select_related("user").filter(
-        user=user,
-        admin_role=SystemAdmin.AdminRole.CISO,
-        is_active=True,
-    ).first()
-    if not ciso_admin:
+    # Check User.role_value instead of SystemAdmin
+    if user.role_value != User.RoleChoices.CISO:
         return JsonResponse({"detail": "Forbidden"}, status=403)
 
     return JsonResponse(
@@ -293,7 +289,7 @@ def ciso_profile_api(request):
             "first_name": user.first_name,
             "middle_name": user.middle_name,
             "last_name": user.last_name,
-            "role": ciso_admin.admin_role,
+            "role": "CISO",
         }
     )
 
@@ -412,15 +408,11 @@ def _require_ciso_admin_user(request):
     if not user or not getattr(user, "is_authenticated", False):
         return None, JsonResponse({"detail": "Authentication required"}, status=401)
 
-    ciso_admin = SystemAdmin.objects.select_related("user").filter(
-        user=user,
-        admin_role=SystemAdmin.AdminRole.CISO,
-        is_active=True,
-    ).first()
-    if not ciso_admin:
+    # Check User.role_value instead of SystemAdmin
+    if user.role_value != User.RoleChoices.CISO:
         return None, JsonResponse({"detail": "Forbidden"}, status=403)
 
-    return ciso_admin, None
+    return user, None
 
 
 def _format_timestamp(dt: datetime | None):
