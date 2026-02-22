@@ -115,6 +115,7 @@ def ciso_faculty_dump_template_api(request):
         "email",
         "university_id",
         "employee_id",
+        "password",
         "first_name",
         "middle_name",
         "last_name",
@@ -131,12 +132,13 @@ def ciso_faculty_dump_template_api(request):
 
     sample_rows = [
         {
-            "email": "jane.doe@xu.edu.ph",
-            "university_id": "2024-00001",
-            "employee_id": "EMP-00001",
-            "first_name": "Jane",
+            "email": "new.faculty11@xu.edu.ph",
+            "university_id": "2024-000011",
+            "employee_id": "EMP-000011",
+            "password": "SecurePass123!",
+            "first_name": "New",
             "middle_name": "A.",
-            "last_name": "Doe",
+            "last_name": "Faculty",
             "faculty_type": "Full-time",
             "phone_number": "09171234567",
             "office": "Department Chair",
@@ -144,12 +146,13 @@ def ciso_faculty_dump_template_api(request):
             "department": "Information Technology",
         },
         {
-            "email": "john.santos@xu.edu.ph",
-            "university_id": "2024-00002",
-            "employee_id": "EMP-00002",
-            "first_name": "John",
+            "email": "new.faculty12@xu.edu.ph",
+            "university_id": "2024-000012",
+            "employee_id": "EMP-000012",
+            "password": "SecurePass456!",
+            "first_name": "Faculty",
             "middle_name": "B.",
-            "last_name": "Santos",
+            "last_name": "New",
             "faculty_type": "Part-time",
             "phone_number": "09987654321",
             "office": "",
@@ -235,6 +238,7 @@ def ciso_faculty_dump_import_api(request):
         first_name = _clean(row.get("first_name"))
         middle_name = _clean(row.get("middle_name"))
         last_name = _clean(row.get("last_name"))
+        password = _clean(row.get("password"))
         faculty_type = _clean(row.get("faculty_type"))
         phone_number = _clean(row.get("phone_number"))
         office_name = _clean(row.get("office"))
@@ -246,6 +250,7 @@ def ciso_faculty_dump_import_api(request):
             "email": email,
             "university_id": university_id,
             "employee_id": employee_id,
+            "password": password,
             "first_name": first_name,
             "middle_name": middle_name,
             "last_name": last_name,
