@@ -11,17 +11,21 @@ python manage.py migrate --noinput
 
 mysql -h "${DB_HOST}" -u "${DB_USER}" -p"${DB_PASSWORD}" --ssl=0 "${DB_NAME}" << 'EOF'
 -- Seed Users
-INSERT INTO FC_user (email, university_id, password, first_name, last_name, user_type, created_at, is_active, is_staff, is_superuser)
+INSERT INTO FC_user (email, university_id, password, first_name, last_name, role_value, created_at, is_active, is_staff, is_superuser)
 VALUES 
-('20220025546@my.xu.edu.ph', '20220025546', 'capstone', 'Albert Floyd', 'Villanueva', 'ADMIN', NOW(), 1, 1, 1),
-('20190016375@my.xu.edu.ph', '20190016375', 'kemeru', 'Nesyl', 'Ylanan', 'ADMIN', NOW(), 1, 1, 1),
-('approver.seed@xu.edu.ph', 'APPROVER-SEED-1', 'capstone', 'Angela', 'Santos', 'APPROVER', NOW(), 1, 1, 0),
-('assistant.seed@xu.edu.ph', 'ASSISTANT-SEED-1', 'capstone', 'Seed', 'Assistant', 'ASSISTANT', NOW(), 1, 1, 0),
-('faculty.seed@xu.edu.ph', 'FACULTY-SEED-1', 'capstone', 'Faye', 'Faculty', 'FACULTY', NOW(), 1, 0, 0)
+('20220025546@my.xu.edu.ph', 20220025546, 'capstone', 'Albert Floyd', 'Villanueva', 2, NOW(), 1, 1, 1),
+('20190016375@my.xu.edu.ph', 20190016375, 'kemeru', 'Nesyl', 'Ylanan', 3, NOW(), 1, 1, 1),
+('20220024573@my.xu.edu.ph', 20220024573, 'kim', 'Kim', 'Flores', 2, NOW(), 1, 1, 1),
+('approver.seed@xu.edu.ph', 1000000001, 'capstone', 'Angela', 'Santos', 4, NOW(), 1, 1, 0),
+('assistant.seed@xu.edu.ph', 1000000002, 'capstone', 'Seed', 'Assistant', 5, NOW(), 1, 1, 0),
+('faculty.seed@xu.edu.ph', 1000000003, 'capstone', 'John', 'Doe', 6, NOW(), 1, 0, 0),
+('hro.seed@xu.edu.ph', 1000000004, 'capstone', 'Jane', 'Smith', 1, NOW(), 1, 1, 0),
+('ovphe.seed@xu.edu.ph', 1000000005, 'capstone', 'Maria', 'Reyes', 3, NOW(), 1, 1, 0),
+('dual.seed@xu.edu.ph', 1000000006, 'capstone', 'Carlos', 'Santos', 7, NOW(), 1, 1, 0)
 ON DUPLICATE KEY UPDATE
     first_name = VALUES(first_name),
     last_name = VALUES(last_name),
-    user_type = VALUES(user_type),
+    role_value = VALUES(role_value),
     is_active = VALUES(is_active),
     is_staff = VALUES(is_staff),
     is_superuser = VALUES(is_superuser);
@@ -48,17 +52,17 @@ ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
 
 -- Seed Colleges
-INSERT INTO FC_college (name, abbreviation)
+INSERT INTO FC_college (name, abbreviation, is_active)
 SELECT * FROM (
-    SELECT 'College of Computer Studies' AS name, 'CCS' AS abbreviation
+    SELECT 'College of Computer Studies' AS name, 'CCS' AS abbreviation, 1 AS is_active
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_college c WHERE c.abbreviation = v.abbreviation
 );
 
-INSERT INTO FC_college (name, abbreviation)
+INSERT INTO FC_college (name, abbreviation, is_active)
 SELECT * FROM (
-    SELECT 'College of Arts and Sciences' AS name, 'CAS' AS abbreviation
+    SELECT 'College of Arts and Sciences' AS name, 'CAS' AS abbreviation, 1 AS is_active
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_college c WHERE c.abbreviation = v.abbreviation
@@ -69,17 +73,17 @@ SET @ccs_id = (SELECT id FROM FC_college WHERE abbreviation = 'CCS' LIMIT 1);
 SET @cas_id = (SELECT id FROM FC_college WHERE abbreviation = 'CAS' LIMIT 1);
 
 -- Seed Departments for CCS
-INSERT INTO FC_department (college_id, name, abbreviation)
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
 SELECT * FROM (
-    SELECT @ccs_id AS college_id, 'Computer Science' AS name, 'CS' AS abbreviation
+    SELECT @ccs_id AS college_id, 'Computer Science' AS name, 'CS' AS abbreviation, 1 AS is_active
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
 );
 
-INSERT INTO FC_department (college_id, name, abbreviation)
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
 SELECT * FROM (
-    SELECT @ccs_id AS college_id, 'Information Technology' AS name, 'IT' AS abbreviation
+    SELECT @ccs_id AS college_id, 'Information Technology' AS name, 'IT' AS abbreviation, 1 AS is_active
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
@@ -89,37 +93,43 @@ WHERE NOT EXISTS (
 SET @cs_id = (SELECT id FROM FC_department WHERE abbreviation = 'CS' AND college_id = @ccs_id LIMIT 1);
 
 -- Seed Offices
-INSERT INTO FC_office (name, abbreviation)
+INSERT INTO FC_office (name, abbreviation, is_active, display_order)
 SELECT * FROM (
-    SELECT 'Office of the Vice President for Higher Education' AS name, 'OVPHE' AS abbreviation
+    SELECT 'Office of the Vice President for Higher Education' AS name, 'OVPHE' AS abbreviation, 1 AS is_active, 2 AS display_order
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_office o WHERE o.abbreviation = v.abbreviation
 );
 
-INSERT INTO FC_office (name, abbreviation)
+INSERT INTO FC_office (name, abbreviation, is_active, display_order)
 SELECT * FROM (
-    SELECT 'University Registrar' AS name, 'REG' AS abbreviation
+    SELECT 'University Registrar' AS name, 'REG' AS abbreviation, 1 AS is_active, 0 AS display_order
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_office o WHERE o.abbreviation = v.abbreviation
 );
 
-INSERT INTO FC_office (name, abbreviation)
+INSERT INTO FC_office (name, abbreviation, is_active, display_order)
 SELECT * FROM (
-    SELECT 'University Library' AS name, 'LIB' AS abbreviation
+    SELECT 'University Library' AS name, 'LIB' AS abbreviation, 1 AS is_active, 1 AS display_order
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_office o WHERE o.abbreviation = v.abbreviation
 );
 
-INSERT INTO FC_office (name, abbreviation)
+INSERT INTO FC_office (name, abbreviation, is_active, display_order)
 SELECT * FROM (
-    SELECT 'Human Resources Office' AS name, 'HRO' AS abbreviation
+    SELECT 'Human Resources Office' AS name, 'HRO' AS abbreviation, 1 AS is_active, 3 AS display_order
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_office o WHERE o.abbreviation = v.abbreviation
 );
+
+-- Enforce Office display_order alignment with current approver flow office-step order
+UPDATE FC_office SET display_order = 0 WHERE abbreviation = 'REG';
+UPDATE FC_office SET display_order = 1 WHERE abbreviation = 'LIB';
+UPDATE FC_office SET display_order = 2 WHERE abbreviation = 'OVPHE';
+UPDATE FC_office SET display_order = 3 WHERE abbreviation = 'HRO';
 
 -- Get admin IDs
 SET @ciso_admin_id = (SELECT sa.id FROM FC_systemadmin sa 
@@ -165,33 +175,39 @@ WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
 );
 
-INSERT INTO FC_approverflowstep (config_id, `order`, category)
+-- Link office-based steps to actual Office rows
+SET @reg_office_id = (SELECT id FROM FC_office WHERE abbreviation = 'REG' LIMIT 1);
+SET @lib_office_id = (SELECT id FROM FC_office WHERE abbreviation = 'LIB' LIMIT 1);
+SET @ovphe_office_id = (SELECT id FROM FC_office WHERE abbreviation = 'OVPHE' LIMIT 1);
+SET @hro_office_id = (SELECT id FROM FC_office WHERE abbreviation = 'HRO' LIMIT 1);
+
+INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
 SELECT * FROM (
-    SELECT @config_id AS config_id, 2 AS `order`, 'University Registrar' AS category
+    SELECT @config_id AS config_id, 2 AS `order`, 'University Registrar' AS category, @reg_office_id AS office_id
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
 );
 
-INSERT INTO FC_approverflowstep (config_id, `order`, category)
+INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
 SELECT * FROM (
-    SELECT @config_id AS config_id, 3 AS `order`, 'University Library' AS category
+    SELECT @config_id AS config_id, 3 AS `order`, 'University Library' AS category, @lib_office_id AS office_id
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
 );
 
-INSERT INTO FC_approverflowstep (config_id, `order`, category)
+INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
 SELECT * FROM (
-    SELECT @config_id AS config_id, 4 AS `order`, 'OVPHE' AS category
+    SELECT @config_id AS config_id, 4 AS `order`, 'Office of the Vice President for Higher Education' AS category, @ovphe_office_id AS office_id
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
 );
 
-INSERT INTO FC_approverflowstep (config_id, `order`, category)
+INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
 SELECT * FROM (
-    SELECT @config_id AS config_id, 5 AS `order`, 'Human Resources Office' AS category
+    SELECT @config_id AS config_id, 5 AS `order`, 'Human Resources Office' AS category, @hro_office_id AS office_id
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
@@ -316,6 +332,12 @@ WHERE NOT EXISTS (
     SELECT 1 FROM FC_clearancetimeline ct WHERE ct.academic_year = v.academic_year AND ct.term = v.term
 );
 
+SET @seed_school_year_label = CONCAT('S.Y. ', YEAR(NOW()), '-', YEAR(NOW()) + 1);
+SET @seed_term_label = 'First Semester';
+SET @seed_dept_office_name = 'University Registrar';
+SET @seed_days_left = '7 days';
+SET @seed_announcement_title = 'System Maintenance Notice';
+
 -- Seed Notifications for OVPHE user
 SET @seed_school_year_label = CONCAT('S.Y. ', YEAR(NOW()), '-', YEAR(NOW()) + 1);
 SET @seed_term_label = 'First Semester';
@@ -323,6 +345,7 @@ SET @seed_dept_office_name = 'University Registrar';
 SET @seed_days_left = '7 days';
 SET @seed_announcement_title = 'System Maintenance Notice';
 
+-- Seed Notifications for OVPHE user
 INSERT INTO FC_notification (user_id, title, status, body, details, is_read, created_at)
 SELECT * FROM (
     SELECT @ovphe_user_id AS user_id, 'Clearance Timeline Started' AS title, 'submitted' AS status, CONCAT('The clearance timeline for ', @seed_school_year_label, ' ', @seed_term_label, ' is now active. Faculty Members may begin submitting requests.') AS body, '[]' AS details, 0 AS is_read, NOW() AS created_at
@@ -351,6 +374,24 @@ WHERE NOT EXISTS (
 INSERT INTO FC_notification (user_id, title, status, body, details, is_read, created_at)
 SELECT * FROM (
     SELECT @ciso_user_id AS user_id, 'Faculty Data Dump Uploaded' AS title, 'submitted' AS status, CONCAT('A new faculty data dump has been successfully downloaded for ', @seed_school_year_label, ' ', @seed_term_label, '.') AS body, '[]' AS details, 0 AS is_read, NOW() AS created_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_notification n WHERE n.user_id = v.user_id AND n.title = v.title AND n.status = v.status
+);
+
+-- Seed Notifications for Faculty user
+INSERT INTO FC_notification (user_id, title, status, body, details, is_read, created_at)
+SELECT * FROM (
+    SELECT @faculty_user_id AS user_id, 'Deadline Approaching' AS title, 'submitted' AS status, CONCAT('The clearance period is coming to end in ', @seed_days_left, '. Ensure to submit your requirements on time to maintain timely submissions.') AS body, '["Submission of Requirement 1", "Submission of Requirement 2"]' AS details, 0 AS is_read, NOW() AS created_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_notification n WHERE n.user_id = v.user_id AND n.title = v.title AND n.status = v.status
+);
+
+-- Seed Notifications for Faculty user
+INSERT INTO FC_notification (user_id, title, status, body, details, is_read, created_at)
+SELECT * FROM (
+    SELECT @faculty_user_id AS user_id, 'Deadline Approaching' AS title, 'submitted' AS status, CONCAT('The clearance period is coming to end in ', @seed_days_left, '. Ensure to submit your requirements on time to maintain timely submissions.') AS body, '["Submission of Requirement 1", "Submission of Requirement 2"]' AS details, 0 AS is_read, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_notification n WHERE n.user_id = v.user_id AND n.title = v.title AND n.status = v.status

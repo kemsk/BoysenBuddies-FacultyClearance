@@ -132,9 +132,9 @@ def ciso_faculty_dump_template_api(request):
 
     sample_rows = [
         {
-            "email": "new.faculty11@xu.edu.ph",
-            "university_id": "2024-000011",
-            "employee_id": "EMP-000011",
+            "email": "new.faculty13@xu.edu.ph",
+            "university_id": "2024-000013",
+            "employee_id": "EMP-000013",
             "password": "SecurePass123!",
             "first_name": "New",
             "middle_name": "A.",
@@ -146,9 +146,9 @@ def ciso_faculty_dump_template_api(request):
             "department": "Information Technology",
         },
         {
-            "email": "new.faculty12@xu.edu.ph",
-            "university_id": "2024-000012",
-            "employee_id": "EMP-000012",
+            "email": "new.faculty14@xu.edu.ph",
+            "university_id": "2024-000014",
+            "employee_id": "EMP-000014",
             "password": "SecurePass456!",
             "first_name": "Faculty",
             "middle_name": "B.",
