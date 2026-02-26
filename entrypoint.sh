@@ -13,7 +13,7 @@ mysql -h "${DB_HOST}" -u "${DB_USER}" -p"${DB_PASSWORD}" --ssl=0 "${DB_NAME}" <<
 -- Seed Users
 INSERT INTO FC_user (email, university_id, password, first_name, last_name, role_value, created_at, is_active, is_staff, is_superuser)
 VALUES 
-('20220025546@my.xu.edu.ph', 20220025546, 'capstone', 'Albert Floyd', 'Villanueva', 2, NOW(), 1, 1, 1),
+('20220025546@my.xu.edu.ph', 20220025546, 'capstone', 'Albert Floyd', 'Villanueva', 4, NOW(), 1, 1, 1),
 ('20190016375@my.xu.edu.ph', 20190016375, 'kemeru', 'Nesyl', 'Ylanan', 3, NOW(), 1, 1, 1),
 ('20220024573@my.xu.edu.ph', 20220024573, 'kim', 'Kim', 'Flores', 2, NOW(), 1, 1, 1),
 ('approver.seed@xu.edu.ph', 1000000001, 'capstone', 'Angela', 'Santos', 4, NOW(), 1, 1, 0),
@@ -31,15 +31,15 @@ ON DUPLICATE KEY UPDATE
     is_superuser = VALUES(is_superuser);
 
 -- Seed SystemAdmins
-INSERT INTO FC_systemadmin (user_id, admin_role, is_active)
-SELECT 
-    id,
-    'CISO',
-    1
-FROM FC_user WHERE email = '20220025546@my.xu.edu.ph'
-ON DUPLICATE KEY UPDATE
-    admin_role = VALUES(admin_role),
-    is_active = VALUES(is_active);
+-- INSERT INTO FC_systemadmin (user_id, admin_role, is_active)
+-- SELECT 
+--     id,
+--     'CISO',
+--     1
+-- FROM FC_user WHERE email = '20220025546@my.xu.edu.ph'
+-- ON DUPLICATE KEY UPDATE
+--     admin_role = VALUES(admin_role),
+--     is_active = VALUES(is_active);
 
 INSERT INTO FC_systemadmin (user_id, admin_role, is_active)
 SELECT 
@@ -50,6 +50,9 @@ FROM FC_user WHERE email = '20190016375@my.xu.edu.ph'
 ON DUPLICATE KEY UPDATE
     admin_role = VALUES(admin_role),
     is_active = VALUES(is_active);
+
+-- Ensure no SystemAdmin for the assistant approver user
+DELETE FROM FC_systemadmin WHERE user_id = (SELECT id FROM FC_user WHERE email = '20220025546@my.xu.edu.ph');
 
 -- Seed Colleges
 INSERT INTO FC_college (name, abbreviation, is_active)
@@ -225,6 +228,15 @@ AND c.abbreviation IN ('CCS', 'CAS');
 INSERT INTO FC_approver (user_id, approver_type, college_id, department_id, is_dual_role, is_hro)
 VALUES 
 (@approver_user_id, 'College', @ccs_id, @cs_id, 0, 0)
+ON DUPLICATE KEY UPDATE
+    approver_type = VALUES(approver_type),
+    college_id = VALUES(college_id),
+    department_id = VALUES(department_id);
+
+-- Seed Approver for main user
+INSERT INTO FC_approver (user_id, approver_type, college_id, department_id, is_dual_role, is_hro)
+VALUES 
+(@ciso_user_id, 'College', @ccs_id, @cs_id, 0, 0)
 ON DUPLICATE KEY UPDATE
     approver_type = VALUES(approver_type),
     college_id = VALUES(college_id),

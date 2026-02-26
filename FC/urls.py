@@ -43,4 +43,6 @@ urlpatterns = [
 
     path('api/faculty/dashboard', views.faculty_dashboard_api, name='FacultyDashboard'),
     path('api/faculty/notifications', views.faculty_notifications_api, name='FacultyNotifications'),
+    path('api/approver/assistant-approvers', views.approver_assistant_approvers_api, name='ApproverAssistantApprovers'),
+    path('api/approver/assistant-approvers/<int:user_id>', views.approver_assistant_approver_detail_api, name='ApproverAssistantApproverDetail'),
 ]
