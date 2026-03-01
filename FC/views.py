@@ -115,7 +115,6 @@ def ciso_faculty_dump_template_api(request):
         "email",
         "university_id",
         "employee_id",
-        "password",
         "first_name",
         "middle_name",
         "last_name",
@@ -135,7 +134,6 @@ def ciso_faculty_dump_template_api(request):
             "email": "new.faculty13@xu.edu.ph",
             "university_id": "2024-000013",
             "employee_id": "EMP-000013",
-            "password": "SecurePass123!",
             "first_name": "New",
             "middle_name": "A.",
             "last_name": "Faculty",
@@ -149,7 +147,6 @@ def ciso_faculty_dump_template_api(request):
             "email": "new.faculty14@xu.edu.ph",
             "university_id": "2024-000014",
             "employee_id": "EMP-000014",
-            "password": "SecurePass456!",
             "first_name": "Faculty",
             "middle_name": "B.",
             "last_name": "New",
@@ -238,7 +235,6 @@ def ciso_faculty_dump_import_api(request):
         first_name = _clean(row.get("first_name"))
         middle_name = _clean(row.get("middle_name"))
         last_name = _clean(row.get("last_name"))
-        password = _clean(row.get("password"))
         faculty_type = _clean(row.get("faculty_type"))
         phone_number = _clean(row.get("phone_number"))
         office_name = _clean(row.get("office"))
@@ -250,7 +246,6 @@ def ciso_faculty_dump_import_api(request):
             "email": email,
             "university_id": university_id,
             "employee_id": employee_id,
-            "password": password,
             "first_name": first_name,
             "middle_name": middle_name,
             "last_name": last_name,
