@@ -22,7 +22,7 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_active", True)
-        extra_fields.setdefault("role_value", User.RoleChoices.CISO)
+        extra_fields.setdefault("user_type", User.UserType.ADMIN)
 
         if extra_fields.get("is_staff") is not True:
             raise ValueError("Superuser must have is_staff=True.")
@@ -33,22 +33,18 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    class RoleChoices(models.IntegerChoices):
-        HRO = 1, "HRO"
-        CISO = 2, "CISO"
-        OVPHE = 3, "OVPHE"
-        APPROVER = 4, "APPROVER"
-        ASSISTANT_APPROVER = 5, "ASSISTANT_APPROVER"
-        FACULTY = 6, "FACULTY"
-        DUAL_ROLE = 7, "DUAL_ROLE"
+    class UserType(models.TextChoices):
+        FACULTY = "FACULTY", "FACULTY"
+        APPROVER = "APPROVER", "APPROVER"
+        ASSISTANT = "ASSISTANT", "ASSISTANT"
+        ADMIN = "ADMIN", "ADMIN"
 
     email = models.EmailField(max_length=150, unique=True)
     university_id = models.CharField(max_length=50, unique=True)
     first_name = models.CharField(max_length=100, null=True, blank=True)
     middle_name = models.CharField(max_length=100, null=True, blank=True)
     last_name = models.CharField(max_length=100, null=True, blank=True)
-    role_value = models.IntegerField(choices=RoleChoices.choices, default=6)  # Default to FACULTY
-    user_pin = models.CharField(max_length=128, blank=True, null=True)
+    user_type = models.CharField(max_length=20, choices=UserType.choices)
     created_at = models.DateTimeField(default=timezone.now)
 
     is_active = models.BooleanField(default=True)
@@ -66,8 +62,6 @@ class User(AbstractBaseUser, PermissionsMixin):
 class Office(models.Model):
     name = models.CharField(max_length=150)
     abbreviation = models.CharField(max_length=20, null=True, blank=True)
-    is_active = models.BooleanField(default=True)
-    display_order = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return self.name
@@ -76,7 +70,6 @@ class Office(models.Model):
 class College(models.Model):
     name = models.CharField(max_length=150)
     abbreviation = models.CharField(max_length=20, null=True, blank=True)
-    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.name
@@ -86,7 +79,6 @@ class Department(models.Model):
     college = models.ForeignKey(College, on_delete=models.CASCADE, related_name="departments")
     name = models.CharField(max_length=150)
     abbreviation = models.CharField(max_length=20, null=True, blank=True)
-    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.name
@@ -203,13 +195,6 @@ class ClearanceRequest(models.Model):
         REJECTED = "REJECTED", "REJECTED"
 
     clearance = models.ForeignKey(Clearance, on_delete=models.CASCADE, related_name="requests")
-    timeline = models.ForeignKey(
-        "ClearanceTimeline",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="clearance_requests",
-    )
     requirement = models.ForeignKey(Requirement, on_delete=models.CASCADE, related_name="clearance_requests")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     remarks = models.TextField(null=True, blank=True)
@@ -274,13 +259,6 @@ class ApproverFlowStep(models.Model):
     )
     order = models.PositiveIntegerField(default=0)
     category = models.CharField(max_length=150)
-    office = models.ForeignKey(
-        Office,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="approver_flow_steps",
-    )
     colleges = models.ManyToManyField(College, blank=True, related_name="approver_flow_steps")
 
     class Meta:
@@ -465,3 +443,4 @@ class Notification(models.Model):
 
     def __str__(self):
         return self.title or str(self.pk)
+
