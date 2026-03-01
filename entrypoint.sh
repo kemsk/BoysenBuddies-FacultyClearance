@@ -11,17 +11,17 @@ python manage.py migrate --noinput
 
 mysql -h "${DB_HOST}" -u "${DB_USER}" -p"${DB_PASSWORD}" --ssl=0 "${DB_NAME}" << 'EOF'
 -- Seed Users
-INSERT INTO FC_user (email, university_id, first_name, last_name, role_value, created_at, is_active, is_staff, is_superuser)
+INSERT INTO FC_user (email, university_id, password, first_name, last_name, role_value, created_at, is_active, is_staff, is_superuser)
 VALUES 
-('20220025546@my.xu.edu.ph', 20220025546, 'Albert Floyd', 'Villanueva', 2, NOW(), 1, 1, 1),
-('20190016375@my.xu.edu.ph', 20190016375, 'Nesyl', 'Ylanan', 3, NOW(), 1, 1, 1),
-('20220024573@my.xu.edu.ph', 20220024573, 'Kim', 'Flores', 2, NOW(), 1, 1, 1),
-('approver.seed@xu.edu.ph', 1000000001, 'Angela', 'Santos', 4, NOW(), 1, 1, 0),
-('assistant.seed@xu.edu.ph', 1000000002, 'Seed', 'Assistant', 5, NOW(), 1, 1, 0),
-('faculty.seed@xu.edu.ph', 1000000003, 'John', 'Doe', 6, NOW(), 1, 0, 0),
-('hro.seed@xu.edu.ph', 1000000004, 'Jane', 'Smith', 1, NOW(), 1, 1, 0),
-('ovphe.seed@xu.edu.ph', 1000000005, 'Maria', 'Reyes', 3, NOW(), 1, 1, 0),
-('dual.seed@xu.edu.ph', 1000000006, 'Carlos', 'Santos', 7, NOW(), 1, 1, 0)
+('20220025546@my.xu.edu.ph', 20220025546, 'capstone', 'Albert Floyd', 'Villanueva', 2, NOW(), 1, 1, 1),
+('20190016375@my.xu.edu.ph', 20190016375, 'kemeru', 'Nesyl', 'Ylanan', 3, NOW(), 1, 1, 1),
+('20220024573@my.xu.edu.ph', 20220024573, 'kim', 'Kim', 'Flores', 2, NOW(), 1, 1, 1),
+('approver.seed@xu.edu.ph', 1000000001, 'capstone', 'Angela', 'Santos', 4, NOW(), 1, 1, 0),
+('assistant.seed@xu.edu.ph', 1000000002, 'capstone', 'Seed', 'Assistant', 5, NOW(), 1, 1, 0),
+('faculty.seed@xu.edu.ph', 1000000003, 'capstone', 'John', 'Doe', 6, NOW(), 1, 0, 0),
+('hro.seed@xu.edu.ph', 1000000004, 'capstone', 'Jane', 'Smith', 1, NOW(), 1, 1, 0),
+('ovphe.seed@xu.edu.ph', 1000000005, 'capstone', 'Maria', 'Reyes', 3, NOW(), 1, 1, 0),
+('dual.seed@xu.edu.ph', 1000000006, 'capstone', 'Carlos', 'Santos', 7, NOW(), 1, 1, 0)
 ON DUPLICATE KEY UPDATE
     first_name = VALUES(first_name),
     last_name = VALUES(last_name),
