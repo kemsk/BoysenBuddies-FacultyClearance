@@ -406,6 +406,7 @@ def google_oauth_callback(request):
     print(f"GOOGLE OAUTH: About to call django_login...")
     
     django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    return HttpResponseRedirect("/login-prompt")
     
     print(f"GOOGLE OAUTH: Session after django_login: {dict(request.session)}")
     print(f"GOOGLE OAUTH: Session key after: {request.session.session_key}")
