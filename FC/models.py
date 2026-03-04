@@ -126,7 +126,7 @@ class StudentAssistant(models.Model):
     college = models.ForeignKey(College, on_delete=models.SET_NULL, null=True, blank=True, related_name="assistants")
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name="assistants")
     supervisor_approver = models.ForeignKey(
-        Approver,
+        User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -438,7 +438,7 @@ class Archive(models.Model):
     term = models.CharField(max_length=20, choices=Clearance.Term.choices, null=True, blank=True)
     archived_at = models.DateTimeField(auto_now_add=True)
     archived_by = models.ForeignKey(
-        Approver,
+        User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

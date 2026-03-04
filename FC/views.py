@@ -673,11 +673,10 @@ def _require_approver_user(request):
     if not user or not getattr(user, "is_authenticated", False):
         return None, JsonResponse({"detail": "Authentication required"}, status=401)
 
-    approver = Approver.objects.select_related("user").filter(user=user).first()
-    if not approver:
+    if user.role_value != User.RoleChoices.APPROVER:
         return None, JsonResponse({"detail": "Forbidden"}, status=403)
 
-    return approver, None
+    return user, None
 
 
 def _format_timestamp(dt: datetime | None):
@@ -3400,7 +3399,7 @@ def faculty_notifications_api(request):
     return JsonResponse({"items": items})
 @csrf_exempt
 def approver_assistant_approvers_api(request):
-    approver, err = _require_approver_user(request)
+    user, err = _require_approver_user(request)
     if err:
         return err
 
@@ -3495,7 +3494,7 @@ def approver_assistant_approvers_api(request):
             user=user,
             college=college,
             department=department,
-            supervisor_approver=approver,  # Assign the current approver as supervisor
+            supervisor_approver=user,  # Assign the current approver as supervisor
         )
         user.role_value = User.RoleChoices.ASSISTANT_APPROVER
         user.save(update_fields=["role_value"])
@@ -3505,7 +3504,7 @@ def approver_assistant_approvers_api(request):
 
 @csrf_exempt
 def approver_assistant_approver_detail_api(request, user_id):
-    approver, err = _require_approver_user(request)
+    user, err = _require_approver_user(request)
     if err:
         return err
 
