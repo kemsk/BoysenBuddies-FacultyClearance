@@ -673,11 +673,10 @@ def _require_approver_user(request):
     if not user or not getattr(user, "is_authenticated", False):
         return None, JsonResponse({"detail": "Authentication required"}, status=401)
 
-    approver = Approver.objects.select_related("user").filter(user=user).first()
-    if not approver:
+    if user.role_value != User.RoleChoices.APPROVER:
         return None, JsonResponse({"detail": "Forbidden"}, status=403)
 
-    return approver, None
+    return user, None
 
 
 def _format_timestamp(dt: datetime | None):
