@@ -163,6 +163,17 @@ import {
     fetchAdminEmail();
   }, [fetchUsers, fetchOrgStructure, fetchAdminEmail]);
 
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/ciso/system-users")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { items: SystemUser[] }) => {
+        setUsers(Array.isArray(data.items) ? data.items : []);
+      })
+      .catch(() => {
+        setUsers([]);
+      });
+  }, []);
+
   const [addApproverOpen, setAddApproverOpen] = React.useState(false);
   const [addAdminOpen, setAddAdminOpen] = React.useState(false);
   const [editApproverOpen, setEditApproverOpen] = React.useState(false);

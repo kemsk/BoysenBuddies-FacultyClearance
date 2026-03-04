@@ -8,7 +8,6 @@ import {
   type NotificationItem,
 } from "../../stories/components/cards";
 
-
 export default function Notification() {
   const [readAll, setReadAll] = React.useState(false);
 

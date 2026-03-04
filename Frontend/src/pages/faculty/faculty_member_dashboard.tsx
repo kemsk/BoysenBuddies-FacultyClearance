@@ -44,8 +44,8 @@ export default function Facultydashboard() {
       });
   }, []);
 
-  const clearanceCurrent = profile?.clearance.approvedCount ?? 0;
-  const clearanceTotal = profile?.clearance.totalCount ?? 0;
+  const clearanceCurrent = profile?.clearance.approvedCount ?? 1;
+  const clearanceTotal = profile?.clearance.totalCount ?? 6;
   const clearancePercent =
     clearanceTotal > 0
       ? Math.round((clearanceCurrent / clearanceTotal) * 100)

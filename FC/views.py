@@ -3,21 +3,21 @@ import json
 import os
 import secrets
 from urllib.parse import urlencode
-
 import urllib.request
 import urllib.error
 from decimal import Decimal
-
-from django.db import transaction
-from django.db import models
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import login as django_login, logout as django_logout
 from django.core.mail import send_mail
 from django.conf import settings
-
+from decimal import Decimal
+import csv
+import io
+import requests
+from django.db import models, transaction
 from .models import *
 
 
@@ -1451,6 +1451,195 @@ def active_clearance_timeline_api(request):
     semester = _term_to_label(t.term)
     return JsonResponse({"academicYear": academic_year, "semester": semester})
 
+def ciso_faculty_dump_template_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    headers = [
+        "email",
+        "university_id",
+        "employee_id",
+        "first_name",
+        "middle_name",
+        "last_name",
+        "faculty_type",
+        "phone_number",
+        "office",
+        "college",
+        "department",
+    ]
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(headers)
+
+    sample_rows = [
+        {
+            "email": "new.faculty13@xu.edu.ph",
+            "university_id": "2024-000013",
+            "employee_id": "EMP-000013",
+            "first_name": "New",
+            "middle_name": "A.",
+            "last_name": "Faculty",
+            "faculty_type": "Full-time",
+            "phone_number": "09171234567",
+            "office": "Department Chair",
+            "college": "College of Computer Studies",
+            "department": "Information Technology",
+        },
+        {
+            "email": "new.faculty14@xu.edu.ph",
+            "university_id": "2024-000014",
+            "employee_id": "EMP-000014",
+            "first_name": "Faculty",
+            "middle_name": "B.",
+            "last_name": "New",
+            "faculty_type": "Part-time",
+            "phone_number": "09987654321",
+            "office": "",
+            "college": "College of Arts and Sciences",
+            "department": "Mathematics",
+        },
+    ]
+
+    for row in sample_rows:
+        writer.writerow([row.get(h, "") for h in headers])
+
+    resp = HttpResponse(output.getvalue(), content_type="text/csv")
+    resp["Content-Disposition"] = 'attachment; filename="faculty_template.csv"'
+    return resp
+
+
+@csrf_exempt
+def ciso_faculty_dump_import_api(request):
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    upload = request.FILES.get("file")
+    if not upload:
+        return JsonResponse({"detail": "Missing file"}, status=400)
+
+    if not upload.name.lower().endswith(".csv"):
+        return JsonResponse({"detail": "Only CSV files are supported"}, status=400)
+
+    raw = upload.read()
+    try:
+        text = raw.decode("utf-8-sig")
+    except Exception:
+        return JsonResponse({"detail": "Unable to decode CSV; please upload a UTF-8 CSV"}, status=400)
+
+    reader = csv.DictReader(io.StringIO(text))
+    required_cols = {"email", "university_id", "employee_id"}
+    header_cols = set((reader.fieldnames or []))
+    missing_cols = sorted(required_cols - header_cols)
+    if missing_cols:
+        return JsonResponse(
+            {"detail": "Missing required columns", "missing": missing_cols},
+            status=400,
+        )
+
+    created_count = 0
+    updated_count = 0
+    skipped_count = 0
+    errors: list[dict] = []
+    ad_success_count = 0
+    ad_error_count = 0
+
+    def _clean(value: str | None):
+        return (value or "").strip()
+
+    # Active Directory endpoint
+    ad_url = "http://host.docker.internal:8002/api/faculty/batch"
+    ad_headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
+
+    faculty_batch_data = []
+
+    # Process CSV and prepare data for Active Directory
+    for idx, row in enumerate(reader, start=2):
+        email = _clean(row.get("email"))
+        university_id = _clean(row.get("university_id"))
+        employee_id = _clean(row.get("employee_id"))
+
+        if not employee_id:
+            errors.append({"row": idx, "message": "employee_id is required"})
+            skipped_count += 1
+            continue
+        if not email:
+            errors.append({"row": idx, "message": "email is required"})
+            skipped_count += 1
+            continue
+        if not university_id:
+            errors.append({"row": idx, "message": "university_id is required"})
+            skipped_count += 1
+            continue
+
+        first_name = _clean(row.get("first_name"))
+        middle_name = _clean(row.get("middle_name"))
+        last_name = _clean(row.get("last_name"))
+        faculty_type = _clean(row.get("faculty_type"))
+        phone_number = _clean(row.get("phone_number"))
+        office_name = _clean(row.get("office"))
+        college_name = _clean(row.get("college"))
+        department_name = _clean(row.get("department"))
+
+        # Prepare faculty data for Active Directory
+        faculty_data = {
+            "email": email,
+            "university_id": university_id,
+            "employee_id": employee_id,
+            "first_name": first_name,
+            "middle_name": middle_name,
+            "last_name": last_name,
+            "faculty_type": faculty_type,
+            "phone_number": phone_number,
+            "office": office_name,
+            "college": college_name,
+            "department": department_name,
+            "is_active": True
+        }
+        
+        faculty_batch_data.append(faculty_data)
+        created_count += 1
+
+    # Send batch data to Active Directory
+    if faculty_batch_data:
+        try:
+            ad_response = requests.post(
+                ad_url,
+                json={"faculty": faculty_batch_data},
+                headers=ad_headers,
+                timeout=30
+            )
+            
+            if ad_response.status_code == 200 or ad_response.status_code == 201:
+                ad_result = ad_response.json()
+                ad_success_count = len(faculty_batch_data)
+                updated_count = ad_result.get("updated_count", 0)
+            else:
+                ad_error_count = len(faculty_batch_data)
+                errors.append({
+                    "message": f"Active Directory error: {ad_response.status_code} - {ad_response.text}"
+                })
+        except requests.exceptions.RequestException as e:
+            ad_error_count = len(faculty_batch_data)
+            errors.append({
+                "message": f"Failed to connect to Active Directory: {str(e)}"
+            })
+
+    return JsonResponse(
+        {
+            "created_count": created_count,
+            "updated_count": updated_count,
+            "skipped_count": skipped_count,
+            "ad_success_count": ad_success_count,
+            "ad_error_count": ad_error_count,
+            "errors": errors,
+        }
+    )
+
 
 def ovphe_system_guidelines_api(request):
     if request.method != "GET":
@@ -2708,54 +2897,70 @@ def ovphe_system_analytics_api(request):
     term = (request.GET.get("term") or "").strip()
     college_id = (request.GET.get("college_id") or "").strip()
 
+    admin = _get_active_ovphe_admin() or _get_active_ciso_admin()
+
     try:
-        academic_year_int = int(academic_year) if academic_year else None
+        year_val = int(academic_year) if academic_year else None
     except Exception:
-        academic_year_int = None
+        return JsonResponse({"detail": "Invalid academic_year"}, status=400)
 
-    term_upper = term.upper()
-    if term_upper == "FIRST":
-        term_normalized = Clearance.Term.FIRST
-    elif term_upper == "SECOND":
-        term_normalized = Clearance.Term.SECOND
-    elif term_upper in {"INTERSESSION", str(Clearance.Term.INTERSESSION)}:
-        term_normalized = Clearance.Term.INTERSESSION
-    elif term:
-        term_normalized = term
-    else:
-        term_normalized = None
+    term_val = term or None
 
-    colleges_qs = College.objects.order_by("name")
+    if not year_val or not term_val:
+        active_timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year", "-id").first()
+        if active_timeline:
+            year_val = year_val or active_timeline.academic_year
+            term_val = term_val or active_timeline.term
+
+    if not year_val or not term_val:
+        return JsonResponse({"rows": []})
+
+    clearances = Clearance.objects.select_related("faculty", "faculty__college").filter(
+        academic_year=year_val,
+        term=term_val,
+    )
     if college_id:
-        colleges_qs = colleges_qs.filter(id=college_id)
+        clearances = clearances.filter(faculty__college_id=college_id)
+
+    aggregates = (
+        clearances.values("faculty__college_id", "faculty__college__name")
+        .annotate(
+            total=models.Count("id"),
+            completed=models.Count("id", filter=models.Q(status=Clearance.Status.COMPLETED)),
+        )
+        .order_by("faculty__college__name")
+    )
 
     rows = []
-    for c in colleges_qs:
-        faculty_qs = Faculty.objects.select_related("user").filter(user__is_active=True, college=c)
-        total_count = faculty_qs.count()
+    for r in aggregates:
+        c_id = r["faculty__college_id"]
+        c_name = r["faculty__college__name"] or ""
+        total = int(r["total"] or 0)
+        completed = int(r["completed"] or 0)
+        incomplete = max(0, total - completed)
+        rate = (Decimal(completed) / Decimal(total) * Decimal("100")) if total else Decimal("0")
 
-        completed_count = 0
-        if academic_year_int and term_normalized:
-            completed_count = Clearance.objects.filter(
-                faculty__in=faculty_qs,
-                academic_year=academic_year_int,
-                term=term_normalized,
-                status=Clearance.Status.COMPLETED,
-            ).count()
-
-        incomplete_count = max(0, total_count - completed_count)
-        completion_rate = float(completed_count / total_count) if total_count else 0.0
+        if c_id:
+            SystemAnalytics.objects.update_or_create(
+                academic_year=year_val,
+                term=term_val,
+                college_id=c_id,
+                defaults={
+                    "completion_rate": rate,
+                    "generated_by": admin,
+                },
+            )
 
         rows.append(
             {
-                "collegeId": str(c.id),
-                "collegeName": c.name,
-                "completionRate": completion_rate,
-                "completedCount": completed_count,
-                "incompleteCount": incomplete_count,
-                "totalCount": total_count,
-                "academicYear": academic_year_int,
-                "term": term_normalized,
+                "collegeId": str(c_id) if c_id else "",
+                "collegeName": c_name,
+                "completionRate": float(rate),
+                "academicYear": year_val,
+                "term": term_val,
+                "completedCount": completed,
+                "incompleteCount": incomplete,
+                "totalCount": total,
             }
         )
 
@@ -3339,6 +3544,120 @@ def faculty_dashboard_api(request):
                 "totalCount": total_reqs,
             },
             "steps": steps_payload,
+        }
+    )
+
+
+def faculty_notifications_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    email = (request.GET.get("email") or "").strip()
+    university_id = (request.GET.get("university_id") or "").strip()
+
+    if not email and not university_id:
+        email = "faculty.seed@xu.edu.ph"
+
+    qs = User.objects.filter(is_active=True, user_type=User.UserType.FACULTY)
+    if email:
+        qs = qs.filter(email=email)
+    if university_id:
+        qs = qs.filter(university_id=university_id)
+
+    user = qs.order_by("id").first()
+    if not user:
+        return JsonResponse({"detail": "Faculty user not found"}, status=404)
+
+    notifications = Notification.objects.filter(user=user).order_by("-created_at", "-id")
+    items = []
+    for n in notifications:
+        items.append(
+            {
+                "id": str(n.id),
+                "title": n.title or "",
+                "description": n.body or "",
+                "status": n.status,
+                "details": list(n.details or []),
+                "timestamp": _format_timestamp(n.created_at),
+                "is_read": bool(n.is_read),
+            }
+        )
+
+    return JsonResponse({"items": items})
+
+
+def faculty_dashboard_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    email = (request.GET.get("email") or "").strip()
+    university_id = (request.GET.get("university_id") or "").strip()
+
+    if not email and not university_id:
+        email = "faculty.seed@xu.edu.ph"
+
+    qs = Faculty.objects.select_related("user", "college", "department").filter(user__is_active=True)
+    if email:
+        qs = qs.filter(user__email=email)
+    if university_id:
+        qs = qs.filter(user__university_id=university_id)
+
+    faculty = qs.order_by("id").first()
+    if not faculty:
+        return JsonResponse({"detail": "Faculty not found"}, status=404)
+
+    timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year", "-id").first()
+    academic_year = timeline.academic_year if timeline else None
+    term = timeline.term if timeline else None
+
+    clearance = None
+    if academic_year and term:
+        clearance = (
+            Clearance.objects.filter(faculty=faculty, academic_year=academic_year, term=term)
+            .order_by("-id")
+            .first()
+        )
+
+    total_reqs = 0
+    approved_reqs = 0
+    status = "Pending"
+    if clearance:
+        if clearance.status == Clearance.Status.PENDING:
+            status = "Pending"
+        elif clearance.status == Clearance.Status.IN_PROGRESS:
+            status = "In Progress"
+        elif clearance.status == Clearance.Status.COMPLETED:
+            status = "Completed"
+        elif clearance.status == Clearance.Status.REJECTED:
+            status = "Rejected"
+        else:
+            status = str(clearance.status)
+        total_reqs = ClearanceRequest.objects.filter(clearance=clearance).count()
+        approved_reqs = ClearanceRequest.objects.filter(
+            clearance=clearance, status=ClearanceRequest.Status.APPROVED
+        ).count()
+
+    return JsonResponse(
+        {
+            "faculty": {
+                "email": faculty.user.email,
+                "universityId": faculty.user.university_id or "",
+                "firstName": faculty.user.first_name or faculty.first_name or "",
+                "middleName": faculty.user.middle_name or faculty.middle_name or "",
+                "lastName": faculty.user.last_name or faculty.last_name or "",
+                "college": faculty.college.name if faculty.college else "",
+                "department": faculty.department.name if faculty.department else "",
+                "facultyType": faculty.faculty_type or "",
+            },
+            "timeline": {
+                "academicYear": academic_year,
+                "term": term,
+            },
+            "clearance": {
+                "status": status,
+                "approvedCount": approved_reqs,
+                "totalCount": total_reqs,
+            },
         }
     )
 

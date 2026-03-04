@@ -16,9 +16,11 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 
 import { Button } from "../../stories/components/button";
+import * as React from "react";
 
 export default function CISOFacultyDataDump() {
   const navigate = useNavigate();
+  const [busy, setBusy] = React.useState(false);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -55,11 +57,61 @@ export default function CISOFacultyDataDump() {
        
        <div className="mt-2 space-y-3">
         <FacultyDataDumpCard
-          onFileSelected={() => {
-            // intentionally left blank; user can wire upload flow later
+         accept=".csv,text/csv"
+          onFileSelected={async (file) => {
+            if (busy) return;
+            setBusy(true);
+            try {
+              const formData = new FormData();
+              formData.append("file", file);
+
+              const res = await fetch("/admin/xu-faculty-clearance/api/ciso/faculty-dump/import", {
+                method: "POST",
+                body: formData,
+              });
+
+              const data = await res.json().catch(() => null);
+              if (!res.ok) {
+                const msg = (data && (data.detail || JSON.stringify(data))) || "Import failed";
+                alert(msg);
+                return;
+              }
+
+              const created = data?.created_count ?? 0;
+              const updated = data?.updated_count ?? 0;
+              const skipped = data?.skipped_count ?? 0;
+              const errors = Array.isArray(data?.errors) ? data.errors : [];
+
+              const errorText = errors.length
+                ? "\n\nErrors:\n" + errors.map((e: any) => `Row ${e.row}: ${e.message}`).join("\n")
+                : "";
+
+              alert(`Import complete. Created: ${created}, Updated: ${updated}, Skipped: ${skipped}${errorText}`);
+            } finally {
+              setBusy(false);
+            }
           }}
-          onDownloadTemplate={() => {
-            // intentionally left blank; user can wire download later
+          onDownloadTemplate={async () => {
+            if (busy) return;
+            setBusy(true);
+            try {
+              const res = await fetch("/admin/xu-faculty-clearance/api/ciso/faculty-dump/template");
+              if (!res.ok) {
+                alert("Failed to download template");
+                return;
+              }
+              const blob = await res.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "faculty_template.csv";
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              URL.revokeObjectURL(url);
+            } finally {
+              setBusy(false);
+            }
           }}
         />
        </div>

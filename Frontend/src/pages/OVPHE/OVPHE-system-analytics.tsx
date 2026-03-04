@@ -87,20 +87,28 @@ export default function SystemAnalytics() {
             collegeName: string;
             completionRate: number;
             completedCount?: number;
-            incompleteCount?: number;
             totalCount?: number;
           }[];
         }) => {
         const rows = data.rows ?? [];
         if (rows.length) {
           const first = rows[0];
+          const pct = Math.round(first.completionRate ?? 0);
           setDonutTitle(first.collegeName || "College");
-          setDonutCompleted(Math.max(0, Number(first.completedCount ?? 0)));
-          setDonutTotal(Math.max(0, Number(first.totalCount ?? 0)));
+          if (
+            typeof first.completedCount === "number" &&
+            typeof first.totalCount === "number"
+          ) {
+            setDonutCompleted(Math.max(0, first.completedCount));
+            setDonutTotal(Math.max(0, first.totalCount));
+          } else {
+            setDonutCompleted(pct);
+            setDonutTotal(100);
+          }
         } else {
           setDonutTitle("College");
           setDonutCompleted(0);
-          setDonutTotal(0);
+          setDonutTotal(100);
         }
 
         setCompletionSections([
@@ -108,8 +116,14 @@ export default function SystemAnalytics() {
             title: "Completion Rate",
             items: rows.map((r) => ({
               label: r.collegeName || "",
-              completed: Math.max(0, Number(r.completedCount ?? 0)),
-              total: Math.max(0, Number(r.totalCount ?? 0)),
+              completed:
+                typeof r.completedCount === "number"
+                  ? Math.max(0, r.completedCount)
+                  : Math.max(0, Math.round(r.completionRate ?? 0)),
+              total:
+                typeof r.totalCount === "number"
+                  ? Math.max(0, r.totalCount)
+                  : 100,
             })),
           },
         ]);

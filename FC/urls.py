@@ -19,6 +19,8 @@ urlpatterns = [
     path('api/ciso/activity-logs', views.ciso_activity_logs_api, name='CISOActivityLogs'),
     path('api/ciso/system-users', views.ciso_system_users_api, name='CISOSystemUsers'),
     path('api/ciso/system-users/<int:user_id>', views.ciso_system_user_detail_api, name='CISOSystemUserDetail'),
+    path('api/ciso/faculty-dump/template', views.ciso_faculty_dump_template_api, name='CISOFacultyDumpTemplate'),
+    path('api/ciso/faculty-dump/import', views.ciso_faculty_dump_import_api, name='CISOFacultyDumpImport'),
     path('api/ovphe-profile', views.ovphe_profile_api, name='OVPHEProfile'),
     path('api/ovphe/system-guidelines', views.ovphe_system_guidelines_api, name='OVPHESystemGuidelines'),
     path('api/ovphe/system-guidelines/<int:guideline_id>', views.ovphe_system_guideline_detail_api, name='OVPHEGuidelineDetail'),
@@ -40,7 +42,6 @@ urlpatterns = [
     path('api/ovphe/notifications', views.ovphe_notifications_api, name='OVPHENotifications'),
     path('api/ovphe/system-analytics', views.ovphe_system_analytics_api, name='OVPHESystemAnalytics'),
     path('api/ovphe/activity-logs', views.ovphe_activity_logs_api, name='OVPHEActivityLogs'),
-
     path('api/faculty/dashboard', views.faculty_dashboard_api, name='FacultyDashboard'),
     path('api/faculty/notifications', views.faculty_notifications_api, name='FacultyNotifications'),
 ]
