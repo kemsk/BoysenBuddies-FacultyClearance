@@ -116,6 +116,7 @@ export type StudentAssistantItem = {
   college: string;
   department: string;
   email: string;
+  isActive: boolean;
 };
 
 export type StudentAssistantsCardProps = {

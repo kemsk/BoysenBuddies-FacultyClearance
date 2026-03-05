@@ -30,36 +30,129 @@ import {
 
 import { SearchInputGroup } from "../../stories/components/input-group";
 
-import { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../../stories/components/button";
 
 export default function ApproverAssistantList() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
-  const [items, setItems] = useState<StudentAssistantItem[]>([
-    {
-      id: "35858832",
-      name: "Angela Santos",
-      college: "College of Arts & Sciences",
-      department: "Psychology",
-      email: "angela.santos@my.xu.edu.ph",
-    },
-    {
-      id: "586446",
-      name: "Mark Biera",
-      college: "College of Computer Studies",
-      department: "Computer Science",
-      email: "mark.biera@my.xu.edu.ph",
-    },
-    {
-      id: "23395",
-      name: "Joshua Alonzo",
-      college: "College of Nursing",
-      department: "N/A",
-      email: "joshua.alonzo@my.xu.edu.ph",
-    },
-  ]);
+  const [items, setItems] = useState<StudentAssistantItem[]>([]);
+  const [orgColleges, setOrgColleges] = useState<string[]>([]);
+  const [orgDepartments, setOrgDepartments] = useState<string[]>([]);
+  const [collegeDepartmentsMap, setCollegeDepartmentsMap] = useState<Record<string, string[]>>({});
+  const [approverEmail, setApproverEmail] = useState<string>("");
+
+  const apiBase = "/admin/xu-faculty-clearance/api/approver/assistant-approvers";
+  const orgStructureApi = "/admin/xu-faculty-clearance/api/ovphe/org-structure";
+
+  function isXuEmail(email: string) {
+    const e = (email || "").trim().toLowerCase();
+    return e.endsWith("@xu.edu.ph") || e.endsWith("@my.xu.edu.ph");
+  }
+
+  async function readErrorDetail(r: Response) {
+    try {
+      const data = (await r.json()) as { detail?: string };
+      if (data?.detail) return data.detail;
+    } catch {
+      // ignore
+    }
+
+    try {
+      const t = (await r.text()) || "";
+      if (t.trim()) return t;
+    } catch {
+      // ignore
+    }
+
+    return `Request failed (HTTP ${r.status})`;
+  }
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      const r = await fetch(apiBase, { method: "GET", credentials: "include" });
+      if (!r.ok) throw new Error("Failed to load users");
+      const data = (await r.json()) as { items?: StudentAssistantItem[] };
+      setItems(Array.isArray(data.items) ? data.items : []);
+    } catch {
+      setItems([]);
+    }
+  }, [apiBase]);
+
+  const fetchOrgStructure = useCallback(async () => {
+    try {
+      const r = await fetch(orgStructureApi, { method: "GET", credentials: "include" });
+      if (!r.ok) throw new Error("Failed to load org structure");
+
+      const data = (await r.json()) as {
+        colleges?: Array<{ id?: string; name?: string; short?: string }>;
+        departments?: Array<{ id?: string; collegeId?: string; name?: string; short?: string }>;
+        offices?: Array<{ id?: string; name?: string; short?: string }>;
+      };
+
+      const colleges = (data.colleges || [])
+        .map((c) => (c?.name || "").trim())
+        .filter(Boolean);
+      const departments = (data.departments || [])
+        .map((d) => (d?.name || "").trim())
+        .filter(Boolean);
+
+      // Build college-departments map: college name -> array of department names
+      const collegeMap: Record<string, string[]> = {};
+
+      // Initialize all colleges with empty arrays
+      (data.colleges || []).forEach((c) => {
+        const collegeName = (c?.name || "").trim();
+        if (collegeName) {
+          collegeMap[collegeName] = [];
+        }
+      });
+
+      // Map departments to their colleges using collegeId
+      (data.departments || []).forEach((d) => {
+        const departmentName = (d?.name || "").trim();
+        const collegeId = d?.collegeId;
+
+        if (departmentName && collegeId) {
+          // Find college by ID
+          const college = (data.colleges || []).find(c => c?.id === collegeId);
+          const collegeName = college?.name?.trim();
+
+          if (collegeName && collegeMap[collegeName]) {
+            collegeMap[collegeName].push(departmentName);
+          }
+        }
+      });
+
+      setOrgColleges(colleges);
+      setOrgDepartments(departments);
+      setCollegeDepartmentsMap(collegeMap);
+    } catch {
+      setOrgColleges([]);
+      setOrgDepartments([]);
+      setCollegeDepartmentsMap({});
+    }
+  }, [orgStructureApi]);
+
+  const fetchApproverEmail = useCallback(async () => {
+    try {
+      const r = await fetch("/admin/xu-faculty-clearance/api/me", { method: "GET", credentials: "include" });
+      if (!r.ok) throw new Error("Failed to load profile");
+      const data = (await r.json()) as { email?: string };
+      if (data.email) {
+        setApproverEmail(data.email);
+      }
+    } catch {
+      setApproverEmail("");
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+    fetchOrgStructure();
+    fetchApproverEmail();
+  }, [fetchUsers, fetchOrgStructure, fetchApproverEmail]);
 
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -161,22 +254,40 @@ export default function ApproverAssistantList() {
         <AddDepartmentAssistantDialog
           open={addOpen}
           onOpenChange={setAddOpen}
+          colleges={orgColleges}
+          departments={orgDepartments}
+          collegeDepartmentsMap={collegeDepartmentsMap}
           onCreate={(payload: DepartmentAssistantPayload) => {
-            const name = [payload.firstName, payload.middleName, payload.lastName]
-              .filter(Boolean)
-              .join(" ")
-              .trim();
+            (async () => {
+              if (!isXuEmail(payload.email)) {
+                window.alert("Email must be an XU email (@xu.edu.ph or @my.xu.edu.ph)");
+                return;
+              }
+              const r = await fetch(apiBase, {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  firstName: payload.firstName,
+                  middleName: payload.middleName,
+                  lastName: payload.lastName,
+                  universityId: payload.universityId,
+                  email: payload.email,
+                  isActive: payload.isActive,
+                  college: payload.college,
+                  department: payload.department,
+                }),
+              });
 
-            setItems((prev) => [
-              {
-                id: payload.universityId || `${Date.now()}`,
-                name: name || "New Assistant",
-                college: payload.college,
-                department: payload.department,
-                email: payload.email,
-              },
-              ...prev,
-            ]);
+              if (!r.ok) {
+                window.alert(await readErrorDetail(r));
+                return;
+              }
+
+              setAddOpen(false);
+              await fetchUsers();
+              window.alert("Assistant created successfully!");
+            })();
           }}
         />
 
@@ -186,6 +297,9 @@ export default function ApproverAssistantList() {
             setEditOpen(o);
             if (!o) setActiveAssistantId(null);
           }}
+          colleges={orgColleges}
+          departments={orgDepartments}
+          collegeDepartmentsMap={collegeDepartmentsMap}
           initialValues={
             activeAssistant
               ? {
@@ -194,29 +308,43 @@ export default function ApproverAssistantList() {
                   college: activeAssistant.college,
                   department: activeAssistant.department,
                   email: activeAssistant.email,
+                  isActive: activeAssistant.isActive,
                 }
               : undefined
           }
           onSave={(payload: DepartmentAssistantPayload) => {
             if (!activeAssistant) return;
-            const name = [payload.firstName, payload.middleName, payload.lastName]
-              .filter(Boolean)
-              .join(" ")
-              .trim();
+            (async () => {
+              if (!isXuEmail(payload.email)) {
+                window.alert("Email must be an XU email (@xu.edu.ph or @my.xu.edu.ph)");
+                return;
+              }
+              const r = await fetch(`${apiBase}/${activeAssistant.id}`, {
+                method: "PUT",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  firstName: payload.firstName,
+                  middleName: payload.middleName,
+                  lastName: payload.lastName,
+                  universityId: payload.universityId,
+                  email: payload.email,
+                  isActive: payload.isActive,
+                  college: payload.college,
+                  department: payload.department,
+                }),
+              });
 
-            setItems((prev) =>
-              prev.map((p) =>
-                p.id !== activeAssistant.id
-                  ? p
-                  : {
-                      ...p,
-                      name: name || p.name,
-                      college: payload.college,
-                      department: payload.department,
-                      email: payload.email,
-                    }
-              )
-            );
+              if (!r.ok) {
+                window.alert(await readErrorDetail(r));
+                return;
+              }
+
+              setEditOpen(false);
+              setActiveAssistantId(null);
+              await fetchUsers();
+              window.alert("Assistant updated successfully!");
+            })();
           }}
         />
 
@@ -228,9 +356,25 @@ export default function ApproverAssistantList() {
           }}
           userName={activeAssistant?.name ?? ""}
           userEmail={activeAssistant?.email ?? ""}
+          adminEmail={approverEmail}
           onRemove={() => {
             if (!activeAssistant) return;
-            setItems((prev) => prev.filter((p) => p.id !== activeAssistant.id));
+            (async () => {
+              const r = await fetch(`${apiBase}/${activeAssistant.id}`, {
+                method: "DELETE",
+                credentials: "include",
+              });
+
+              if (!r.ok) {
+                window.alert(await readErrorDetail(r));
+                return;
+              }
+
+              setRemoveOpen(false);
+              setActiveAssistantId(null);
+              await fetchUsers();
+              window.alert("Assistant removed successfully!");
+            })();
           }}
         />
 

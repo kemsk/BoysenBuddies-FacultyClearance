@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./select";
+import { Checkbox } from "./checkbox";
 
 export type DepartmentAssistantPayload = {
   firstName: string;
@@ -19,6 +20,7 @@ export type DepartmentAssistantPayload = {
   college: string;
   department: string;
   email: string;
+  isActive: boolean;
 };
 
 export type AddDepartmentAssistantDialogProps = {
@@ -28,6 +30,7 @@ export type AddDepartmentAssistantDialogProps = {
   onCreate?: (payload: DepartmentAssistantPayload) => void;
   colleges?: string[];
   departments?: string[];
+  collegeDepartmentsMap?: Record<string, string[]>;
 };
 
 export function AddDepartmentAssistantDialog({
@@ -35,18 +38,9 @@ export function AddDepartmentAssistantDialog({
   onOpenChange,
   trigger,
   onCreate,
-  colleges = [
-    "College of Arts and Sciences",
-    "College of Computer Studies",
-    "College of Nursing",
-    "College of Agriculture",
-    "College of Engineering",
-    "School of Business and Management",
-    "School of Education",
-    "School of Law",
-    "School of Medicine",
-  ],
-  departments = ["Computer Science", "Information Technology", "Psychology", "N/A"],
+  colleges = [],
+  departments = [],
+  collegeDepartmentsMap = {},
 }: AddDepartmentAssistantDialogProps) {
   const [internalOpen, setInternalOpen] = React.useState(false);
   const isControlled = typeof open === "boolean";
@@ -63,6 +57,7 @@ export function AddDepartmentAssistantDialog({
   const [college, setCollege] = React.useState<string>("");
   const [department, setDepartment] = React.useState<string>("");
   const [email, setEmail] = React.useState("");
+  const [isActive, setIsActive] = React.useState(true);
 
   React.useEffect(() => {
     if (!effectiveOpen) return;
@@ -73,7 +68,19 @@ export function AddDepartmentAssistantDialog({
     setCollege("");
     setDepartment("");
     setEmail("");
+    setIsActive(true);
   }, [effectiveOpen]);
+
+  React.useEffect(() => {
+    // Reset department when college changes
+    setDepartment("");
+  }, [college]);
+
+  const filteredDepartments = React.useMemo(() => {
+    // Only show departments for the selected college
+    if (!college) return [];
+    return collegeDepartmentsMap[college] || [];
+  }, [college, collegeDepartmentsMap]);
 
   return (
     <Dialog open={effectiveOpen} onOpenChange={setOpen}>
@@ -101,7 +108,12 @@ export function AddDepartmentAssistantDialog({
 
               <div className="space-y-1.5">
                 <div className="text-xs font-semibold text-foreground">University ID</div>
-                <Input value={universityId} onChange={(e) => setUniversityId(e.target.value)} size="sm" />
+                <Input
+                  value={universityId}
+                  onChange={(e) => setUniversityId(e.target.value.replace(/\D/g, ""))}
+                  size="sm"
+                  placeholder="Numbers only"
+                />
               </div>
 
               <div className="space-y-1.5">
@@ -127,7 +139,7 @@ export function AddDepartmentAssistantDialog({
                     <SelectValue placeholder="Choose from dropdown" />
                   </SelectTrigger>
                   <SelectContent>
-                    {departments.map((d) => (
+                    {filteredDepartments.map((d) => (
                       <SelectItem key={d} value={d}>
                         {d}
                       </SelectItem>
@@ -165,6 +177,7 @@ export function AddDepartmentAssistantDialog({
                     college,
                     department,
                     email,
+                    isActive,
                   });
                   setOpen(false);
                 }}
@@ -187,6 +200,7 @@ export type EditDepartmentAssistantDialogProps = {
   onSave?: (payload: DepartmentAssistantPayload) => void;
   colleges?: string[];
   departments?: string[];
+  collegeDepartmentsMap?: Record<string, string[]>;
 };
 
 export function EditDepartmentAssistantDialog({
@@ -195,18 +209,9 @@ export function EditDepartmentAssistantDialog({
   trigger,
   initialValues,
   onSave,
-  colleges = [
-    "College of Arts and Sciences",
-    "College of Computer Studies",
-    "College of Nursing",
-    "College of Agriculture",
-    "College of Engineering",
-    "School of Business and Management",
-    "School of Education",
-    "School of Law",
-    "School of Medicine",
-  ],
-  departments = ["Computer Science", "Information Technology", "Psychology", "N/A"],
+  colleges = [],
+  departments = [],
+  collegeDepartmentsMap = {},
 }: EditDepartmentAssistantDialogProps) {
   const [internalOpen, setInternalOpen] = React.useState(false);
   const isControlled = typeof open === "boolean";
@@ -223,6 +228,7 @@ export function EditDepartmentAssistantDialog({
   const [college, setCollege] = React.useState<string>("");
   const [department, setDepartment] = React.useState<string>("");
   const [email, setEmail] = React.useState("");
+  const [isActive, setIsActive] = React.useState(true);
 
   React.useEffect(() => {
     if (!effectiveOpen) return;
@@ -233,7 +239,23 @@ export function EditDepartmentAssistantDialog({
     setCollege(initialValues?.college ?? "");
     setDepartment(initialValues?.department ?? "");
     setEmail(initialValues?.email ?? "");
+    setIsActive(initialValues?.isActive ?? true);
   }, [effectiveOpen, initialValues]);
+
+  React.useEffect(() => {
+    // Reset department when college changes
+    setDepartment("");
+  }, [college]);
+
+  const filteredDepartments = React.useMemo(() => {
+    // Only show departments for the selected college
+    if (!college) return [];
+    const base = collegeDepartmentsMap[college] || [];
+    if (initialValues?.department && !base.includes(initialValues.department)) {
+      return [...base, initialValues.department];
+    }
+    return base;
+  }, [college, collegeDepartmentsMap, initialValues?.department]);
 
   return (
     <Dialog open={effectiveOpen} onOpenChange={setOpen}>
@@ -261,7 +283,12 @@ export function EditDepartmentAssistantDialog({
 
               <div className="space-y-1.5">
                 <div className="text-xs font-semibold text-foreground">University ID</div>
-                <Input value={universityId} onChange={(e) => setUniversityId(e.target.value)} size="sm" />
+                <Input
+                  value={universityId}
+                  onChange={(e) => setUniversityId(e.target.value.replace(/\D/g, ""))}
+                  size="sm"
+                  placeholder="Numbers only"
+                />
               </div>
 
               <div className="space-y-1.5">
@@ -287,7 +314,7 @@ export function EditDepartmentAssistantDialog({
                     <SelectValue placeholder="Choose from dropdown" />
                   </SelectTrigger>
                   <SelectContent>
-                    {departments.map((d) => (
+                    {filteredDepartments.map((d) => (
                       <SelectItem key={d} value={d}>
                         {d}
                       </SelectItem>
@@ -297,9 +324,15 @@ export function EditDepartmentAssistantDialog({
               </div>
 
               <div className="space-y-1.5">
-                <div className="text-xs font-semibold text-foreground">Email</div>
-                <Input value={email} onChange={(e) => setEmail(e.target.value)} size="sm" />
+                <div className="text-xs font-semibold text-foreground">Email (@XU.EDU.PH)</div>
+                <Input value={email} onChange={(e) => setEmail(e.target.value)} size="sm" placeholder="username@xu.edu.ph" disabled={Boolean(initialValues)} />
+                <div className="text-[10px] text-muted-foreground">Only @xu.edu.ph email address is allowed</div>
               </div>
+
+              <label className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+                <Checkbox checked={isActive} onCheckedChange={(v: boolean) => setIsActive(v)} />
+                <span>Set as Active</span>
+              </label>
             </div>
           </div>
 
@@ -325,11 +358,12 @@ export function EditDepartmentAssistantDialog({
                     college,
                     department,
                     email,
+                    isActive,
                   });
                   setOpen(false);
                 }}
               >
-                Create
+                Update
               </Button>
             </div>
           </div>

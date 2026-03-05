@@ -231,7 +231,7 @@ def _dashboard_route_for_user(user: "User") -> str:
         return "/approver-dashboard"
 
     if role_value == User.RoleChoices.ASSISTANT_APPROVER:
-        return "/assistant-approver-dashboard"
+        return "/approver-assistant-list"
 
     if role_value == User.RoleChoices.HRO:
         return "/HRO-dashboard"
@@ -406,7 +406,6 @@ def google_oauth_callback(request):
     print(f"GOOGLE OAUTH: About to call django_login...")
     
     django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-    return HttpResponseRedirect("/login-prompt")
     
     print(f"GOOGLE OAUTH: Session after django_login: {dict(request.session)}")
     print(f"GOOGLE OAUTH: Session key after: {request.session.session_key}")
@@ -656,6 +655,17 @@ def _require_ciso_admin_user(request):
 
     # Check User.role_value instead of SystemAdmin
     if user.role_value != User.RoleChoices.CISO:
+        return None, JsonResponse({"detail": "Forbidden"}, status=403)
+
+    return user, None
+
+
+def _require_approver_user(request):
+    user = getattr(request, "user", None)
+    if not user or not getattr(user, "is_authenticated", False):
+        return None, JsonResponse({"detail": "Authentication required"}, status=401)
+
+    if user.role_value != User.RoleChoices.APPROVER:
         return None, JsonResponse({"detail": "Forbidden"}, status=403)
 
     return user, None
@@ -3585,7 +3595,6 @@ def faculty_notifications_api(request):
 
     return JsonResponse({"items": items})
 
-
 def faculty_dashboard_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
@@ -3698,3 +3707,234 @@ def faculty_notifications_api(request):
         )
 
     return JsonResponse({"items": items})
+@csrf_exempt
+def approver_assistant_approvers_api(request):
+    user, err = _require_approver_user(request)
+    if err:
+        return err
+
+    def _full_name(u: User):
+        parts = [(u.first_name or "").strip(), (u.middle_name or "").strip(), (u.last_name or "").strip()]
+        parts = [p for p in parts if p]
+        return " ".join(parts) if parts else u.email
+
+    items = []
+
+    assistants = (
+        StudentAssistant.objects.select_related("user", "college", "department")
+        .order_by("id")
+    )
+    for sa in assistants:
+        u = sa.user
+        items.append(
+            {
+                "id": str(u.id),
+                "name": _full_name(u),
+                "systemId": f"SYS-{u.id}",
+                "userRole": "Assistant Approver",
+                "universityId": u.university_id or "",
+                "college": sa.college.name if sa.college else "N/A",
+                "department": sa.department.name if sa.department else "N/A",
+                "email": u.email,
+                "isActive": bool(u.is_active),
+            }
+        )
+
+    if request.method == "GET":
+        return JsonResponse({"items": items})
+
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    data, parse_err = _parse_json_body(request)
+    if parse_err:
+        return parse_err
+    if not isinstance(data, dict):
+        return JsonResponse({"detail": "Invalid payload"}, status=400)
+
+    first_name = (data.get("firstName") or "").strip()
+    middle_name = (data.get("middleName") or "").strip()
+    last_name = (data.get("lastName") or "").strip()
+    university_id = (data.get("universityId") or "").strip()
+    email = _validate_xu_email(data.get("email") or "")
+    is_active = bool(data.get("isActive", True))
+
+    if not email:
+        return JsonResponse({"detail": "Email must be an XU email (@xu.edu.ph or @my.xu.edu.ph)"}, status=400)
+    if not university_id or not university_id.isdigit():
+        return JsonResponse({"detail": "University ID must be a valid number"}, status=400)
+
+    college_name = (data.get("college") or "").strip()
+    dept_name = (data.get("department") or "").strip()
+    if not college_name:
+        return JsonResponse({"detail": "College is required"}, status=400)
+    if not dept_name:
+        return JsonResponse({"detail": "Department is required"}, status=400)
+
+    college = College.objects.filter(name__iexact=college_name, is_active=True).first()
+    if not college:
+        return JsonResponse({"detail": "College not found"}, status=400)
+
+    department = Department.objects.filter(
+        name__iexact=dept_name,
+        college=college,
+        is_active=True,
+    ).first()
+    if not department:
+        return JsonResponse({"detail": "Department not found"}, status=400)
+
+    with transaction.atomic():
+        if User.objects.filter(email__iexact=email).exists():
+            return JsonResponse({"detail": "Email already exists"}, status=400)
+        if User.objects.filter(university_id__iexact=university_id).exists():
+            return JsonResponse({"detail": "University ID already exists"}, status=400)
+
+        user = User.objects.create_user(
+            email=email,
+            university_id=university_id,
+            password=None,
+            first_name=first_name,
+            middle_name=middle_name,
+            last_name=last_name,
+            is_active=is_active,
+            is_staff=True,
+        )
+
+        StudentAssistant.objects.create(
+            user=user,
+            college=college,
+            department=department,
+            supervisor_approver=user,  # Assign the current approver as supervisor
+        )
+        user.role_value = User.RoleChoices.ASSISTANT_APPROVER
+        user.save(update_fields=["role_value"])
+
+    return JsonResponse({"ok": True, "id": str(user.id)})
+
+
+@csrf_exempt
+def approver_assistant_approver_detail_api(request, user_id):
+    user, err = _require_approver_user(request)
+    if err:
+        return err
+
+    try:
+        user_id_int = int(user_id)
+    except ValueError:
+        return JsonResponse({"detail": "Invalid user ID"}, status=400)
+
+    try:
+        user = User.objects.get(pk=user_id_int)
+    except User.DoesNotExist:
+        return JsonResponse({"detail": "User not found"}, status=404)
+
+    def _full_name(u: User):
+        parts = [(u.first_name or "").strip(), (u.middle_name or "").strip(), (u.last_name or "").strip()]
+        parts = [p for p in parts if p]
+        return " ".join(parts) if parts else u.email
+
+    if request.method == "GET":
+        assistant_profile = getattr(user, "assistant_profile", None)
+        if not assistant_profile:
+            return JsonResponse({"detail": "Assistant profile not found"}, status=404)
+
+        return JsonResponse(
+            {
+                "item": {
+                    "id": str(user.id),
+                    "name": _full_name(user),
+                    "systemId": f"SYS-{u.id}",
+                    "userRole": "Assistant Approver",
+                    "universityId": user.university_id or "",
+                    "college": assistant_profile.college.name if assistant_profile.college else "N/A",
+                    "department": assistant_profile.department.name if assistant_profile.department else "N/A",
+                    "email": user.email,
+                    "isActive": bool(user.is_active),
+                }
+            }
+        )
+
+    if request.method == "DELETE":
+        assistant_profile = getattr(user, "assistant_profile", None)
+        if not assistant_profile:
+            return JsonResponse({"detail": "Assistant profile not found"}, status=404)
+
+        with transaction.atomic():
+            # Delete related profiles first
+            assistant_profile.delete()
+
+            # Delete the user completely
+            user.delete()
+
+        return JsonResponse({"ok": True})
+
+    if request.method not in {"PUT", "PATCH"}:
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    data, parse_err = _parse_json_body(request)
+    if parse_err:
+        return parse_err
+    if not isinstance(data, dict):
+        return JsonResponse({"detail": "Invalid payload"}, status=400)
+
+    first_name = (data.get("firstName") or "").strip()
+    middle_name = (data.get("middleName") or "").strip()
+    last_name = (data.get("lastName") or "").strip()
+    university_id = (data.get("universityId") or "").strip()
+    email = _validate_xu_email(data.get("email") or "")
+    is_active = bool(data.get("isActive", True))
+
+    if not email:
+        return JsonResponse({"detail": "Email must be an XU email (@xu.edu.ph or @my.xu.edu.ph)"}, status=400)
+    if not university_id or not university_id.isdigit():
+        return JsonResponse({"detail": "University ID must be a valid number"}, status=400)
+
+    college_name = (data.get("college") or "").strip()
+    dept_name = (data.get("department") or "").strip()
+    if not college_name:
+        return JsonResponse({"detail": "College is required"}, status=400)
+    if not dept_name:
+        return JsonResponse({"detail": "Department is required"}, status=400)
+
+    college = College.objects.filter(name__iexact=college_name, is_active=True).first()
+    if not college:
+        return JsonResponse({"detail": "College not found"}, status=400)
+
+    department = Department.objects.filter(
+        name__iexact=dept_name,
+        college=college,
+        is_active=True,
+    ).first()
+    if not department:
+        return JsonResponse({"detail": "Department not found"}, status=400)
+
+    assistant_profile = getattr(user, "assistant_profile", None)
+    if not assistant_profile:
+        return JsonResponse({"detail": "Assistant profile not found"}, status=404)
+
+    with transaction.atomic():
+        if User.objects.filter(email__iexact=email).exclude(pk=user.id).exists():
+            return JsonResponse({"detail": "Email already exists"}, status=400)
+        if User.objects.filter(university_id__iexact=university_id).exclude(pk=user.id).exists():
+            return JsonResponse({"detail": "University ID already exists"}, status=400)
+
+        user.email = email
+        user.university_id = university_id
+        user.first_name = first_name
+        user.middle_name = middle_name
+        user.last_name = last_name
+        user.is_active = is_active
+        user.save(update_fields=[
+            "email",
+            "university_id",
+            "first_name",
+            "middle_name",
+            "last_name",
+            "is_active",
+        ])
+
+        assistant_profile.college = college
+        assistant_profile.department = department
+        assistant_profile.save(update_fields=["college", "department"])
+
+    return JsonResponse({"ok": True})
