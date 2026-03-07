@@ -43,24 +43,22 @@ export default function Login() {
       {/* LOGIN PANEL */}
       <div className="w-full bg-primary p-8 flex flex-col items-center px-0">
 
-      {/* Logos */}
+      {/* Login Header */}
         <div className="w-full max-w-screen-sm px-3 flex flex-col items-center gap-8">
 
         <img src="/public/RemoveBG_Logomark.png" className="w-full max-w-[40%] h-auto -mt-12" />
 
+        <div className="flex flex-col items-center gap-4 w-full">
+          <h1 className="text-center font-bold leading-[1.05] text-[clamp(1.5rem,6vw,2.25rem)] text-white">
+            Log in to XU Faculty ClearTrack
+          </h1>
 
-        {/* App Logo + Title */}
-        <div className="flex items-center justify-center gap-5 w-full">
-
-          <img src="/public/Pen Swish White_FacultyClearTrack.png" className="w-full max-w-[30%] h-auto" />
-
-
-          <h1 className="text-center font-bold leading-[1.05] max-w-[20rem] text-[clamp(1.75rem,7vw,2.75rem)]">
-            XU Faculty <br /> ClearTrack
-        </h1>
+          <p className="text-center text-white/80 text-sm md:text-base max-w-md">
+            Select your account type to continue
+          </p>
+        </div>
 
         </div>
-      </div>
 
       
 
@@ -73,53 +71,110 @@ export default function Login() {
 
         {/* Username input + checkbox */}
         <div className="login-input mb-4 flex flex-col gap-2">
-          <Input  type="text"
-            id="username"
-            name="username"
-            required
-            className="input-field"
-            placeholder="Enter your XU Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            ></Input>
-
-          <div className="flex items-center gap-2 mt-2">
-          <Checkbox variant="outline"/>
-          <p className="text-sm text-white-background">
-            Keep Me logged in
-          </p>
-          </div>
-        </div>
-
-        {/* Buttons + Divider */}
-        <div className="login-input flex flex-col gap-4">
-          {/* Primary login button */}
-          <Button variant="secondary" type="submit" disabled={isLoading}>
-            {isLoading ? "Checking..." : "Login"}
-          </Button>
-
-          {/* Divider with OR */}
-          <div className="flex items-center gap-2">
-            <Divider className="flex-grow" />
-            <span className="text-sm text-muted-foreground">or</span>
-            <Divider className="flex-grow" />
-          </div>
-
-          {/* Outline Google login button */}
-          <Button
+            
+            {/* Outline Google login button */}
+            <Button
             type="button"
-            variant="outline"
+            variant="white"
+            alignment="left"
             className="group"
+            size="mobileXL"
             onClick={() => {
               setError("");
               window.location.assign("/accounts/login/google/");
             }}
           >
-            <span className="relative w-5 h-5 mr-0 inline-block">
-              <img src="/public/whiteGoogleLogo.png" alt="Google Icon" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-150 opacity-100 group-hover:opacity-0" />
-              <img src="/public/BlackGoogleLogo.png" alt="Google Icon hover" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-150 opacity-0 group-hover:opacity-100" />
-            </span>
-            Sign in with Google
+            <div className="flex items-start gap-3">
+              <span className="relative w-5 h-5 flex-shrink-0 mt-0.5">
+                <img src="/public/PrimaryChecklistIcon.png" alt="Google Icon" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-150 opacity-100 group-hover:opacity-0" />
+                <img src="/public/WhiteChecklistIcon.png" alt="Hover Icon" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-150 opacity-0 group-hover:opacity-100" />
+              </span>
+              <span className="flex-1 text-left">Faculty Member</span>
+            </div>
+          </Button>
+
+          {/* Outline Google login button */}
+          <Button
+            type="button"
+            variant="white"
+            alignment="left"
+            className="group"
+            size="mobileXL"
+            onClick={() => {
+              setError("");
+              window.location.assign("/accounts/login/google/");
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <span className="relative w-5 h-5 flex-shrink-0 mt-0.5">
+                <img src="/public/PrimaryPersonChecked.png" alt="Google Icon" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-150 opacity-100 group-hover:opacity-0" />
+                <img src="/public/WhitePersonChecked.png" alt="Hover Icon" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-150 opacity-0 group-hover:opacity-100" />
+              </span>
+              <span className="flex-1 text-left">Department or Office Approver</span>
+            </div>
+          </Button>
+
+                    {/* Outline Google login button */}
+          <Button
+            type="button"
+            variant="white"
+            alignment="left"
+            className="group"
+            size="mobileXL"
+            onClick={() => {
+              setError("");
+              window.location.assign("/accounts/login/google/");
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <span className="relative w-5 h-5 flex-shrink-0 mt-0.5">
+                <img src="/public/PrimaryHandIcon.png" alt="Google Icon" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-150 opacity-100 group-hover:opacity-0" />
+                <img src="/public/WhiteHandIcon.png" alt="Hover Icon" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-150 opacity-0 group-hover:opacity-100" />
+              </span>
+              <span className="flex-1 text-left">Student Assistant</span>
+            </div>
+          </Button>
+
+                    {/* Outline Google login button */}
+          <Button
+            type="button"
+            variant="white"
+            alignment="left"
+            className="group"
+            size="mobileXL"
+            onClick={() => {
+              setError("");
+              window.location.assign("/accounts/login/google/");
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <span className="relative w-5 h-5 flex-shrink-0 mt-0.5">
+                <img src="/public/PrimaryShieldIcon.png" alt="Google Icon" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-150 opacity-100 group-hover:opacity-0" />
+                <img src="/public/WhiteShieldIcon.png" alt="Hover Icon" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-150 opacity-0 group-hover:opacity-100" />
+              </span>
+              <span className="flex-1 text-left">CISO System Admin</span>
+            </div>
+          </Button>
+
+                    {/* Outline Google login button */}
+          <Button
+            type="button"
+            variant="white"
+            alignment="left"
+            className="group"
+            size="mobileXL"
+            onClick={() => {
+              setError("");
+              window.location.assign("/accounts/login/google/");
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <span className="relative w-5 h-5 flex-shrink-0 mt-0.5">
+                <img src="/public/PrimaryAnalysisIcon.png" alt="Google Icon" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-150 opacity-100 group-hover:opacity-0" />
+                <img src="/public/WhiteAnalysisIcon.png" alt="Hover Icon" className="absolute inset-0 w-full h-full object-contain transition-opacity duration-150 opacity-0 group-hover:opacity-100" />
+              </span>
+              <span className="flex-1 text-left">OVPHE System Admin</span>
+            </div>
           </Button>
         </div>
         
@@ -128,4 +183,3 @@ export default function Login() {
       </div>
   );
 }
-

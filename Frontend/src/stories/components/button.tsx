@@ -2,11 +2,11 @@ import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 
-import { cn } from "@/components/lib/utils"
+import { cn } from "../../components/lib/utils"
 
 /* Sizes */
 
-type ButtonSize = "sm" | "default" | "lg" | "icon" | "mobileLarge"
+type ButtonSize = "sm" | "default" | "lg" | "icon" | "mobileLarge" | "mobileXL"
 type IconButtonSize = "sm" | "default" | "lg"
 
 const buttonSizeClasses: Record<ButtonSize, { mobile: string; desktop: string }> = {
@@ -20,6 +20,10 @@ const buttonSizeClasses: Record<ButtonSize, { mobile: string; desktop: string }>
     desktop:
       "w-full max-w-[280px] h-11 rounded-md text-sm font-semibold flex items-center justify-center",
   },
+  mobileXL: {
+    mobile: "",
+    desktop: "",
+  },
 }
 
 const iconButtonSizeClasses: Record<IconButtonSize, { mobile: string; desktop: string }> = {
@@ -31,7 +35,7 @@ const iconButtonSizeClasses: Record<IconButtonSize, { mobile: string; desktop: s
 /* Variants */
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "gap-2 rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -48,6 +52,11 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
         icon: "bg-transparent text-foreground",
         cancel: "bg-gray-200 text-black border border-gray-700 hover:bg-gray-500 hover:text-white",
+        white:"bg-white text-primary hover:bg-secondary hover:text-white",
+      },
+      alignment: {
+        center: "justify-center",
+        left: "justify-start",
       },
       size: {
         sm: "",
@@ -55,11 +64,13 @@ const buttonVariants = cva(
         lg: "",
         icon: "",
         mobileLarge: "",
+        mobileXL: "w-full max-w-[320px] min-h-12 pl-6 pr-6 py-3 flex items-start",
       },
     },
     defaultVariants: {
       variant: "default",
       size: "default",
+      alignment: "center",
     },
   }
 )
@@ -75,7 +86,7 @@ export interface ButtonProps
 /* Component */
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size = "default", asChild = false, ...props }, ref) => {
+  ({ className, variant, size = "default", alignment, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
 
     const isIconButton = variant === "icon"
@@ -88,7 +99,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <Comp
         ref={ref}
         className={cn(
-          buttonVariants({ variant, size }),
+          buttonVariants({ variant, size, alignment }),
           sizeClass && `${sizeClass.mobile} md:${sizeClass.desktop}`,
           isIconButton && "p-0 [&_svg]:size-5",
           className
