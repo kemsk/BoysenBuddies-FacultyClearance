@@ -372,7 +372,7 @@ export default function HROActivityLogs() {
         </Breadcrumb>
         
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/HRO-action")}> 
+          <Button variant="back" size="back" onClick={() => navigate("/HRO-action")}> 
             <img src="BlackArrowIcon.png" alt="back" />Back
           </Button>
         </div>

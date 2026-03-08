@@ -164,7 +164,7 @@ export default function SystemAnalytics() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/OVPHE-tools")}> 
+          <Button variant="back" size="back" onClick={() => navigate("/OVPHE-tools")}> 
             <img src="BlackArrowIcon.png" alt="back" />Back
           </Button>
         </div>

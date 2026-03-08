@@ -38,7 +38,7 @@ export default function DualRoleAction() {
         </Breadcrumb>
 
         <div className="mb-3 mt-4 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/dual-role-approver-dashboard")}> 
+          <Button variant="back" size="back" onClick={() => navigate("/dual-role-approver-dashboard")}> 
             <img src="BlackArrowIcon.png" alt="back" />Back
           </Button>
         </div>

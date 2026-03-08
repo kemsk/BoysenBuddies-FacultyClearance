@@ -16,6 +16,7 @@ VALUES
 ('20220025546@my.xu.edu.ph', 20220025546, 'capstone', 'Albert Floyd', 'Villanueva', 4, NOW(), 1, 1, 1),
 ('20190016375@my.xu.edu.ph', 20190016375, 'kemeru', 'Nesyl', 'Ylanan', 3, NOW(), 1, 1, 1),
 ('20220024573@my.xu.edu.ph', 20220024573, 'kim', 'Kim', 'Flores', 4, NOW(), 1, 1, 1),
+('201131134@my.xu.edu.ph', 201131134, 'Farrah', 'Farrah', 'Apag', 3, NOW(), 1, 1, 1),
 ('approver.seed@xu.edu.ph', 1000000001, 'capstone', 'Angela', 'Santos', 4, NOW(), 1, 1, 0),
 ('assistant.seed@xu.edu.ph', 1000000002, 'capstone', 'Seed', 'Assistant', 5, NOW(), 1, 1, 0),
 ('faculty.seed@xu.edu.ph', 1000000003, 'capstone', 'John', 'Doe', 6, NOW(), 1, 0, 0),

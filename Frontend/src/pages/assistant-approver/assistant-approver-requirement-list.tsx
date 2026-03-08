@@ -56,7 +56,7 @@ export default function AssistantApproverRequirementList() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/approver-dashboard")}> 
+          <Button variant="back" size="back" onClick={() => navigate("/approver-dashboard")}> 
             <img src="BlackArrowIcon.png" alt="back" />Back
           </Button>
         </div>

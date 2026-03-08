@@ -19,6 +19,17 @@ export default defineConfig({
       "@": path.resolve(dirname, "src"),
     },
   },
+  base: '/static/frontend/',
+  build: {
+    outDir: '../static/frontend',
+    emptyOutDir: true,
+    assetsDir: '',
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
+  },
   test: {
     projects: [{
       extends: true,

@@ -1,20 +1,3 @@
-FROM node:22-alpine AS frontend-builder
- 
-WORKDIR /frontend
- 
-COPY Frontend/package.json Frontend/package-lock.json ./
-RUN npm ci
- 
-COPY Frontend/ ./
-
-# Set up the environment for the build
-ENV NODE_ENV=production
-
-# Install Vite and other build tools
-RUN npm install -g vite
-
-RUN npm run build:docker
- 
 # Stage 2: Base build stage
 FROM python:3.13-slim AS builder
  
@@ -64,12 +47,15 @@ WORKDIR /app
 # Copy application code
 COPY --chown=appuser:appuser . .
  
-# Copy built frontend assets into the image (will be copied to the shared static volume at runtime)
-COPY --from=frontend-builder /frontend/dist /app/frontend_dist
+# Create empty frontend_dist directory (will be populated by volume mount)
+RUN mkdir -p /app/frontend_dist
  
 # Set environment variables to optimize Python
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1 
+ 
+# Fix Windows CRLF line endings and make entrypoint executable
+RUN sed -i 's/\r$//' /app/entrypoint.sh && chmod +x /app/entrypoint.sh
  
 # Switch to non-root user
 USER appuser
@@ -77,6 +63,4 @@ USER appuser
 # Expose the application port
 EXPOSE 8001
 
-RUN chmod +x /app/entrypoint.sh
-
-CMD ["/app/entrypoint.sh"]
+CMD ["/bin/bash", "/app/entrypoint.sh"]

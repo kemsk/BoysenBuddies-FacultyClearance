@@ -15,32 +15,6 @@ export default function OVPHETools() {
       <main className="dashboard p-4">
 
         <div className="mt-0 grid gap-4">
-          <ActionNavCard
-            icon={
-                <img
-                  src="/PrimaryCalendarIcon.png"
-                  alt="activity logs icon"
-                  className="h-9 w-9"
-                />
-            }
-            title="Clearance Timeline"
-            description="View and set the clearance timeline"
-            to="/OVPHE-clearance-timeline"
-          />
-
-          <ActionNavCard
-            icon={
-                <img
-                  src="/PrimarySliderIcon.png"
-                  alt="activity logs icon"
-                  className="h-9 w-9"
-                />
-            }
-            title="College & Office Configuration"
-            description="View and set the clearance timeline"
-            to="/OVPHE-college-office-configuration"
-          />
-
 
           <ActionNavCard
             icon={
@@ -53,6 +27,19 @@ export default function OVPHETools() {
             title="System Analytics"
             description="Check the completion rate per college"
             to="/OVPHE-system-analytics"
+          />
+
+          <ActionNavCard
+            icon={
+                <img
+                  src="/PrimaryArchiveIcon.png"
+                  alt="activity logs icon"
+                  className="h-9 w-9"
+                />
+            }
+            title="View Archived Clearance"
+            description="Check clearance requests from the previous terms"
+            to="/OVPHE-archived-clearance"
           />
 
           <ActionNavCard

@@ -1026,23 +1026,6 @@ export function OVPHEHeader() {
                   <div className="w-px bg-[hsl(var(--gray-border))]" />
                 </div>
                 <div className=" flex flex-col space-y-3">
-                  <SheetClose asChild>
-                    <Link
-                      to="/OVPHE-clearance-timeline"
-                      className="text-xl font-regular text-primary"
-                    >
-                      Clearance Timeline
-                    </Link>
-                  </SheetClose>
-
-                  <SheetClose asChild>
-                    <Link
-                      to="/OVPHE-college-office-configuration"
-                      className="text-xl font-regular text-primary"
-                    >
-                      College & Office Configuration
-                    </Link>
-                  </SheetClose>
 
                   <SheetClose asChild>
                     <Link
@@ -1050,6 +1033,15 @@ export function OVPHEHeader() {
                       className="text-xl font-regular text-primary"
                     >
                       System Analytics
+                    </Link>
+                  </SheetClose>
+
+                  <SheetClose asChild>
+                    <Link
+                      to="/OVPHE-archived-clearance"
+                      className="text-xl font-regular text-primary"
+                    >
+                      View Archived Clearance
                     </Link>
                   </SheetClose>
 

@@ -6,7 +6,7 @@ import { cn } from "../../components/lib/utils"
 
 /* Sizes */
 
-type ButtonSize = "sm" | "default" | "lg" | "icon" | "mobileLarge" | "mobileXL"
+type ButtonSize = "sm" | "default" | "lg" | "icon" | "mobileLarge" | "mobileXL" | "back"
 type IconButtonSize = "sm" | "default" | "lg"
 
 const buttonSizeClasses: Record<ButtonSize, { mobile: string; desktop: string }> = {
@@ -18,12 +18,13 @@ const buttonSizeClasses: Record<ButtonSize, { mobile: string; desktop: string }>
     mobile:
       "w-full max-w-[280px] h-11 rounded-md text-sm font-semibold flex items-center justify-center",
     desktop:
-      "w-full max-w-[280px] h-11 rounded-md text-sm font-semibold flex items-center justify-center",
+      "w-full max-w-[320px] h-12 rounded-md text-base font-semibold flex items-center justify-center",
   },
   mobileXL: {
     mobile: "",
     desktop: "",
   },
+  back: { mobile: "h-9 px-4 text-sm w-fit", desktop: "h-10 px-4 text-base w-fit" },
 }
 
 const iconButtonSizeClasses: Record<IconButtonSize, { mobile: string; desktop: string }> = {
@@ -65,6 +66,7 @@ const buttonVariants = cva(
         icon: "",
         mobileLarge: "",
         mobileXL: "w-full max-w-[320px] min-h-12 pl-6 pr-6 py-3 flex items-start",
+        back: "",
       },
     },
     defaultVariants: {
