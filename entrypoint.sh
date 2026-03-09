@@ -10,49 +10,165 @@ python manage.py makemigrations FC --noinput
 python manage.py migrate --noinput
 
 mysql -h "${DB_HOST}" -u "${DB_USER}" -p"${DB_PASSWORD}" --ssl=0 "${DB_NAME}" << 'EOF'
--- Seed Users
-INSERT INTO FC_user (email, university_id, password, first_name, last_name, role_value, created_at, is_active, is_staff, is_superuser)
+-- Seed Users (without password and role_value)
+INSERT INTO FC_user (email, university_id, first_name, last_name, created_at, is_active, is_staff, is_superuser)
 VALUES 
-('20220025546@my.xu.edu.ph', 20220025546, 'capstone', 'Albert Floyd', 'Villanueva', 4, NOW(), 1, 1, 1),
-('20190016375@my.xu.edu.ph', 20190016375, 'kemeru', 'Nesyl', 'Ylanan', 3, NOW(), 1, 1, 1),
-('20220024573@my.xu.edu.ph', 20220024573, 'kim', 'Kim', 'Flores', 4, NOW(), 1, 1, 1),
-('approver.seed@xu.edu.ph', 1000000001, 'capstone', 'Angela', 'Santos', 4, NOW(), 1, 1, 0),
-('assistant.seed@xu.edu.ph', 1000000002, 'capstone', 'Seed', 'Assistant', 5, NOW(), 1, 1, 0),
-('faculty.seed@xu.edu.ph', 1000000003, 'capstone', 'John', 'Doe', 6, NOW(), 1, 0, 0),
-('hro.seed@xu.edu.ph', 1000000004, 'capstone', 'Jane', 'Smith', 1, NOW(), 1, 1, 0),
-('ovphe.seed@xu.edu.ph', 1000000005, 'capstone', 'Maria', 'Reyes', 3, NOW(), 1, 1, 0),
-('dual.seed@xu.edu.ph', 1000000006, 'capstone', 'Carlos', 'Santos', 7, NOW(), 1, 1, 0)
+('20220025546@my.xu.edu.ph', 20220025546, 'Albert Floyd', 'Villanueva', NOW(), 1, 1, 1),
+('20190016375@my.xu.edu.ph', 20190016375, 'Nesyl', 'Ylanan', NOW(), 1, 1, 1),
+('20220024573@my.xu.edu.ph', 20220024573, 'Kim', 'Flores', NOW(), 1, 1, 1),
+('approver.seed@xu.edu.ph', 1000000001, 'Angela', 'Santos', NOW(), 1, 1, 0),
+('assistant.seed@xu.edu.ph', 1000000002, 'Seed', 'Assistant', NOW(), 1, 1, 0),
+('faculty.seed@xu.edu.ph', 1000000003, 'John', 'Doe', NOW(), 1, 0, 0),
+('ovphe.seed@xu.edu.ph', 1000000005, 'Maria', 'Reyes', NOW(), 1, 1, 0)
 ON DUPLICATE KEY UPDATE
     first_name = VALUES(first_name),
     last_name = VALUES(last_name),
-    role_value = VALUES(role_value),
     is_active = VALUES(is_active),
     is_staff = VALUES(is_staff),
     is_superuser = VALUES(is_superuser);
 
--- Seed SystemAdmins
--- INSERT INTO FC_systemadmin (user_id, admin_role, is_active)
--- SELECT 
---     id,
---     'CISO',
---     1
--- FROM FC_user WHERE email = '20220025546@my.xu.edu.ph'
--- ON DUPLICATE KEY UPDATE
---     admin_role = VALUES(admin_role),
---     is_active = VALUES(is_active);
+-- Seed Roles
+INSERT INTO FC_role (name, description, is_system_role, created_at)
+SELECT * FROM (
+    SELECT 'CISO Admin' AS name, 'CISO System Administrator' AS description, 1 AS is_system_role, NOW() AS created_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_role r WHERE r.name = v.name
+);
 
-INSERT INTO FC_systemadmin (user_id, admin_role, is_active)
+INSERT INTO FC_role (name, description, is_system_role, created_at)
+SELECT * FROM (
+    SELECT 'OVPHE Admin' AS name, 'OVPHE System Administrator' AS description, 1 AS is_system_role, NOW() AS created_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_role r WHERE r.name = v.name
+);
+
+INSERT INTO FC_role (name, description, is_system_role, created_at)
+SELECT * FROM (
+    SELECT 'College Admin' AS name, 'College Administrator' AS description, 1 AS is_system_role, NOW() AS created_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_role r WHERE r.name = v.name
+);
+
+INSERT INTO FC_role (name, description, is_system_role, created_at)
+SELECT * FROM (
+    SELECT 'Department Chair' AS name, 'Department Chair' AS description, 1 AS is_system_role, NOW() AS created_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_role r WHERE r.name = v.name
+);
+
+INSERT INTO FC_role (name, description, is_system_role, created_at)
+SELECT * FROM (
+    SELECT 'Office Admin' AS name, 'Office Administrator' AS description, 1 AS is_system_role, NOW() AS created_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_role r WHERE r.name = v.name
+);
+
+INSERT INTO FC_role (name, description, is_system_role, created_at)
+SELECT * FROM (
+    SELECT 'Student Assistant' AS name, 'Student Assistant' AS description, 1 AS is_system_role, NOW() AS created_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_role r WHERE r.name = v.name
+);
+
+INSERT INTO FC_role (name, description, is_system_role, created_at)
+SELECT * FROM (
+    SELECT 'Faculty' AS name, 'Faculty Member' AS description, 1 AS is_system_role, NOW() AS created_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_role r WHERE r.name = v.name
+);
+
+-- Seed UserRoles for admin users
+INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
 SELECT 
-    id,
-    'OVPHE',
-    1
-FROM FC_user WHERE email = '20190016375@my.xu.edu.ph'
+    u.id AS user_id, 
+    r.id AS role_id,
+    u.id AS assigned_by_id,
+    NOW() AS assigned_date,
+    1 AS is_active
+FROM FC_user u
+CROSS JOIN FC_role r
+WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'CISO Admin'
 ON DUPLICATE KEY UPDATE
-    admin_role = VALUES(admin_role),
     is_active = VALUES(is_active);
 
--- Ensure no SystemAdmin for the assistant approver user
-DELETE FROM FC_systemadmin WHERE user_id = (SELECT id FROM FC_user WHERE email = '20220025546@my.xu.edu.ph');
+INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
+SELECT 
+    u.id AS user_id, 
+    r.id AS role_id,
+    u.id AS assigned_by_id,
+    NOW() AS assigned_date,
+    1 AS is_active
+FROM FC_user u
+CROSS JOIN FC_role r
+WHERE u.email = '20190016375@my.xu.edu.ph' AND r.name = 'OVPHE Admin'
+ON DUPLICATE KEY UPDATE
+    is_active = VALUES(is_active);
+
+-- Seed UserRoles for other users
+INSERT INTO FC_userrole (user_id, role_id, college_id, department_id, assigned_by_id, assigned_date, is_active)
+SELECT 
+    u.id AS user_id, 
+    r.id AS role_id,
+    @ccs_id AS college_id,
+    @cs_id AS department_id,
+    u.id AS assigned_by_id,
+    NOW() AS assigned_date,
+    1 AS is_active
+FROM FC_user u
+CROSS JOIN FC_role r
+WHERE u.email = 'approver.seed@xu.edu.ph' AND r.name = 'Department Chair'
+ON DUPLICATE KEY UPDATE
+    is_active = VALUES(is_active);
+
+INSERT INTO FC_userrole (user_id, role_id, college_id, department_id, assigned_by_id, assigned_date, is_active)
+SELECT 
+    u.id AS user_id, 
+    r.id AS role_id,
+    @ccs_id AS college_id,
+    @cs_id AS department_id,
+    @ciso_user_id AS assigned_by_id,
+    NOW() AS assigned_date,
+    1 AS is_active
+FROM FC_user u
+CROSS JOIN FC_role r
+WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'Department Chair'
+ON DUPLICATE KEY UPDATE
+    is_active = VALUES(is_active);
+
+INSERT INTO FC_userrole (user_id, role_id, college_id, department_id, assigned_by_id, assigned_date, is_active)
+SELECT 
+    u.id AS user_id, 
+    r.id AS role_id,
+    @ccs_id AS college_id,
+    @cs_id AS department_id,
+    @approver_user_id AS assigned_by_id,
+    NOW() AS assigned_date,
+    1 AS is_active
+FROM FC_user u
+CROSS JOIN FC_role r
+WHERE u.email = 'assistant.seed@xu.edu.ph' AND r.name = 'Student Assistant'
+ON DUPLICATE KEY UPDATE
+    is_active = VALUES(is_active);
+
+INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
+SELECT 
+    u.id AS user_id, 
+    r.id AS role_id,
+    u.id AS assigned_by_id,
+    NOW() AS assigned_date,
+    1 AS is_active
+FROM FC_user u
+CROSS JOIN FC_role r
+WHERE u.email = 'faculty.seed@xu.edu.ph' AND r.name = 'Faculty'
+ON DUPLICATE KEY UPDATE
+    is_active = VALUES(is_active);
 
 -- Seed Colleges
 INSERT INTO FC_college (name, abbreviation, is_active)
@@ -134,13 +250,9 @@ UPDATE FC_office SET display_order = 1 WHERE abbreviation = 'LIB';
 UPDATE FC_office SET display_order = 2 WHERE abbreviation = 'OVPHE';
 UPDATE FC_office SET display_order = 3 WHERE abbreviation = 'HRO';
 
--- Get admin IDs
-SET @ciso_admin_id = (SELECT sa.id FROM FC_systemadmin sa 
-                      INNER JOIN FC_user u ON sa.user_id = u.id 
-                      WHERE u.email = '20220025546@my.xu.edu.ph' LIMIT 1);
-SET @ovphe_admin_id = (SELECT sa.id FROM FC_systemadmin sa 
-                       INNER JOIN FC_user u ON sa.user_id = u.id 
-                       WHERE u.email = '20190016375@my.xu.edu.ph' LIMIT 1);
+-- Get admin IDs (using User directly)
+SET @ciso_user_id = (SELECT id FROM FC_user WHERE email = '20220025546@my.xu.edu.ph' LIMIT 1);
+SET @ovphe_user_id = (SELECT id FROM FC_user WHERE email = '20190016375@my.xu.edu.ph' LIMIT 1);
 
 -- Get user IDs
 SET @approver_user_id = (SELECT id FROM FC_user WHERE email = 'approver.seed@xu.edu.ph' LIMIT 1);
@@ -152,7 +264,7 @@ SET @ovphe_user_id = (SELECT id FROM FC_user WHERE email = '20190016375@my.xu.ed
 -- Seed ApproverFlowConfig
 INSERT INTO FC_approverflowconfig (created_by_id, created_at, updated_at)
 SELECT * FROM (
-    SELECT @ovphe_admin_id AS created_by_id, NOW() AS created_at, NOW() AS updated_at
+    SELECT @ovphe_user_id AS created_by_id, NOW() AS created_at, NOW() AS updated_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowconfig
@@ -225,18 +337,18 @@ WHERE afs.config_id = @config_id
 AND c.abbreviation IN ('CCS', 'CAS');
 
 -- Seed Approver
-INSERT INTO FC_approver (user_id, approver_type, college_id, department_id, is_dual_role, is_hro)
+INSERT INTO FC_approver (user_id, approver_type, college_id, department_id)
 VALUES 
-(@approver_user_id, 'College', @ccs_id, @cs_id, 0, 0)
+(@approver_user_id, 'College', @ccs_id, @cs_id)
 ON DUPLICATE KEY UPDATE
     approver_type = VALUES(approver_type),
     college_id = VALUES(college_id),
     department_id = VALUES(department_id);
 
 -- Seed Approver for main user
-INSERT INTO FC_approver (user_id, approver_type, college_id, department_id, is_dual_role, is_hro)
+INSERT INTO FC_approver (user_id, approver_type, college_id, department_id)
 VALUES 
-(@ciso_user_id, 'College', @ccs_id, @cs_id, 0, 0)
+(@ciso_user_id, 'College', @ccs_id, @cs_id)
 ON DUPLICATE KEY UPDATE
     approver_type = VALUES(approver_type),
     college_id = VALUES(college_id),
@@ -419,22 +531,21 @@ WHERE NOT EXISTS (
 );
 
 -- Seed ActivityLogs
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, approver_department, university_id, request_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, approver_department, university_id, request_id, details, created_at)
 SELECT * FROM (
-    SELECT 'approved_clearance' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, 'College of Computer Studies' AS approver_department, '2005123456789' AS university_id, '2005123456789' AS request_id, '["Seeded log"]' AS details, NOW() AS created_at
+    SELECT 'approved_clearance' AS event_type, @ovphe_user_id AS user_id, 'College of Computer Studies' AS approver_department, '2005123456789' AS university_id, '2005123456789' AS request_id, '["Seeded log"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_activitylog al
     WHERE al.event_type = v.event_type
-      AND al.actor_user_id = v.actor_user_id
-      AND (al.actor_admin_id <=> v.actor_admin_id)
+      AND al.user_id = v.user_id
       AND al.university_id = v.university_id
       AND al.request_id = v.request_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'created_guideline' AS event_type, @ciso_user_id AS actor_user_id, @ciso_admin_id AS actor_admin_id, '["Guideline Title: General Safety Guidelines"]' AS details, NOW() AS created_at
+    SELECT 'created_guideline' AS event_type, @ciso_user_id AS user_id, '["Guideline Title: General Safety Guidelines"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
