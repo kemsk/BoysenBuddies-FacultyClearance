@@ -25,69 +25,35 @@ def role_required(*required_roles):
     return decorator
 
 
-def college_admin_required(view_func):
+def approver_required(view_func):
     """
-    Decorator to require college admin role
+    Decorator to require approver role (handles college, department, and office contexts)
     """
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
             raise PermissionDenied
             
+        # Check context-specific approver permissions
         college_id = kwargs.get('college_id') or request.GET.get('college_id')
+        department_id = kwargs.get('department_id') or request.GET.get('department_id')
+        office_id = kwargs.get('office_id') or request.GET.get('office_id')
+        
         if college_id:
             college = get_object_or_404(College, id=college_id)
-            if not request.user.is_college_admin(college):
+            if not request.user.is_approver(college=college):
                 raise PermissionDenied
-        else:
-            # Check if user is any college admin
-            if not request.user.is_college_admin():
-                raise PermissionDenied
-                
-        return view_func(request, *args, **kwargs)
-    return wrapper
-
-
-def department_chair_required(view_func):
-    """
-    Decorator to require department chair role
-    """
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            raise PermissionDenied
-            
-        department_id = kwargs.get('department_id') or request.GET.get('department_id')
-        if department_id:
+        elif department_id:
             department = get_object_or_404(Department, id=department_id)
-            if not request.user.is_department_chair(department):
+            if not request.user.is_approver(department=department):
                 raise PermissionDenied
-        else:
-            # Check if user is any department chair
-            if not request.user.is_department_chair():
-                raise PermissionDenied
-                
-        return view_func(request, *args, **kwargs)
-    return wrapper
-
-
-def office_admin_required(view_func):
-    """
-    Decorator to require office admin role
-    """
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            raise PermissionDenied
-            
-        office_id = kwargs.get('office_id') or request.GET.get('office_id')
-        if office_id:
+        elif office_id:
             office = get_object_or_404(Office, id=office_id)
-            if not request.user.is_office_admin(office):
+            if not request.user.is_approver(office=office):
                 raise PermissionDenied
         else:
-            # Check if user is any office admin
-            if not request.user.is_office_admin():
+            # Check if user is any approver
+            if not request.user.is_approver():
                 raise PermissionDenied
                 
         return view_func(request, *args, **kwargs)

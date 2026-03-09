@@ -38,31 +38,7 @@ WHERE NOT EXISTS (
 
 INSERT INTO FC_role (name, description, is_system_role, created_at)
 SELECT * FROM (
-    SELECT 'OVPHE Admin' AS name, 'OVPHE System Administrator' AS description, 1 AS is_system_role, NOW() AS created_at
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_role r WHERE r.name = v.name
-);
-
-INSERT INTO FC_role (name, description, is_system_role, created_at)
-SELECT * FROM (
-    SELECT 'College Admin' AS name, 'College Administrator' AS description, 1 AS is_system_role, NOW() AS created_at
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_role r WHERE r.name = v.name
-);
-
-INSERT INTO FC_role (name, description, is_system_role, created_at)
-SELECT * FROM (
-    SELECT 'Department Chair' AS name, 'Department Chair' AS description, 1 AS is_system_role, NOW() AS created_at
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_role r WHERE r.name = v.name
-);
-
-INSERT INTO FC_role (name, description, is_system_role, created_at)
-SELECT * FROM (
-    SELECT 'Office Admin' AS name, 'Office Administrator' AS description, 1 AS is_system_role, NOW() AS created_at
+    SELECT 'Approver' AS name, 'Approver (handles college, department, and office contexts)' AS description, 1 AS is_system_role, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_role r WHERE r.name = v.name
@@ -123,7 +99,7 @@ SELECT
     1 AS is_active
 FROM FC_user u
 CROSS JOIN FC_role r
-WHERE u.email = 'approver.seed@xu.edu.ph' AND r.name = 'Department Chair'
+WHERE u.email = 'approver.seed@xu.edu.ph' AND r.name = 'Approver'
 ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
 
@@ -138,7 +114,7 @@ SELECT
     1 AS is_active
 FROM FC_user u
 CROSS JOIN FC_role r
-WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'Department Chair'
+WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'Approver'
 ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
 

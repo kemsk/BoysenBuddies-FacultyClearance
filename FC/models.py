@@ -62,44 +62,21 @@ class User(AbstractBaseUser, PermissionsMixin):
             for role in self.get_active_roles()
         )
     
-    def is_college_admin(self, college=None):
-        """Check if user is college admin for specific college"""
+    def is_approver(self, college=None, department=None, office=None):
+        """Check if user is approver for specific context"""
+        queryset = self.userrole_set.filter(
+            role__name='Approver',
+            is_active=True
+        )
+        
         if college:
-            return self.userrole_set.filter(
-                role__name='College Admin',
-                college=college,
-                is_active=True
-            ).exists()
-        return self.userrole_set.filter(
-            role__name='College Admin',
-            is_active=True
-        ).exists()
-    
-    def is_department_chair(self, department=None):
-        """Check if user is department chair for specific department"""
+            queryset = queryset.filter(college=college)
         if department:
-            return self.userrole_set.filter(
-                role__name='Department Chair',
-                department=department,
-                is_active=True
-            ).exists()
-        return self.userrole_set.filter(
-            role__name='Department Chair',
-            is_active=True
-        ).exists()
-    
-    def is_office_admin(self, office=None):
-        """Check if user is office admin for specific office"""
+            queryset = queryset.filter(department=department)
         if office:
-            return self.userrole_set.filter(
-                role__name='Office Admin',
-                office=office,
-                is_active=True
-            ).exists()
-        return self.userrole_set.filter(
-            role__name='Office Admin',
-            is_active=True
-        ).exists()
+            queryset = queryset.filter(office=office)
+            
+        return queryset.exists()
     
     def is_ciso_admin(self):
         """Check if user is CISO admin"""
