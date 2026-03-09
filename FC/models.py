@@ -6,7 +6,7 @@ from django.utils import timezone
 
 
 class UserManager(BaseUserManager):
-    def create_user(self, email, university_id, **extra_fields):
+    def create_user(self, email, university_id, password=None, **extra_fields):
         if not email:
             raise ValueError("The Email must be set")
         if not university_id:
@@ -14,10 +14,12 @@ class UserManager(BaseUserManager):
 
         email = self.normalize_email(email)
         user = self.model(email=email, university_id=university_id, **extra_fields)
+        if password:
+            user.set_password(password)
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, email, university_id, **extra_fields):
+    def create_superuser(self, email, university_id, password=None, **extra_fields):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_active", True)
@@ -26,12 +28,15 @@ class UserManager(BaseUserManager):
             raise ValueError("Superuser must have is_staff=True.")
         if extra_fields.get("is_superuser") is not True:
             raise ValueError("Superuser must have is_superuser=True.")
+        if password is None:
+            raise ValueError("Superuser must have a password.")
 
-        return self.create_user(email=email, university_id=university_id, **extra_fields)
+        return self.create_user(email=email, university_id=university_id, password=password, **extra_fields)
 
 
 class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(max_length=150, unique=True)
+    password = models.CharField(max_length=128, verbose_name='password')
     university_id = models.CharField(max_length=50, unique=True)
     first_name = models.CharField(max_length=100, null=True, blank=True)
     middle_name = models.CharField(max_length=100, null=True, blank=True)

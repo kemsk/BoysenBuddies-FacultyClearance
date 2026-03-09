@@ -22,6 +22,7 @@ class Migration(migrations.Migration):
                 ('last_login', models.DateTimeField(blank=True, null=True, verbose_name='last login')),
                 ('is_superuser', models.BooleanField(default=False, help_text='Designates that this user has all permissions without explicitly assigning them.', verbose_name='superuser status')),
                 ('email', models.EmailField(max_length=150, unique=True)),
+                ('password', models.CharField(max_length=128, verbose_name='password')),
                 ('university_id', models.CharField(max_length=50, unique=True)),
                 ('first_name', models.CharField(blank=True, max_length=100, null=True)),
                 ('middle_name', models.CharField(blank=True, max_length=100, null=True)),

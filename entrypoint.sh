@@ -10,16 +10,16 @@ python manage.py makemigrations FC --noinput
 python manage.py migrate --noinput
 
 mysql -h "${DB_HOST}" -u "${DB_USER}" -p"${DB_PASSWORD}" --ssl=0 "${DB_NAME}" << 'EOF'
--- Seed Users (without password and role_value)
-INSERT INTO FC_user (email, university_id, first_name, last_name, created_at, is_active, is_staff, is_superuser)
+-- Seed Users
+INSERT INTO FC_user (email, university_id, password, first_name, last_name, created_at, is_active, is_staff, is_superuser)
 VALUES 
-('20220025546@my.xu.edu.ph', 20220025546, 'Albert Floyd', 'Villanueva', NOW(), 1, 1, 1),
-('20190016375@my.xu.edu.ph', 20190016375, 'Nesyl', 'Ylanan', NOW(), 1, 1, 1),
-('20220024573@my.xu.edu.ph', 20220024573, 'Kim', 'Flores', NOW(), 1, 1, 1),
-('approver.seed@xu.edu.ph', 1000000001, 'Angela', 'Santos', NOW(), 1, 1, 0),
-('assistant.seed@xu.edu.ph', 1000000002, 'Seed', 'Assistant', NOW(), 1, 1, 0),
-('faculty.seed@xu.edu.ph', 1000000003, 'John', 'Doe', NOW(), 1, 0, 0),
-('ovphe.seed@xu.edu.ph', 1000000005, 'Maria', 'Reyes', NOW(), 1, 1, 0)
+('20220025546@my.xu.edu.ph', 20220025546, 'password', 'Albert Floyd', 'Villanueva', NOW(), 1, 1, 1),
+('20190016375@my.xu.edu.ph', 20190016375, 'password', 'Nesyl', 'Ylanan', NOW(), 1, 1, 1),
+('20220024573@my.xu.edu.ph', 20220024573, 'password', 'Kim', 'Flores', NOW(), 1, 1, 1),
+('approver.seed@xu.edu.ph', 1000000001, 'password', 'Angela', 'Santos', NOW(), 1, 1, 0),
+('assistant.seed@xu.edu.ph', 1000000002, 'password', 'Seed', 'Assistant', NOW(), 1, 1, 0),
+('faculty.seed@xu.edu.ph', 1000000003, 'password', 'John', 'Doe', NOW(), 1, 0, 0),
+('ovphe.seed@xu.edu.ph', 1000000005, 'password', 'Maria', 'Reyes', NOW(), 1, 1, 0)
 ON DUPLICATE KEY UPDATE
     first_name = VALUES(first_name),
     last_name = VALUES(last_name),
