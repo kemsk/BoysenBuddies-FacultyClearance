@@ -22,7 +22,6 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_active", True)
-        extra_fields.setdefault("role_value", User.RoleChoices.CISO)
 
         if extra_fields.get("is_staff") is not True:
             raise ValueError("Superuser must have is_staff=True.")
@@ -33,21 +32,11 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    class RoleChoices(models.IntegerChoices):
-        HRO = 1, "HRO"
-        CISO = 2, "CISO"
-        OVPHE = 3, "OVPHE"
-        APPROVER = 4, "APPROVER"
-        ASSISTANT_APPROVER = 5, "ASSISTANT_APPROVER"
-        FACULTY = 6, "FACULTY"
-        DUAL_ROLE = 7, "DUAL_ROLE"
-
     email = models.EmailField(max_length=150, unique=True)
     university_id = models.CharField(max_length=50, unique=True)
     first_name = models.CharField(max_length=100, null=True, blank=True)
     middle_name = models.CharField(max_length=100, null=True, blank=True)
     last_name = models.CharField(max_length=100, null=True, blank=True)
-    role_value = models.IntegerField(choices=RoleChoices.choices, default=6)  # Default to FACULTY
     user_pin = models.CharField(max_length=128, blank=True, null=True)
     created_at = models.DateTimeField(default=timezone.now)
 
@@ -61,6 +50,70 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+    
+    def get_active_roles(self):
+        """Get all active roles for this user"""
+        return self.userrole_set.filter(is_active=True).select_related('role')
+    
+    def has_role_permission(self, permission_name):
+        """Check if user has specific permission through any of their roles"""
+        return any(
+            role.role.permissions.filter(codename=permission_name).exists()
+            for role in self.get_active_roles()
+        )
+    
+    def is_college_admin(self, college=None):
+        """Check if user is college admin for specific college"""
+        if college:
+            return self.userrole_set.filter(
+                role__name='College Admin',
+                college=college,
+                is_active=True
+            ).exists()
+        return self.userrole_set.filter(
+            role__name='College Admin',
+            is_active=True
+        ).exists()
+    
+    def is_department_chair(self, department=None):
+        """Check if user is department chair for specific department"""
+        if department:
+            return self.userrole_set.filter(
+                role__name='Department Chair',
+                department=department,
+                is_active=True
+            ).exists()
+        return self.userrole_set.filter(
+            role__name='Department Chair',
+            is_active=True
+        ).exists()
+    
+    def is_office_admin(self, office=None):
+        """Check if user is office admin for specific office"""
+        if office:
+            return self.userrole_set.filter(
+                role__name='Office Admin',
+                office=office,
+                is_active=True
+            ).exists()
+        return self.userrole_set.filter(
+            role__name='Office Admin',
+            is_active=True
+        ).exists()
+    
+    def is_ciso_admin(self):
+        """Check if user is CISO admin"""
+        return self.userrole_set.filter(
+            role__name='CISO Admin',
+            is_active=True
+        ).exists()
+    
+    def is_ovphe_admin(self):
+        """Check if user is OVPHE admin"""
+        return self.userrole_set.filter(
+            role__name='OVPHE Admin',
+            is_active=True
+        ).exists()
 
 
 class Office(models.Model):
@@ -92,6 +145,34 @@ class Department(models.Model):
         return self.name
 
 
+class Role(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+    permissions = models.ManyToManyField('auth.Permission', blank=True)
+    is_system_role = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
+class UserRole(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    role = models.ForeignKey(Role, on_delete=models.CASCADE)
+    college = models.ForeignKey(College, on_delete=models.SET_NULL, null=True, blank=True)
+    department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
+    office = models.ForeignKey(Office, on_delete=models.SET_NULL, null=True, blank=True)
+    assigned_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='assigned_roles')
+    assigned_date = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        unique_together = ['user', 'role', 'college', 'department', 'office']
+
+    def __str__(self):
+        return f"{self.user.email} - {self.role.name}"
+
+
 class Faculty(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="faculty_profile")
     employee_id = models.CharField(max_length=50, unique=True)
@@ -114,8 +195,6 @@ class Approver(models.Model):
     office = models.ForeignKey(Office, on_delete=models.SET_NULL, null=True, blank=True, related_name="approvers")
     college = models.ForeignKey(College, on_delete=models.SET_NULL, null=True, blank=True, related_name="approvers")
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name="approvers")
-    is_dual_role = models.BooleanField(default=False)
-    is_hro = models.BooleanField(default=False)
 
     def __str__(self):
         return str(self.user_id)
@@ -135,19 +214,6 @@ class StudentAssistant(models.Model):
 
     def __str__(self):
         return str(self.user_id)
-
-
-class SystemAdmin(models.Model):
-    class AdminRole(models.TextChoices):
-        CISO = "CISO", "CISO"
-        OVPHE = "OVPHE", "OVPHE"
-
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="admin_profile")
-    admin_role = models.CharField(max_length=20, choices=AdminRole.choices)
-    is_active = models.BooleanField(default=True)
-
-    def __str__(self):
-        return f"{self.user.email} ({self.admin_role})"
 
 
 class Clearance(models.Model):
@@ -177,20 +243,27 @@ class Requirement(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField(null=True, blank=True)
     required_physical = models.BooleanField(default=False)
-    created_by = models.ForeignKey(
-        Approver,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="created_requirements",
-    )
-    created_date = models.DateTimeField(auto_now_add=True)
-    deadline_date = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    clearance_timeline = models.ForeignKey(ClearanceTimeline, on_delete=models.CASCADE)
+    last_updated = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
-
-    offices = models.ManyToManyField(Office, blank=True, related_name="requirements")
-    colleges = models.ManyToManyField(College, blank=True, related_name="requirements")
-    departments = models.ManyToManyField(Department, blank=True, related_name="requirements")
+    
+    recipient_scope = models.CharField(
+        max_length=20,
+        choices=[
+            ('all', 'All Faculty'),
+            ('college', 'By College'),
+            ('department', 'By Department'),
+            ('office', 'By Office'),
+            ('individual', 'Individual Faculty')
+        ]
+    )
+    
+    # Target recipients (based on scope)
+    target_colleges = models.ManyToManyField(College, blank=True)
+    target_departments = models.ManyToManyField(Department, blank=True)
+    target_offices = models.ManyToManyField(Office, blank=True)
+    target_faculty = models.ManyToManyField('Faculty', blank=True)
 
     def __str__(self):
         return self.title
@@ -202,40 +275,34 @@ class ClearanceRequest(models.Model):
         APPROVED = "APPROVED", "APPROVED"
         REJECTED = "REJECTED", "REJECTED"
 
-    clearance = models.ForeignKey(Clearance, on_delete=models.CASCADE, related_name="requests")
-    timeline = models.ForeignKey(
-        "ClearanceTimeline",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="clearance_requests",
-    )
+    request_id = models.CharField(max_length=50, unique=True)  # e.g., "2526-001"
+    faculty = models.ForeignKey('Faculty', on_delete=models.CASCADE)
     requirement = models.ForeignKey(Requirement, on_delete=models.CASCADE, related_name="clearance_requests")
+    clearance_timeline = models.ForeignKey(ClearanceTimeline, on_delete=models.CASCADE)
+    submission_notes = models.TextField(blank=True)
+    submission_link = models.URLField(blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
-    remarks = models.TextField(null=True, blank=True)
-    approved_by = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="approved_clearance_requests",
-    )
+    submitted_date = models.DateTimeField(auto_now_add=True)
+    
+    # Simplified approver assignment - use existing approver structure
+    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='approved_requests')
     approved_date = models.DateTimeField(null=True, blank=True)
+    remarks = models.TextField(blank=True)
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["clearance", "requirement"], name="uniq_clearance_requirement")
+            models.UniqueConstraint(fields=["request_id"], name="uniq_request_id")
         ]
 
     def __str__(self):
-        return f"{self.clearance_id}:{self.requirement_id}"
+        return self.request_id
 
 
 class Announcement(models.Model):
     title = models.CharField(max_length=200, null=True, blank=True)
     body = models.TextField(null=True, blank=True)
     created_by = models.ForeignKey(
-        SystemAdmin,
+        User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -253,7 +320,7 @@ class Announcement(models.Model):
 
 class ApproverFlowConfig(models.Model):
     created_by = models.ForeignKey(
-        SystemAdmin,
+        User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -305,15 +372,8 @@ class ActivityLog(models.Model):
         REMOVED_ASSISTANT_APPROVER = "removed_assistant_approver", "removed_assistant_approver"
 
     event_type = models.CharField(max_length=50, choices=EventType.choices)
-    actor_user = models.ForeignKey(
+    user = models.ForeignKey(
         User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="activity_logs",
-    )
-    actor_admin = models.ForeignKey(
-        SystemAdmin,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -348,25 +408,91 @@ class ActivityLog(models.Model):
 
 
 class ClearanceTimeline(models.Model):
-    academic_year = models.IntegerField(null=True, blank=True)
-    term = models.CharField(max_length=20, choices=Clearance.Term.choices, null=True, blank=True)
-    term_start_date = models.DateField(null=True, blank=True)
-    term_end_date = models.DateField(null=True, blank=True)
-    clearance_start_date = models.DateField(null=True, blank=True)
-    clearance_end_date = models.DateField(null=True, blank=True)
-    created_by = models.ForeignKey(
-        SystemAdmin,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="created_timelines",
-    )
+    name = models.CharField(max_length=200)
+    academic_year_start = models.IntegerField()
+    academic_year_end = models.IntegerField()
+    term = models.CharField(max_length=20, choices=Clearance.Term.choices)
+    clearance_start_date = models.DateTimeField()
+    clearance_end_date = models.DateTimeField()
+    is_active = models.BooleanField(default=False)
+    archive_date = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    is_active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['is_active'], condition=models.Q(is_active=True), name='single_active_timeline')
+        ]
 
     def __str__(self):
-        if self.academic_year and self.term:
-            return f"{self.academic_year} {self.term}"
+        return self.name
+
+
+class ArchivedClearance(models.Model):
+    faculty = models.ForeignKey('Faculty', on_delete=models.CASCADE)
+    clearance_timeline = models.ForeignKey(ClearanceTimeline, on_delete=models.CASCADE)
+    academic_year = models.CharField(max_length=20)
+    semester = models.CharField(max_length=20)
+    status = models.CharField(max_length=20, choices=Archive.Status.choices)
+    clearance_period_start = models.DateField()
+    clearance_period_end = models.DateField()
+    last_updated = models.DateTimeField()
+    archived_date = models.DateTimeField(auto_now_add=True)
+    csv_dump_path = models.CharField(max_length=500, blank=True)
+    csv_dump_size = models.CharField(max_length=50, blank=True)
+    clearance_data = models.JSONField(default=dict)
+
+    def __str__(self):
+        return f"{self.faculty.employee_id} - {self.academic_year} {self.semester}"
+
+
+class ApproverAssistant(models.Model):
+    assistant = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assistant_assignments')
+    supervisor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='supervised_assistants')
+    assistant_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('college_admin', 'College Admin'),
+            ('dept_chair', 'Department Chair'),
+            ('office_admin', 'Office Admin'),
+            ('admin_secondment', 'Administrative Secondment'),
+            ('student_assistant', 'Student Assistant')
+        ]
+    )
+    college = models.ForeignKey(College, on_delete=models.SET_NULL, null=True, blank=True)
+    department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
+    office = models.ForeignKey(Office, on_delete=models.SET_NULL, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    assigned_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_assistants')
+    assigned_date = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['assistant', 'supervisor', 'assistant_type']
+
+    def __str__(self):
+        return f"{self.assistant.email} - {self.get_assistant_type_display()}"
+
+
+class AdministrativeSecondment(models.Model):
+    primary_approver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='primary_secondments')
+    secondment_approver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='secondment_assignments')
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True)
+    office = models.ForeignKey(Office, on_delete=models.CASCADE, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField(null=True, blank=True)
+    assigned_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    assigned_date = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['primary_approver', 'secondment_approver', 'department', 'office']
+    
+    def __str__(self):
+        if self.department:
+            return f"2nd Dept Chair - {self.department.name}"
+        elif self.office:
+            return f"2nd Office Admin - {self.office.name}"
         return str(self.pk)
 
 
@@ -388,24 +514,18 @@ class SystemGuideline(models.Model):
 
 
 class SystemAnalytics(models.Model):
-    academic_year = models.IntegerField(null=True, blank=True)
-    term = models.CharField(max_length=20, choices=Clearance.Term.choices, null=True, blank=True)
-    college = models.ForeignKey(
-        College,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="analytics",
-    )
-    completion_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    clearance_timeline = models.ForeignKey(ClearanceTimeline, on_delete=models.CASCADE)
+    college = models.ForeignKey(College, on_delete=models.SET_NULL, null=True, blank=True)
+    department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
+    total_faculty = models.IntegerField(default=0)
+    completed_clearances = models.IntegerField(default=0)
+    pending_clearances = models.IntegerField(default=0)
+    completion_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     generated_at = models.DateTimeField(auto_now_add=True)
-    generated_by = models.ForeignKey(
-        SystemAdmin,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="generated_analytics",
-    )
+    generated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    
+    class Meta:
+        unique_together = ['clearance_timeline', 'college', 'department']
 
     def __str__(self):
         return str(self.pk)
