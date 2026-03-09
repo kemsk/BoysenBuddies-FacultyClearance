@@ -214,7 +214,7 @@ def verify_otp_api(request):
                 "email": user.email,
                 "first_name": user.first_name or "",
                 "last_name": user.last_name or "",
-                "role_value": getattr(user, "role_value", None),
+                "roles": list(user.get_active_roles().values_list('role__name', flat=True)),
                 "dashboard_url": dashboard_url,
             },
         }
@@ -222,38 +222,29 @@ def verify_otp_api(request):
 
 
 def _dashboard_route_for_user(user: "User") -> str:
-    role_value = getattr(user, "role_value", None)
-
-    if role_value == User.RoleChoices.FACULTY:
-        return "/faculty-dashboard"
-
-    if role_value == User.RoleChoices.APPROVER:
-        return "/approver-dashboard"
-
-    if role_value == User.RoleChoices.ASSISTANT_APPROVER:
-        return "/approver-assistant-list"
-
-    if role_value == User.RoleChoices.HRO:
-        return "/HRO-dashboard"
-
-    if role_value == User.RoleChoices.CISO:
+    # Check user's active roles and return appropriate dashboard
+    user_roles = user.get_active_roles().values_list('role__name', flat=True)
+    
+    # Priority routing for admin roles
+    if 'CISO Admin' in user_roles:
         return "/CISO-dashboard"
-
-    if role_value == User.RoleChoices.OVPHE:
+    
+    if 'OVPHE Admin' in user_roles:
         return "/OVPHE-dashboard"
-
-    if role_value == User.RoleChoices.DUAL_ROLE:
-        if hasattr(user, "approver_profile") and getattr(user.approver_profile, "is_dual_role", False):
-            return "/dual-role-approver-dashboard"
-        return "/dual-role-faculty-member-dashboard"
-
-    if hasattr(user, "admin_profile"):
-        role = getattr(user.admin_profile, "admin_role", None)
-        if role == SystemAdmin.AdminRole.CISO:
-            return "/CISO-dashboard"
-        if role == SystemAdmin.AdminRole.OVPHE:
-            return "/OVPHE-dashboard"
-
+    
+    # All approver roles (College Admin, Department Chair, Office Admin) go to approver dashboard
+    approver_roles = ['College Admin', 'Department Chair', 'Office Admin']
+    if any(role in user_roles for role in approver_roles):
+        return "/approver-dashboard"
+    
+    # Student Assistant / Assistant Approver
+    if 'Student Assistant' in user_roles:
+        return "/assistant-approver-dashboard"
+    
+    # Default to faculty dashboard for Faculty role or fallback
+    if 'Faculty' in user_roles:
+        return "/faculty-dashboard"
+    
     return "/"
 
 
@@ -448,7 +439,7 @@ def google_sign_in_api(request):
         {
             "ok": True,
             "email": user.email,
-            "role_value": user.role_value,
+            "roles": list(user.get_active_roles().values_list('role__name', flat=True)),
             "redirect": redirect_to,
         }
     )
@@ -504,7 +495,7 @@ def me_api(request):
             "first_name": getattr(user, "first_name", None),
             "middle_name": getattr(user, "middle_name", None),
             "last_name": getattr(user, "last_name", None),
-            "role_value": getattr(user, "role_value", None),
+            "roles": list(user.get_active_roles().values_list('role__name', flat=True)),
         }
     )
 
@@ -520,8 +511,8 @@ def ciso_profile_api(request):
     if not user or not getattr(user, "is_authenticated", False):
         return JsonResponse({"detail": "Authentication required"}, status=401)
 
-    # Check User.role_value instead of SystemAdmin
-    if user.role_value != User.RoleChoices.CISO:
+    # Check if user has CISO Admin role
+    if not user.is_ciso_admin():
         return JsonResponse({"detail": "Forbidden"}, status=403)
 
     return JsonResponse(
@@ -544,12 +535,8 @@ def ovphe_profile_api(request):
     if not user or not getattr(user, "is_authenticated", False):
         return JsonResponse({"detail": "Authentication required"}, status=401)
 
-    ovphe_admin = SystemAdmin.objects.select_related("user").filter(
-        user=user,
-        admin_role=SystemAdmin.AdminRole.OVPHE,
-        is_active=True,
-    ).first()
-    if not ovphe_admin:
+    # Check if user has OVPHE Admin role
+    if not user.is_ovphe_admin():
         return JsonResponse({"detail": "Forbidden"}, status=403)
 
     return JsonResponse(
@@ -559,20 +546,18 @@ def ovphe_profile_api(request):
             "first_name": user.first_name,
             "middle_name": user.middle_name,
             "last_name": user.last_name,
-            "role": ovphe_admin.admin_role,
+            "role": "OVPHE Admin",
         }
     )
 
-#sesson
 def _get_active_ovphe_admin(request):
     user = getattr(request, "user", None)
     if not user or not getattr(user, "is_authenticated", False):
         return None
-    return (
-        SystemAdmin.objects.select_related("user")
-        .filter(admin_role=SystemAdmin.AdminRole.OVPHE, is_active=True, user=user)
-        .first()
-    )
+    
+    if user.is_ovphe_admin():
+        return user
+    return None
 
 
 def _require_ovphe_admin(request):
@@ -641,11 +626,11 @@ def _is_office_referenced(office: Office):
 
 
 def _get_active_ciso_admin():
-    return (
-        SystemAdmin.objects.select_related("user")
-        .filter(admin_role=SystemAdmin.AdminRole.CISO, is_active=True)
-        .first()
-    )
+    # Get the first active CISO admin
+    from .models import UserRole, Role
+    ciso_role = Role.objects.get(name='CISO Admin')
+    user_role = UserRole.objects.filter(role=ciso_role, is_active=True).first()
+    return user_role.user if user_role else None
 
 
 def _require_ciso_admin_user(request):
@@ -653,8 +638,8 @@ def _require_ciso_admin_user(request):
     if not user or not getattr(user, "is_authenticated", False):
         return None, JsonResponse({"detail": "Authentication required"}, status=401)
 
-    # Check User.role_value instead of SystemAdmin
-    if user.role_value != User.RoleChoices.CISO:
+    # Check if user has CISO Admin role
+    if not user.is_ciso_admin():
         return None, JsonResponse({"detail": "Forbidden"}, status=403)
 
     return user, None
@@ -665,7 +650,10 @@ def _require_approver_user(request):
     if not user or not getattr(user, "is_authenticated", False):
         return None, JsonResponse({"detail": "Authentication required"}, status=401)
 
-    if user.role_value != User.RoleChoices.APPROVER:
+    # Check if user has approver-related role
+    approver_roles = ['Department Chair', 'Office Admin', 'College Admin']
+    user_roles = user.get_active_roles().values_list('role__name', flat=True)
+    if not any(role in user_roles for role in approver_roles):
         return None, JsonResponse({"detail": "Forbidden"}, status=403)
 
     return user, None
@@ -1122,29 +1110,28 @@ def ciso_system_user_detail_api(request, user_id: int):
         return " ".join(parts) if parts else u.email
 
     if request.method == "GET":
+        # Get user's active roles
+        user_roles = user.get_active_roles()
         role = "Unknown"
         college_label = "N/A"
         dept_label = "N/A"
 
-        admin_profile = getattr(user, "admin_profile", None)
-        approver_profile = getattr(user, "approver_profile", None)
-        assistant_profile = getattr(user, "assistant_profile", None)
-
-        if admin_profile and admin_profile.is_active:
-            role = "System Admin"
-            dept_label = admin_profile.admin_role
-        elif approver_profile:
-            role = "Approver"
-            college_label = approver_profile.college.name if approver_profile.college else "N/A"
-            dept_label = (
-                approver_profile.department.name
-                if approver_profile.department
-                else (approver_profile.office.name if approver_profile.office else "N/A")
-            )
-        elif assistant_profile:
-            role = "Assistant Approver"
-            college_label = assistant_profile.college.name if assistant_profile.college else "N/A"
-            dept_label = assistant_profile.department.name if assistant_profile.department else "N/A"
+        if user_roles:
+            # Get the highest priority role for display
+            role_priority = ['CISO Admin', 'OVPHE Admin', 'College Admin', 'Department Chair', 'Office Admin', 'Student Assistant', 'Faculty']
+            
+            for priority_role in role_priority:
+                user_role = user_roles.filter(role__name=priority_role).first()
+                if user_role:
+                    role = priority_role
+                    # Set college/department labels based on role assignment
+                    if user_role.college:
+                        college_label = user_role.college.name
+                    if user_role.department:
+                        dept_label = user_role.department.name
+                    elif user_role.office:
+                        dept_label = user_role.office.name
+                    break
 
         return JsonResponse(
             {
@@ -1165,10 +1152,6 @@ def ciso_system_user_detail_api(request, user_id: int):
     if request.method == "DELETE":
         with transaction.atomic():
             # Delete related profiles first
-            admin_profile = getattr(user, "admin_profile", None)
-            if admin_profile:
-                admin_profile.delete()
-            
             approver_profile = getattr(user, "approver_profile", None)
             if approver_profile:
                 approver_profile.delete()
@@ -1176,6 +1159,9 @@ def ciso_system_user_detail_api(request, user_id: int):
             assistant_profile = getattr(user, "assistant_profile", None)
             if assistant_profile:
                 assistant_profile.delete()
+            
+            # Delete user role assignments
+            user.userrole_set.all().delete()
             
             # Delete the user completely
             user.delete()
@@ -1234,16 +1220,22 @@ def ciso_system_user_detail_api(request, user_id: int):
             if office_norm not in {"CISO", "OVPHE"}:
                 return JsonResponse({"detail": "Invalid system admin office"}, status=400)
 
-            admin_profile, _ = SystemAdmin.objects.get_or_create(user=user, defaults={"admin_role": office_norm})
-            admin_profile.admin_role = office_norm
-            admin_profile.is_active = is_active
-            admin_profile.save(update_fields=["admin_role", "is_active"])
-
-            if office_norm == "CISO":
-                user.role_value = User.RoleChoices.CISO
-            else:
-                user.role_value = User.RoleChoices.OVPHE
-            user.save(update_fields=["role_value"])
+            # Get or create the appropriate role
+            from .models import Role
+            role_name = "CISO Admin" if office_norm == "CISO" else "OVPHE Admin"
+            role = Role.objects.get(name=role_name)
+            
+            # Remove existing admin roles for this user
+            user.userrole_set.filter(role__name__in=['CISO Admin', 'OVPHE Admin']).delete()
+            
+            # Create new role assignment
+            from .models import UserRole
+            UserRole.objects.create(
+                user=user,
+                role=role,
+                is_active=True,
+                assigned_by=request.user if request.user.is_authenticated else user
+            )
 
         assistant_profile = getattr(user, "assistant_profile", None)
         if assistant_profile and not system_admin_office:
@@ -1279,8 +1271,14 @@ def ciso_system_user_detail_api(request, user_id: int):
             if approver_profile:
                 approver_profile.delete()
 
-            user.role_value = User.RoleChoices.ASSISTANT_APPROVER
-            user.save(update_fields=["role_value"])
+            # Assign Student Assistant role
+            from .models import Role, UserRole
+            student_role = Role.objects.get(name='Student Assistant')
+            UserRole.objects.get_or_create(
+                user=user,
+                role=student_role,
+                defaults={'is_active': True}
+            )
 
         elif approver_type:
             atype = approver_type.strip().lower()
@@ -1328,8 +1326,20 @@ def ciso_system_user_detail_api(request, user_id: int):
                 approver_profile.department = None
 
             approver_profile.save(update_fields=["approver_type", "office", "college", "department"])
-            user.role_value = User.RoleChoices.APPROVER
-            user.save(update_fields=["role_value"])
+            
+            # Assign appropriate role based on approver type
+            from .models import Role, UserRole
+            if atype == "college":
+                role_name = "College Admin"
+            else:
+                role_name = "Office Admin"
+            
+            role = Role.objects.get(name=role_name)
+            UserRole.objects.get_or_create(
+                user=user,
+                role=role,
+                defaults={'is_active': True}
+            )
 
     return JsonResponse({"ok": True})
 
@@ -3196,18 +3206,25 @@ def ciso_system_users_api(request):
 
     items = []
 
-    admins = SystemAdmin.objects.select_related("user").order_by("id")
-    for a in admins:
-        u = a.user
+    # Get users with admin roles (CISO Admin, OVPHE Admin)
+    from .models import UserRole, Role
+    admin_roles = ['CISO Admin', 'OVPHE Admin']
+    admin_user_roles = UserRole.objects.filter(
+        role__name__in=admin_roles, 
+        is_active=True
+    ).select_related('user', 'role').order_by('user__id')
+    
+    for user_role in admin_user_roles:
+        u = user_role.user
         items.append(
             {
                 "id": str(u.id),
                 "name": _full_name(u),
                 "systemId": f"SYS-{u.id}",
-                "userRole": "System Admin",
+                "userRole": user_role.role.name,
                 "universityId": u.university_id or "",
                 "college": "N/A",
-                "department": a.admin_role,
+                "department": user_role.role.name,
                 "email": u.email,
                 "isActive": bool(u.is_active),
             }
@@ -3330,16 +3347,8 @@ def ciso_system_users_api(request):
             if office_norm not in {"CISO", "OVPHE"}:
                 return JsonResponse({"detail": "Invalid system admin office"}, status=400)
 
-            SystemAdmin.objects.create(
-                user=user,
-                admin_role=office_norm,
-                is_active=is_active,
-            )
-            if office_norm == "CISO":
-                user.role_value = User.RoleChoices.CISO
-            else:
-                user.role_value = User.RoleChoices.OVPHE
-            user.save(update_fields=["role_value"])
+            # SystemAdmin has been removed - role assignment handled above
+            # Role assignment is handled above in the system_admin_office section
 
         if approver_type:
             atype = approver_type.strip().lower()
@@ -3385,8 +3394,20 @@ def ciso_system_users_api(request):
                 department=department,
                 office=office,
             )
-            user.role_value = User.RoleChoices.APPROVER
-            user.save(update_fields=["role_value"])
+            
+            # Assign appropriate role based on approver type
+            from .models import Role, UserRole
+            if atype == "college":
+                role_name = "College Admin"
+            else:
+                role_name = "Office Admin"
+            
+            role = Role.objects.get(name=role_name)
+            UserRole.objects.get_or_create(
+                user=user,
+                role=role,
+                defaults={'is_active': True}
+            )
 
     return JsonResponse({"ok": True, "id": str(user.id)})
 
@@ -3806,8 +3827,15 @@ def approver_assistant_approvers_api(request):
             department=department,
             supervisor_approver=user,  # Assign the current approver as supervisor
         )
-        user.role_value = User.RoleChoices.ASSISTANT_APPROVER
-        user.save(update_fields=["role_value"])
+        
+        # Assign Student Assistant role
+        from .models import Role, UserRole
+        student_role = Role.objects.get(name='Student Assistant')
+        UserRole.objects.get_or_create(
+            user=user,
+            role=student_role,
+            defaults={'is_active': True}
+        )
 
     return JsonResponse({"ok": True, "id": str(user.id)})
 
