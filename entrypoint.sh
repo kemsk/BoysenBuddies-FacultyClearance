@@ -367,26 +367,35 @@ WHERE NOT EXISTS (
 );
 
 -- Seed minimal Requirement + ClearanceRequest for the latest clearance row
-INSERT INTO FC_requirement (id, title, description, required_physical, created_date, deadline_date, is_active, created_by_id)
+SET @latest_timeline_id = (
+    SELECT id FROM FC_clearancetimeline ORDER BY id DESC LIMIT 1
+);
+
+INSERT INTO FC_requirement (id, title, description, required_physical, clearance_timeline_id, created_date, deadline_date, is_active, created_by_id)
 SELECT * FROM (
-    SELECT 1 AS id, 'Grades Roster' AS title, 'Submit screenshot via this link: googleforms.com' AS description, 0 AS required_physical, NOW() AS created_date, NULL AS deadline_date, 1 AS is_active, NULL AS created_by_id
+    SELECT 1 AS id, 'Grades Roster' AS title, 'Submit screenshot via this link: googleforms.com' AS description, 0 AS required_physical, @latest_timeline_id AS clearance_timeline_id, NOW() AS created_date, NULL AS deadline_date, 1 AS is_active, NULL AS created_by_id
 ) AS v
 ON DUPLICATE KEY UPDATE
     title = VALUES(title),
     description = VALUES(description),
     required_physical = VALUES(required_physical),
+    clearance_timeline_id = VALUES(clearance_timeline_id),
     is_active = VALUES(is_active);
 
 SET @latest_clearance_id = (
     SELECT id FROM FC_clearance WHERE faculty_id = @faculty_id ORDER BY id DESC LIMIT 1
 );
 
-INSERT INTO FC_clearancerequest (clearance_id, requirement_id, status, remarks, approved_by_id, approved_date)
+SET @latest_timeline_id = (
+    SELECT id FROM FC_clearancetimeline ORDER BY id DESC LIMIT 1
+);
+
+INSERT INTO FC_clearancerequest (request_id, faculty_id, requirement_id, clearance_timeline_id, status, remarks, approved_by_id, approved_date)
 SELECT * FROM (
-    SELECT @latest_clearance_id AS clearance_id, 1 AS requirement_id, 'PENDING' AS status, '' AS remarks, NULL AS approved_by_id, NULL AS approved_date
+    SELECT CONCAT('CR-', YEAR(NOW()), '-', LPAD(@faculty_id, 6, '0')) AS request_id, @faculty_id AS faculty_id, 1 AS requirement_id, @latest_timeline_id AS clearance_timeline_id, 'PENDING' AS status, '' AS remarks, NULL AS approved_by_id, NULL AS approved_date
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_clearancerequest cr WHERE cr.clearance_id = v.clearance_id AND cr.requirement_id = v.requirement_id
+    SELECT 1 FROM FC_clearancerequest cr WHERE cr.request_id = v.request_id
 );
 
 -- Seed Announcements
@@ -424,12 +433,12 @@ WHERE NOT EXISTS (
 );
 
 -- Seed ClearanceTimeline
-INSERT INTO FC_clearancetimeline (academic_year, term, term_start_date, term_end_date, clearance_start_date, clearance_end_date, created_by_id, is_active, created_at)
+INSERT INTO FC_clearancetimeline (name, academic_year_start, academic_year_end, term, clearance_start_date, clearance_end_date, created_by_id, is_active, created_at)
 SELECT * FROM (
-    SELECT YEAR(NOW()) AS academic_year, '1ST' AS term, CURDATE() AS term_start_date, CURDATE() AS term_end_date, CURDATE() AS clearance_start_date, CURDATE() AS clearance_end_date, @ovphe_user_id AS created_by_id, 1 AS is_active, NOW() AS created_at
+    SELECT CONCAT('S.Y. ', YEAR(NOW()), '-', YEAR(NOW()) + 1, ' First Semester') AS name, YEAR(NOW()) AS academic_year_start, YEAR(NOW()) + 1 AS academic_year_end, '1ST' AS term, CURDATE() AS clearance_start_date, CURDATE() AS clearance_end_date, @ovphe_user_id AS created_by_id, 1 AS is_active, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_clearancetimeline ct WHERE ct.academic_year = v.academic_year AND ct.term = v.term
+    SELECT 1 FROM FC_clearancetimeline ct WHERE ct.academic_year_start = v.academic_year_start AND ct.academic_year_end = v.academic_year_end AND ct.term = v.term
 );
 
 SET @seed_school_year_label = CONCAT('S.Y. ', YEAR(NOW()), '-', YEAR(NOW()) + 1);

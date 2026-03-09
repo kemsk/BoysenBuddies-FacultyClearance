@@ -216,6 +216,28 @@ class Clearance(models.Model):
         return f"{self.faculty.employee_id} - {self.academic_year} {self.term}"
 
 
+class ClearanceTimeline(models.Model):
+    name = models.CharField(max_length=200)
+    academic_year_start = models.IntegerField()
+    academic_year_end = models.IntegerField()
+    term = models.CharField(max_length=20, choices=Clearance.Term.choices)
+    clearance_start_date = models.DateTimeField()
+    clearance_end_date = models.DateTimeField()
+    is_active = models.BooleanField(default=False)
+    archive_date = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['is_active'], condition=models.Q(is_active=True), name='single_active_timeline')
+        ]
+
+    def __str__(self):
+        return self.name
+
+
 class Requirement(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField(null=True, blank=True)
@@ -384,34 +406,16 @@ class ActivityLog(models.Model):
         return f"{self.event_type} ({self.created_at})"
 
 
-class ClearanceTimeline(models.Model):
-    name = models.CharField(max_length=200)
-    academic_year_start = models.IntegerField()
-    academic_year_end = models.IntegerField()
-    term = models.CharField(max_length=20, choices=Clearance.Term.choices)
-    clearance_start_date = models.DateTimeField()
-    clearance_end_date = models.DateTimeField()
-    is_active = models.BooleanField(default=False)
-    archive_date = models.DateTimeField(null=True, blank=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['is_active'], condition=models.Q(is_active=True), name='single_active_timeline')
-        ]
-
-    def __str__(self):
-        return self.name
-
-
 class ArchivedClearance(models.Model):
+    class Status(models.TextChoices):
+        COMPLETED = "COMPLETED", "COMPLETED"
+        INCOMPLETE = "INCOMPLETE", "INCOMPLETE"
+
     faculty = models.ForeignKey('Faculty', on_delete=models.CASCADE)
     clearance_timeline = models.ForeignKey(ClearanceTimeline, on_delete=models.CASCADE)
     academic_year = models.CharField(max_length=20)
     semester = models.CharField(max_length=20)
-    status = models.CharField(max_length=20, choices=Archive.Status.choices)
+    status = models.CharField(max_length=20, choices=Status.choices)
     clearance_period_start = models.DateField()
     clearance_period_end = models.DateField()
     last_updated = models.DateTimeField()
@@ -426,7 +430,7 @@ class ArchivedClearance(models.Model):
 
 class ApproverAssistant(models.Model):
     assistant = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assistant_assignments')
-    supervisor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='supervised_assistants')
+    supervisor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='approver_supervised_assistants')
     assistant_type = models.CharField(
         max_length=20,
         choices=[
@@ -503,44 +507,6 @@ class SystemAnalytics(models.Model):
     
     class Meta:
         unique_together = ['clearance_timeline', 'college', 'department']
-
-    def __str__(self):
-        return str(self.pk)
-
-
-class Archive(models.Model):
-    class Status(models.TextChoices):
-        COMPLETED = "COMPLETED", "COMPLETED"
-        INCOMPLETE = "INCOMPLETE", "INCOMPLETE"
-
-    request = models.OneToOneField(
-        ClearanceRequest,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="archive",
-    )
-    faculty = models.ForeignKey(Faculty, on_delete=models.SET_NULL, null=True, blank=True, related_name="archives")
-    college = models.ForeignKey(College, on_delete=models.SET_NULL, null=True, blank=True, related_name="archives")
-    department = models.ForeignKey(
-        Department,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="archives",
-    )
-    faculty_type = models.CharField(max_length=50, null=True, blank=True)
-    missing_signatures = models.TextField(null=True, blank=True)
-    status = models.CharField(max_length=20, choices=Status.choices)
-    term = models.CharField(max_length=20, choices=Clearance.Term.choices, null=True, blank=True)
-    archived_at = models.DateTimeField(auto_now_add=True)
-    archived_by = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="archives_created",
-    )
 
     def __str__(self):
         return str(self.pk)
