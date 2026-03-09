@@ -3334,7 +3334,6 @@ def ciso_system_users_api(request):
         user = User.objects.create_user(
             email=email,
             university_id=university_id,
-            password=None,
             first_name=first_name,
             middle_name=middle_name,
             last_name=last_name,
@@ -3813,7 +3812,6 @@ def approver_assistant_approvers_api(request):
         user = User.objects.create_user(
             email=email,
             university_id=university_id,
-            password=None,
             first_name=first_name,
             middle_name=middle_name,
             last_name=last_name,
