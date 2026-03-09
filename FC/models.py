@@ -14,8 +14,6 @@ class UserManager(BaseUserManager):
 
         email = self.normalize_email(email)
         user = self.model(email=email, university_id=university_id, **extra_fields)
-        # Set unusable password since we use OAuth
-        user.set_unusable_password()
         user.save(using=self._db)
         return user
 
@@ -230,9 +228,7 @@ class ClearanceTimeline(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['is_active'], condition=models.Q(is_active=True), name='single_active_timeline')
-        ]
+        pass
 
     def __str__(self):
         return self.name
