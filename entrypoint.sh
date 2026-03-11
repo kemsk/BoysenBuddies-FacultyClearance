@@ -30,7 +30,15 @@ ON DUPLICATE KEY UPDATE
 -- Seed Roles
 INSERT INTO FC_role (name, description, is_system_role, created_at)
 SELECT * FROM (
-    SELECT 'CISO Admin' AS name, 'CISO System Administrator' AS description, 1 AS is_system_role, NOW() AS created_at
+    SELECT 'CISO' AS name, 'CISO System Administrator' AS description, 1 AS is_system_role, NOW() AS created_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_role r WHERE r.name = v.name
+);
+
+INSERT INTO FC_role (name, description, is_system_role, created_at)
+SELECT * FROM (
+    SELECT 'OVPHE' AS name, 'OVPHE System Administrator' AS description, 1 AS is_system_role, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_role r WHERE r.name = v.name
@@ -70,7 +78,7 @@ SELECT
     1 AS is_active
 FROM FC_user u
 CROSS JOIN FC_role r
-WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'CISO Admin'
+WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'CISO'
 ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
 
@@ -83,7 +91,7 @@ SELECT
     1 AS is_active
 FROM FC_user u
 CROSS JOIN FC_role r
-WHERE u.email = '20190016375@my.xu.edu.ph' AND r.name = 'OVPHE Admin'
+WHERE u.email = '20190016375@my.xu.edu.ph' AND r.name = 'OVPHE'
 ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
 
@@ -726,7 +734,7 @@ WHERE NOT EXISTS (
 
 INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'user_login' AS event_type, @ovphe_user_id AS user_id, '["Role: OVPHE Admin", "Department/Office: OVPHE"]' AS details, NOW() AS created_at
+    SELECT 'user_login' AS event_type, @ovphe_user_id AS user_id, '["Role: OVPHE", "Department/Office: OVPHE"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
@@ -734,7 +742,7 @@ WHERE NOT EXISTS (
 
 INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'user_logout' AS event_type, @ovphe_user_id AS user_id, '["Role: OVPHE Admin", "Department/Office: OVPHE"]' AS details, NOW() AS created_at
+    SELECT 'user_logout' AS event_type, @ovphe_user_id AS user_id, '["Role: OVPHE", "Department/Office: OVPHE"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id

@@ -7,7 +7,7 @@ from .models import User, College, Department, Office, ClearanceTimeline
 def role_required(*required_roles):
     """
     Decorator to require specific roles for view access
-    Usage: @role_required('CISO Admin', 'College Admin')
+    Usage: @role_required('CISO', 'College Admin')
     """
     def decorator(view_func):
         @wraps(view_func)
@@ -72,9 +72,9 @@ def ciso_admin_required(view_func):
     return wrapper
 
 
-def ovphe_admin_required(view_func):
+def ovphe_required(view_func):
     """
-    Decorator to require OVPHE admin role
+    Decorator to require OVPHE role
     """
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
@@ -97,7 +97,7 @@ def get_user_accessible_colleges(user):
     """
     colleges = set()
     
-    # CISO and OVPHE admins can access all colleges
+    # CISO and OVPHEs can access all colleges
     if user.is_ciso_admin() or user.is_ovphe_admin():
         colleges.update(College.objects.filter(is_active=True))
     
@@ -122,7 +122,7 @@ def get_user_accessible_departments(user):
     """
     departments = set()
     
-    # CISO and OVPHE admins can access all departments
+    # CISO and OVPHEs can access all departments
     if user.is_ciso_admin() or user.is_ovphe_admin():
         departments.update(Department.objects.filter(is_active=True))
     
@@ -147,7 +147,7 @@ def get_user_accessible_offices(user):
     """
     offices = set()
     
-    # CISO and OVPHE admins can access all offices
+    # CISO and OVPHEs can access all offices
     if user.is_ciso_admin() or user.is_ovphe_admin():
         offices.update(Office.objects.filter(is_active=True))
     

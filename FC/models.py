@@ -84,14 +84,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     def is_ciso_admin(self):
         """Check if user is CISO admin"""
         return self.userrole_set.filter(
-            role__name='CISO Admin',
+            role__name='CISO',
             is_active=True
         ).exists()
     
     def is_ovphe_admin(self):
         """Check if user is OVPHE admin"""
         return self.userrole_set.filter(
-            role__name='OVPHE Admin',
+            role__name='OVPHE',
             is_active=True
         ).exists()
 

@@ -226,10 +226,10 @@ def _dashboard_route_for_user(user: "User") -> str:
     user_roles = user.get_active_roles().values_list('role__name', flat=True)
     
     # Priority routing for admin roles
-    if 'CISO Admin' in user_roles:
+    if 'CISO' in user_roles:
         return "/CISO-dashboard"
     
-    if 'OVPHE Admin' in user_roles:
+    if 'OVPHE' in user_roles:
         return "/OVPHE-dashboard"
     
     # All approver roles (College Admin, Department Chair, Office Admin) go to approver dashboard
@@ -511,7 +511,7 @@ def ciso_profile_api(request):
     if not user or not getattr(user, "is_authenticated", False):
         return JsonResponse({"detail": "Authentication required"}, status=401)
 
-    # Check if user has CISO Admin role
+    # Check if user has CISO role
     if not user.is_ciso_admin():
         return JsonResponse({"detail": "Forbidden"}, status=403)
 
@@ -535,7 +535,7 @@ def ovphe_profile_api(request):
     if not user or not getattr(user, "is_authenticated", False):
         return JsonResponse({"detail": "Authentication required"}, status=401)
 
-    # Check if user has OVPHE Admin role
+    # Check if user has OVPHE role
     if not user.is_ovphe_admin():
         return JsonResponse({"detail": "Forbidden"}, status=403)
 
@@ -546,7 +546,7 @@ def ovphe_profile_api(request):
             "first_name": user.first_name,
             "middle_name": user.middle_name,
             "last_name": user.last_name,
-            "role": "OVPHE Admin",
+            "role": "OVPHE",
         }
     )
 
@@ -628,7 +628,7 @@ def _is_office_referenced(office: Office):
 def _get_active_ciso_admin():
     # Get the first active CISO admin
     from .models import UserRole, Role
-    ciso_role = Role.objects.get(name='CISO Admin')
+    ciso_role = Role.objects.get(name='CISO')
     user_role = UserRole.objects.filter(role=ciso_role, is_active=True).first()
     return user_role.user if user_role else None
 
@@ -638,7 +638,7 @@ def _require_ciso_admin_user(request):
     if not user or not getattr(user, "is_authenticated", False):
         return None, JsonResponse({"detail": "Authentication required"}, status=401)
 
-    # Check if user has CISO Admin role
+    # Check if user has CISO role
     if not user.is_ciso_admin():
         return None, JsonResponse({"detail": "Forbidden"}, status=403)
 
@@ -1118,7 +1118,7 @@ def ciso_system_user_detail_api(request, user_id: int):
 
         if user_roles:
             # Get the highest priority role for display
-            role_priority = ['CISO Admin', 'OVPHE Admin', 'College Admin', 'Department Chair', 'Office Admin', 'Student Assistant', 'Faculty']
+            role_priority = ['CISO', 'OVPHE', 'College Admin', 'Department Chair', 'Office Admin', 'Student Assistant', 'Faculty']
             
             for priority_role in role_priority:
                 user_role = user_roles.filter(role__name=priority_role).first()
@@ -1222,11 +1222,11 @@ def ciso_system_user_detail_api(request, user_id: int):
 
             # Get or create the appropriate role
             from .models import Role
-            role_name = "CISO Admin" if office_norm == "CISO" else "OVPHE Admin"
+            role_name = "CISO" if office_norm == "CISO" else "OVPHE"
             role = Role.objects.get(name=role_name)
             
             # Remove existing admin roles for this user
-            user.userrole_set.filter(role__name__in=['CISO Admin', 'OVPHE Admin']).delete()
+            user.userrole_set.filter(role__name__in=['CISO', 'OVPHE']).delete()
             
             # Create new role assignment
             from .models import UserRole
@@ -3206,9 +3206,9 @@ def ciso_system_users_api(request):
 
     items = []
 
-    # Get users with admin roles (CISO Admin, OVPHE Admin)
+    # Get users with admin roles (CISO, OVPHE)
     from .models import UserRole, Role
-    admin_roles = ['CISO Admin', 'OVPHE Admin']
+    admin_roles = ['CISO', 'OVPHE']
     admin_user_roles = UserRole.objects.filter(
         role__name__in=admin_roles, 
         is_active=True
