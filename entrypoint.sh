@@ -411,7 +411,22 @@ SET @latest_timeline_id = (
 
 INSERT INTO FC_clearancerequest (request_id, faculty_id, requirement_id, clearance_timeline_id, status, submission_notes, submission_link, submitted_date, approved_by_id, approved_date, remarks)
 SELECT * FROM (
-    SELECT CONCAT('CR-', YEAR(NOW()), '-', LPAD(@faculty_id, 6, '0')) AS request_id, @faculty_id AS faculty_id, 1 AS requirement_id, @latest_timeline_id AS clearance_timeline_id, 'PENDING' AS status, '' AS submission_notes, '' AS submission_link, NOW() AS submitted_date, NULL AS approved_by_id, NULL AS approved_date, '' AS remarks
+    SELECT 
+        CONCAT(
+            (SELECT RIGHT(academic_year_start, 2) FROM FC_clearancetimeline WHERE id = @latest_timeline_id),
+            CASE 
+                WHEN (SELECT term FROM FC_clearancetimeline WHERE id = @latest_timeline_id) = '1ST' THEN '1'
+                WHEN (SELECT term FROM FC_clearancetimeline WHERE id = @latest_timeline_id) = '2ND' THEN '2'
+                ELSE 'I'
+            END,
+            '-',
+            (SELECT university_id FROM FC_user WHERE id = (SELECT user_id FROM FC_faculty WHERE id = @faculty_id)),
+            '-',
+            (SELECT abbreviation FROM FC_department WHERE id = (SELECT department_id FROM FC_faculty WHERE id = @faculty_id)),
+            '-',
+            '001'
+        ) AS request_id, 
+        @faculty_id AS faculty_id, 1 AS requirement_id, @latest_timeline_id AS clearance_timeline_id, 'PENDING' AS status, '' AS submission_notes, '' AS submission_link, NOW() AS submitted_date, NULL AS approved_by_id, NULL AS approved_date, '' AS remarks
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_clearancerequest cr WHERE cr.request_id = v.request_id

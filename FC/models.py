@@ -243,7 +243,7 @@ class Requirement(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField(null=True, blank=True)
     required_physical = models.BooleanField(default=False)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     clearance_timeline = models.ForeignKey(ClearanceTimeline, on_delete=models.CASCADE)
     last_updated = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
