@@ -319,6 +319,13 @@ class Announcement(models.Model):
 
 
 class ApproverFlowConfig(models.Model):
+    clearance_timeline = models.ForeignKey(
+        ClearanceTimeline,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="approver_flow_configs",
+    )
     created_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,

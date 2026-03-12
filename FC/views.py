@@ -2091,9 +2091,28 @@ def ovphe_approver_flow_api(request):
     if err:
         return err
 
-    config = ApproverFlowConfig.objects.order_by("-updated_at", "pk").first()
+    # Get timeline_id from query parameter
+    timeline_id = request.GET.get('timeline_id')
+    
+    # Try to get timeline-specific config first, then fallback to global config
+    config = None
+    if timeline_id:
+        try:
+            timeline = ClearanceTimeline.objects.get(id=timeline_id)
+            config = ApproverFlowConfig.objects.filter(clearance_timeline=timeline).order_by("-updated_at", "pk").first()
+        except ClearanceTimeline.DoesNotExist:
+            return JsonResponse({"detail": "Timeline not found"}, status=404)
+    
+    # Fallback to global config (null clearance_timeline)
     if not config:
-        config = ApproverFlowConfig.objects.create(created_by=admin)
+        config = ApproverFlowConfig.objects.filter(clearance_timeline__isnull=True).order_by("-updated_at", "pk").first()
+    
+    if not config:
+        # Create new config - if timeline_id provided, create timeline-specific, otherwise global
+        config = ApproverFlowConfig.objects.create(
+            created_by=admin,
+            clearance_timeline=ClearanceTimeline.objects.get(id=timeline_id) if timeline_id else None
+        )
 
     steps = (
         config.steps.select_related("office")
@@ -2104,6 +2123,8 @@ def ovphe_approver_flow_api(request):
     return JsonResponse(
         {
             "id": str(config.id),
+            "timelineId": str(config.clearance_timeline.id) if config.clearance_timeline else None,
+            "isGlobal": config.clearance_timeline is None,
             "steps": [
                 {
                     "id": str(s.id),
@@ -2133,11 +2154,23 @@ def _resolve_office_for_flow_step(*, category: str, office_id):
     )
 
 
-def _relink_flow_steps_for_office(*, office: Office):
+def _relink_flow_steps_for_office(*, office: Office, timeline_id=None):
     if not office or not office.is_active:
         return
 
-    config = ApproverFlowConfig.objects.order_by("-updated_at", "-id").first()
+    # Try timeline-specific config first if timeline_id is provided
+    config = None
+    if timeline_id:
+        try:
+            timeline = ClearanceTimeline.objects.get(id=timeline_id)
+            config = ApproverFlowConfig.objects.filter(clearance_timeline=timeline).order_by("-updated_at", "-id").first()
+        except ClearanceTimeline.DoesNotExist:
+            pass
+    
+    # Fallback to global config
+    if not config:
+        config = ApproverFlowConfig.objects.filter(clearance_timeline__isnull=True).order_by("-updated_at", "-id").first()
+    
     if not config:
         return
 
@@ -2654,9 +2687,28 @@ def ovphe_approver_flow_steps_api(request):
     if err:
         return err
 
-    config = ApproverFlowConfig.objects.order_by("-updated_at", "-id").first()
+    # Get timeline_id from query parameter
+    timeline_id = request.GET.get('timeline_id')
+    
+    # Try to get timeline-specific config first, then fallback to global config
+    config = None
+    if timeline_id:
+        try:
+            timeline = ClearanceTimeline.objects.get(id=timeline_id)
+            config = ApproverFlowConfig.objects.filter(clearance_timeline=timeline).order_by("-updated_at", "pk").first()
+        except ClearanceTimeline.DoesNotExist:
+            return JsonResponse({"detail": "Timeline not found"}, status=404)
+    
+    # Fallback to global config (null clearance_timeline)
     if not config:
-        config = ApproverFlowConfig.objects.create(created_by=admin)
+        config = ApproverFlowConfig.objects.filter(clearance_timeline__isnull=True).order_by("-updated_at", "pk").first()
+    
+    if not config:
+        # Create new config - if timeline_id provided, create timeline-specific, otherwise global
+        config = ApproverFlowConfig.objects.create(
+            created_by=admin,
+            clearance_timeline=ClearanceTimeline.objects.get(id=timeline_id) if timeline_id else None
+        )
 
     if request.method == "POST":
         data, jerr = _parse_json_body(request)
@@ -3964,3 +4016,24 @@ def approver_assistant_approver_detail_api(request, user_id):
         assistant_profile.save(update_fields=["college", "department"])
 
     return JsonResponse({"ok": True})
+
+
+def get_approver_flow_config(timeline_id=None):
+    """
+    Get approver flow configuration for a specific timeline.
+    Falls back to global config if no timeline-specific config exists.
+    """
+    config = None
+    
+    if timeline_id:
+        try:
+            timeline = ClearanceTimeline.objects.get(id=timeline_id)
+            config = ApproverFlowConfig.objects.filter(clearance_timeline=timeline).order_by("-updated_at", "pk").first()
+        except ClearanceTimeline.DoesNotExist:
+            pass
+    
+    # Fallback to global config (null clearance_timeline)
+    if not config:
+        config = ApproverFlowConfig.objects.filter(clearance_timeline__isnull=True).order_by("-updated_at", "pk").first()
+    
+    return config
