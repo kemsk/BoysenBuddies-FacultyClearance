@@ -416,12 +416,6 @@ SELECT * FROM (
             (SELECT RIGHT(academic_year_start, 2) FROM FC_clearancetimeline WHERE id = @latest_timeline_id),
             (SELECT RIGHT(academic_year_end, 2) FROM FC_clearancetimeline WHERE id = @latest_timeline_id),
             '-',
-            CASE 
-                WHEN (SELECT term FROM FC_clearancetimeline WHERE id = @latest_timeline_id) = '1ST' THEN '1'
-                WHEN (SELECT term FROM FC_clearancetimeline WHERE id = @latest_timeline_id) = '2ND' THEN '2'
-                ELSE 'I'
-            END,
-            '-',
             (SELECT university_id FROM FC_user WHERE id = (SELECT user_id FROM FC_faculty WHERE id = @faculty_id)),
             '-',
             (SELECT abbreviation FROM FC_department WHERE id = (SELECT department_id FROM FC_faculty WHERE id = @faculty_id)),
