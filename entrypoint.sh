@@ -416,7 +416,11 @@ SELECT * FROM (
     SELECT 
         CONCAT(
             (SELECT RIGHT(academic_year_start, 2) FROM FC_clearancetimeline WHERE id = @latest_timeline_id),
-            (SELECT RIGHT(academic_year_end, 2) FROM FC_clearancetimeline WHERE id = @latest_timeline_id),
+            CASE 
+                WHEN (SELECT term FROM FC_clearancetimeline WHERE id = @latest_timeline_id) = '1ST' THEN '01'
+                WHEN (SELECT term FROM FC_clearancetimeline WHERE id = @latest_timeline_id) = '2ND' THEN '02'
+                ELSE '03'
+            END,
             '-',
             (SELECT university_id FROM FC_user WHERE id = (SELECT user_id FROM FC_faculty WHERE id = @faculty_id)),
             '-',
