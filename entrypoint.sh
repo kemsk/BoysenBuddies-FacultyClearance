@@ -245,80 +245,7 @@ SET @faculty_user_id = (SELECT id FROM FC_user WHERE email = 'faculty.seed@xu.ed
 SET @ciso_user_id = (SELECT id FROM FC_user WHERE email = '20220025546@my.xu.edu.ph' LIMIT 1);
 SET @ovphe_user_id = (SELECT id FROM FC_user WHERE email = '20190016375@my.xu.edu.ph' LIMIT 1);
 
--- Seed ApproverFlowConfig
-INSERT INTO FC_approverflowconfig (created_by_id, created_at, updated_at)
-SELECT * FROM (
-    SELECT @ovphe_user_id AS created_by_id, NOW() AS created_at, NOW() AS updated_at
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_approverflowconfig
-);
 
--- Get config ID (single-config assumption)
-SET @config_id = (SELECT id FROM FC_approverflowconfig ORDER BY id ASC LIMIT 1);
-
--- Seed ApproverFlowSteps only if they don't exist
-INSERT INTO FC_approverflowstep (config_id, `order`, category)
-SELECT * FROM (
-    SELECT @config_id AS config_id, 0 AS `order`, 'Department Chair' AS category
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
-);
-
-INSERT INTO FC_approverflowstep (config_id, `order`, category)
-SELECT * FROM (
-    SELECT @config_id AS config_id, 1 AS `order`, 'College Dean' AS category
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
-);
-
--- Link office-based steps to actual Office rows
-SET @reg_office_id = (SELECT id FROM FC_office WHERE abbreviation = 'REG' LIMIT 1);
-SET @lib_office_id = (SELECT id FROM FC_office WHERE abbreviation = 'LIB' LIMIT 1);
-SET @ovphe_office_id = (SELECT id FROM FC_office WHERE abbreviation = 'OVPHE' LIMIT 1);
-SET @hro_office_id = (SELECT id FROM FC_office WHERE abbreviation = 'HRO' LIMIT 1);
-
-INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
-SELECT * FROM (
-    SELECT @config_id AS config_id, 2 AS `order`, 'University Registrar' AS category, @reg_office_id AS office_id
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
-);
-
-INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
-SELECT * FROM (
-    SELECT @config_id AS config_id, 3 AS `order`, 'University Library' AS category, @lib_office_id AS office_id
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
-);
-
-INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
-SELECT * FROM (
-    SELECT @config_id AS config_id, 4 AS `order`, 'Office of the Vice President for Higher Education' AS category, @ovphe_office_id AS office_id
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
-);
-
-INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
-SELECT * FROM (
-    SELECT @config_id AS config_id, 5 AS `order`, 'Human Resources Office' AS category, @hro_office_id AS office_id
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
-);
-
--- Get step IDs and link colleges
-INSERT IGNORE INTO FC_approverflowstep_colleges (approverflowstep_id, college_id)
-SELECT afs.id, c.id
-FROM FC_approverflowstep afs
-CROSS JOIN FC_college c
-WHERE afs.config_id = @config_id 
-AND c.abbreviation IN ('CCS', 'CAS');
 
 -- Seed Approver
 INSERT INTO FC_approver (user_id, approver_type, college_id, department_id)
@@ -408,6 +335,81 @@ SET @latest_clearance_id = (
 SET @latest_timeline_id = (
     SELECT id FROM FC_clearancetimeline ORDER BY id DESC LIMIT 1
 );
+
+-- Seed ApproverFlowConfig
+INSERT INTO FC_approverflowconfig (created_by_id, clearance_timeline_id, created_at, updated_at)
+SELECT * FROM (
+    SELECT @ovphe_user_id AS created_by_id, @latest_timeline_id AS clearance_timeline_id, NOW() AS created_at, NOW() AS updated_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_approverflowconfig
+);
+
+-- Get config ID (single-config assumption)
+SET @config_id = (SELECT id FROM FC_approverflowconfig ORDER BY id ASC LIMIT 1);
+
+-- Seed ApproverFlowSteps only if they don't exist
+INSERT INTO FC_approverflowstep (config_id, `order`, category)
+SELECT * FROM (
+    SELECT @config_id AS config_id, 0 AS `order`, 'Department Chair' AS category
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
+);
+
+INSERT INTO FC_approverflowstep (config_id, `order`, category)
+SELECT * FROM (
+    SELECT @config_id AS config_id, 1 AS `order`, 'College Dean' AS category
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
+);
+
+-- Link office-based steps to actual Office rows
+SET @reg_office_id = (SELECT id FROM FC_office WHERE abbreviation = 'REG' LIMIT 1);
+SET @lib_office_id = (SELECT id FROM FC_office WHERE abbreviation = 'LIB' LIMIT 1);
+SET @ovphe_office_id = (SELECT id FROM FC_office WHERE abbreviation = 'OVPHE' LIMIT 1);
+SET @hro_office_id = (SELECT id FROM FC_office WHERE abbreviation = 'HRO' LIMIT 1);
+
+INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
+SELECT * FROM (
+    SELECT @config_id AS config_id, 2 AS `order`, 'University Registrar' AS category, @reg_office_id AS office_id
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
+);
+
+INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
+SELECT * FROM (
+    SELECT @config_id AS config_id, 3 AS `order`, 'University Library' AS category, @lib_office_id AS office_id
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
+);
+
+INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
+SELECT * FROM (
+    SELECT @config_id AS config_id, 4 AS `order`, 'Office of the Vice President for Higher Education' AS category, @ovphe_office_id AS office_id
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
+);
+
+INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
+SELECT * FROM (
+    SELECT @config_id AS config_id, 5 AS `order`, 'Human Resources Office' AS category, @hro_office_id AS office_id
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
+);
+
+-- Get step IDs and link colleges
+INSERT IGNORE INTO FC_approverflowstep_colleges (approverflowstep_id, college_id)
+SELECT afs.id, c.id
+FROM FC_approverflowstep afs
+CROSS JOIN FC_college c
+WHERE afs.config_id = @config_id 
+AND c.abbreviation IN ('CCS', 'CAS');
 
 INSERT INTO FC_clearancerequest (request_id, faculty_id, requirement_id, clearance_timeline_id, status, submission_notes, submission_link, submitted_date, approved_by_id, approved_date, remarks)
 SELECT * FROM (
