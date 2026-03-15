@@ -30,7 +30,15 @@ ON DUPLICATE KEY UPDATE
 -- Seed Roles
 INSERT INTO FC_role (name, description, is_system_role, created_at)
 SELECT * FROM (
-    SELECT 'CISO Admin' AS name, 'CISO System Administrator' AS description, 1 AS is_system_role, NOW() AS created_at
+    SELECT 'CISO' AS name, 'CISO System Administrator' AS description, 1 AS is_system_role, NOW() AS created_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_role r WHERE r.name = v.name
+);
+
+INSERT INTO FC_role (name, description, is_system_role, created_at)
+SELECT * FROM (
+    SELECT 'OVPHE' AS name, 'OVPHE System Administrator' AS description, 1 AS is_system_role, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_role r WHERE r.name = v.name
@@ -70,7 +78,7 @@ SELECT
     1 AS is_active
 FROM FC_user u
 CROSS JOIN FC_role r
-WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'CISO Admin'
+WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'CISO'
 ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
 
@@ -83,7 +91,7 @@ SELECT
     1 AS is_active
 FROM FC_user u
 CROSS JOIN FC_role r
-WHERE u.email = '20190016375@my.xu.edu.ph' AND r.name = 'OVPHE Admin'
+WHERE u.email = '20190016375@my.xu.edu.ph' AND r.name = 'OVPHE'
 ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
 
@@ -237,10 +245,101 @@ SET @faculty_user_id = (SELECT id FROM FC_user WHERE email = 'faculty.seed@xu.ed
 SET @ciso_user_id = (SELECT id FROM FC_user WHERE email = '20220025546@my.xu.edu.ph' LIMIT 1);
 SET @ovphe_user_id = (SELECT id FROM FC_user WHERE email = '20190016375@my.xu.edu.ph' LIMIT 1);
 
--- Seed ApproverFlowConfig
-INSERT INTO FC_approverflowconfig (created_by_id, created_at, updated_at)
+
+
+-- Seed Approver
+INSERT INTO FC_approver (user_id, approver_type, college_id, department_id)
+VALUES 
+(@approver_user_id, 'College', @ccs_id, @cs_id)
+ON DUPLICATE KEY UPDATE
+    approver_type = VALUES(approver_type),
+    college_id = VALUES(college_id),
+    department_id = VALUES(department_id);
+
+-- Seed Approver for main user
+INSERT INTO FC_approver (user_id, approver_type, college_id, department_id)
+VALUES 
+(@ciso_user_id, 'College', @ccs_id, @cs_id)
+ON DUPLICATE KEY UPDATE
+    approver_type = VALUES(approver_type),
+    college_id = VALUES(college_id),
+    department_id = VALUES(department_id);
+
+-- Seed StudentAssistant
+INSERT INTO FC_studentassistant (user_id, college_id, department_id)
+VALUES 
+(@assistant_user_id, @ccs_id, @cs_id)
+ON DUPLICATE KEY UPDATE
+    college_id = VALUES(college_id),
+    department_id = VALUES(department_id);
+
+-- Seed Faculty (needed for real analytics)
+INSERT INTO FC_faculty (user_id, employee_id, first_name, last_name, college_id, department_id)
 SELECT * FROM (
-    SELECT @ovphe_user_id AS created_by_id, NOW() AS created_at, NOW() AS updated_at
+    SELECT @faculty_user_id AS user_id, 'EMP-SEED-1' AS employee_id, 'Faye' AS first_name, 'Faculty' AS last_name, @ccs_id AS college_id, @cs_id AS department_id
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_faculty f WHERE f.user_id = v.user_id
+);
+
+SET @faculty_id = (SELECT id FROM FC_faculty WHERE user_id = @faculty_user_id LIMIT 1);
+
+-- Seed Clearances for real analytics
+INSERT INTO FC_clearance (faculty_id, academic_year, term, status, submitted_date, completed_date)
+SELECT * FROM (
+    SELECT @faculty_id AS faculty_id, YEAR(NOW()) AS academic_year, '1ST' AS term, 'COMPLETED' AS status, NOW() AS submitted_date, NOW() AS completed_date
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_clearance c WHERE c.faculty_id = v.faculty_id AND c.academic_year = v.academic_year AND c.term = v.term AND c.status = v.status
+);
+
+INSERT INTO FC_clearance (faculty_id, academic_year, term, status, submitted_date, completed_date)
+SELECT * FROM (
+    SELECT @faculty_id AS faculty_id, YEAR(NOW()) AS academic_year, '1ST' AS term, 'PENDING' AS status, NOW() AS submitted_date, NULL AS completed_date
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_clearance c WHERE c.faculty_id = v.faculty_id AND c.academic_year = v.academic_year AND c.term = v.term AND c.status = v.status
+);
+
+-- Seed ClearanceTimeline FIRST
+INSERT INTO FC_clearancetimeline (name, academic_year_start, academic_year_end, term, clearance_start_date, clearance_end_date, created_by_id, is_active, created_at, updated_at)
+SELECT * FROM (
+    SELECT CONCAT('S.Y. 2025-2026 First Semester') AS name, 2025 AS academic_year_start, 2026 AS academic_year_end, '1ST' AS term, CURDATE() AS clearance_start_date, CURDATE() AS clearance_end_date, @ovphe_user_id AS created_by_id, 1 AS is_active, NOW() AS created_at, NOW() AS updated_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_clearancetimeline ct WHERE ct.academic_year_start = v.academic_year_start AND ct.academic_year_end = v.academic_year_end AND ct.term = v.term
+);
+
+-- Seed minimal Requirement + ClearanceRequest for the latest clearance row
+SET @latest_timeline_id = (
+    SELECT id FROM FC_clearancetimeline ORDER BY id DESC LIMIT 1
+);
+
+INSERT INTO FC_requirement (id, title, description, required_physical, clearance_timeline_id, last_updated, is_active, recipient_scope, created_by_id)
+SELECT * FROM (
+    SELECT 1 AS id, 'Grades Roster' AS title, 'Submit screenshot via this link: googleforms.com' AS description, 0 AS required_physical, @latest_timeline_id AS clearance_timeline_id, NOW() AS last_updated, 1 AS is_active, 'all' AS recipient_scope, NULL AS created_by_id
+) AS v
+ON DUPLICATE KEY UPDATE
+    title = VALUES(title),
+    description = VALUES(description),
+    required_physical = VALUES(required_physical),
+    clearance_timeline_id = VALUES(clearance_timeline_id),
+    last_updated = VALUES(last_updated),
+    is_active = VALUES(is_active),
+    recipient_scope = VALUES(recipient_scope);
+
+SET @latest_clearance_id = (
+    SELECT id FROM FC_clearance WHERE faculty_id = @faculty_id ORDER BY id DESC LIMIT 1
+);
+
+SET @latest_timeline_id = (
+    SELECT id FROM FC_clearancetimeline ORDER BY id DESC LIMIT 1
+);
+
+-- Seed ApproverFlowConfig
+INSERT INTO FC_approverflowconfig (created_by_id, clearance_timeline_id, created_at, updated_at)
+SELECT * FROM (
+    SELECT @ovphe_user_id AS created_by_id, @latest_timeline_id AS clearance_timeline_id, NOW() AS created_at, NOW() AS updated_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowconfig
@@ -312,98 +411,24 @@ CROSS JOIN FC_college c
 WHERE afs.config_id = @config_id 
 AND c.abbreviation IN ('CCS', 'CAS');
 
--- Seed Approver
-INSERT INTO FC_approver (user_id, approver_type, college_id, department_id)
-VALUES 
-(@approver_user_id, 'College', @ccs_id, @cs_id)
-ON DUPLICATE KEY UPDATE
-    approver_type = VALUES(approver_type),
-    college_id = VALUES(college_id),
-    department_id = VALUES(department_id);
-
--- Seed Approver for main user
-INSERT INTO FC_approver (user_id, approver_type, college_id, department_id)
-VALUES 
-(@ciso_user_id, 'College', @ccs_id, @cs_id)
-ON DUPLICATE KEY UPDATE
-    approver_type = VALUES(approver_type),
-    college_id = VALUES(college_id),
-    department_id = VALUES(department_id);
-
--- Seed StudentAssistant
-INSERT INTO FC_studentassistant (user_id, college_id, department_id)
-VALUES 
-(@assistant_user_id, @ccs_id, @cs_id)
-ON DUPLICATE KEY UPDATE
-    college_id = VALUES(college_id),
-    department_id = VALUES(department_id);
-
--- Seed Faculty (needed for real analytics)
-INSERT INTO FC_faculty (user_id, employee_id, first_name, last_name, college_id, department_id)
-SELECT * FROM (
-    SELECT @faculty_user_id AS user_id, 'EMP-SEED-1' AS employee_id, 'Faye' AS first_name, 'Faculty' AS last_name, @ccs_id AS college_id, @cs_id AS department_id
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_faculty f WHERE f.user_id = v.user_id
-);
-
-SET @faculty_id = (SELECT id FROM FC_faculty WHERE user_id = @faculty_user_id LIMIT 1);
-
--- Seed Clearances for real analytics
-INSERT INTO FC_clearance (faculty_id, academic_year, term, status, submitted_date, completed_date)
-SELECT * FROM (
-    SELECT @faculty_id AS faculty_id, YEAR(NOW()) AS academic_year, '1ST' AS term, 'COMPLETED' AS status, NOW() AS submitted_date, NOW() AS completed_date
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_clearance c WHERE c.faculty_id = v.faculty_id AND c.academic_year = v.academic_year AND c.term = v.term AND c.status = v.status
-);
-
-INSERT INTO FC_clearance (faculty_id, academic_year, term, status, submitted_date, completed_date)
-SELECT * FROM (
-    SELECT @faculty_id AS faculty_id, YEAR(NOW()) AS academic_year, '1ST' AS term, 'PENDING' AS status, NOW() AS submitted_date, NULL AS completed_date
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_clearance c WHERE c.faculty_id = v.faculty_id AND c.academic_year = v.academic_year AND c.term = v.term AND c.status = v.status
-);
-
--- Seed ClearanceTimeline FIRST
-INSERT INTO FC_clearancetimeline (name, academic_year_start, academic_year_end, term, clearance_start_date, clearance_end_date, created_by_id, is_active, created_at, updated_at)
-SELECT * FROM (
-    SELECT CONCAT('S.Y. ', YEAR(NOW()), '-', YEAR(NOW()) + 1, ' First Semester') AS name, YEAR(NOW()) AS academic_year_start, YEAR(NOW()) + 1 AS academic_year_end, '1ST' AS term, CURDATE() AS clearance_start_date, CURDATE() AS clearance_end_date, @ovphe_user_id AS created_by_id, 1 AS is_active, NOW() AS created_at, NOW() AS updated_at
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_clearancetimeline ct WHERE ct.academic_year_start = v.academic_year_start AND ct.academic_year_end = v.academic_year_end AND ct.term = v.term
-);
-
--- Seed minimal Requirement + ClearanceRequest for the latest clearance row
-SET @latest_timeline_id = (
-    SELECT id FROM FC_clearancetimeline ORDER BY id DESC LIMIT 1
-);
-
-INSERT INTO FC_requirement (id, title, description, required_physical, clearance_timeline_id, last_updated, is_active, recipient_scope, created_by_id)
-SELECT * FROM (
-    SELECT 1 AS id, 'Grades Roster' AS title, 'Submit screenshot via this link: googleforms.com' AS description, 0 AS required_physical, @latest_timeline_id AS clearance_timeline_id, NOW() AS last_updated, 1 AS is_active, 'all' AS recipient_scope, NULL AS created_by_id
-) AS v
-ON DUPLICATE KEY UPDATE
-    title = VALUES(title),
-    description = VALUES(description),
-    required_physical = VALUES(required_physical),
-    clearance_timeline_id = VALUES(clearance_timeline_id),
-    last_updated = VALUES(last_updated),
-    is_active = VALUES(is_active),
-    recipient_scope = VALUES(recipient_scope);
-
-SET @latest_clearance_id = (
-    SELECT id FROM FC_clearance WHERE faculty_id = @faculty_id ORDER BY id DESC LIMIT 1
-);
-
-SET @latest_timeline_id = (
-    SELECT id FROM FC_clearancetimeline ORDER BY id DESC LIMIT 1
-);
-
 INSERT INTO FC_clearancerequest (request_id, faculty_id, requirement_id, clearance_timeline_id, status, submission_notes, submission_link, submitted_date, approved_by_id, approved_date, remarks)
 SELECT * FROM (
-    SELECT CONCAT('CR-', YEAR(NOW()), '-', LPAD(@faculty_id, 6, '0')) AS request_id, @faculty_id AS faculty_id, 1 AS requirement_id, @latest_timeline_id AS clearance_timeline_id, 'PENDING' AS status, '' AS submission_notes, '' AS submission_link, NOW() AS submitted_date, NULL AS approved_by_id, NULL AS approved_date, '' AS remarks
+    SELECT 
+        CONCAT(
+            (SELECT RIGHT(academic_year_start, 2) FROM FC_clearancetimeline WHERE id = @latest_timeline_id),
+            CASE 
+                WHEN (SELECT term FROM FC_clearancetimeline WHERE id = @latest_timeline_id) = '1ST' THEN '01'
+                WHEN (SELECT term FROM FC_clearancetimeline WHERE id = @latest_timeline_id) = '2ND' THEN '02'
+                ELSE '03'
+            END,
+            '-',
+            (SELECT university_id FROM FC_user WHERE id = (SELECT user_id FROM FC_faculty WHERE id = @faculty_id)),
+            '-',
+            (SELECT abbreviation FROM FC_department WHERE id = (SELECT department_id FROM FC_faculty WHERE id = @faculty_id)),
+            '-',
+            '001'
+        ) AS request_id, 
+        @faculty_id AS faculty_id, 1 AS requirement_id, @latest_timeline_id AS clearance_timeline_id, 'PENDING' AS status, '' AS submission_notes, '' AS submission_link, NOW() AS submitted_date, NULL AS approved_by_id, NULL AS approved_date, '' AS remarks
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_clearancerequest cr WHERE cr.request_id = v.request_id
@@ -726,7 +751,7 @@ WHERE NOT EXISTS (
 
 INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'user_login' AS event_type, @ovphe_user_id AS user_id, '["Role: OVPHE Admin", "Department/Office: OVPHE"]' AS details, NOW() AS created_at
+    SELECT 'user_login' AS event_type, @ovphe_user_id AS user_id, '["Role: OVPHE", "Department/Office: OVPHE"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
@@ -734,7 +759,7 @@ WHERE NOT EXISTS (
 
 INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'user_logout' AS event_type, @ovphe_user_id AS user_id, '["Role: OVPHE Admin", "Department/Office: OVPHE"]' AS details, NOW() AS created_at
+    SELECT 'user_logout' AS event_type, @ovphe_user_id AS user_id, '["Role: OVPHE", "Department/Office: OVPHE"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id

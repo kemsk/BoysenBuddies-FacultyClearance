@@ -235,10 +235,10 @@ def _dashboard_route_for_user(user: "User") -> str:
     user_roles = user.get_active_roles().values_list('role__name', flat=True)
     
     # Priority routing for admin roles
-    if 'CISO Admin' in user_roles:
+    if 'CISO' in user_roles:
         return "/CISO-dashboard"
     
-    if 'OVPHE Admin' in user_roles:
+    if 'OVPHE' in user_roles:
         return "/OVPHE-dashboard"
     
     # All approver roles (College Admin, Department Chair, Office Admin) go to approver dashboard
@@ -527,7 +527,7 @@ def ciso_profile_api(request):
     if not user or not getattr(user, "is_authenticated", False):
         return JsonResponse({"detail": "Authentication required"}, status=401)
 
-    # Check if user has CISO Admin role
+    # Check if user has CISO role
     if not user.is_ciso_admin():
         return JsonResponse({"detail": "Forbidden"}, status=403)
 
@@ -551,7 +551,7 @@ def ovphe_profile_api(request):
     if not user or not getattr(user, "is_authenticated", False):
         return JsonResponse({"detail": "Authentication required"}, status=401)
 
-    # Check if user has OVPHE Admin role
+    # Check if user has OVPHE role
     if not user.is_ovphe_admin():
         return JsonResponse({"detail": "Forbidden"}, status=403)
 
@@ -562,7 +562,7 @@ def ovphe_profile_api(request):
             "first_name": user.first_name,
             "middle_name": user.middle_name,
             "last_name": user.last_name,
-            "role": "OVPHE Admin",
+            "role": "OVPHE",
         }
     )
 
@@ -644,7 +644,7 @@ def _is_office_referenced(office: Office):
 def _get_active_ciso_admin():
     # Get the first active CISO admin
     from .models import UserRole, Role
-    ciso_role = Role.objects.get(name='CISO Admin')
+    ciso_role = Role.objects.get(name='CISO')
     user_role = UserRole.objects.filter(role=ciso_role, is_active=True).first()
     return user_role.user if user_role else None
 
@@ -654,7 +654,7 @@ def _require_ciso_admin_user(request):
     if not user or not getattr(user, "is_authenticated", False):
         return None, JsonResponse({"detail": "Authentication required"}, status=401)
 
-    # Check if user has CISO Admin role
+    # Check if user has CISO role
     if not user.is_ciso_admin():
         return None, JsonResponse({"detail": "Forbidden"}, status=403)
 
@@ -1134,7 +1134,7 @@ def ciso_system_user_detail_api(request, user_id: int):
 
         if user_roles:
             # Get the highest priority role for display
-            role_priority = ['CISO Admin', 'OVPHE Admin', 'College Admin', 'Department Chair', 'Office Admin', 'Student Assistant', 'Faculty']
+            role_priority = ['CISO', 'OVPHE', 'College Admin', 'Department Chair', 'Office Admin', 'Student Assistant', 'Faculty']
             
             for priority_role in role_priority:
                 user_role = user_roles.filter(role__name=priority_role).first()
@@ -1238,11 +1238,11 @@ def ciso_system_user_detail_api(request, user_id: int):
 
             # Get or create the appropriate role
             from .models import Role
-            role_name = "CISO Admin" if office_norm == "CISO" else "OVPHE Admin"
+            role_name = "CISO" if office_norm == "CISO" else "OVPHE"
             role = Role.objects.get(name=role_name)
             
             # Remove existing admin roles for this user
-            user.userrole_set.filter(role__name__in=['CISO Admin', 'OVPHE Admin']).delete()
+            user.userrole_set.filter(role__name__in=['CISO', 'OVPHE']).delete()
             
             # Create new role assignment
             from .models import UserRole
@@ -2107,9 +2107,28 @@ def ovphe_approver_flow_api(request):
     if err:
         return err
 
-    config = ApproverFlowConfig.objects.order_by("-updated_at", "pk").first()
+    # Get timeline_id from query parameter
+    timeline_id = request.GET.get('timeline_id')
+    
+    # Try to get timeline-specific config first, then fallback to global config
+    config = None
+    if timeline_id:
+        try:
+            timeline = ClearanceTimeline.objects.get(id=timeline_id)
+            config = ApproverFlowConfig.objects.filter(clearance_timeline=timeline).order_by("-updated_at", "pk").first()
+        except ClearanceTimeline.DoesNotExist:
+            return JsonResponse({"detail": "Timeline not found"}, status=404)
+    
+    # Fallback to global config (null clearance_timeline)
     if not config:
-        config = ApproverFlowConfig.objects.create(created_by=admin)
+        config = ApproverFlowConfig.objects.filter(clearance_timeline__isnull=True).order_by("-updated_at", "pk").first()
+    
+    if not config:
+        # Create new config - if timeline_id provided, create timeline-specific, otherwise global
+        config = ApproverFlowConfig.objects.create(
+            created_by=admin,
+            clearance_timeline=ClearanceTimeline.objects.get(id=timeline_id) if timeline_id else None
+        )
 
     steps = (
         config.steps.select_related("office")
@@ -2120,6 +2139,8 @@ def ovphe_approver_flow_api(request):
     return JsonResponse(
         {
             "id": str(config.id),
+            "timelineId": str(config.clearance_timeline.id) if config.clearance_timeline else None,
+            "isGlobal": config.clearance_timeline is None,
             "steps": [
                 {
                     "id": str(s.id),
@@ -2149,11 +2170,23 @@ def _resolve_office_for_flow_step(*, category: str, office_id):
     )
 
 
-def _relink_flow_steps_for_office(*, office: Office):
+def _relink_flow_steps_for_office(*, office: Office, timeline_id=None):
     if not office or not office.is_active:
         return
 
-    config = ApproverFlowConfig.objects.order_by("-updated_at", "-id").first()
+    # Try timeline-specific config first if timeline_id is provided
+    config = None
+    if timeline_id:
+        try:
+            timeline = ClearanceTimeline.objects.get(id=timeline_id)
+            config = ApproverFlowConfig.objects.filter(clearance_timeline=timeline).order_by("-updated_at", "-id").first()
+        except ClearanceTimeline.DoesNotExist:
+            pass
+    
+    # Fallback to global config
+    if not config:
+        config = ApproverFlowConfig.objects.filter(clearance_timeline__isnull=True).order_by("-updated_at", "-id").first()
+    
     if not config:
         return
 
@@ -2670,9 +2703,28 @@ def ovphe_approver_flow_steps_api(request):
     if err:
         return err
 
-    config = ApproverFlowConfig.objects.order_by("-updated_at", "-id").first()
+    # Get timeline_id from query parameter
+    timeline_id = request.GET.get('timeline_id')
+    
+    # Try to get timeline-specific config first, then fallback to global config
+    config = None
+    if timeline_id:
+        try:
+            timeline = ClearanceTimeline.objects.get(id=timeline_id)
+            config = ApproverFlowConfig.objects.filter(clearance_timeline=timeline).order_by("-updated_at", "pk").first()
+        except ClearanceTimeline.DoesNotExist:
+            return JsonResponse({"detail": "Timeline not found"}, status=404)
+    
+    # Fallback to global config (null clearance_timeline)
     if not config:
-        config = ApproverFlowConfig.objects.create(created_by=admin)
+        config = ApproverFlowConfig.objects.filter(clearance_timeline__isnull=True).order_by("-updated_at", "pk").first()
+    
+    if not config:
+        # Create new config - if timeline_id provided, create timeline-specific, otherwise global
+        config = ApproverFlowConfig.objects.create(
+            created_by=admin,
+            clearance_timeline=ClearanceTimeline.objects.get(id=timeline_id) if timeline_id else None
+        )
 
     if request.method == "POST":
         data, jerr = _parse_json_body(request)
@@ -3222,9 +3274,9 @@ def ciso_system_users_api(request):
 
     items = []
 
-    # Get users with admin roles (CISO Admin, OVPHE Admin)
+    # Get users with admin roles (CISO, OVPHE)
     from .models import UserRole, Role
-    admin_roles = ['CISO Admin', 'OVPHE Admin']
+    admin_roles = ['CISO', 'OVPHE']
     admin_user_roles = UserRole.objects.filter(
         role__name__in=admin_roles, 
         is_active=True
@@ -4053,172 +4105,22 @@ def approver_assistant_approver_detail_api(request, user_id):
     return JsonResponse({"ok": True})
 
 
-# ================== NEW FRONTEND V2 API ENDPOINTS ==================
-
-# Faculty additional endpoints
-def faculty_archived_clearance_api(request):
-    if request.method != "GET":
-        return JsonResponse({"detail": "Method not allowed"}, status=405)
+def get_approver_flow_config(timeline_id=None):
+    """
+    Get approver flow configuration for a specific timeline.
+    Falls back to global config if no timeline-specific config exists.
+    """
+    config = None
     
-    user = getattr(request, "user", None)
-    if not user or not getattr(user, "is_authenticated", False):
-        return JsonResponse({"detail": "Authentication required"}, status=401)
+    if timeline_id:
+        try:
+            timeline = ClearanceTimeline.objects.get(id=timeline_id)
+            config = ApproverFlowConfig.objects.filter(clearance_timeline=timeline).order_by("-updated_at", "pk").first()
+        except ClearanceTimeline.DoesNotExist:
+            pass
     
-    faculty = getattr(user, "faculty_profile", None)
-    if not faculty:
-        return JsonResponse({"detail": "Faculty profile not found"}, status=404)
+    # Fallback to global config (null clearance_timeline)
+    if not config:
+        config = ApproverFlowConfig.objects.filter(clearance_timeline__isnull=True).order_by("-updated_at", "pk").first()
     
-    # Get archived clearances for this faculty
-    archived_clearances = ArchivedClearance.objects.filter(faculty=faculty).order_by("-archived_date")
-    
-    items = []
-    for archived in archived_clearances:
-        items.append({
-            "id": archived.id,
-            "academicYear": archived.academic_year,
-            "semester": archived.semester,
-            "status": archived.status,
-            "clearancePeriodStart": archived.clearance_period_start.strftime("%Y-%m-%d"),
-            "clearancePeriodEnd": archived.clearance_period_end.strftime("%Y-%m-%d"),
-            "archivedDate": archived.archived_date.strftime("%Y-%m-%d"),
-        })
-    
-    return JsonResponse({"items": items})
-
-def approver_dashboard_api(request):
-    if request.method != "GET":
-        return JsonResponse({"detail": "Method not allowed"}, status=405)
-    
-    user = getattr(request, "user", None)
-    if not user or not getattr(user, "is_authenticated", False):
-        return JsonResponse({"detail": "Authentication required"}, status=401)
-    
-    # Check if user is an approver
-    if not user.is_approver():
-        return JsonResponse({"detail": "Access denied"}, status=403)
-    
-    # Get active timeline
-    timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year", "-id").first()
-    
-    # Get pending clearance requests for this approver
-    pending_requests = []
-    if timeline:
-        # Get requirements that this approver needs to approve
-        requirements = Requirement.objects.filter(
-            clearance_timeline=timeline,
-            is_active=True
-        )
-        
-        # Get approver profile
-        approver = getattr(user, "approver_profile", None)
-        if approver:
-            # Filter based on approver's scope
-            if approver.college:
-                requirements = requirements.filter(target_colleges=approver.college)
-            elif approver.department:
-                requirements = requirements.filter(target_departments=approver.department)
-            elif approver.office:
-                requirements = requirements.filter(target_offices=approver.office)
-        
-        clearance_requests = ClearanceRequest.objects.filter(
-            requirement__in=requirements,
-            status=ClearanceRequest.Status.PENDING
-        ).select_related('faculty__user', 'requirement')
-        
-        for req in clearance_requests:
-            pending_requests.append({
-                "id": req.id,
-                "requestId": req.request_id,
-                "facultyName": req.faculty.user.get_full_name() or req.faculty.user.email,
-                "facultyEmail": req.faculty.user.email,
-                "title": req.requirement.title,
-                "submittedDate": req.submitted_date.strftime("%Y-%m-%d") if req.submitted_date else None,
-            })
-    
-    return JsonResponse({
-        "pendingRequests": pending_requests,
-        "pendingCount": len(pending_requests),
-        "timeline": {
-            "academicYear": timeline.academic_year if timeline else None,
-            "term": timeline.term if timeline else None,
-        }
-    })
-
-# Placeholder implementations for remaining endpoints
-def faculty_view_clearance_api(request):
-    return JsonResponse({"clearance": {}, "requests": []})
-
-def approver_requirement_list_api(request):
-    return JsonResponse({"items": []})
-
-def approver_clearance_api(request):
-    return JsonResponse({"items": []})
-
-def approver_action_api(request):
-    return JsonResponse({"success": True, "message": "Action completed"})
-
-def approver_assistant_list_api(request):
-    return JsonResponse({"items": []})
-
-def approver_activity_logs_api(request):
-    return JsonResponse({"items": []})
-
-def approver_notifications_api(request):
-    return JsonResponse({"items": []})
-
-def approver_archived_clearance_api(request):
-    return JsonResponse({"items": []})
-
-def approver_view_clearance_api(request):
-    return JsonResponse({"items": []})
-
-def approver_individual_approval_api(request):
-    return JsonResponse({"items": []})
-
-def assistant_approver_dashboard_api(request):
-    return JsonResponse({"pendingRequests": [], "pendingCount": 0})
-
-def assistant_approver_requirement_list_api(request):
-    return JsonResponse({"items": []})
-
-def assistant_approver_clearance_api(request):
-    return JsonResponse({"items": []})
-
-def assistant_approver_notifications_api(request):
-    return JsonResponse({"items": []})
-
-def assistant_approver_archived_clearance_api(request):
-    return JsonResponse({"items": []})
-
-def assistant_approver_individual_approval_api(request):
-    return JsonResponse({"items": []})
-
-def assistant_approver_view_clearance_api(request):
-    return JsonResponse({"items": []})
-
-def ovphe_tools_api(request):
-    return JsonResponse({"tools": []})
-
-def ovphe_archived_clearance_api(request):
-    return JsonResponse({"items": []})
-
-def ovphe_view_clearance_api(request):
-    return JsonResponse({"items": []})
-
-def ciso_tools_api(request):
-    return JsonResponse({"tools": []})
-
-def ciso_college_office_configuration_api(request):
-    return JsonResponse({"configuration": []})
-
-def ciso_clearance_timeline_api(request):
-    return JsonResponse({"timelines": []})
-
-def ciso_archived_clearance_api(request):
-    return JsonResponse({"items": []})
-
-def ciso_view_clearance_api(request):
-    return JsonResponse({"items": []})
-
-def ciso_archived_faculty_api(request):
-    return JsonResponse({"items": []})
+    return config

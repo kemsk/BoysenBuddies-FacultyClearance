@@ -84,14 +84,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     def is_ciso_admin(self):
         """Check if user is CISO admin"""
         return self.userrole_set.filter(
-            role__name='CISO Admin',
+            role__name='CISO',
             is_active=True
         ).exists()
     
     def is_ovphe_admin(self):
         """Check if user is OVPHE admin"""
         return self.userrole_set.filter(
-            role__name='OVPHE Admin',
+            role__name='OVPHE',
             is_active=True
         ).exists()
 
@@ -243,7 +243,7 @@ class Requirement(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField(null=True, blank=True)
     required_physical = models.BooleanField(default=False)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     clearance_timeline = models.ForeignKey(ClearanceTimeline, on_delete=models.CASCADE)
     last_updated = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
@@ -319,6 +319,13 @@ class Announcement(models.Model):
 
 
 class ApproverFlowConfig(models.Model):
+    clearance_timeline = models.ForeignKey(
+        ClearanceTimeline,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="approver_flow_configs",
+    )
     created_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
