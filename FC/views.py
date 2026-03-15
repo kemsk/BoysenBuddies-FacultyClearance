@@ -205,15 +205,24 @@ def verify_otp_api(request):
 
     django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     dashboard_url = _dashboard_route_for_user(user)
+    
+    # Import role helper functions
+    from .decorators import get_role_value_for_user, get_role_name_for_value
+    role_value = get_role_value_for_user(user)
+    role_name = get_role_name_for_value(role_value)
 
     return JsonResponse(
         {
             "success": True,
             "message": "OTP verified",
             "user_info": {
+                "id": user.id,
                 "email": user.email,
                 "first_name": user.first_name or "",
                 "last_name": user.last_name or "",
+                "university_id": user.university_id or "",
+                "role_value": role_value,
+                "role_name": role_name,
                 "roles": list(user.get_active_roles().values_list('role__name', flat=True)),
                 "dashboard_url": dashboard_url,
             },
@@ -488,6 +497,11 @@ def me_api(request):
     if not user or not getattr(user, "is_authenticated", False):
         return JsonResponse({"detail": "Authentication required"}, status=401)
 
+    # Import role helper functions
+    from .decorators import get_role_value_for_user, get_role_name_for_value
+    role_value = get_role_value_for_user(user)
+    role_name = get_role_name_for_value(role_value)
+
     return JsonResponse(
         {
             "email": user.email,
@@ -495,6 +509,8 @@ def me_api(request):
             "first_name": getattr(user, "first_name", None),
             "middle_name": getattr(user, "middle_name", None),
             "last_name": getattr(user, "last_name", None),
+            "role_value": role_value,
+            "role_name": role_name,
             "roles": list(user.get_active_roles().values_list('role__name', flat=True)),
         }
     )
@@ -3666,6 +3682,76 @@ def faculty_dashboard_api(request):
             clearance=clearance, status=ClearanceRequest.Status.APPROVED
         ).count()
 
+    # Generate steps data for frontend
+    steps = []
+    if clearance:
+        # Get clearance requests grouped by approver category/office
+        clearance_requests = ClearanceRequest.objects.filter(clearance=clearance).select_related('requirement')
+        
+        # Define step order based on approver flow
+        step_order = [
+            {"title": "Library", "category": "Library"},
+            {"title": "Department Chair", "category": "Department"},
+            {"title": "College Dean", "category": "College"},
+            {"title": "OVPHE", "category": "OVPHE"},
+            {"title": "CISO", "category": "CISO"},
+            {"title": "HRO", "category": "HRO"}
+        ]
+        
+        for i, step_info in enumerate(step_order, 1):
+            # Find requests for this step
+            step_requests = clearance_requests.filter(requirement__title__icontains=step_info["category"])
+            
+            if step_requests.exists():
+                # Determine step status based on requests
+                approved_count = step_requests.filter(status=ClearanceRequest.Status.APPROVED).count()
+                total_count = step_requests.count()
+                
+                if approved_count == total_count and total_count > 0:
+                    status_label = "APPROVED"
+                    status_variant = "success"
+                    collapsed_type = "status"
+                elif approved_count > 0:
+                    status_label = "IN_PROGRESS"
+                    status_variant = "warning"
+                    collapsed_type = "status"
+                else:
+                    status_label = "PENDING"
+                    status_variant = "warning"
+                    collapsed_type = "status"
+                
+                # Get requirements for this step
+                requirements = []
+                for req in step_requests:
+                    requirements.append({
+                        "title": req.requirement.title,
+                        "description": req.requirement.description or "",
+                        "completed": req.status == ClearanceRequest.Status.APPROVED
+                    })
+                
+                steps.append({
+                    "index": i,
+                    "title": step_info["title"],
+                    "statusLabel": status_label,
+                    "statusVariant": status_variant,
+                    "collapsedType": collapsed_type,
+                    "submittedTo": f"{step_info['category']} Office",
+                    "submittedOn": clearance.submitted_date.strftime("%B %d, %Y") if clearance.submitted_date else "",
+                    "requirements": requirements
+                })
+            else:
+                # Step not applicable or locked
+                steps.append({
+                    "index": i,
+                    "title": step_info["title"],
+                    "statusLabel": "LOCKED",
+                    "statusVariant": "muted",
+                    "collapsedType": "locked",
+                    "submittedTo": f"{step_info['category']} Office",
+                    "submittedOn": "",
+                    "requirements": []
+                })
+
     return JsonResponse(
         {
             "faculty": {
@@ -3687,6 +3773,7 @@ def faculty_dashboard_api(request):
                 "approvedCount": approved_reqs,
                 "totalCount": total_reqs,
             },
+            "steps": steps,
         }
     )
 
@@ -3964,3 +4051,174 @@ def approver_assistant_approver_detail_api(request, user_id):
         assistant_profile.save(update_fields=["college", "department"])
 
     return JsonResponse({"ok": True})
+
+
+# ================== NEW FRONTEND V2 API ENDPOINTS ==================
+
+# Faculty additional endpoints
+def faculty_archived_clearance_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+    
+    user = getattr(request, "user", None)
+    if not user or not getattr(user, "is_authenticated", False):
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+    
+    faculty = getattr(user, "faculty_profile", None)
+    if not faculty:
+        return JsonResponse({"detail": "Faculty profile not found"}, status=404)
+    
+    # Get archived clearances for this faculty
+    archived_clearances = ArchivedClearance.objects.filter(faculty=faculty).order_by("-archived_date")
+    
+    items = []
+    for archived in archived_clearances:
+        items.append({
+            "id": archived.id,
+            "academicYear": archived.academic_year,
+            "semester": archived.semester,
+            "status": archived.status,
+            "clearancePeriodStart": archived.clearance_period_start.strftime("%Y-%m-%d"),
+            "clearancePeriodEnd": archived.clearance_period_end.strftime("%Y-%m-%d"),
+            "archivedDate": archived.archived_date.strftime("%Y-%m-%d"),
+        })
+    
+    return JsonResponse({"items": items})
+
+def approver_dashboard_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+    
+    user = getattr(request, "user", None)
+    if not user or not getattr(user, "is_authenticated", False):
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+    
+    # Check if user is an approver
+    if not user.is_approver():
+        return JsonResponse({"detail": "Access denied"}, status=403)
+    
+    # Get active timeline
+    timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year", "-id").first()
+    
+    # Get pending clearance requests for this approver
+    pending_requests = []
+    if timeline:
+        # Get requirements that this approver needs to approve
+        requirements = Requirement.objects.filter(
+            clearance_timeline=timeline,
+            is_active=True
+        )
+        
+        # Get approver profile
+        approver = getattr(user, "approver_profile", None)
+        if approver:
+            # Filter based on approver's scope
+            if approver.college:
+                requirements = requirements.filter(target_colleges=approver.college)
+            elif approver.department:
+                requirements = requirements.filter(target_departments=approver.department)
+            elif approver.office:
+                requirements = requirements.filter(target_offices=approver.office)
+        
+        clearance_requests = ClearanceRequest.objects.filter(
+            requirement__in=requirements,
+            status=ClearanceRequest.Status.PENDING
+        ).select_related('faculty__user', 'requirement')
+        
+        for req in clearance_requests:
+            pending_requests.append({
+                "id": req.id,
+                "requestId": req.request_id,
+                "facultyName": req.faculty.user.get_full_name() or req.faculty.user.email,
+                "facultyEmail": req.faculty.user.email,
+                "title": req.requirement.title,
+                "submittedDate": req.submitted_date.strftime("%Y-%m-%d") if req.submitted_date else None,
+            })
+    
+    return JsonResponse({
+        "pendingRequests": pending_requests,
+        "pendingCount": len(pending_requests),
+        "timeline": {
+            "academicYear": timeline.academic_year if timeline else None,
+            "term": timeline.term if timeline else None,
+        }
+    })
+
+# Placeholder implementations for remaining endpoints
+def faculty_view_clearance_api(request):
+    return JsonResponse({"clearance": {}, "requests": []})
+
+def approver_requirement_list_api(request):
+    return JsonResponse({"items": []})
+
+def approver_clearance_api(request):
+    return JsonResponse({"items": []})
+
+def approver_action_api(request):
+    return JsonResponse({"success": True, "message": "Action completed"})
+
+def approver_assistant_list_api(request):
+    return JsonResponse({"items": []})
+
+def approver_activity_logs_api(request):
+    return JsonResponse({"items": []})
+
+def approver_notifications_api(request):
+    return JsonResponse({"items": []})
+
+def approver_archived_clearance_api(request):
+    return JsonResponse({"items": []})
+
+def approver_view_clearance_api(request):
+    return JsonResponse({"items": []})
+
+def approver_individual_approval_api(request):
+    return JsonResponse({"items": []})
+
+def assistant_approver_dashboard_api(request):
+    return JsonResponse({"pendingRequests": [], "pendingCount": 0})
+
+def assistant_approver_requirement_list_api(request):
+    return JsonResponse({"items": []})
+
+def assistant_approver_clearance_api(request):
+    return JsonResponse({"items": []})
+
+def assistant_approver_notifications_api(request):
+    return JsonResponse({"items": []})
+
+def assistant_approver_archived_clearance_api(request):
+    return JsonResponse({"items": []})
+
+def assistant_approver_individual_approval_api(request):
+    return JsonResponse({"items": []})
+
+def assistant_approver_view_clearance_api(request):
+    return JsonResponse({"items": []})
+
+def ovphe_tools_api(request):
+    return JsonResponse({"tools": []})
+
+def ovphe_archived_clearance_api(request):
+    return JsonResponse({"items": []})
+
+def ovphe_view_clearance_api(request):
+    return JsonResponse({"items": []})
+
+def ciso_tools_api(request):
+    return JsonResponse({"tools": []})
+
+def ciso_college_office_configuration_api(request):
+    return JsonResponse({"configuration": []})
+
+def ciso_clearance_timeline_api(request):
+    return JsonResponse({"timelines": []})
+
+def ciso_archived_clearance_api(request):
+    return JsonResponse({"items": []})
+
+def ciso_view_clearance_api(request):
+    return JsonResponse({"items": []})
+
+def ciso_archived_faculty_api(request):
+    return JsonResponse({"items": []})

@@ -20,6 +20,36 @@ ROLE_DASHBOARD_PATHS = {
     5: '/faculty-dashboard',
 }
 
+# Helper functions for role management
+def get_role_value_for_user(user):
+    """Get the primary role value for a user based on their active roles"""
+    user_roles = user.get_active_roles().values_list('role__name', flat=True)
+    
+    # Priority mapping for users with multiple roles
+    role_priority = [
+        ('CISO Admin', 1),
+        ('OVPHE Admin', 2),
+        ('College Admin', 3),
+        ('Department Chair', 3),
+        ('Office Admin', 3),
+        ('Student Assistant', 4),
+        ('Faculty', 5)
+    ]
+    
+    for role_name, role_value in role_priority:
+        if role_name in user_roles:
+            return role_value
+    
+    return 5  # Default to Faculty
+
+def get_role_name_for_value(role_value):
+    """Get role display name for role value"""
+    return ROLE_MAPPING.get(role_value, 'FACULTY')
+
+def get_user_role_names(user):
+    """Get all role names for a user"""
+    return list(user.get_active_roles().values_list('role__name', flat=True))
+
 # View folder access mapping
 ROLE_VIEW_ACCESS = {
     1: ['ciso'],  # CISO can access ciso folder
