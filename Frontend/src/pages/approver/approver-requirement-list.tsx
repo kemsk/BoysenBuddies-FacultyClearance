@@ -109,6 +109,7 @@ export default function RequirementList() {
         ) : showSuccess ? (
           <div className="flex justify-center">
             <SuccessMessageCard
+              className="max-w"
               message="Agreement confirmed."
               onContinue={() => {
                 setShowSuccess(false);
@@ -120,9 +121,7 @@ export default function RequirementList() {
           <AgreementCard onConfirm={() => setShowSuccess(true)} />
         )}
        </div>
-
       </main>
-
     </div>
   );
 }
