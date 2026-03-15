@@ -15,6 +15,7 @@
   --text-black: 0 0% 0%;
   --text-gray: 240 3% 65%;
   --gray-border: 0 0% 73%;
+  --olive:oklch(20.8% 0.042 265.755);
 
   --card: 0 0% 100%;
   --card-foreground: 222.2 84% 4.9%;

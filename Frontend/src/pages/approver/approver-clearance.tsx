@@ -29,7 +29,61 @@ export default function ApproverClearance() {
     fetch("/admin/xu-faculty-clearance/api/clearance-requests")
       .then((res) => res.json())
       .then((data) => setRequests(Array.isArray(data?.items) ? data.items : []))
-      .catch(() => setRequests([]));
+      .catch(() => {
+        // Set dummy data when API fails
+        setRequests([
+          {
+            id: "1",
+            requestId: "REQ-2025-001",
+            employeeId: "2005123456789",
+            name: "Alexander H. Hamilton",
+            college: "College of Computer Studies",
+            department: "Information Technology",
+            facultyType: "Full-time Faculty (On Probation)",
+            status: "pending"
+          },
+          {
+            id: "2", 
+            requestId: "REQ-2025-002",
+            employeeId: "2005987654321",
+            name: "Maria C. Santos",
+            college: "College of Engineering",
+            department: "Civil Engineering",
+            facultyType: "Full-time Faculty",
+            status: "approved"
+          },
+          {
+            id: "3",
+            requestId: "REQ-2025-003", 
+            employeeId: "2005456789012",
+            name: "Juan D. Reyes",
+            college: "College of Business Administration",
+            department: "Accountancy",
+            facultyType: "Part-time Faculty",
+            status: "rejected"
+          },
+          {
+            id: "4",
+            requestId: "REQ-2025-004",
+            employeeId: "2005234567890", 
+            name: "Patricia L. Garcia",
+            college: "College of Education",
+            department: "Elementary Education",
+            facultyType: "Full-time Faculty (Tenured)",
+            status: "pending"
+          },
+          {
+            id: "5",
+            requestId: "REQ-2025-005",
+            employeeId: "2005789012345",
+            name: "Roberto K. Tan",
+            college: "College of Computer Studies", 
+            department: "Computer Science",
+            facultyType: "Full-time Faculty (On Probation)",
+            status: "approved"
+          }
+        ]);
+      });
   }, []);
 
   const filteredRequests = React.useMemo(() => {
@@ -97,8 +151,13 @@ export default function ApproverClearance() {
           </div>
         </div>
 
+        
+
         <div className="mt-6">
-          <ClearanceRequestsCard items={filteredRequests} />
+          <ClearanceRequestsCard
+            items={filteredRequests}
+            getItemHref={() => "/approver-individual"}
+          />
         </div>
 
         

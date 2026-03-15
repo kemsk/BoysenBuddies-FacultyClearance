@@ -3,6 +3,9 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 
 import { cn } from "@/components/lib/utils"
+import { Button } from "./button"
+import { Textarea } from "./textarea"
+import { InputGroupWithAddon } from "./input-group"
 
 const Dialog = DialogPrimitive.Root
 
@@ -106,6 +109,92 @@ const DialogDescription = React.forwardRef<
 ))
 DialogDescription.displayName = DialogPrimitive.Description.displayName
 
+export type CommentDialogProps = {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  trigger?: React.ReactNode;
+  title?: string;
+  placeholder?: string;
+  submitLabel?: string;
+  initialValue?: string;
+  onSubmit?: (comment: string) => void;
+};
+
+export function CommentDialog({
+  open,
+  onOpenChange,
+  trigger,
+  title = "Borrowed Books Report",
+  submitLabel = "Submit",
+  initialValue = "",
+  onSubmit,
+}: CommentDialogProps) {
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  const isControlled = typeof open === "boolean";
+  const effectiveOpen = isControlled ? open : internalOpen;
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setInternalOpen(next);
+    onOpenChange?.(next);
+  };
+
+  const [comment, setComment] = React.useState("");
+
+  React.useEffect(() => {
+    if (!effectiveOpen) return;
+    setComment(initialValue);
+  }, [effectiveOpen, initialValue]);
+
+  const submit = () => {
+    const trimmed = comment.trim();
+    onSubmit?.(trimmed);
+    setOpen(false);
+  };
+
+  return (
+    <Dialog open={effectiveOpen} onOpenChange={setOpen}>
+      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
+      <DialogContent className="w-[420px] max-w-[calc(100vw-3rem)] rounded-xl p-0">
+        <div className="rounded-xl bg-background">
+          <div className="px-6 pb-4 pt-6">
+            <div className="text-center text-xl font-bold text-foreground mt-4">Borrowed Books Report</div>
+
+            <div className="text-center mt-4">Input your Submission Message for this Requirement</div>
+            <div className="mt-4">
+              <div className="text-sm font-bold text-foreground mb-2">Comment</div>
+              <InputGroupWithAddon value={comment} onValueChange={setComment} />
+            </div>
+
+            <div className="text-foreground mt-3 text-sm">
+              Note: You can no longer edit the Submission Message for this requirement once you <span className="font-bold"> “Save”</span>.
+            </div>
+          </div>
+
+          <div className="border-t border-[hsl(var(--gray-border))] px-6 py-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                type="button"
+                variant="cancel"
+                className="h-11 w-full"
+                onClick={() => setOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                className="h-11 w-full rounded-md"
+                onClick={submit}
+                disabled={comment.trim().length === 0}
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export {
   Dialog,
   DialogPortal,
@@ -118,3 +207,4 @@ export {
   DialogTitle,
   DialogDescription,
 }
+

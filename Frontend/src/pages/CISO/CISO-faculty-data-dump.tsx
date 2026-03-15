@@ -50,8 +50,10 @@ export default function CISOFacultyDataDump() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/CISO-tools")}> 
-            <img src="BlackArrowIcon.png" alt="back" />Back
+          <Button variant="back" size="back" onClick={() => navigate("/CISO-tools")}> 
+              <div className="flex items-center gap-2">
+                <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
+              </div>
           </Button>
         </div>
        

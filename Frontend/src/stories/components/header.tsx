@@ -1,6 +1,5 @@
 import * as React from "react"
 import { Link, useNavigate } from "react-router-dom";
-import { Button } from "./button"
 import {
   Sheet,
   SheetTrigger,
@@ -10,7 +9,6 @@ import {
   SheetDescription,
   SheetClose,
 } from "./sheet"
-import { Input } from './input'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -95,6 +93,7 @@ export function Header() {
 
 export function FacultyHeader() {
   const navigate = useNavigate();
+  const unreadCount = 3;
 
   return (
     <HeaderVariant>
@@ -135,6 +134,22 @@ export function FacultyHeader() {
             <div className="mt-2">
             <SheetClose asChild>
               <Link
+                to="/faculty-archive-clearance"
+                className="flex items-center gap-3 text-xl font-semibold text-primary"
+              >
+                <img
+                  src="/PrimaryArchiveIcon.png"
+                  alt="View Archived Clearance"
+                  className="h-5 w-5 object-contain"
+                />
+                <span>View Archived Clearance</span>
+              </Link>
+            </SheetClose>
+            </div>
+
+            <div className="mt-2">
+            <SheetClose asChild>
+              <Link
                 to="/faculty-notification"
                 className="flex items-center gap-3 text-xl font-semibold text-primary"
               >
@@ -144,6 +159,11 @@ export function FacultyHeader() {
                   className="h-5 w-5 object-contain"
                 />
                 <span>Notifications</span>
+                {unreadCount > 0 ? (
+                  <div className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+                    {unreadCount}
+                  </div>
+                ) : null}
               </Link>
             </SheetClose>
             </div>
@@ -209,6 +229,7 @@ export function AdminHeader() {
 
 export function ApprovalHeader() {
   const navigate = useNavigate();
+  const unreadCount = 3;
 
   return (
     <HeaderVariant>
@@ -282,7 +303,7 @@ export function ApprovalHeader() {
                   alt="Clearance"
                   className="h-5 w-5 object-contain"
                 />
-                <span>Clearance</span>
+                <span>Clearance Requests</span>
               </Link>
             </SheetClose>
             </div>
@@ -315,6 +336,16 @@ export function ApprovalHeader() {
                       View Approver Assistants
                     </Link>
                   </SheetClose>
+
+                  <SheetClose asChild>
+                    <Link
+                      to="/approver-archived-clearance"
+                      className="text-xl font-regular text-primary"
+                    >
+                      View Archived Clearance
+                    </Link>
+                  </SheetClose>
+
                   <SheetClose asChild>
                     <Link
                       to="/approver-activity-logs"
@@ -339,6 +370,11 @@ export function ApprovalHeader() {
                   className="h-5 w-5 object-contain"
                 />
                 <span>Notifications</span>
+                {unreadCount > 0 ? (
+                  <div className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+                    {unreadCount}
+                  </div>
+                ) : null}
               </Link>
             </SheetClose>
             </div>
@@ -393,180 +429,10 @@ export function ApprovalHeader() {
   );
 }
 
-export function DualRoleHeader() {
-  const navigate = useNavigate();
-
-  return (
-    <HeaderVariant>
-      <div className="mt-4 flex h-full flex-col">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-4">
-            <img
-              src="/Pen Swish Dark Blue_FacultyClearTrack.png"
-              alt="Faculty ClearTrack"
-              className="h-10 w-auto object-contain"
-            />
-
-            <span className="text-primary font-bold leading-[1.1] text-[clamp(1rem,3.5vw,1.4rem)]">
-              XU Faculty <br /> ClearTrack
-            </span>
-          </div>
-
-          <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
-
-          <nav className="flex flex-col gap-4 mt-2">
-            <div>
-              <SheetClose asChild>
-                <Link
-                  to="/dual-role-approver-dashboard"
-                  className="flex items-start gap-3 font-semibold text-primary text-xl"
-                >
-                  <img
-                    src="/PrimaryHomeIcon.png"
-                    alt="Approver Dashboard"
-                    className="mt-0.5 h-5 w-5 object-contain"
-                  />
-                  <span className="leading-tight">Approver Dashboard</span>
-                </Link>
-              </SheetClose>
-
-              <div className="mt-5 flex gap-3">
-                <div className="flex w-5 justify-center">
-                  <div className="w-px bg-[hsl(var(--gray-border))]" />
-                </div>
-
-                <div className="flex flex-col space-y-3">
-                  <SheetClose asChild>
-                    <Link to="/dual-role-announcement" className="text-xl font-regular text-primary">
-                      Announcements
-                    </Link>
-                  </SheetClose>
-
-                  <SheetClose asChild>
-                    <Link to="/dual-role-requirement-list" className="text-xl font-regular text-primary">
-                      Requirements List
-                    </Link>
-                  </SheetClose>
-
-                  <SheetClose asChild>
-                    <Link to="/dual-role-clearance" className="text-xl font-regular text-primary">
-                      Clearance Requests
-                    </Link>
-                  </SheetClose>
-
-                  <SheetClose asChild>
-                    <Link to="/dual-role-action" className="text-xl font-regular text-primary">
-                      Actions
-                    </Link>
-                  </SheetClose>
-
-                  <div className="mt-2 flex gap-4 ">
-                    <div className="flex w-5 justify-center">
-                      <div className="w-px bg-[hsl(var(--gray-border))]" />
-                    </div>
-
-                    <div className="flex flex-col space-y-3">
-                      <SheetClose asChild>
-                        <Link
-                          to="/dual-role-approver-assistant-list"
-                          className="text-xl font-regular text-primary"
-                        >
-                          View Approver Assistants
-                        </Link>
-                      </SheetClose>
-
-                      <SheetClose asChild>
-                        <Link to="/dual-role-activity-logs" className="text-xl font-regular text-primary">
-                          Check Activity Logs
-                        </Link>
-                      </SheetClose>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <SheetClose asChild>
-                <Link
-                  to="/dual-role-faculty-member-dashboard"
-                  className="flex items-start gap-3 font-semibold text-primary text-xl"
-                >
-                  <img
-                    src="/PrimaryHomeIcon.png"
-                    alt="Faculty Member Dashboard"
-                    className="mt-0.5 h-5 w-5 object-contain"
-                  />
-                  <span className="leading-tight">Faculty Member Dashboard</span>
-                </Link>
-              </SheetClose>
-            </div>
-
-            <div className="mt-2">
-              <SheetClose asChild>
-                <Link
-                  to="/dual-role-notification"
-                  className="flex items-start gap-3 text-xl font-semibold text-primary"
-                >
-                  <img
-                    src="/PrimaryNotificationsIcon.png"
-                    alt="Notifications"
-                    className="mt-0.5 h-5 w-5 object-contain"
-                  />
-                  <span className="leading-tight">Notifications</span>
-                </Link>
-              </SheetClose>
-            </div>
-          </nav>
-        </div>
-
-        <Divider className="-mx-6 mt-6 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
-
-        <div className="pt-4">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button
-                type="button"
-                className="flex w-full items-center gap-3 text-left text-xl font-semibold text-primary"
-              >
-                <img
-                  src="/PrimaryLogoutIcon.png"
-                  alt="Logout"
-                  className="h-5 w-5 object-contain"
-                />
-                <span>Logout</span>
-              </button>
-            </AlertDialogTrigger>
-
-            <AlertDialogContent className="max-w-xs">
-              <AlertDialogHeader className="items-center text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border-2 border-red-500 text-red-500">
-                  <span className="text-2xl font-bold">!</span>
-                </div>
-                <AlertDialogTitle className="mt-2 text-base font-semibold">
-                  You are logging out
-                </AlertDialogTitle>
-                <div className="text-sm font-semibold text-muted-foreground">
-                  XU Faculty ClearTrack
-                </div>
-              </AlertDialogHeader>
-
-              <AlertDialogFooter className="mt-2 flex flex-col gap-2 sm:flex-col sm:space-x-0">
-                <AlertDialogAction className="w-full" onClick={() => navigate("/login")}>
-                  Logout
-                </AlertDialogAction>
-                <AlertDialogCancel className="w-full">Cancel</AlertDialogCancel>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      </div>
-    </HeaderVariant>
-  );
-}
 
 export function HROHeader() {
   const navigate = useNavigate();
+  const unreadCount = 3;
 
   return (
     <HeaderVariant>
@@ -705,6 +571,11 @@ export function HROHeader() {
                   className="h-5 w-5 object-contain"
                 />
                 <span>Notifications</span>
+                {unreadCount > 0 ? (
+                  <div className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+                    {unreadCount}
+                  </div>
+                ) : null}
               </Link>
             </SheetClose>
             </div>
@@ -761,11 +632,12 @@ export function HROHeader() {
 
 export function CISOHeader() {
   const navigate = useNavigate();
+  const unreadCount = 3;
 
   return (
     <HeaderVariant>
       <div className="mt-4 flex h-full flex-col">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 flex-1 min-h-0">
 
           <div className="flex items-center gap-4">
             <img
@@ -781,7 +653,7 @@ export function CISOHeader() {
 
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
 
-          <nav className="flex flex-col gap-4 mt-2">
+          <nav className="flex flex-col gap-4 mt-2 overflow-y-auto flex-1 min-h-0 pr-2">
             <div>
               <SheetClose asChild>
                 <Link
@@ -846,6 +718,24 @@ export function CISOHeader() {
                 <div className=" flex flex-col space-y-3">
                   <SheetClose asChild>
                     <Link
+                      to="/CISO-clearance-timeline"
+                      className="text-xl font-regular text-primary"
+                    >
+                      Set Clearance Timeline
+                    </Link>
+                  </SheetClose>
+
+                  <SheetClose asChild>
+                    <Link
+                      to="/CISO-college-office-configuration"
+                      className="text-xl font-regular text-primary"
+                    >
+                      College & Office Configuration
+                    </Link>
+                  </SheetClose> 
+
+                  <SheetClose asChild>
+                    <Link
                       to="/CISO-faculty-data-dump"
                       className="text-xl font-regular text-primary"
                     >
@@ -859,6 +749,24 @@ export function CISOHeader() {
                       className="text-xl font-regular text-primary"
                     >
                       Manage System Users
+                    </Link>
+                  </SheetClose>
+
+                  <SheetClose asChild>
+                    <Link
+                      to="/CISO-archived-clearance"
+                      className="text-xl font-regular text-primary"
+                    >
+                      View Archived Clearance
+                    </Link>
+                  </SheetClose>
+
+                  <SheetClose asChild>
+                    <Link
+                      to="/CISO-archived-faculty"
+                      className="text-xl font-regular text-primary"
+                    >
+                      View Archived Faculty
                     </Link>
                   </SheetClose>
 
@@ -887,6 +795,11 @@ export function CISOHeader() {
                   className="h-5 w-5 object-contain"
                 />
                 <span>Notifications</span>
+                {unreadCount > 0 ? (
+                  <div className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+                    {unreadCount}
+                  </div>
+                ) : null}
               </Link>
             </SheetClose>
             </div>
@@ -895,7 +808,7 @@ export function CISOHeader() {
 
         <Divider className="-mx-6 mt-6 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
 
-        <div className="pt-4">
+        <div className="pt-4 flex-shrink-0">
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <button
@@ -943,6 +856,7 @@ export function CISOHeader() {
 
 export function OVPHEHeader() {
   const navigate = useNavigate();
+  const unreadCount = 3;
 
   return (
     <HeaderVariant>
@@ -1069,6 +983,11 @@ export function OVPHEHeader() {
                   className="h-5 w-5 object-contain"
                 />
                 <span>Notifications</span>
+                {unreadCount > 0 ? (
+                  <div className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+                    {unreadCount}
+                  </div>
+                ) : null}
               </Link>
             </SheetClose>
             </div>
@@ -1125,6 +1044,7 @@ export function OVPHEHeader() {
 
 export function AssistantApproverHeader() {
   const navigate = useNavigate();
+  const unreadCount = 3;
 
   return (
     <HeaderVariant>
@@ -1198,11 +1118,27 @@ export function AssistantApproverHeader() {
                   alt="Clearance"
                   className="h-5 w-5 object-contain"
                 />
-                <span>Clearance</span>
+                <span>Clearance Request</span>
               </Link>
             </SheetClose>
             </div>
             
+
+            <div className="mt-2">
+              <SheetClose asChild>
+                <Link
+                  to="/assistant-approver-archived-clearance"
+                  className="flex items-center gap-3 text-xl font-semibold text-primary"
+                >
+                <img
+                  src="/PrimaryArchiveIcon.png"
+                  alt="View Archived Clearance"
+                  className="h-5 w-5 object-contain"
+                />
+                <span>View Archived Clearance</span>
+                </Link>
+              </SheetClose>
+            </div>
 
             <div className="mt-2">
             <SheetClose asChild>
@@ -1216,6 +1152,12 @@ export function AssistantApproverHeader() {
                   className="h-5 w-5 object-contain"
                 />
                 <span>Notifications</span>
+
+                {unreadCount > 0 ? (
+                  <div className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+                    {unreadCount}
+                  </div>
+                ) : null}
               </Link>
             </SheetClose>
             </div>

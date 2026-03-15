@@ -2,7 +2,8 @@ import * as React from "react"
 import * as SelectPrimitive from "@radix-ui/react-select"
 import { Check, ChevronDown, ChevronUp } from "lucide-react"
 
-import { cn } from "@/components/lib/utils";
+
+import { cn } from "../../components/lib/utils"
 
 const Select = SelectPrimitive.Root
 
@@ -10,7 +11,7 @@ const SelectGroup = SelectPrimitive.Group
 
 const SelectValue = SelectPrimitive.Value
 
-type SelectTriggerVariant = "default" | "pill";
+type SelectTriggerVariant = "default" | "pill" | "outline" | "primaryoutline";
 
 type SelectTriggerProps = React.ComponentPropsWithoutRef<
   typeof SelectPrimitive.Trigger
@@ -25,10 +26,17 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex w-full items-center justify-between whitespace-nowrap ring-offset-background data-[placeholder]:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      "flex w-full items-center justify-between whitespace-nowrap ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      variant === "pill"
+        ? "data-[placeholder]:text-white"
+        : "data-[placeholder]:text-foreground",
       variant === "pill"
         ? "h-8 rounded-full border  bg-[#7C83C5] px-4 text-sm font-medium text-white data-[placeholder]:text-white shadow-none focus:outline-none focus:ring-0"
-        : "h-8 rounded-md border border-gray-500 bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-gray-300",
+        : variant === "outline"
+        ? "h-8 rounded-md border-foreground bg-transparent px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+        : variant === "primaryoutline"
+        ? "h-8 rounded-md border-2 border-primary text-primary bg-transparent px-3 py-2 text-md font-medium data-[placeholder]:text-primary"
+        : "h-8 rounded-sm border border-foreground bg-transparent px-3 py-2 text-sm shadow-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gray-300",
 
       
       className
@@ -37,7 +45,10 @@ const SelectTrigger = React.forwardRef<
   >
     {children}
     <SelectPrimitive.Icon asChild>
-      <ChevronDown className="h-4 w-4 opacity-50" />
+      <ChevronDown className={cn(
+        "h-4 w-4",
+        variant === "pill" ? "text-white" : variant === "primaryoutline" ? "text-primary ml-2" : "text-foreground"
+      )} />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ))
@@ -155,6 +166,8 @@ const SelectSeparator = React.forwardRef<
   />
 ))
 SelectSeparator.displayName = SelectPrimitive.Separator.displayName
+
+
 
 export {
   Select,

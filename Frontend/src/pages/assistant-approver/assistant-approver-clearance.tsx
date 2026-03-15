@@ -25,12 +25,51 @@ export default function AssistantApproverClearance() {
 
   const [requests, setRequests] = React.useState<ClearanceRequestItem[]>([]);
 
+  const dummyRequests = React.useMemo<ClearanceRequestItem[]>(
+    () => [
+      {
+        id: "dummy-1",
+        name: "Juan Dela Cruz",
+        requestId: "CR-2501-0001",
+        employeeId: "EMP-2025-001",
+        college: "College of Computer Studies",
+        department: "Computer Science",
+        facultyType: "Full-time",
+        status: "pending",
+      },
+      {
+        id: "dummy-2",
+        name: "Maria Clara",
+        requestId: "CR-2501-0002",
+        employeeId: "EMP-2025-002",
+        college: "College of Nursing",
+        department: "Nursing",
+        facultyType: "Part-time",
+        status: "approved",
+      },
+      {
+        id: "dummy-3",
+        name: "Jose Rizal",
+        requestId: "CR-2501-0003",
+        employeeId: "EMP-2025-003",
+        college: "College of Arts and Sciences",
+        department: "History",
+        facultyType: "Adjunct",
+        status: "rejected",
+      },
+    ],
+    []
+  );
+
   React.useEffect(() => {
     fetch("/admin/xu-faculty-clearance/api/clearance-requests")
       .then((res) => res.json())
-      .then((data) => setRequests(Array.isArray(data?.items) ? data.items : []))
-      .catch(() => setRequests([]));
-  }, []);
+      .then((data) => {
+        const items = Array.isArray(data?.items) ? (data.items as ClearanceRequestItem[]) : [];
+        setRequests(items.length ? items : dummyRequests);
+      })
+      .catch(() => setRequests(dummyRequests));
+  }, [dummyRequests]);
 
   const filteredRequests = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -98,7 +137,10 @@ export default function AssistantApproverClearance() {
         </div>
 
         <div className="mt-6">
-          <ClearanceRequestsCard items={filteredRequests} />
+          <ClearanceRequestsCard
+            items={filteredRequests}
+            getItemHref={() => "/assistant-approver-individual-clearance"}
+          />
         </div>
 
         

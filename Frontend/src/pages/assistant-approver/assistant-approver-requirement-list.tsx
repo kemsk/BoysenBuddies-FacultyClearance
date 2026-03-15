@@ -9,6 +9,7 @@ import {
   RequirementsListCard,
   type RequirementListItem,
   RequirementEditCard,
+  RequirementListCard,
 } from "../../stories/components/cards";
 
 import { AddRequirementDialog } from "../../stories/components/add-requirement-dialog";
@@ -45,7 +46,7 @@ export default function AssistantApproverRequirementList() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/approver-dashboard">Dashboard</Link>
+                <Link to="/assistant-approver-dashboard">Dashboard</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -54,23 +55,18 @@ export default function AssistantApproverRequirementList() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-
+       
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" size="back" onClick={() => navigate("/approver-dashboard")}> 
-            <img src="BlackArrowIcon.png" alt="back" />Back
+          <Button variant="back" size="back" onClick={() => navigate("/assistant-approver-dashboard")}> 
+            <div className="flex items-center gap-2">
+              <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
+            </div>
           </Button>
         </div>
        
        <div className="mt-2 space-y-3">
-        <AddRequirementDialog
-          trigger={
-            <Button variant="default" className="w-full h-12">
-              <img src="WhitePlusIcon.png" alt="Add Requirement" />Add Requirement
-            </Button>
-          }
-          onSave={() => {}}
-        />
-        <RequirementEditCard
+
+        <RequirementListCard
             title="Reporting of Borrowed Books"
             description="All faculty members who borrowed books are expected to report the status on said books"
             physicalSubmission 
@@ -79,13 +75,11 @@ export default function AssistantApproverRequirementList() {
             onDelete={() => {}}
         />
 
-        <RequirementEditCard
+        <RequirementListCard
             title="Reporting of Borrowed Books"
             description="All faculty members who borrowed books are expected to report the status on said books"
             physicalSubmission={false}
             submissionDeadline="December 3, 2025, 9:30 AM"
-            onEdit={() => {}}
-            onDelete={() => {}}
         />
        </div>
 

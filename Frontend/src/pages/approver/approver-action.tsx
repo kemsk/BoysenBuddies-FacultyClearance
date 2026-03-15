@@ -23,6 +23,19 @@ export default function Action() {
           />
 
           <ActionNavCard
+            icon={
+                <img
+                  src="/PrimaryArchiveIcon.png"
+                  alt="activity logs icon"
+                  className="h-9 w-9"
+                />
+            }
+            title="View Archived Clearance"
+            description="Check clearance requests from the previous terms"
+            to="/approver-archived-clearance"
+          />
+
+          <ActionNavCard
             icon={<Eye className="h-7 w-7" />}
             title="Check Activity Logs"
             description="Check the previous actions"

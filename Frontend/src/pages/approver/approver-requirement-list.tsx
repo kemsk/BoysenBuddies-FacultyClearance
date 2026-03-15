@@ -1,14 +1,11 @@
 import "../../index.css"; 
 import { ApprovalHeader } from "../../stories/components/header";
+import * as React from "react";
 
 import {
-  AnnouncementsCard,
-  type AnnouncementItem,
-  WelcomeAcademicCard,
-  ApproverWelcomeMetrics,
-  RequirementsListCard,
-  type RequirementListItem,
   RequirementEditCard,
+  AgreementCard,
+  TrueAgreementCard,
 } from "../../stories/components/cards";
 
 import { AddRequirementDialog } from "../../stories/components/add-requirement-dialog";
@@ -24,9 +21,12 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 
 import { Button } from "../../stories/components/button";
+import { SuccessMessageCard } from "../../stories/components/status-message-card";
 
 export default function RequirementList() {
   const navigate = useNavigate();
+  const [showSuccess, setShowSuccess] = React.useState(false);
+  const [showTrueAgreement, setShowTrueAgreement] = React.useState(false);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -56,8 +56,10 @@ export default function RequirementList() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" size="back" onClick={() => navigate("/approver-dashboard")}> 
-            <img src="BlackArrowIcon.png" alt="back" />Back
+          <Button variant="back" size="back" onClick={() => navigate("/approver-action")}> 
+            <div className="flex items-center gap-2">
+              <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
+            </div>
           </Button>
         </div>
        
@@ -65,16 +67,22 @@ export default function RequirementList() {
         <AddRequirementDialog
           trigger={
             <Button variant="default" className="w-full h-12">
+              <div className="flex w-full items-center justify-center gap-2">
               <img src="WhitePlusIcon.png" alt="Add Requirement" />Add Requirement
+              </div>
             </Button>
           }
           onSave={() => {}}
         />
         <RequirementEditCard
             title="Reporting of Borrowed Books"
-            description="All faculty members who borrowed books are expected to report the status on said books"
-            physicalSubmission 
-            submissionDeadline="December 3, 2025, 9:30 AM"
+            description="All faculty members who borrowed books are expected to report the status on said books"  
+            submissionDeadline="November 8, 2024, 4:38 PM"
+            Recipients="CCS, CONUS, SOE"
+            LastUpdated="November 8, 2024, 4:38 PM"
+            CreatedBy="Jose Rizal"
+            ClearanceTimeline="2501 Faculty Clearance"
+            physicalSubmission={true}
             onEdit={() => {}}
             onDelete={() => {}}
         />
@@ -82,11 +90,35 @@ export default function RequirementList() {
         <RequirementEditCard
             title="Reporting of Borrowed Books"
             description="All faculty members who borrowed books are expected to report the status on said books"
+            Recipients=""
+            LastUpdated=""
+            CreatedBy=""
+            ClearanceTimeline=""
             physicalSubmission={false}
             submissionDeadline="December 3, 2025, 9:30 AM"
             onEdit={() => {}}
             onDelete={() => {}}
         />
+
+        {showTrueAgreement ? (
+          <TrueAgreementCard
+            onConfirm={() => {
+              setShowTrueAgreement(false);
+            }}
+          />
+        ) : showSuccess ? (
+          <div className="flex justify-center">
+            <SuccessMessageCard
+              message="Agreement confirmed."
+              onContinue={() => {
+                setShowSuccess(false);
+                setShowTrueAgreement(true);
+              }}
+            />
+          </div>
+        ) : (
+          <AgreementCard onConfirm={() => setShowSuccess(true)} />
+        )}
        </div>
 
       </main>

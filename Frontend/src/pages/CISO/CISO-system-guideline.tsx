@@ -4,9 +4,6 @@ import "../../index.css";
 import { CISOHeader } from "../../stories/components/header";
 
 import {
-  AnnouncementsCard,
-  type AnnouncementItem,
-  WelcomeAcademicCard,
   SectionListCard,
   type SystemGuidlinesItem,
 } from "../../stories/components/cards";
@@ -114,7 +111,7 @@ export default function CISOSystemGuideline() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/system-admin-dashboard">Dashboard</Link>
+                <Link to="/CISO-dashboard">Dashboard</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -125,8 +122,10 @@ export default function CISOSystemGuideline() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/approver-dashboard")}> 
-            <img src="BlackArrowIcon.png" alt="back" />Back
+          <Button variant="back" size="back" onClick={() => navigate("/CISO-dashboard")}> 
+            <div className="flex items-center gap-2">
+              <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
+            </div>
           </Button>
         </div>
 

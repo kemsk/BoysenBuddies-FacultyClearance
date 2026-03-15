@@ -57,6 +57,7 @@ export default function AssistantApproverDashboard() {
       title: "Reporting of Borrowed Books",
       description:
         "All faculty members who borrowed books are expected to report the status on said books",
+      lastUpdated: "Last updated: November 8, 2024, 4:38 PM",
       physicalSubmission: true,
       submissionDeadline: "December 3, 2025, 9:30 AM",
     },

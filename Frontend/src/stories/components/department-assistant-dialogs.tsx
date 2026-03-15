@@ -88,7 +88,7 @@ export function AddDepartmentAssistantDialog({
       <DialogContent className="left-6 right-6 w-auto max-w-[420px] translate-x-0 rounded-xl p-0 sm:left-[50%] sm:right-auto sm:w-full sm:max-w-lg sm:translate-x-[-50%]">
         <div className="rounded-xl bg-background">
           <div className="px-6 pb-4 pt-6">
-            <div className="text-center text-base font-bold text-foreground">Add Department Assistant</div>
+            <div className="text-center text-base font-bold text-foreground">Add Assistant</div>
 
             <div className="mt-5 space-y-3">
               <div className="space-y-1.5">
@@ -112,8 +112,13 @@ export function AddDepartmentAssistantDialog({
                   value={universityId}
                   onChange={(e) => setUniversityId(e.target.value.replace(/\D/g, ""))}
                   size="sm"
-                  placeholder="Numbers only"
                 />
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="text-xs font-semibold text-foreground">Email (@XU.EDU.PH)</div>
+                <Input value={email} onChange={(e) => setEmail(e.target.value)} size="sm" />
+                <div className="text-muted-foreground text-sm">Only @xu.edu.ph email address are allowed</div>
               </div>
 
               <div className="space-y-1.5">
@@ -148,10 +153,6 @@ export function AddDepartmentAssistantDialog({
                 </Select>
               </div>
 
-              <div className="space-y-1.5">
-                <div className="text-xs font-semibold text-foreground">Email</div>
-                <Input value={email} onChange={(e) => setEmail(e.target.value)} size="sm" />
-              </div>
             </div>
           </div>
 
@@ -263,7 +264,7 @@ export function EditDepartmentAssistantDialog({
       <DialogContent className="w-[420px] max-w-[calc(100vw-3rem)] rounded-xl p-0">
         <div className="rounded-xl bg-background">
           <div className="px-6 pb-4 pt-6">
-            <div className="text-center text-base font-bold text-foreground">Edit Department Assistant</div>
+            <div className="text-center text-base font-bold text-foreground">Edit Assistant</div>
 
             <div className="mt-5 space-y-3">
               <div className="space-y-1.5">
@@ -292,6 +293,12 @@ export function EditDepartmentAssistantDialog({
               </div>
 
               <div className="space-y-1.5">
+                <div className="text-xs font-semibold text-foreground">Email (@XU.EDU.PH)</div>
+                <Input value={email} onChange={(e) => setEmail(e.target.value)} size="sm" placeholder="username@xu.edu.ph" />
+                <div className="text-[10px] text-muted-foreground">Only @xu.edu.ph email address is allowed</div>
+              </div>
+
+              <div className="space-y-1.5">
                 <div className="text-xs font-semibold text-foreground">College</div>
                 <Select value={college} onValueChange={setCollege}>
                   <SelectTrigger className="h-10 w-full">
@@ -306,6 +313,7 @@ export function EditDepartmentAssistantDialog({
                   </SelectContent>
                 </Select>
               </div>
+              
 
               <div className="space-y-1.5">
                 <div className="text-xs font-semibold text-foreground">Department</div>
@@ -323,14 +331,8 @@ export function EditDepartmentAssistantDialog({
                 </Select>
               </div>
 
-              <div className="space-y-1.5">
-                <div className="text-xs font-semibold text-foreground">Email (@XU.EDU.PH)</div>
-                <Input value={email} onChange={(e) => setEmail(e.target.value)} size="sm" placeholder="username@xu.edu.ph" disabled={Boolean(initialValues)} />
-                <div className="text-[10px] text-muted-foreground">Only @xu.edu.ph email address is allowed</div>
-              </div>
-
               <label className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-                <Checkbox checked={isActive} onCheckedChange={(v: boolean) => setIsActive(v)} />
+                <Checkbox variant="primary" checked={isActive} onCheckedChange={(v: boolean) => setIsActive(v)} />
                 <span>Set as Active</span>
               </label>
             </div>

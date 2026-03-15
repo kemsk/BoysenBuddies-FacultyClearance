@@ -19,7 +19,7 @@ export default defineConfig({
       "@": path.resolve(dirname, "src"),
     },
   },
-  base: '/static/frontend/',
+  base: process.env.NODE_ENV === 'production' ? '/static/frontend/' : '/',
   build: {
     outDir: '../static/frontend',
     emptyOutDir: true,

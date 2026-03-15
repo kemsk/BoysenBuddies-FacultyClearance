@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { ArrowLeft, Calendar, X } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, X } from "lucide-react";
 
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";
@@ -129,17 +129,123 @@ function DateField(props: {
   toYear?: number;
 }) {
   const { label, value, onChange, fromYear, toYear } = props;
+  const [open, setOpen] = React.useState(false);
+  const [currentMonth, setCurrentMonth] = React.useState(new Date());
+  
+  const parsedDate = React.useMemo(() => {
+    if (!value) return undefined;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return undefined;
+    return parsed;
+  }, [value]);
+
+  const displayDate = React.useMemo(() => {
+    if (!parsedDate) return "Date";
+    return parsedDate.toLocaleDateString();
+  }, [parsedDate]);
+
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay());
+    
+    const days = [];
+    const current = new Date(startDate);
+    
+    for (let i = 0; i < 42; i++) {
+      days.push(new Date(current));
+      current.setDate(current.getDate() + 1);
+    }
+    
+    return days;
+  };
+
+  const navigateMonth = (direction: number) => {
+    setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + direction, 1));
+  };
+  
   return (
     <div>
       <div className="text-xs font-semibold text-foreground">{label}</div>
-      <div className="mt-2">
-        <DatePicker
-          value={value}
-          onChange={onChange}
-          fromYear={fromYear}
-          toYear={toYear}
-          buttonClassName="h-10 w-full min-w-0 justify-between font-normal"
-        />
+      <div className="relative mt-2">
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="action"
+              className="h-10 w-full justify-between pl-9 pr-9 font-normal"
+            >
+              <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <span>{displayDate}</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            className="w-auto max-w-[calc(100vw-3rem)] overflow-hidden p-3 border border-primary"
+            align="center"
+            collisionPadding={24}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <button
+                type="button"
+                className="p-1 hover:bg-accent rounded"
+                onClick={() => navigateMonth(-1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <div className="font-semibold">
+                {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </div>
+              <button
+                type="button"
+                className="p-1 hover:bg-accent rounded"
+                onClick={() => navigateMonth(1)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                <div key={day} className="text-xs text-muted-foreground text-center p-1">
+                  {day}
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {getDaysInMonth(currentMonth).map((date, i) => {
+                const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
+                const isSelected = parsedDate && date.toDateString() === parsedDate.toDateString();
+                const isToday = new Date().toDateString() === date.toDateString();
+                
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    disabled={!isCurrentMonth}
+                    className={`p-2 rounded hover:bg-accent ${
+                      !isCurrentMonth ? "text-muted-foreground cursor-not-allowed" : ""
+                    } ${isSelected ? "bg-primary text-primary-foreground" : ""} ${
+                      isToday ? "border border-primary" : ""
+                    }`}
+                    onClick={() => {
+                      if (isCurrentMonth) {
+                        const y = date.getFullYear();
+                        const m = String(date.getMonth() + 1).padStart(2, "0");
+                        const d = String(date.getDate()).padStart(2, "0");
+                        onChange(`${y}-${m}-${d}`);
+                        setOpen(false);
+                      }
+                    }}
+                  >
+                    {date.getDate()}
+                  </button>
+                );
+              })}
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   );
@@ -162,8 +268,6 @@ function TimelineDialogShell(props: {
     if (!isControlled) setInternalOpen(next);
     onOpenChange?.(next);
   };
-
-  const [step, setStep] = React.useState<1 | 2>(1);
 
   const [startYear, setStartYear] = React.useState("");
   const [endYear, setEndYear] = React.useState("");
@@ -195,7 +299,6 @@ function TimelineDialogShell(props: {
 
   React.useEffect(() => {
     if (!effectiveOpen) return;
-    setStep(1);
     setStartYear(initialValues?.startYear ?? "");
     setEndYear(initialValues?.endYear ?? "");
     setSemester(initialValues?.semester ?? "");
@@ -228,172 +331,100 @@ function TimelineDialogShell(props: {
         <div className="rounded-xl bg-background">
           <div className="px-6 pb-4 pt-6">
             <div className="relative flex items-center justify-center">
-              {step === 2 ? (
-                <Button
-                  type="button"
-                  variant="icon"
-                  size="icon"
-                  className="absolute left-0 top-1/2 -translate-y-1/2"
-                  onClick={() => setStep(1)}
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-              ) : null}
-
               <div className="text-center text-base font-bold text-foreground">{title}</div>
             </div>
 
-            {step === 1 ? (
-              <div className="mt-6 space-y-5">
-                <YearField
-                  label="Start Year"
-                  value={startYear}
-                  onChange={(next) => {
-                    setStartYear(next);
+            <div className="mt-6 space-y-5">
+              <YearField
+                label="Start Year"
+                value={startYear}
+                onChange={(next) => {
+                  setStartYear(next);
+                  const n = Number(next);
+                  if (Number.isFinite(n) && String(Math.trunc(n)).length === 4) {
+                    setEndYear(String(Math.trunc(n) + 1));
+                    return;
+                  }
+                  setEndYear("");
+                }}
+                clearable
+              />
+
+              <YearField
+                label="End Year"
+                value={endYear}
+                minYear={minEndYear}
+                onChange={(next) => {
+                  if (typeof minEndYear === "number") {
                     const n = Number(next);
-                    if (Number.isFinite(n) && String(Math.trunc(n)).length === 4) {
-                      setEndYear(String(Math.trunc(n) + 1));
-                      return;
-                    }
-                    setEndYear("");
-                  }}
-                  clearable
-                />
+                    if (Number.isFinite(n) && n < minEndYear) return;
+                  }
+                  setEndYear(next);
+                }}
+              />
 
-                <YearField
-                  label="End Year"
-                  value={endYear}
-                  minYear={minEndYear}
-                  onChange={(next) => {
-                    if (typeof minEndYear === "number") {
-                      const n = Number(next);
-                      if (Number.isFinite(n) && n < minEndYear) return;
-                    }
-                    setEndYear(next);
-                  }}
-                />
+              <div className="mt-5" />
+
+              <DateField
+                label="Clearance Period Start Date"
+                value={clearanceStartDate}
+                onChange={setClearanceStartDate}
+                fromYear={numericStartYear}
+                toYear={numericEndYear}
+              />
+
+              <DateField
+                label="Clearance Period End Date"
+                value={clearanceEndDate}
+                onChange={setClearanceEndDate}
+                fromYear={numericStartYear}
+                toYear={numericEndYear}
+              />
+
+              <div className="pt-2">
+                <label className="flex items-center gap-2 text-sm text-foreground">
+                  <Checkbox
+                    variant="primary"
+                    checked={setAsActive}
+                    onCheckedChange={(next) => setSetAsActive(next === true)}
+                  />
+                  <span>Set as active clearance period</span>
+                </label>
               </div>
-            ) : (
-              <div className="mt-6 space-y-4">
-                <div>
-                  <div className="text-xs font-semibold text-foreground">School Year</div>
-                  <div className="mt-1 text-sm text-foreground">{schoolYearLabel}</div>
-                </div>
-
-                <div>
-                  <div className="text-xs font-semibold text-foreground">Semester</div>
-                  <div className="mt-2">
-                    <Select value={semester} onValueChange={setSemester}>
-                      <SelectTrigger className="h-10 w-full">
-                        <SelectValue placeholder="Choose from dropdown" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="First Semester">First Semester</SelectItem>
-                        <SelectItem value="Second Semester">Second Semester</SelectItem>
-                        <SelectItem value="Intersession">Intersession</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <DateField
-                  label="Semester Start Date"
-                  value={semesterStartDate}
-                  onChange={setSemesterStartDate}
-                  fromYear={numericStartYear}
-                  toYear={numericEndYear}
-                />
-
-                <DateField
-                  label="Semester End Date"
-                  value={semesterEndDate}
-                  onChange={setSemesterEndDate}
-                  fromYear={numericStartYear}
-                  toYear={numericEndYear}
-                />
-
-                <DateField
-                  label="Clearance Period Start Date"
-                  value={clearanceStartDate}
-                  onChange={setClearanceStartDate}
-                  fromYear={numericStartYear}
-                  toYear={numericEndYear}
-                />
-
-                <DateField
-                  label="Clearance Period End Date"
-                  value={clearanceEndDate}
-                  onChange={setClearanceEndDate}
-                  fromYear={numericStartYear}
-                  toYear={numericEndYear}
-                />
-
-                <div className="pt-2">
-                  <label className="flex items-center gap-2 text-sm text-foreground">
-                    <Checkbox
-                      variant="primary"
-                      checked={setAsActive}
-                      onCheckedChange={(next) => setSetAsActive(next === true)}
-                    />
-                    <span>Set as active clearance period</span>
-                  </label>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
 
           <div className="border-t border-[hsl(var(--gray-border))] px-6 py-4">
-            {step === 1 ? (
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  type="button"
-                  variant="cancel"
-                  className="h-11 w-full"
-                  onClick={() => setOpen(false)}
-                >
-                  Cancel
-                </Button>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                type="button"
+                variant="cancel"
+                className="h-11 w-full"
+                onClick={() => setOpen(false)}
+              >
+                Cancel
+              </Button>
 
-                <Button
-                  type="button"
-                  className="h-11 w-full rounded-md"
-                  onClick={() => setStep(2)}
-                >
-                  Next
-                </Button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  type="button"
-                  variant="cancel"
-                  className="h-11 w-full"
-                  onClick={() => setOpen(false)}
-                >
-                  Cancel
-                </Button>
-
-                <Button
-                  type="button"
-                  className="h-11 w-full rounded-md"
-                  onClick={() => {
-                    onSubmit?.({
-                      startYear,
-                      endYear,
-                      semester,
-                      semesterStartDate,
-                      semesterEndDate,
-                      clearanceStartDate,
-                      clearanceEndDate,
-                      setAsActive,
-                    });
-                    setOpen(false);
-                  }}
-                >
-                  {submitLabel}
-                </Button>
-              </div>
-            )}
+              <Button
+                type="button"
+                className="h-11 w-full rounded-md"
+                onClick={() => {
+                  onSubmit?.({
+                    startYear,
+                    endYear,
+                    semester,
+                    semesterStartDate,
+                    semesterEndDate,
+                    clearanceStartDate,
+                    clearanceEndDate,
+                    setAsActive,
+                  });
+                  setOpen(false);
+                }}
+              >
+                {submitLabel}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

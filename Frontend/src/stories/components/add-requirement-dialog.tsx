@@ -164,9 +164,7 @@ export function AddRequirementDialog({
                         type="button"
                         className="text-muted-foreground"
                         onClick={() =>
-                          setFacultyIds((prev) =>
-                            selectedPrimaryId ? [selectedPrimaryId] : []
-                          )
+                          setFacultyIds(() => (selectedPrimaryId ? [selectedPrimaryId] : []))
                         }
                       >
                         <X className="h-3.5 w-3.5" />

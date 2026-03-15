@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
+import { cva, } from "class-variance-authority"
 
 import { cn } from "../../components/lib/utils"
 
@@ -54,6 +54,7 @@ const buttonVariants = cva(
         icon: "bg-transparent text-foreground",
         cancel: "bg-gray-200 text-black border border-gray-700 hover:bg-gray-500 hover:text-white",
         white:"bg-white text-primary hover:bg-secondary hover:text-white",
+        primaryoutline:"border border-primary text-primary hover:bg-primary hover:text-white",
       },
       alignment: {
         center: "justify-center",
@@ -80,9 +81,11 @@ const buttonVariants = cva(
 /* Types */
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   asChild?: boolean
+  variant?: "default" | "destructive" | "link" | "outline" | "secondary" | "ghost" | "icon" | "cancel" | "white" | "back" | "action" | "primaryoutline"
+  size?: "sm" | "default" | "lg" | "icon" | "mobileLarge" | "mobileXL" | "back"
+  alignment?: "center" | "left"
 }
 
 /* Component */

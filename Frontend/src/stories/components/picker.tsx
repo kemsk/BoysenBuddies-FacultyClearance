@@ -60,22 +60,29 @@ export function DatePicker({
   }, [isControlled, value])
 
   return (
-    <div className={containerClassName ?? "flex flex-col gap-1"}>
+    <div className={containerClassName ?? "flex flex-col gap-1 "}>
 
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
+        <PopoverTrigger asChild className="">
             <Button
                 variant="action"
                 id="date"
-                className={buttonClassName ?? "w-40 min-w-0 gap-0 justify-between font-normal whitespace-nowrap"}
+                className={
+                  buttonClassName ??
+                  "h-10 inline-flex items-center gap-2 font-normal whitespace-nowrap"
+                }
             >
+            <div className="flex items-center gap-5">
             <img
                 src="/GrayCalendarIcon.png"
                 alt="Calendar"
-                className="h-4 w-4 -ml-1 mr-0"
+                className="h-4 w-4 shrink-0 -ml-1"
             />
-            {date ? date.toLocaleDateString() : "Date"}
-            <ChevronDownIcon />
+            <span className=" flex-1 whitespace-normal break-words text-left leading-tight">
+              {date ? date.toLocaleDateString() : "Date"}
+            </span>
+            <ChevronDownIcon className="h-4 w-4 shrink-0" />
+            </div>
             </Button>
         </PopoverTrigger>
 
@@ -165,15 +172,22 @@ export function TimePicker({ buttonClassName, containerClassName }: TimePickerPr
           <Button
             variant="action"
             id="time"
-            className={buttonClassName ?? "w-40 min-w-0 justify-between font-normal"}
+            className={
+              buttonClassName ??
+              "h-10 w-40 min-w-0 items-start justify-between gap-2 font-normal"
+            }
           >
+            <div className="flex items-center gap-5">
             <img
               src="/GrayClockIcon.png"
               alt="Clock"
-              className="h-4 w-4 -ml-1 mr-2"
+              className="h-4 w-4 shrink-0 -ml-1"
             />
-            {time ? time : "Time"}
-            <ChevronDownIcon />
+            <span className="min-w-0 flex-1 whitespace-normal break-words text-left leading-tight">
+              {time ? time : "Time"}
+            </span>
+            <ChevronDownIcon className="h-4 w-4 shrink-0" />
+            </div>
           </Button>
         </PopoverTrigger>
 

@@ -50,6 +50,7 @@ export default function Approverdashboard() {
       title: "Reporting of Borrowed Books",
       description:
         "All faculty members who borrowed books are expected to report the status on said books",
+      lastUpdated: "Last updated: November 8, 2024, 4:38 PM",
       physicalSubmission: true,
       submissionDeadline: "December 3, 2025, 9:30 AM",
     },
@@ -95,7 +96,7 @@ export default function Approverdashboard() {
           <RequirementsListCard
             items={requirementItems}
             headerActionHref="/approver-requirement-list"
-            headerActionImgSrc="/_WhiteArrowIcon.png"
+            headerActionImgSrc="/WhitePlusIcon.png"
             headerActionImgAlt="Open Requirements"
           />
   

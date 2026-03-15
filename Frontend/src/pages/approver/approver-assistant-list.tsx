@@ -154,6 +154,74 @@ export default function ApproverAssistantList() {
     fetchApproverEmail();
   }, [fetchUsers, fetchOrgStructure, fetchApproverEmail]);
 
+  // Add dummy data for frontend testing
+  useEffect(() => {
+    // Dummy student assistants
+    const dummyItems: StudentAssistantItem[] = [
+      {
+        id: "SA001",
+        name: "Juan Dela Cruz",
+        college: "College of Engineering",
+        department: "Computer Engineering",
+        email: "juan.delacruz@xu.edu.ph",
+        isActive: true
+      },
+      {
+        id: "SA002", 
+        name: "Maria Santos",
+        college: "College of Arts and Sciences",
+        department: "Mathematics",
+        email: "maria.santos@xu.edu.ph",
+        isActive: false
+      },
+      {
+        id: "SA003",
+        name: "John Reyes",
+        college: "College of Business",
+        department: "Accountancy",
+        email: "john.reyes@xu.edu.ph",
+        isActive: true
+      }
+    ];
+
+    // Dummy colleges and departments
+    const dummyColleges = [
+      "College of Engineering",
+      "College of Arts and Sciences", 
+      "College of Business",
+      "College of Education",
+      "College of Nursing"
+    ];
+
+    const dummyDepartments = [
+      "Computer Engineering",
+      "Mathematics",
+      "Accountancy",
+      "Physics",
+      "Chemistry",
+      "Management",
+      "Marketing"
+    ];
+
+    const dummyCollegeMap: Record<string, string[]> = {
+      "College of Engineering": ["Computer Engineering", "Electrical Engineering", "Civil Engineering"],
+      "College of Arts and Sciences": ["Mathematics", "Physics", "Chemistry", "Biology"],
+      "College of Business": ["Accountancy", "Management", "Marketing"],
+      "College of Education": ["Elementary Education", "Secondary Education"],
+      "College of Nursing": ["Nursing"]
+    };
+
+    // Set dummy data if API calls return empty
+    setTimeout(() => {
+      if (items.length === 0) {
+        setItems(dummyItems);
+        setOrgColleges(dummyColleges);
+        setOrgDepartments(dummyDepartments);
+        setCollegeDepartmentsMap(dummyCollegeMap);
+      }
+    }, 1000);
+  }, [items.length]);
+
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState(false);
@@ -201,9 +269,12 @@ export default function ApproverAssistantList() {
           </BreadcrumbList>
         </Breadcrumb>
 
+
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/Approver-Action")}> 
-            <img src="BlackArrowIcon.png" alt="back" />Back
+          <Button variant="back" size="back" onClick={() => navigate("/approver-action")}> 
+            <div className="flex items-center gap-2">
+              <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
+            </div>
           </Button>
         </div>
        

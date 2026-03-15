@@ -4,9 +4,92 @@ import { Check, ChevronLeft, ChevronRight, Download, Eye, Pencil, Plus, Trash2, 
 
 import { Link } from "react-router-dom";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./select";
+
+export function GuidelinesToggle({
+  checked = false,
+  onChange,
+}: {
+  checked?: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  const [isChecked, setIsChecked] = React.useState(checked);
+  const [showAlert, setShowAlert] = React.useState(false);
+  const [alertType, setAlertType] = React.useState<'activate' | 'deactivate'>('deactivate');
+
+  const handleToggle = () => {
+    if (isChecked) {
+      // If currently active, show deactivation alert
+      setAlertType('deactivate');
+      setShowAlert(true);
+    } else {
+      // If currently inactive, show activation alert
+      setAlertType('activate');
+      setShowAlert(true);
+    }
+  };
+
+  const confirmToggle = () => {
+    setShowAlert(false);
+    const newValue = alertType === 'activate' ? true : false;
+    setIsChecked(newValue);
+    onChange(newValue);
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={isChecked}
+        className={
+          isChecked
+            ? "relative h-6 w-12 rounded-full bg-success pointer-events-auto z-10 cursor-pointer"
+            : "relative h-6 w-12 rounded-full bg-muted-foreground/30 pointer-events-auto z-10 cursor-pointer"
+        }
+        onClick={handleToggle}
+        onMouseDown={(e) => {
+          console.log("Mouse down on toggle");
+        }}
+      >
+        <span
+          className={
+            isChecked
+              ? "absolute left-[26px] top-1 h-4 w-4 rounded-full bg-white pointer-events-none"
+              : "absolute left-1 top-1 h-4 w-4 rounded-full bg-white pointer-events-none"
+          }
+        />
+      </button>
+
+      {showAlert && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm mx-4">
+            {alertType === 'activate' ? (
+              <ActivateAlert 
+                onDelete={confirmToggle}
+                onCancel={() => setShowAlert(false)}
+              />
+            ) : (
+              <DeactivateAlert 
+                onDelete={confirmToggle}
+                onCancel={() => setShowAlert(false)}
+              />
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 
-import { cn } from "@/components/lib/utils";
+import { cn } from "../../components/lib/utils";
 
 import { Badge } from "./badge";
 
@@ -18,53 +101,35 @@ import { ApproveConfirmDialog, RejectAlertDialog } from "./clearance-action-dial
 
 import { AddRequirementDialog, type AddRequirementPayload } from "./add-requirement-dialog";
 
-import { FacultyMemberDetailsDialog } from "./faculty-member-details-dialog";
-
 import { Divider } from "./divider";
 
+import { DeactivateAlert, ActivateAlert, DeleteAlert } from "./alert";
+
 import {
-
   AlertDialog,
-
   AlertDialogAction,
-
   AlertDialogCancel,
-
   AlertDialogContent,
-
   AlertDialogDescription,
-
   AlertDialogFooter,
-
   AlertDialogHeader,
-
   AlertDialogTitle,
-
   AlertDialogTrigger,
-
 } from "./alert-dialog";
 
-
+import { CommentDialog } from "./dialog";
 
 import {
-
   Card,
-
   CardContent,
-
   CardDescription,
-
   CardHeader,
-
   CardTitle,
-
 } from "./card";
-
-
+import { RadioGroup, RadioGroupItem } from "./radio-group";
+import { InputGroup, InputGroupInput, InputGroupWithAddon } from "./input-group";
 
 type DashboardBadgeVariant = "default" | "success" | "warning" | "muted";
-
-
 
 function getBadgeVariant(variant: DashboardBadgeVariant | undefined) {
 
@@ -210,12 +275,10 @@ export function ActionNavCard({
 
 export type RequirementListItem = {
 
-  title: string;
-
+  title: string;  
   description: string;
-
   physicalSubmission?: boolean;
-
+  lastUpdated?: string;
   submissionDeadline?: string;
 
 };
@@ -233,6 +296,8 @@ export type StudentAssistantItem = {
   department: string;
 
   email: string;
+
+  isActive?: boolean;
 
 };
 
@@ -270,1044 +335,823 @@ export type StudentAssistantsCardProps = {
 
 };
 
-
-
 export function StudentAssistantsCard({
-
   items,
-
   className,
-
   onAddUser,
-
   onEditUser,
-
   onRemove,
-
 }: StudentAssistantsCardProps) {
+  const [selectedValue, setSelectedValue] = React.useState<string>("");
 
   return (
-
     <Card className={cn("overflow-hidden", className)}>
-
       <CardContent className="p-0">
-
         <div className="flex">
-
           <Divider orientation="vertical" className="h-auto self-stretch" />
 
           <div className="min-w-0 flex-1">
-
-            <div className="flex items-center border-b px-4 py-4">
+            <div className="flex items-center justify-between gap-3 border-b px-5 py-5">
+              <Select value={selectedValue} onValueChange={setSelectedValue}>
+                <SelectTrigger variant="primaryoutline" className="w-max">
+                  <div className="flex items-center gap-2">
+                    <img src="/PrimaryWaveHandIcon.png" alt="assistants" className="h-4 w-4" />
+                    <SelectValue placeholder="Assistants" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="option1">Option 1</SelectItem>
+                  <SelectItem value="option2">Option 2</SelectItem>
+                  <SelectItem value="option3">Option 3</SelectItem>
+                </SelectContent>
+              </Select>
 
               <Button type="button" className="h-8 rounded-md px-3 text-sm font-bold" onClick={onAddUser}>
-
-                <Plus className="h-4 w-4" />
-
-                Add User
-
+                <div className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />Add Admin
+                </div>
               </Button>
-
             </div>
-
-
 
             <Divider color="border-[hsl(var(--gray-border))]" />
 
-
-
             <div>
-
               {items.map((item, idx) => (
-
                 <React.Fragment key={item.id}>
-
                   <div className="flex items-start gap-4 px-4 py-5">
-
-                    <div className="min-w-0 flex-1">
-
-                      <div className="flex items-center justify-between w-full">
-
-                        <span className="text-base font-bold text-foreground">
-
-                          {item.name}
-
-                        </span>
-
-
-
-                        <div className="flex items-center gap-2">
-
-                          <Button
-
-                            type="button"
-
-                            variant="action"
-
-                            className="h-7 rounded-md px-3 text-xs font-bold"
-
-                            onClick={() => onEditUser?.(item)}
-
-                          >
-
-                            EDIT
-
-                          </Button>
-
-
-
-                          <Button
-
-                            type="button"
-
-                            variant="destructive"
-
-                            className="h-7 rounded-md px-3 text-xs font-bold"
-
-                            onClick={() => onRemove?.(item.id)}
-
-                          >
-
-                            REMOVE
-
-                          </Button>
-
-                        </div>
-
+                    <div className="min-w-0 flex-1 px-2 py-2">
+                      <div className="flex items-center justify-start w-full">
+                        <Badge variant={item.isActive ? "success" : "destructive"}>
+                          {item.isActive ? "ACTIVE" : "INACTIVE"}
+                        </Badge>
                       </div>
 
-
+                      <div className="flex items-center justify-between w-full pt-4">
+                        <span className="text-2xl font-bold text-foreground">{item.name}</span>
+                      </div>
 
                       <div className="mt-4 grid grid-cols-[95px_1fr] gap-x-5 gap-y-1 text-sm">
-
-                        <div className="font-bold text-foreground">System ID</div>
-
-                        <div className="text-foreground">{item.id}</div>
-
-
-
-                        <div className="font-bold text-foreground">University ID</div>
-
-                        <div className="text-foreground">{item.id}</div>
-
-
-
                         <div className="font-bold text-foreground">College</div>
-
                         <div className="text-foreground">{item.college}</div>
-
-
-
                         <div className="font-bold text-foreground">Department</div>
-
                         <div className="text-foreground">{item.department}</div>
-
-
-
                         <div className="font-bold text-foreground">Email</div>
-
                         <div className="text-foreground">{item.email}</div>
-
                       </div>
 
+                      <div className="flex items-center gap-2 mt-4 w-full">
+                        <Button
+                          type="button"
+                          variant="action"
+                          className="h-9 rounded-md px-6 text-sm font-bold flex-1"
+                          onClick={() => onEditUser?.(item)}
+                        >
+                          EDIT
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          className="h-9 rounded-md px-6 text-sm font-bold flex-1"
+                          onClick={() => onRemove?.(item.id)}
+                        >
+                          REMOVE
+                        </Button>
+                      </div>
                     </div>
-
-
-
                   </div>
 
-
-
                   {idx < items.length - 1 ? (
-
                     <Divider color="border-[hsl(var(--gray-border))]" />
-
                   ) : null}
-
                 </React.Fragment>
-
               ))}
-
             </div>
-
           </div>
 
           <Divider orientation="vertical" className="h-auto self-stretch" />
-
         </div>
-
       </CardContent>
-
     </Card>
-
   );
-
 }
-
-
 
 export type RequirementEditCardProps = {
-
   title: string;
-
+  Recipients: string;
   description: string;
-
   physicalSubmission?: boolean;
-
   submissionDeadline?: string;
-
   className?: string;
-
+  LastUpdated?: string;
+  CreatedBy?: string;
+  ClearanceTimeline?: string;
   onEdit?: (payload?: AddRequirementPayload) => void;
-
   onDelete?: () => void;
-
 };
 
-
-
 export function RequirementEditCard({
-
   title,
-
   description,
-
   physicalSubmission = false,
-
-  submissionDeadline,
-
-  className,
-
+  Recipients,
+  LastUpdated,
+  CreatedBy,
+  ClearanceTimeline,
   onEdit,
-
   onDelete,
-
 }: RequirementEditCardProps) {
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
 
   return (
-
-    <Card className={cn("overflow-hidden", className)}>
-
-      <CardContent className="p-4">
-
-
-
-        <div className={cn("text-xl font-bold text-primary text-center", physicalSubmission ? "mt-3" : "mt-0")}>
-
+    <div className="rounded-xl border bg-card text-card-foreground shadow">
+      <div className="pt-6 pb-4 pl-4 pr-4">
+        <div
+          className={cn(
+            "text-xl font-bold text-primary text-center",
+            physicalSubmission ? "mt-1" : "mt-0"
+          )}
+        >
           {title}
-
         </div>
 
-        
-
-        <div className="mt-2 flex items-center justify-center gap-2">
-
-        {physicalSubmission ? (
-
-          <Badge variant="warning" className="mb-2">
-
-            PHYSICAL SUBMISSION
-
-          </Badge>
-
-        ) : null}
-
+        <div className="flex items-center justify-left gap-2 mt-3">
+          {physicalSubmission ? (
+            <Badge variant="warning" className="mb-2">
+              PHYSICAL SUBMISSION
+            </Badge>
+          ) : null}
         </div>
+      </div>
 
-        
+      <Divider className="bg-foreground w-full" />
 
-        <div className="mt-2 text-sm text-muted-foreground bg-muted p-3 rounded-md">{description}</div>
-
-
-
-        {submissionDeadline ? (
-
-          <div className="mt-4 grid grid-cols-2 overflow-hidden rounded-md border border-[hsl(var(--gray-border))] ">
-
-            <div className="bg-gray-300 px-3 py-2 text-xs font-medium text-foreground">
-
-              Submission Deadline
-
-            </div>
-
-            <div className="bg-muted px-3 py-2 text-xs font-medium text-muted-foreground">
-
-              {submissionDeadline}
-
-            </div>
-
+      <div className="pt-6 pb-4 pl-6 pr-6">
+        <div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="text-md font-bold text-foreground">Recipients</div>
+            <div className="text-sm text-black text-left break-words">{Recipients}</div>
           </div>
 
-        ) : null}
-
-
-
-        <div className="mt-4 flex items-center justify-center gap-3">
-
-          <AddRequirementDialog
-
-            trigger={
-
-              <Button variant="default" size="sm">
-
-                <Pencil className="h-4 w-4" />
-
-                Edit
-
-              </Button>
-
-            }
-
-            dialogTitle="Edit Requirement"
-
-            saveLabel="Save"
-
-            initialValues={{
-
-              title,
-
-              description,
-
-              facultyIds: [],
-
-              physicalSubmission,
-
-            }}
-
-            onSave={(payload) => {
-
-              onEdit?.(payload);
-
-            }}
-
-          />
-
-
-
-          <AlertDialog>
-
-            <AlertDialogTrigger asChild>
-
-              <Button variant="destructive" size="sm">
-
-                <Trash2 className="h-4 w-4" />
-
-                Delete
-
-              </Button>
-
-            </AlertDialogTrigger>
-
-            <AlertDialogContent className="max-w-md">
-
-              <AlertDialogHeader className="items-center text-center">
-
-                <AlertDialogTitle className="text-2xl font-bold text-foreground">
-
-                  {title}
-
-                </AlertDialogTitle>
-
-
-
-                {physicalSubmission ? (
-
-                  <div className="mt-2 inline-flex rounded-md bg-muted px-3 py-2 text-xs font-bold text-muted-foreground">
-
-                    PHYSICAL SUBMISSION
-
-                  </div>
-
-                ) : null}
-
-
-
-                <AlertDialogDescription className="mt-4 text-sm text-muted-foreground">
-
-                  {description}
-
-                </AlertDialogDescription>
-
-              </AlertDialogHeader>
-
-
-
-              <AlertDialogFooter className="mt-6 flex flex-row justify-center gap-4 sm:flex-row sm:justify-center sm:space-x-0">
-
-                <AlertDialogCancel asChild>
-
-                    CANCEL
-
-                </AlertDialogCancel>
-
-
-
-                <AlertDialogAction asChild onClick={onDelete}>
-
-                  <Button
-
-                    type="button"
-
-                    variant="destructive"
-
-                    className="h-12 rounded-xl px-7 text-base font-semibold"
-
-                  >
-
-                    <Trash2 className="h-5 w-5" />
-
-                    Delete
-
-                  </Button>
-
-                </AlertDialogAction>
-
-              </AlertDialogFooter>
-
-            </AlertDialogContent>
-
-          </AlertDialog>
-
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="text-md font-bold text-foreground pt-1">Description</div>
+            <div className="text-sm text-black text-left break-words">{description}</div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="text-md font-bold text-foreground">Last Updated</div>
+            <div className="text-sm text-black text-left break-words">{LastUpdated}</div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="text-md font-bold text-foreground">Created By</div>
+            <div className="text-sm text-black text-left break-words">{CreatedBy}</div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 pt-1 pb-3">
+            <div className="text-md font-bold text-foreground">Clearance Timeline</div>
+            <div className="text-sm text-black text-left break-words">{ClearanceTimeline}</div>
+          </div>
         </div>
+      </div>
 
-      </CardContent>
+      <Divider className="bg-foreground w-full" />
 
-    </Card>
+      <div className="mt-4 pt-2 pb-5 flex items-center justify-center gap-3">
+        <AddRequirementDialog
+          trigger={
+            <Button variant="default" className="h-max w-max rounded-xl px-7 text-base font-semibold p-3">
+              <div className="flex items-center gap-2">
+                <Pencil className="h-4 w-4" />
+                Edit
+              </div>
+            </Button>
+          }
+          dialogTitle="Edit Requirement"
+          saveLabel="Save"
+          initialValues={{
+            title,
+            description,
+            facultyIds: [],
+            physicalSubmission,
+          }}
+          onSave={(payload) => {
+            onEdit?.(payload);
+          }}
+        />
 
+        <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <AlertDialogTrigger asChild>
+            <Button
+              type="button"
+              variant="destructive"
+              className="h-max w-max rounded-xl px-7 text-base font-semibold p-3"
+            >
+              <div className="flex items-center gap-2">
+                <Trash2 className="h-5 w-5" />
+                Delete
+              </div>
+            </Button>
+          </AlertDialogTrigger>
+
+          <AlertDialogContent className="max-w-md">
+            <DeleteAlert
+              itemName={title}
+              onDelete={() => {
+                onDelete?.();
+                setDeleteOpen(false);
+              }}
+              onCancel={() => setDeleteOpen(false)}
+            />
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </div>
   );
-
 }
 
+export type RequirementListCardProps = {
+  title: string;
+  Recipients: string;
+  description: string;
+  physicalSubmission?: boolean;
+  submissionDeadline?: string;
+  className?: string;
+  LastUpdated?: string;
+  CreatedBy?: string;
+  onEdit?: (payload?: AddRequirementPayload) => void;
+  ClearanceTimeline?: string;
+  onDelete?: () => void;
+};
 
+export function RequirementListCard({
+  title,
+  description,
+  physicalSubmission = false,
+  Recipients,
+  LastUpdated,
+  CreatedBy,
+  ClearanceTimeline,
+  onEdit,
+  onDelete,
+}: RequirementListCardProps) {
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
+
+  return (
+    <div className="rounded-xl border bg-card text-card-foreground shadow">
+      <div className="pt-6 pb-4 pl-4 pr-4">
+        <div
+          className={cn(
+            "text-xl font-bold text-primary text-center",
+            physicalSubmission ? "mt-1" : "mt-0"
+          )}
+        >
+          {title}
+        </div>
+
+        <div className="flex items-center justify-left gap-2 mt-3">
+          {physicalSubmission ? (
+            <Badge variant="warning" className="mb-2">
+              PHYSICAL SUBMISSION
+            </Badge>
+          ) : null}
+        </div>
+      </div>
+
+      <Divider className="bg-foreground w-full" />
+
+      <div className="pt-6 pb-4 pl-6 pr-6">
+        <div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="text-md font-bold text-foreground">Recipients</div>
+            <div className="text-sm text-black text-left break-words">{Recipients}</div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="text-md font-bold text-foreground pt-1">Description</div>
+            <div className="text-sm text-black text-left break-words">{description}</div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="text-md font-bold text-foreground">Last Updated</div>
+            <div className="text-sm text-black text-left break-words">{LastUpdated}</div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="text-md font-bold text-foreground">Created By</div>
+            <div className="text-sm text-black text-left break-words">{CreatedBy}</div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 pt-1 pb-3">
+            <div className="text-md font-bold text-foreground">Clearance Timeline</div>
+            <div className="text-sm text-black text-left break-words">{ClearanceTimeline}</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
+export type ClearanceRequestItem = {
+  id: string;
+  name: string;
+  requestId: string;
+  employeeId: string;
+  college: string;
+  department: string;
+  facultyType: string;
+  status: ClearanceRequestStatus;
+};
 
 export type ClearanceRequestStatus = "pending" | "approved" | "rejected";
 
-
-
-export type ClearanceRequestItem = {
-
-  id: string;
-
-  requestId?: string;
-
-  employeeId?: string;
-
-  name: string;
-
-  college: string;
-
-  department: string;
-
-  facultyType: string;
-
-  status: ClearanceRequestStatus;
-
-};
-
-
-
 export type ClearanceRequestsCardProps = {
-
   items: ClearanceRequestItem[];
-
   className?: string;
-
+  getItemHref?: (item: ClearanceRequestItem) => string;
 };
-
-
 
 function getClearanceStatusBadgeVariant(status: ClearanceRequestStatus) {
-
   if (status === "approved") return "success" as const;
-
   if (status === "rejected") return "destructive" as const;
-
   return "warning" as const;
-
 }
 
-
-
-export function ClearanceRequestsCard({ items, className }: ClearanceRequestsCardProps) {
-
+export function ClearanceRequestsCard({
+  items,
+  className,
+  getItemHref,
+}: ClearanceRequestsCardProps) {
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set());
 
-
-
   return (
-
     <Card className={cn("overflow-hidden", className)}>
-
       <CardContent className="p-0">
-
         <div className="flex">
-
           <Divider orientation="vertical" className="h-auto self-stretch " />
-
           <div className="min-w-0 flex-1">
-
             <div className="flex items-center gap-3 border-b px-4 py-4">
-
               <Checkbox
-
                 variant="primary"
-
                 checked={selectedIds.size === items.length}
-
                 onCheckedChange={(v) => {
-
                   if (v) {
-
                     setSelectedIds(new Set(items.map((i) => i.id)));
-
                   } else {
-
                     setSelectedIds(new Set());
-
                   }
-
                 }}
-
               />
 
               <div className="text-sm font-bold text-primary">Select All</div>
-
-
-
               {selectedIds.size > 0 ? (
-
                 <div className="ml-auto flex items-center gap-2">
-
                   <RejectAlertDialog
-
                     count={selectedIds.size}
-
                     trigger={
-
                       <Button
-
                         type="button"
-
                         variant="destructive"
-
-                        className="h-7 rounded-l px-2 text-sm font-semibold"
-
+                        className="h-7 rounded-md px-3 text-sm font-semibold"
                       >
-
-                        <X className="h-4 w-4" />
-
                         Reject
-
                       </Button>
-
                     }
-
                     onReject={() => {
-
                       // intentionally left blank; user can wire API/state later
-
                     }}
-
                   />
-
-
-
                   <ApproveConfirmDialog
-
                     count={selectedIds.size}
-
                     trigger={
-
                       <Button
-
                         type="button"
-
                         className="h-7 rounded-l bg-[hsl(var(--success))] px-2 text-sm font-semibold text-white hover:bg-[hsl(var(--success))]/90"
-
                       >
-
-                        <Check className="h-4 w-4" />
-
-                        Approve
-
+                        <div className="flex items-center gap-2">
+                          <Check className="h-4 w-4" /> Approve
+                        </div>
                       </Button>
-
                     }
-
                     onApprove={() => {
-
                       // intentionally left blank; user can wire API/state later
-
                     }}
-
                   />
-
                 </div>
-
               ) : null}
-
             </div>
-
-
 
             <Divider color="border-[hsl(var(--gray-border))]" />
 
-
-
             <div>
-
               {items.map((item, idx) => (
-
                 <React.Fragment key={item.id}>
-
                   <div className="flex gap-3 px-4 py-6">
-
                     <div className="pt-1">
-
                       <Checkbox
-
                         variant="primary"
-
                         checked={selectedIds.has(item.id)}
-
                         onCheckedChange={() => {
-
                           setSelectedIds((prev) => {
-
                             const next = new Set(prev);
-
                             if (next.has(item.id)) next.delete(item.id);
-
                             else next.add(item.id);
-
                             return next;
-
                           });
-
                         }}
-
                       />
-
                     </div>
-
-
 
                     <div className="min-w-0 flex-1">
-
                       <div className="flex items-start justify-between gap-3">
-
                         <div className="min-w-0">
-
-                          <FacultyMemberDetailsDialog
-
-                            details={{
-
-                              requestId: item.requestId,
-
-                              employeeId: item.employeeId ?? item.id,
-
-                              firstName: item.name.split(" ")[0],
-
-                              middleName: item.name.split(" ").length > 2 ? item.name.split(" ").slice(1, -1).join(" ") : undefined,
-
-                              lastName: item.name.split(" ").length > 1 ? item.name.split(" ")[item.name.split(" ").length - 1] : "",
-
-                              college: item.college,
-
-                              department: item.department,
-
-                              facultyType: item.facultyType,
-
-                              status: item.status,
-
-                            }}
-
-                            trigger={
-
-                              <button
-
-                                type="button"
-
-                                className="truncate text-left text-base font-bold text-primary"
-
-                              >
-
-                                {item.name}
-
-                              </button>
-
-                            }
-
-                            onSave={() => {
-
-                              // intentionally left blank; user can wire API/state later
-
-                            }}
-
-                          />
-
+                          {getItemHref ? (
+                            <Link
+                              to={getItemHref(item)}
+                              className="truncate text-left text-2xl font-bold text-primary"
+                            >
+                              {item.name}
+                            </Link>
+                          ) : (
+                            <div className="truncate text-left text-2xl font-bold text-primary">
+                              {item.name}
+                            </div>
+                          )}
                         </div>
-
-
 
                         <div className="shrink-0">
-
                           <Badge
-
                             variant={getClearanceStatusBadgeVariant(item.status)}
-
                             className="px-3 py-1 text-xs font-bold"
-
                           >
-
                             {item.status.toUpperCase()}
-
                           </Badge>
-
                         </div>
-
                       </div>
-
-
 
                       <div className="mt-3 grid grid-cols-[88px_1fr] gap-x-3 gap-y-1 text-sm">
-
                         <div className="font-bold text-black">Request ID</div>
-
                         <div className="text-black">{item.requestId}</div>
-
                         <div className="font-bold text-black">Employee ID</div>
-
                         <div className="text-black">{item.employeeId}</div>
 
-
-
                         <div className="font-bold text-black">College</div>
-
                         <div className="text-black">{item.college}</div>
 
-
-
                         <div className="font-bold text-black">Department</div>
-
                         <div className="text-black">{item.department}</div>
 
-
-
                         <div className="font-bold text-black">Faculty Type</div>
-
                         <div className="text-black">{item.facultyType}</div>
-
                       </div>
-
                     </div>
-
                   </div>
 
-
-
                   {idx < items.length - 1 ? (
-
                     <Divider color="border-[hsl(var(--gray-border))]" />
-
                   ) : null}
-
                 </React.Fragment>
-
               ))}
-
             </div>
-
           </div>
 
           <Divider orientation="vertical" className="h-auto self-stretch" />
-
         </div>
-
       </CardContent>
-
     </Card>
-
   );
-
 }
 
+export type RequestCardProps = {
+  requestId?: string;
+  employeeId?: string;
+  name?: string;
+  college?: string;
+  department?: string;
+  facultyType?: string;
+  SchoolID?: string;
+  FullName?: string;
+  SchoolEmail?: string;
+  status?: "pending" | "approved" | "rejected";
+  className?: string;
+  onApprove?: () => void;
+  onReject?: () => void;
+  onViewDetails?: () => void;
+};
 
+export function RequestCard({
+  requestId = "REQ-2025-001",
+  employeeId = "2005123456789",
+  SchoolID = "2005123456789",
+  FullName = "Alexander H. Hamilton",
+  name = "Request No. 2526-001",
+  college = "College of Computer Studies",
+  department = "Information Technology",
+  facultyType = "Full-time Faculty (On Probation)",
+  SchoolEmail = "ahamilton@xu.edu.ph",
+  className,
+  onApprove,
+  onReject,
+  onViewDetails,
+}: RequestCardProps) {
+  const getStatusVariant = (status: string) => {
+    if (status === "approved") return "success" as const;
+    if (status === "rejected") return "destructive" as const;
+    return "warning" as const;
+  };
+
+  const getStatusText = (status: string) => {
+    return status.toUpperCase();
+  };
+
+  return (
+    <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
+      <CardContent className="p-0">
+        <div className="flex">
+          <Divider orientation="vertical" className="h-auto self-stretch" />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-3 px-4 py-6 bg-primary">
+              <div className="min-w-0 flex-1 text-white font-bold text-center text-2xl">
+                  {name}
+              </div>
+            </div>
+
+            <div className=" grid grid-cols-[100px_1fr] gap-x-3 gap-y-2 text-sm p-6">
+              <div className="font-bold text-black">School ID</div>
+              <div className="text-black">{SchoolID}</div>
+              
+              <div className="font-bold text-black">Full Name</div>
+              <div className="text-black">{FullName}</div>
+              
+              <div className="font-bold text-black">College</div>
+              <div className="text-black">{college}</div>
+              
+              <div className="font-bold text-black">Department</div>
+              <div className="text-black">{department}</div>
+              
+              <div className="font-bold text-black">Faculty Type</div>
+              <div className="text-black">{facultyType}</div>
+              
+              <div className="font-bold text-black">SchoolEmail</div>
+              <div className="text-black">{SchoolEmail}</div>
+              
+            </div>
+
+
+          </div>
+          <Divider orientation="vertical" className="h-auto self-stretch" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export type RequirementApprovalCardProps = {
+  requirementName?: string;
+  submissionNotes?: string;
+  className?: string;
+  onApprove?: () => void;
+  onReject?: () => void;
+};
+
+export function RequirementApprovalCard({
+  requirementName = "Library Clearance",
+  submissionNotes = "Submit library clearance form with signature",
+  onApprove,
+  onReject,
+}: RequirementApprovalCardProps) {
+  return (
+    <div className="rounded-xl border bg-card text-card-foreground shadow border-muted-foreground/20">
+        <div className="space-y-4 p-6">
+          <div>
+            <div className="text-xl text-center text-black font-bold mt-1">{requirementName}</div>
+          </div>
+          
+          <div>
+            <div className="text-md font-bold text-foreground">Submission Notes</div>
+            <div className="text-sm text-black mt-3 p-3 border border-foreground rounded-md pb-">{submissionNotes}</div>
+          </div>
+          
+          <div>
+            <div className="text-md font-bold text-foreground"></div>
+            <div className="text-sm text-black mt-1"></div>
+          </div>
+        </div>
+
+        <Divider className="bg-foreground "></Divider>
+
+        <div className="p-6 ">
+          <div className="flex items-center gap-3">
+            <div className="text-md font-bold text-foreground">Status</div>
+
+            <div className="ml-auto">
+              <div className="flex items-center gap-2">
+                
+                <input type="radio" name="status" value="approved" id="approved" className="h-4 w-4 text-blue-600" />
+                <label htmlFor="approved" className="text-sm">Approved</label>
+                
+                <input type="radio" name="status" value="rejected" id="rejected" className="h-4 w-4 text-blsck bg-black" />
+                <label htmlFor="rejected" className="text-sm">Rejected</label>
+              </div>
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="mt-2">
+              <InputGroupWithAddon 
+                placeholder="Enter remarks or comments..."
+                className="text-md"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center mt-6 gap-3">
+            <Button
+              type="button"
+              variant="back"
+              className="h-8 rounded-md px-4 text-sm font-bold flex-1"
+            >
+              <div className="flex items-center justify-center gap-2">
+                Cancel 
+              </div>
+            </Button>
+            <Button
+              type="button"
+              variant="default"
+              className="h-8 rounded-md px-4 text-sm font-bold flex-1"
+            >
+              <div className="flex items-center justify-center gap-2">
+                Save
+              </div>
+            </Button>
+          </div>
+        </div>
+      </div>
+  );
+}
 
 export type ExportArchiveClearanceStatus = "complete" | "incomplete";
 
-
-
 export type ExportArchiveClearanceItem = {
-
   id: string;
-
   name: string;
-
   requestId: string;
-
   universityId: string;
-
   college: string;
-
   department: string;
-
   facultyType: string;
-
   missingSignatures: string;
-
   status: ExportArchiveClearanceStatus;
-
 };
-
-
 
 export type ExportArchiveClearanceCardProps = {
-
   items: ExportArchiveClearanceItem[];
-
   className?: string;
-
   exportLabel?: string;
-
   onExport?: (items: ExportArchiveClearanceItem[]) => void;
-
 };
-
 
 
 function getExportArchiveClearanceBadgeVariant(status: ExportArchiveClearanceStatus) {
-
   if (status === "complete") return "success" as const;
-
   return "destructive" as const;
-
 }
 
-
-
 export function ExportArchiveClearanceCard({
-
   items,
-
   className,
-
   exportLabel = "Export Results",
-
   onExport,
 
 }: ExportArchiveClearanceCardProps) {
-
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set());
-
-
-
   const selectedItems = React.useMemo(
-
     () => items.filter((i) => selectedIds.has(i.id)),
-
     [items, selectedIds]
-
   );
 
-
-
   return (
-
     <Card className={cn("overflow-hidden border-muted-foreground/20 shadow-sm", className)}>
-
       <CardContent className="p-0">
-
         <div className="flex">
 
           <Divider orientation="vertical" className="h-auto self-stretch " />
 
           <div className="min-w-0 flex-1">
-
             <div className="flex items-center gap-3 border-b px-4 py-4">
-
               <Checkbox
-
                 variant="primary"
-
                 checked={items.length > 0 && selectedIds.size === items.length}
-
                 onCheckedChange={(v) => {
-
                   if (v) setSelectedIds(new Set(items.map((i) => i.id)));
-
                   else setSelectedIds(new Set());
-
                 }}
-
               />
-
-              <div className="text-sm font-bold text-primary">Select All</div>
-
-
-
+              <div className="text-sm font-bold text-primary">
+                Select All
+              </div>
               <Button
-
                 type="button"
-
                 variant="default"
-
                 className="ml-auto h-10 rounded-md px-4 text-sm font-bold"
-
                 onClick={() => onExport?.(selectedItems)}
-
                 disabled={selectedItems.length === 0}
-
               >
-
                 <Plus className="h-5 w-5" />
-
                 {exportLabel}
-
               </Button>
-
             </div>
-
-
 
             <Divider color="border-[hsl(var(--gray-border))]" />
 
-
-
             <div>
-
               {items.map((item, idx) => (
-
                 <React.Fragment key={item.id}>
-
                   <div className="flex gap-3 px-4 py-6">
-
                     <div className="pt-1">
-
                       <Checkbox
-
                         variant="primary"
-
                         checked={selectedIds.has(item.id)}
-
                         onCheckedChange={() => {
-
                           setSelectedIds((prev) => {
-
                             const next = new Set(prev);
-
                             if (next.has(item.id)) next.delete(item.id);
-
                             else next.add(item.id);
-
                             return next;
-
                           });
-
                         }}
-
                       />
-
                     </div>
-
-
 
                     <div className="min-w-0 flex-1">
-
                       <div className="flex items-start justify-between gap-3">
-
                         <div className="min-w-0">
-
-                          <div className="truncate text-left text-base font-bold text-primary">{item.name}</div>
-
+                          <div className="truncate text-left text-base font-bold text-primary">
+                            {item.name}  
+                          </div>
                         </div>
-
-
 
                         <div className="shrink-0">
-
                           <Badge
-
                             variant={getExportArchiveClearanceBadgeVariant(item.status)}
-
                             className="px-3 py-1 text-xs font-bold"
-
                           >
-
                             {item.status.toUpperCase()}
-
                           </Badge>
-
                         </div>
-
                       </div>
-
-
 
                       <div className="mt-3 grid grid-cols-[110px_1fr] gap-x-3 gap-y-1 text-sm">
-
-                        <div className="font-bold text-black">Request ID</div>
-
-                        <div className="text-black">{item.requestId}</div>
-
-
-
-                        <div className="font-bold text-black">University ID</div>
-
-                        <div className="text-black">{item.universityId}</div>
-
-
-
-                        <div className="font-bold text-black">College</div>
-
-                        <div className="text-black">{item.college}</div>
-
-
-
-                        <div className="font-bold text-black">Department</div>
-
-                        <div className="text-black">{item.department}</div>
-
-
-
-                        <div className="font-bold text-black">Faculty Type</div>
-
-                        <div className="text-black">{item.facultyType}</div>
-
-
-
-                        <div className="font-bold text-black">Missing Signatures</div>
-
-                        <div className="text-black">{item.missingSignatures}</div>
-
+                        <div className="font-bold text-black">
+                          Request ID
+                        </div>
+                        <div className="text-black">
+                          {item.requestId}
+                        </div>
+                        <div className="font-bold text-black">
+                          University ID
+                        </div>
+                        <div className="text-black">
+                          {item.universityId}
+                        </div>
+                        <div className="font-bold text-black">
+                          College
+                        </div>
+                        <div className="text-black">
+                          {item.college}
+                        </div>
+                        <div className="font-bold text-black">
+                          Department
+                        </div>
+                        <div className="text-black">
+                          {item.department}
+                        </div>
+                        <div className="font-bold text-black">
+                          Faculty Type
+                        </div>
+                        <div className="text-black">
+                          {item.facultyType}
+                        </div>
+                        <div className="font-bold text-black">
+                          Missing Signatures
+                        </div>
+                        <div className="text-black">
+                          {item.missingSignatures}
+                        </div>
                       </div>
-
                     </div>
-
                   </div>
 
-
-
                   {idx < items.length - 1 ? (
-
                     <Divider color="border-[hsl(var(--gray-border))]" />
-
                   ) : null}
-
                 </React.Fragment>
-
               ))}
-
             </div>
-
           </div>
-
           <Divider orientation="vertical" className="h-auto self-stretch" />
-
         </div>
-
       </CardContent>
-
     </Card>
 
   );
@@ -1319,21 +1163,14 @@ export function ExportArchiveClearanceCard({
 export type RequirementsListCardProps = {
 
   items: RequirementListItem[];
-
   className?: string;
-
+  lastUpdated?: string;
   onClose?: () => void;
-
   headerActionHref?: string;
-
   headerActionImgSrc?: string;
-
   headerActionImgAlt?: string;
-
   onViewItem?: (item: RequirementListItem) => void;
-
   onAddRequirement?: () => void;
-
   addDisabled?: boolean;
 
 };
@@ -1343,173 +1180,89 @@ export type RequirementsListCardProps = {
 export function RequirementsListCard({
 
   items,
-
   className,
-
   onClose,
-
   headerActionHref,
-
   headerActionImgSrc,
-
   headerActionImgAlt = "Open",
-
+  lastUpdated,
   onViewItem,
-
   onAddRequirement,
-
   addDisabled = true,
 
 }: RequirementsListCardProps) {
-
   const [collapsedTitles, setCollapsedTitles] = React.useState<Set<string>>(() => new Set());
 
-
-
   return (
-
     <Card className={cn("overflow-hidden", className)}>
-
       <CardHeader className="relative bg-primary py-3">
-
         <CardTitle className="text-center text-base font-bold text-primary-foreground">
-
           Requirements List
-
         </CardTitle>
-
         {headerActionHref && headerActionImgSrc ? (
-
           <Button
-
             asChild
-
             variant="icon"
-
             size="icon"
-
             className="absolute right-3 top-[40%] -translate-y-1/2 text-primary-foreground"
-
           >
-
             <Link to={headerActionHref}>
-
               <img
-
                 src={headerActionImgSrc}
-
                 alt={headerActionImgAlt}
-
                 className="h-6 w-6 object-contain"
-
               />
-
             </Link>
-
           </Button>
-
         ) : (
-
           <Button
-
             type="button"
-
             variant="icon"
-
             size="icon"
-
             className="absolute right-3 top-1/2 -translate-y-1/2 text-primary-foreground"
-
             onClick={onClose}
-
           >
-
             <X className="h-5 w-5" />
-
           </Button>
-
         )}
-
       </CardHeader>
 
-
-
       <CardContent className="p-0">
-
         <div className="p-4">
-
           <div className="space-y-3">
-
             {items.map((item) => (
-
               <div
-
                 key={item.title}
-
-                className="flex items-start justify-between gap-3 rounded-md bg-muted p-4"
-
+                className="flex items-start justify-between gap-3 rounded-md bg-muted"
               >
-
-                <div>
-
-                  <div className="text-sm font-bold text-foreground mt-2">{item.title}</div>
-
-                  {collapsedTitles.has(item.title) ? null : (
-
-                    <>
-
-                      {item.physicalSubmission ? (
-
-                        <div className="mt-2 ml-0">
-
-                          <Badge variant="warning">PHYSICAL SUBMISSION</Badge>
-
-                        </div>
-
-                      ) : null}
-
-                      <div className="mt-3 text-sm text-muted-foreground">{item.description}</div>
-
-                    </>
-
-                  )}
-
+                <div className="w-full">
+                  <div className="flex items-center justify-between gap-3  p-4">
+                    <div className="text-lg font-bold text-foreground mt-2">{item.title}</div>
+                    <Button
+                      type="button"
+                      variant="icon"
+                      className="mt-0.5 text-primary"
+                    >
+                      <Link to={headerActionHref}>
+                        <img src="BlackChevronIcon.png" className="h-5" />
+                     </Link>
+                    </Button>
+                  </div>
                   
+                  <Divider className="bg-black mt-2"></Divider>
 
+                    <div className=" p-4">
+                      {item.physicalSubmission ? (
+                        <div className="mt-2 ml-0">
+                          <Badge variant="warning">PHYSICAL SUBMISSION</Badge>
+                        </div>
+                      ) : null}
+                      <div className="mt-4 text-md text-black">{item.description}</div>
+                      <div className="mt-7 text-sm text-muted-foreground italic">{item.lastUpdated}</div>
+                    </div>
+                  
                 </div>
-
-                <button
-
-                  type="button"
-
-                  className="mt-0.5 text-primary"
-
-                  onClick={() => {
-
-                    onViewItem?.(item);
-
-                    setCollapsedTitles((prev) => {
-
-                      const next = new Set(prev);
-
-                      if (next.has(item.title)) next.delete(item.title);
-
-                      else next.add(item.title);
-
-                      return next;
-
-                    });
-
-                  }}
-
-                >
-
-                  <Eye className="h-5 w-5" />
-
-                </button>
-
               </div>
-
             ))}
 
           </div>
@@ -1517,43 +1270,9 @@ export function RequirementsListCard({
         </div>
 
 
-
-        <div className="h-px w-full bg-[hsl(var(--gray-border))]" />
-
-
-
-        <div className="flex items-center justify-center p-4">
-
-          <AddRequirementDialog
-
-            trigger={
-
-              <Button variant="default" >
-
-                <img src="/WhitePlusIcon.png" alt="Add Requirement" />Add Requirement
-
-              </Button>
-
-            }
-
-            onSave={() => {
-
-              if (addDisabled) return;
-
-              onAddRequirement?.();
-
-            }}
-
-          />
-
-        </div>
-
       </CardContent>
-
     </Card>
-
   );
-
 }
 
 
@@ -2506,6 +2225,10 @@ function getActivityIcon(variant: ActivityLogVariant) {
 
 
 
+
+
+
+
 function formatActivityLogText(item: ActivityLogItem) {
 
   const actorName = [item.actorFirstName, item.actorLastName].filter(Boolean).join(" ").trim();
@@ -2557,6 +2280,8 @@ function formatActivityLogText(item: ActivityLogItem) {
   const departmentName = item.departmentName?.trim();
 
   const approverFlowField = item.approverFlowField?.trim();
+
+
 
 
 
@@ -2990,8 +2715,6 @@ function formatActivityLogText(item: ActivityLogItem) {
 
 }
 
-
-
 export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): React.ReactElement {
 
   const parseDateParts = (dateLabel: string) => {
@@ -3068,241 +2791,243 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
 
 
 
-  const yearGroups = React.useMemo(() => {
+  const yearGroups = React.useMemo(
 
-    // Build a map of year -> dateKey -> dateGroup so each year appears once
+    () => {
 
-    const yearMap = new Map<
+      // Build a map of year -> dateKey -> dateGroup so each year appears once
 
-      string,
-
-      Map<
+      const yearMap = new Map<
 
         string,
 
-        {
+        Map<
 
-          key: string;
+          string,
 
-          year: string;
+          {
 
-          monthShort: string;
+            key: string;
 
-          day: string;
+            year: string;
 
-          items: ActivityLogItem[];
+            monthShort: string;
 
-          sortKey: number;
+            day: string;
 
-        }
+            items: ActivityLogItem[];
 
-      >
+            sortKey: number;
 
-    >();
+          }
 
+        >
 
-
-    const getTimestamp = (it: ActivityLogItem) => {
-
-      // Try mm/dd/yyyy + time parsing similar to the page parser
-
-      try {
-
-        if (/^\d{2}\/\d{2}\/\d{4}$/.test(it.dateLabel)) {
-
-          const [mm, dd, yyyy] = it.dateLabel.split("/");
-
-          let month = Math.max(0, Math.min(11, Number(mm) - 1));
-
-          let day = Number(dd) || 1;
-
-          let year = Number(yyyy) || 0;
+      >();
 
 
 
-          let hour = 0;
+      const getTimestamp = (it: ActivityLogItem) => {
 
-          let minute = 0;
+        // Try mm/dd/yyyy + time parsing similar to the page parser
 
-          if (it.timeLabel) {
+        try {
 
-            const m = it.timeLabel.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+          if (/^\d{2}\/\d{2}\/\d{4}$/.test(it.dateLabel)) {
 
-            if (m) {
+            const [mm, dd, yyyy] = it.dateLabel.split("/");
 
-              hour = Number(m[1]);
+            let month = Math.max(0, Math.min(11, Number(mm) - 1));
 
-              minute = Number(m[2]);
+            let day = Number(dd) || 1;
 
-              const ampm = (m[3] || "").toUpperCase();
+            let year = Number(yyyy) || 0;
 
-              if (ampm === "PM" && hour < 12) hour += 12;
 
-              if (ampm === "AM" && hour === 12) hour = 0;
+
+            let hour = 0;
+
+            let minute = 0;
+
+            if (it.timeLabel) {
+
+              const m = it.timeLabel.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+
+              if (m) {
+
+                hour = Number(m[1]);
+
+                minute = Number(m[2]);
+
+                const ampm = (m[3] || "").toUpperCase();
+
+                if (ampm === "PM" && hour < 12) hour += 12;
+
+                if (ampm === "AM" && hour === 12) hour = 0;
+
+              }
 
             }
+
+
+
+            return new Date(year, month, day, hour, minute).getTime();
 
           }
 
 
 
-          return new Date(year, month, day, hour, minute).getTime();
+          if (it.dateLabel === "Today") {
 
-        }
+            const d = new Date();
 
+            let hour = 0;
 
+            let minute = 0;
 
-        if (it.dateLabel === "Today") {
+            if (it.timeLabel) {
 
-          const d = new Date();
+              const m = it.timeLabel.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
 
-          let hour = 0;
+              if (m) {
 
-          let minute = 0;
+                hour = Number(m[1]);
 
-          if (it.timeLabel) {
+                minute = Number(m[2]);
 
-            const m = it.timeLabel.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+                const ampm = (m[3] || "").toUpperCase();
 
-            if (m) {
+                if (ampm === "PM" && hour < 12) hour += 12;
 
-              hour = Number(m[1]);
+                if (ampm === "AM" && hour === 12) hour = 0;
 
-              minute = Number(m[2]);
-
-              const ampm = (m[3] || "").toUpperCase();
-
-              if (ampm === "PM" && hour < 12) hour += 12;
-
-              if (ampm === "AM" && hour === 12) hour = 0;
+              }
 
             }
 
+            return new Date(d.getFullYear(), d.getMonth(), d.getDate(), hour, minute).getTime();
+
           }
 
-          return new Date(d.getFullYear(), d.getMonth(), d.getDate(), hour, minute).getTime();
+
+
+          // fallback: try Date.parse on the label
+
+          const parsed = Date.parse(it.dateLabel);
+
+          if (!isNaN(parsed)) return parsed;
+
+        } catch (e) {}
+
+        return 0;
+
+      };
+
+
+
+      for (const item of items) {
+
+        const ts = getTimestamp(item);
+
+        const dateObj = ts ? new Date(ts) : null;
+
+        const year = dateObj ? String(dateObj.getFullYear()) : parseDateParts(item.dateLabel).year || "";
+
+        const monthShort = dateObj ? ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"][dateObj.getMonth()] : parseDateParts(item.dateLabel).monthShort;
+
+        const day = dateObj ? String(dateObj.getDate()).padStart(2, "0") : parseDateParts(item.dateLabel).day;
+
+        const monthIndex = dateObj ? dateObj.getMonth() : parseDateParts(item.dateLabel).monthIndex || 0;
+
+
+
+        const dateKey = dateObj ? `${year}-${monthIndex}-${dateObj.getDate()}` : parseDateParts(item.dateLabel).key;
+
+
+
+        const sortKey = ts || 0;
+
+
+
+        let datesMap = yearMap.get(year);
+
+        if (!datesMap) {
+
+          datesMap = new Map();
+
+          yearMap.set(year, datesMap);
 
         }
 
 
 
-        // fallback: try Date.parse on the label
+        let d = datesMap.get(dateKey);
 
-        const parsed = Date.parse(it.dateLabel);
+        if (!d) {
 
-        if (!isNaN(parsed)) return parsed;
+          d = {
 
-      } catch (e) {}
+            key: dateKey,
 
-      return 0;
+            year,
 
-    };
+            monthShort,
 
+            day,
 
+            items: [item],
 
-    for (const item of items) {
+            sortKey,
 
-      const ts = getTimestamp(item);
+          };
 
-      const dateObj = ts ? new Date(ts) : null;
+          datesMap.set(dateKey, d);
 
-      const year = dateObj ? String(dateObj.getFullYear()) : parseDateParts(item.dateLabel).year || "";
+        } else {
 
-      const monthShort = dateObj ? ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"][dateObj.getMonth()] : parseDateParts(item.dateLabel).monthShort;
+          d.items.push(item);
 
-      const day = dateObj ? String(dateObj.getDate()).padStart(2, "0") : parseDateParts(item.dateLabel).day;
+          // keep the largest sortKey (most recent) for the date group
 
-      const monthIndex = dateObj ? dateObj.getMonth() : parseDateParts(item.dateLabel).monthIndex || 0;
+          if (sortKey > d.sortKey) d.sortKey = sortKey;
 
-
-
-      const dateKey = dateObj ? `${year}-${monthIndex}-${dateObj.getDate()}` : parseDateParts(item.dateLabel).key;
-
-
-
-      const sortKey = ts || 0;
-
-
-
-      let datesMap = yearMap.get(year);
-
-      if (!datesMap) {
-
-        datesMap = new Map();
-
-        yearMap.set(year, datesMap);
+        }
 
       }
 
 
 
-      let d = datesMap.get(dateKey);
+      // Convert map to array, sorting years and dates (most recent first)
 
-      if (!d) {
+      const yearEntries = Array.from(yearMap.entries()).sort((a, b) => {
 
-        d = {
+        const an = Number(a[0]) || 0;
 
-          key: dateKey,
+        const bn = Number(b[0]) || 0;
 
-          year,
+        return bn - an;
 
-          monthShort,
-
-          day,
-
-          items: [item],
-
-          sortKey,
-
-        };
-
-        datesMap.set(dateKey, d);
-
-      } else {
-
-        d.items.push(item);
-
-        // keep the largest sortKey (most recent) for the date group
-
-        if (sortKey > d.sortKey) d.sortKey = sortKey;
-
-      }
-
-    }
+      });
 
 
 
-    // Convert map to array, sorting years and dates (most recent first)
+      const out = yearEntries.map(([year, datesMap]) => {
 
-    const yearEntries = Array.from(yearMap.entries()).sort((a, b) => {
+        const dates = Array.from(datesMap.values())
 
-      const an = Number(a[0]) || 0;
+          .sort((a, b) => b.sortKey - a.sortKey)
 
-      const bn = Number(b[0]) || 0;
+          .map(({ sortKey, ...rest }) => rest);
 
-      return bn - an;
+        return { year, dates };
 
-    });
-
-
-
-    const out = yearEntries.map(([year, datesMap]) => {
-
-      const dates = Array.from(datesMap.values())
-
-        .sort((a, b) => b.sortKey - a.sortKey)
-
-        .map(({ sortKey, ...rest }) => rest);
-
-      return { year, dates };
-
-    });
+      });
 
 
 
-    return out;
+      return out;
 
-  }, [items]);
+    }, [items]);
 
 
 
@@ -3450,6 +3175,10 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
 
 
 
+
+
+
+
 export type ApprovedCardProps = {
 
   headerTitle?: string;
@@ -3524,6 +3253,8 @@ export function ApprovedCard({
 
 
 
+
+
 export type AcademicDetailsRow = {
 
   label: string;
@@ -3551,15 +3282,10 @@ export type AcademicDetailsCardProps = {
 export type WelcomeAcademicCardProps = {
 
   name: string;
-
   topLeft: AcademicDetailsRow;
-
   topRight: AcademicDetailsRow;
-
   rows?: AcademicDetailsRow[];
-
   afterRows?: React.ReactNode;
-
   className?: string;
 
 };
@@ -3569,9 +3295,7 @@ export type WelcomeAcademicCardProps = {
 export type ApproverWelcomeMetricsProps = {
 
   pendingClearance: number;
-
   totalClearanceRequests: number;
-
   className?: string;
 
 };
@@ -3581,9 +3305,7 @@ export type ApproverWelcomeMetricsProps = {
 export function ApproverWelcomeMetrics({
 
   pendingClearance,
-
   totalClearanceRequests,
-
   className,
 
 }: ApproverWelcomeMetricsProps) {
@@ -3591,79 +3313,49 @@ export function ApproverWelcomeMetrics({
   return (
 
     <div
-
       className={cn(
-
         "grid grid-cols-2 gap-3",
-
         className
-
       )}
-
     >
-
       <Card className="overflow-hidden">
-
         <CardContent className="flex items-center justify-between p-4">
-
           <div className="text-4xl font-bold leading-none text-primary">{pendingClearance}</div>
-
           <div className="text-right text-sm font-bold leading-tight text-primary">
-
             Pending
-
             <br />
-
             Clearance
-
           </div>
-
         </CardContent>
-
       </Card>
-
-
 
       <Card className="overflow-hidden">
-
         <CardContent className="flex items-center justify-between p-4">
-
           <div className="text-4xl font-bold leading-none text-primary">{totalClearanceRequests}</div>
-
           <div className="text-right text-sm font-bold leading-tight text-primary">
-
             Clearance
-
             <br />
-
             Requests
-
           </div>
-
         </CardContent>
-
       </Card>
-
     </div>
-
   );
 
 }
 
 
 
+
+
+
+
 export function WelcomeAcademicCard({
-
   name,
-
   topLeft,
-
   topRight,
-
   rows = [],
-
   afterRows,
-
   className,
 
 }: WelcomeAcademicCardProps) {
@@ -3671,94 +3363,53 @@ export function WelcomeAcademicCard({
   return (
 
     <Card className={cn("overflow-hidden", className)}>
-
       <CardHeader className="bg-primary text-primary-foreground text-center py-2.5">
-
         <CardDescription className="text-base leading-none text-primary-foreground/80">
-
           Welcome
-
         </CardDescription>
-
         <CardTitle className="text-xl font-bold leading-tight">{name}!</CardTitle>
-
       </CardHeader>
 
-
-
       <CardContent className="pt-4 pb-1">
-
         <div
-
           className={cn(
-
             "-mx-6 flex items-center justify-center gap-1.5 px-6 pb-3",
-
             rows.length
-
               ? "border-b border-[hsl(var(--gray-border))] shadow-[0_2px_2px_-2px_rgba(0,0,0,0.25)]"
-
               : ""
-
           )}
-
         >
-
           <div className="flex items-baseline gap-3">
-
             <div className="text-sm font-bold text-primary">{topLeft.label}</div>
-
             <div className="text-sm font-medium text-primary">{topLeft.value}</div>
-
           </div>
 
           <div className="flex items-baseline gap-3">
-
             <div className="text-sm font-bold text-primary">{topRight.label}</div>
-
             <div className="text-sm font-medium text-primary">{topRight.value}</div>
-
           </div>
 
         </div>
 
-
-
         {rows.length ? (
-
           <div className="-mx-6 px-6 py-3 flex justify-center">
-
             <div className="grid grid-cols-[auto,1fr] items-baseline gap-x-6 gap-y-2 justify-center">
-
               {rows.map((row) => (
-
                 <React.Fragment key={row.label}>
-
                   <div className="text-sm font-bold text-primary">{row.label}</div>
-
                   <div className="text-sm font-medium text-primary whitespace-normal break-words">{row.value}</div>
-
                 </React.Fragment>
-
               ))}
-
             </div>
-
           </div>
-
         ) : null}
 
-
-
         {afterRows ? <div className="mt-4">{afterRows}</div> : null}
-
       </CardContent>
-
     </Card>
-
   );
-
 }
+
 
 
 
@@ -3839,61 +3490,41 @@ export function AcademicDetailsCard({ topLeft, topRight, rows, className }: Acad
 
 
 export type ClearanceStatusCardProps = {
-
   statusLabel: string;
-
   statusVariant?: DashboardBadgeVariant;
-
   className?: string;
-
 };
 
 
 
 export function ClearanceStatusCard({
-
   statusLabel,
-
   statusVariant = "warning",
-
   className,
 
 }: ClearanceStatusCardProps) {
 
   return (
-
     <Card className={cn("bg-foregroundLight", className)}>
-
       <CardContent className="py-4">
-
         <div className="flex items-center justify-between">
-
           <div className="text-sm font-bold text-foreground">Clearance Status</div>
-
           <Badge variant={getBadgeVariant(statusVariant)}>{statusLabel}</Badge>
-
         </div>
-
       </CardContent>
-
     </Card>
-
   );
+};
 
-}
 
 
 
 export type ClearanceProgressCardProps = {
 
   label?: string;
-
   value: number;
-
   current?: number;
-
   total?: number;
-
   className?: string;
 
 };
@@ -3903,87 +3534,54 @@ export type ClearanceProgressCardProps = {
 export function ClearanceProgressCard({
 
   label = "Clearance Progress Bar",
-
   value,
-
   current,
-
   total,
-
   className,
 
 }: ClearanceProgressCardProps) {
 
   const computed =
-
     typeof current === "number" && typeof total === "number" && total > 0
-
       ? (current / total) * 100
-
       : value;
 
   const clamped = Math.max(0, Math.min(100, computed));
 
   return (
-
     <Card className={className}>
-
       <CardContent className="py-5">
-
         <div className="flex items-center justify-between">
-
           <div className="text-base font-bold text-foreground">{label}</div>
-
           {typeof current === "number" && typeof total === "number" ? (
-
             <div className="text-sm font-semibold text-muted-foreground">
-
               {current}/{total}
-
             </div>
-
           ) : null}
-
         </div>
-
-
-
         <div className="mt-3 h-2 w-full rounded-full bg-muted">
-
           <div
-
             className="h-2 rounded-full bg-success"
-
             style={{ width: `${clamped}%` }}
-
           />
-
         </div>
-
       </CardContent>
-
     </Card>
 
   );
+};
 
-}
 
 
 
 export type ClearanceStepCardProps = {
 
   index: number;
-
   title: string;
-
   statusLabel?: string;
-
   statusVariant?: DashboardBadgeVariant;
-
   rightIcon?: React.ReactNode;
-
   className?: string;
-
   onClick?: () => void;
 
 };
@@ -3991,11 +3589,8 @@ export type ClearanceStepCardProps = {
 
 
 export type ClearanceRequirementItem = {
-
   title: string;
-
   description: string;
-
   completed?: boolean;
 
 };
@@ -4005,25 +3600,15 @@ export type ClearanceRequirementItem = {
 export type ExpandableClearanceStepCardProps = {
 
   index: number;
-
   title: string;
-
   statusLabel?: string;
-
   statusVariant?: DashboardBadgeVariant;
-
   expanded: boolean;
-
   onToggle: () => void;
-
   collapsedType?: "status" | "dropdownOnly" | "locked";
-
   submittedTo?: string;
-
   submittedOn?: string;
-
   requirements?: ClearanceRequirementItem[];
-
   className?: string;
 
 };
@@ -4033,235 +3618,165 @@ export type ExpandableClearanceStepCardProps = {
 export function ExpandableClearanceStepCard({
 
   index,
-
   title,
-
   statusLabel,
-
   statusVariant = "warning",
-
   expanded,
-
   onToggle,
-
   collapsedType = "status",
-
   submittedTo,
-
   submittedOn,
-
   requirements = [],
-
   className,
 
 }: ExpandableClearanceStepCardProps) {
 
+  const [savedComments, setSavedComments] = React.useState<Record<string, string>>({});
+
   const isLocked = collapsedType === "locked";
-
   const effectiveExpanded = expanded && !isLocked;
-
   const showBadge = collapsedType === "status" && !!statusLabel;
-
   const showArrow = collapsedType !== "locked";
-
-
 
   return (
 
     <Card className={cn("overflow-hidden border-muted-foreground/20 shadow-sm", className)}>
-
       <button
-
         type="button"
-
         className={cn(
-
           "flex w-full items-center justify-between px-6 py-4 text-left",
-
           effectiveExpanded ? "bg-primary" : "bg-transparent",
-
           isLocked ? "cursor-not-allowed" : ""
-
         )}
 
         onClick={isLocked ? undefined : onToggle}
-
         disabled={isLocked}
 
       >
 
         <div className="flex items-center gap-3">
-
           <div
-
             className={cn(
-
               "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold",
-
               effectiveExpanded
-
                 ? "bg-primary-foreground text-primary"
-
                 : "bg-primary text-primary-foreground"
 
             )}
-
           >
-
             {index}
 
           </div>
 
           <div
-
             className={cn(
-
               "text-sm font-bold",
-
               effectiveExpanded ? "text-primary-foreground" : "text-primary"
-
             )}
-
           >
-
             {title}
-
           </div>
-
         </div>
 
-
-
         <div className="flex items-center gap-3">
-
           {showBadge ? (
-
             <Badge variant={getBadgeVariant(statusVariant)}>{statusLabel}</Badge>
-
           ) : null}
 
-
-
           {showArrow ? (
-
             <img
-
               src="/PrimaryArrowIcon.png"
-
               alt={effectiveExpanded ? "Collapse" : "Expand"}
-
               className={cn(
-
                 "h-7 w-7 object-contain transition-transform",
-
                 effectiveExpanded ? "rotate-180 brightness-0 invert" : "rotate-0"
-
               )}
-
             />
 
           ) : (
-
             <img
-
               src="/PrimaryLockIcon.png"
-
               alt="Locked"
-
               className="h-5 w-5 object-contain"
-
             />
-
           )}
-
         </div>
-
       </button>
 
 
 
       {effectiveExpanded ? (
 
-        <CardContent className="px-6 py-5">
-
+        <CardContent className="p-6 pt-4">
           <div className="space-y-5">
-
             <div>
-
               <div className="text-sm font-bold text-foreground">Status</div>
-
               {submittedTo ? (
-
                 <div className="mt-2 text-sm text-foreground">Submitted to: {submittedTo}</div>
-
               ) : null}
-
               {submittedOn ? (
-
                 <div className="mt-1 text-sm text-foreground">Submitted on: {submittedOn}</div>
-
               ) : null}
-
             </div>
-
-
 
             <div>
-
               <div className="text-sm font-bold text-foreground">Requirements Checklist</div>
-
-              
-
               <div className="mt-3 space-y-3">
-
                 {requirements.map((req) => (
+                  (() => {
+                    const savedComment = savedComments[req.title]?.trim() ?? "";
+                    const hasSavedComment = savedComment.length > 0;
 
+                    return (
                   <div
-
                     key={req.title}
-
                     className="flex gap-4 rounded-md bg-foregroundLight px-4 py-4"
-
                   >
-
                     <div className="mt-1">
-
                       <Checkbox variant="success" defaultChecked={req.completed ?? false} />
-
                     </div>
-
                     <div>
-
                       <div className="text-sm font-bold text-foreground">{req.title}</div>
-
                       <div className="mt-1 text-sm text-foreground whitespace-pre-line">{req.description}</div>
-
+                      <div className="mb-3 mt-2 flex items-center justify-end">
+                        {!hasSavedComment ? (
+                          <CommentDialog
+                            title="Add Comment"
+                            trigger={
+                              <Button size="sm">
+                                <div className="flex items-center gap-2">
+                                  <img src="WhitePlusIcon.png" /> Add Comment
+                                </div>
+                              </Button>
+                            }
+                            onSubmit={(comment) => {
+                              const trimmed = comment.trim();
+                              if (!trimmed) return;
+                              setSavedComments((prev) => ({ ...prev, [req.title]: trimmed }));
+                            }}
+                          />
+                        ) : null}
+                      </div>
+                      {hasSavedComment ? (
+                        <div className="bg-white p-4 border border-black rounded-md">{savedComment}</div>
+                      ) : null}
                     </div>
-
                   </div>
-
+                    );
+                  })()
                 ))}
-
               </div>
-
             </div>
-
           </div>
-
         </CardContent>
-
       ) : null}
-
     </Card>
-
   );
-
 }
 
 
 
 export function ClearanceStepCard({
-
   index,
 
   title,
@@ -4622,6 +4137,19 @@ export function FacultyDataDumpCard({
 
         <div className="text-center text-base font-bold text-foreground">{title}</div>
 
+        <div className="mt-4">
+          <Select>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select Semester" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="first">First Semester</SelectItem>
+              <SelectItem value="second">Second Semester</SelectItem>
+              <SelectItem value="third">Third Semester</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
 
 
         <div
@@ -4743,7 +4271,6 @@ export function FacultyDataDumpCard({
           </ul>
 
         </div>
-
       </CardContent>
 
     </Card>
@@ -4752,12 +4279,263 @@ export function FacultyDataDumpCard({
 
 }
 
+export type ArchivedClearanceCardProps = {
+  className?: string;
+  title?: string;
+  AcademicYear?: string;
+  Semester?: string;
+  ClearancePeriod?: string;
+  LastUpdate?: string;
+  Archived?: string;
+  description?: string;
+  buttonText?: string;
+  onButtonClick?: () => void;
+  buttonVariant?: "default" | "back" | "action";
+  iconSrc?: string;
+  iconAlt?: string;
+  onIconClick?: () => void;
+  iconClassName?: string;
+};
 
+export function ArchivedClearanceCard({
+  className,
+  title = "Archived Clearance",
+  AcademicYear = "2025 - 2026",
+  Semester = "1",
+  ClearancePeriod = "11/22/2025 - 11/23/2025",
+  LastUpdate = "November 1, 2025, 04:02 PM",
+  Archived = "November 1, 2025, 04:02 PM",
+  iconSrc = "/BlackChevronIcon.png",
+  iconAlt = "Archive",
+  onIconClick,
+  iconClassName = "ml-4",
+}: ArchivedClearanceCardProps) {
+  return (
+    <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
+        <div className="text-center text-xl font-bold text-foreground flex items-center justify-between p-6">
+          <div>{title}</div>
+          <Button variant="icon" className={iconClassName} size="icon" onClick={onIconClick}>
+            <img src={iconSrc} alt={iconAlt} className="h-6 w-6" />
+          </Button>
+        </div>
+        
+        <Divider className="bg-foreground " />
+        
+        <div className=" p-6">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Academic Year</div>
+          <div className="text-sm text-black text-left break-words">{AcademicYear}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Clearance Period</div>
+          <div className="text-sm text-black text-left break-words">{ClearancePeriod}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Semester</div>
+          <div className="text-sm text-black text-left break-words">{Semester}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Last Update</div>
+          <div className="text-sm text-black text-left break-words">{LastUpdate}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Archived</div>
+          <div className="text-sm text-black text-left break-words">{Archived}</div>
+        </div>
+      </div>
+      </Card>
+    );
+  }
+
+export type ViewArchivedClearanceWithStatusCardProps  = {
+ className?: string;
+  title?: string;
+  AcademicYear?: string;
+  Semester?: string;
+  ClearancePeriod?: string;
+  LastUpdate?: string;
+  Archived?: string;
+  status?: "complete" | "incomplete";
+  description?: string;
+  buttonText?: string;
+  FacultyCSVDump?:string;
+  Size?:string;
+  onButtonClick?: () => void;
+  buttonVariant?: "default" | "back" | "action";
+  iconSrc?: string;
+  iconAlt?: string;
+  onIconClick?: () => void;
+  iconClassName?: string;
+};
+
+
+export function ViewArchivedClearanceWithStatusCard({
+  className,
+  title = "Archived Clearance",
+  AcademicYear = "2025 - 2026",
+  Semester = "1",
+  ClearancePeriod = "11/22/2025 - 11/23/2025",
+  LastUpdate = "November 1, 2025, 04:02 PM",
+  Archived = "November 1, 2025, 04:02 PM",
+  status = "incomplete",
+  FacultyCSVDump = "2526_FacultyData.csv",
+  Size = "250 MB",
+  iconAlt = "Archive",
+
+  onIconClick,
+  iconClassName = "ml-4",
+}: ViewArchivedClearanceWithStatusCardProps) {
+  return (
+    <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
+      
+        <div className="text-xl font-bold text-foreground justify-between p-6">
+          <div className="items-right pb-3">
+            <Badge variant={status === "complete" ? "success" : "warning"}>
+              {status === "complete" ? "COMPLETE" : "INCOMPLETE"}
+            </Badge>
+          </div>
+          <div className="flex items-center text-center justify-between ">
+          <div>{title}</div>
+          <Button variant="icon" className={iconClassName} size="icon" onClick={onIconClick}>
+            <img src="/BlackChevronIcon.png" alt={iconAlt} className="h-6 w-6" />
+          </Button>
+          </div> 
+        </div>
+        
+        <Divider className="bg-foreground " />
+        
+        <div className=" p-6">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Academic Year</div>
+          <div className="text-sm text-black text-left break-words">{AcademicYear}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Semester</div>
+          <div className="text-sm text-black text-left break-words">{Semester}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Clearance Period</div>
+          <div className="text-sm text-black text-left break-words">{ClearancePeriod}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Last Update</div>
+          <div className="text-sm text-black text-left break-words">{LastUpdate}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Archived</div>
+          <div className="text-sm text-black text-left break-words">{Archived}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Faculty CSV Dump</div>
+          <div className="text-sm text-black text-left break-words">{FacultyCSVDump}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground"></div>
+          <div className="text-sm text-black text-left break-words">{Size}</div>
+        </div>
+      </div>
+      </Card>
+    );
+  }
+
+export type ViewArchivedClearanceCardProps = {
+ className?: string;
+  title?: string;
+  AcademicYear?: string;
+  Semester?: string;
+  ClearancePeriod?: string;
+  LastUpdate?: string;
+  Archived?: string;
+  description?: string;
+  buttonText?: string;
+  FacultyCSVDump?:string;
+  Size?:string;
+  onButtonClick?: () => void;
+  buttonVariant?: "default" | "back" | "action";
+  iconSrc?: string;
+  iconAlt?: string;
+  onIconClick?: () => void;
+  iconClassName?: string;
+};
+
+
+export function ViewArchivedClearanceCard({
+  className,
+  title = "Archived Clearance",
+  AcademicYear = "2025 - 2026",
+  Semester = "1",
+  ClearancePeriod = "11/22/2025 - 11/23/2025",
+  LastUpdate = "November 1, 2025, 04:02 PM",
+  Archived = "November 1, 2025, 04:02 PM",
+  FacultyCSVDump = "2526_FacultyData.csv",
+  Size = "250 MB",
+  iconAlt = "Archive",
+  onIconClick,
+  iconClassName = "ml-4",
+}: ArchivedClearanceCardProps) {
+  return (
+    <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
+        <div className="text-center text-xl font-bold text-foreground flex items-center justify-between p-6">
+          <div>{title}</div>
+          <Button variant="icon" className={iconClassName} size="icon">
+            <img src="/PrimaryDownloadIcon.png" alt={iconAlt} className="h-6 w-6" />
+          </Button>
+        </div>
+        
+        <Divider className="bg-foreground " />
+        
+        <div className=" p-6">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Academic Year</div>
+          <div className="text-sm text-black text-left break-words">{AcademicYear}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Semester</div>
+          <div className="text-sm text-black text-left break-words">{Semester}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Clearance Period</div>
+          <div className="text-sm text-black text-left break-words">{ClearancePeriod}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Last Update</div>
+          <div className="text-sm text-black text-left break-words">{LastUpdate}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Archived</div>
+          <div className="text-sm text-black text-left break-words">{Archived}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Faculty CSV Dump</div>
+          <div className="text-sm text-black text-left break-words">{FacultyCSVDump}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground"></div>
+          <div className="text-sm text-black text-left break-words">{Size}</div>
+        </div>
+      </div>
+      </Card>
+    );
+  }
 
 export type SystemUser = {
-
   id: string;
-
   name: string;
 
   systemId: string;
@@ -4830,27 +4608,20 @@ export function SystemUsersCard({
 
           <div className="min-w-0 flex-1">
 
-            <div className="flex items-center justify-center gap-2 bg-background px-4 py-3">
-
+            <div className="flex items-center justify-start gap-2 bg-background px-4 py-3 flex-wrap">
               <Button type="button" variant="default" className="h-10" onClick={onAddApprover}>
-
-                <img src="/WhitePlusIcon.png" alt="Add Approver" className="h-5 w-5 object-contain" />
-
-                <span className="ml-0">Add Approver</span>
-
+                <div className="flex items-center gap-2">
+                  <img src="/WhitePlusIcon.png" alt="Add Approver" className="h-5 w-5 object-contain" />
+                  <span className="ml-0">Add Approver</span>
+                </div>
               </Button>
-
               <Button type="button" variant="default" className="h-10" onClick={onAddAdmin}>
-
-                <img src="/WhitePlusIcon.png" alt="Add Admin" className="h-5 w-5 object-contain" />
-
-                <span>Add Admin</span>
-
+                <div className="flex items-center gap-2">
+                  <img src="/WhitePlusIcon.png" alt="Add Admin" className="h-5 w-5 object-contain" />
+                  <span>Add Admin</span>
+                </div>
               </Button>
-
             </div>
-
-
 
             <Divider color="border-[hsl(var(--gray-border))]" />
 
@@ -5140,9 +4911,13 @@ export type ClearanceTimelineItem = {
 
   status: ClearanceTimelineStatus;
 
-  inclusiveDates: string;
+  Name: string;
 
-  createdAt: string;
+  Timeline: string;
+
+  Date: String;
+
+  Time: String;
 
 };
 
@@ -5190,8 +4965,6 @@ export function ClearanceTimelineCard({
 
 }: ClearanceTimelineCardProps) {
 
-
-
   return (
 
     <SectionListCard
@@ -5210,89 +4983,103 @@ export function ClearanceTimelineCard({
 
     >
 
-      <div className="space-y-3 p-4">
+      <div className="space-y-3">
 
         {items.map((item, idx) => (
 
-          <div
+          <React.Fragment key={`${item.schoolYear}-${item.term}-${idx}`}>
 
-            key={`${item.schoolYear}-${item.term}-${idx}`}
+            <div className="overflow-hidden rounded-md bg-white p-4">
 
-            className="overflow-hidden rounded-md bg-muted"
+              <div className="flex items-center justify-between px-4 py-3">
 
-          >
+                <div className="min-w-0 flex-1">
 
-            <div className="flex items-center justify-between bg-muted px-4 py-3">
+                  <div className="text-lg font-bold text-black">{item.term}</div>
 
-              <div className="min-w-0 gap-1">
+                </div>
 
-                <div className="text-lg font-bold text-black">{item.schoolYear}</div>
+                <div className="flex items-center gap-2">
 
-                <div className="text-lg font-bold text-black">{item.term}</div>
+                  <GuidelinesToggle
+                    checked={item.status === "active"}
+                    onChange={(next) => {
+                      // Handle toggle change here
+                      console.log("Toggle changed:", next);
+                    }}
+                  />
 
-              </div>
+                  {item.status === "active" && (
 
+                    <Button
 
+                      type="button"
 
-              <Badge variant={item.status === "active" ? "success" : "destructive"}>
+                      variant="secondary"
 
-                {item.status.toUpperCase()}
+                      size="sm"
 
-              </Badge>
+                      className="h-8 rounded-md px-3 text-xs font-bold"
 
-            </div>
+                      onClick={() => onEditItem?.(item)}
 
+                    >
 
+                      EDIT
 
-            <div className="bg-muted px-4 py-4">
+                    </Button>
 
-              <div className="text-md font-bold text-black">Inclusive Dates</div>
-
-              <div className="mt-1 text-md text-black">{item.inclusiveDates}</div>
-
-
-
-              <div className="mt-3 text-sm text-muted-foreground">
-
-                Created: {item.createdAt}
-
-              </div>
-
-            </div>
-
-
-
-            {item.status === "active" ? (
-
-              <div className="bg-muted px-4 py-4">
-
-                <div className="flex items-center justify-center">
-
-                  <Button
-
-                    type="button"
-
-                    variant="secondary"
-
-                    size="sm"
-
-                    className="h-8 w-40 rounded-md px-4 text-xs font-bold"
-
-                    onClick={() => onEditItem?.(item)}
-
-                  >
-
-                    EDIT
-
-                  </Button>
+                  )}
 
                 </div>
 
               </div>
 
-            ) : null}
+              <div className="px-4 py-4 bg-white">
 
-          </div>
+                <div className="space-y-0 bg-foregroundLight rounded-md border border-gray-200 p-4">
+
+                  <div className="flex items-center gap-3">
+                      <div className="text-md font-bold text-black w-32">Name:</div>
+                      <div className="mt-1 text-sm font-semibold text-black">{item.Name || 'unset'}</div>
+                    </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="text-md font-bold text-black w-32">School Year:</div>
+                    <div className="mt-1 text-sm font-semibold text-black">{item.schoolYear || 'unset'}</div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="text-md font-bold text-black w-32">Timeline:</div>
+                    <div className="mt-1 text-sm font-semibold text-black">{item.Timeline || 'unset'}</div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-foreground  italic">Last Update: {item.Date} {item.Time}</div>
+                  </div>
+
+                </div>
+
+                <div className="flex justify-between gap-3 mt-4">
+                  {item.Name === 'unset' || item.Timeline === 'unset' ? (
+                    <Button variant="default" className="w-full">ADD</Button>
+                  ) : (
+                    <>
+                      <Button variant="default" className="flex-1">ARCHIVE</Button>
+                      <Button variant="back" className="flex-1">EDIT</Button>
+                    </>
+                  )}
+                </div>
+
+              </div>
+
+            </div>
+
+            {idx < items.length - 1 && (
+              <div className="border-b-2 border-[hsl(var(--gray-border))] shadow-[0_2px_2px_-2px_rgba(0,0,0,0.25)]" />
+            )}
+
+          </React.Fragment>
 
         ))}
 
@@ -5530,4 +5317,168 @@ export function DepartmentCompletionRateCard({
 
   );
 
+}
+
+export type AgreementCardProps = {
+  requestId?: string;
+  employeeId?: string;
+  name?: string;
+  college?: string;
+  department?: string;
+  facultyType?: string;
+  SchoolID?:string;
+  FullName?:string;
+  SchoolEmail?:string;
+  status?: "pending" | "approved" | "rejected";
+  className?: string;
+  onApprove?: () => void;
+  onReject?: () => void;
+  onViewDetails?: () => void;
+  onConfirm?: () => void;
+};
+
+export function AgreementCard({
+  className,
+  onConfirm,
+}: AgreementCardProps) {
+  const [agreeChecked, setAgreeChecked] = React.useState(false);
+  const [understandChecked, setUnderstandChecked] = React.useState(false);
+  const [understandConsequencesChecked, setUnderstandConsequencesChecked] = React.useState(false);
+
+  const allChecked = agreeChecked && understandChecked && understandConsequencesChecked;
+
+  return (
+    <div className={cn("rounded-xl border bg-card text-card-foreground shadow", className)}>
+      <div className="pt-9 pb-4 pl-4 pr-4" >
+
+
+        <div>
+        <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
+          <Checkbox
+            variant="gray"
+            checked={agreeChecked}
+            onCheckedChange={(v) => setAgreeChecked(v === true)}
+          />
+           <label className="text-sm text-gray-700">
+              <span className="font-bold">I agree</span> that I have created all the necessary clearance requirements that I need for my Department/Office
+            </label>
+        </div>
+        </div>
+
+        <div className="pt-4">
+
+        <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
+          <Checkbox
+            variant="gray"
+            checked={understandChecked}
+            onCheckedChange={(v) => setUnderstandChecked(v === true)}
+          />
+          <label className="text-sm text-gray-700">
+            <span className="font-bold">I understand</span> that once a Clearance Timeline is in an “Active” state, I cannot make any changes to my requirements.
+          </label>
+        </div>
+        </div>
+
+        <div className="pt-4">
+        <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
+          <Checkbox
+            variant="gray"
+            checked={understandConsequencesChecked}
+            onCheckedChange={(v) => setUnderstandConsequencesChecked(v === true)}
+          />
+          <label className="text-sm text-gray-700">
+            <span className="font-bold">I understand</span> that if I was not able to create the requirements for my departments on time, the system will reject the faculty member by default.
+          </label>
+        </div>
+        </div>
+
+        <div className="pt-6">
+          <Button
+            type="button"
+            variant="default"
+            className="w-full justify-center  text-center font-bold"
+            disabled={!allChecked}
+            onClick={onConfirm}
+          >
+            I Agree and Understand
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export type TrueAgreementCardProps = {
+  requestId?: string;
+  employeeId?: string;
+  name?: string;
+  college?: string;
+  department?: string;
+  facultyType?: string;
+  SchoolID?:string;
+  FullName?:string;
+  SchoolEmail?:string;
+  status?: "pending" | "approved" | "rejected";
+  className?: string;
+  onApprove?: () => void;
+  onReject?: () => void;
+  onViewDetails?: () => void;
+  onConfirm?: () => void;
+};
+
+export function TrueAgreementCard({
+  className,
+  onConfirm,
+}: TrueAgreementCardProps) {
+  const allChecked = true;
+
+  return (
+    <div className={cn("rounded-xl border bg-card text-card-foreground shadow", className)}>
+      <div className="pt-9 pb-4 pl-4 pr-4" >
+
+
+        <div>
+        <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
+          <Checkbox
+            variant="gray"
+            checked={true}
+            disabled
+          />
+           <label className="text-sm text-gray-700">
+              <span className="font-bold">I agree</span> that I have created all the necessary clearance requirements that I need for my Department/Office
+            </label>
+        </div>
+        </div>
+
+        <div className="pt-4">
+
+        <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
+          <Checkbox
+            variant="gray"
+            checked={true}
+            disabled
+          />
+          <label className="text-sm text-gray-700">
+            <span className="font-bold">I understand</span> that once a Clearance Timeline is in an “Active” state, I cannot make any changes to my requirements.
+          </label>
+        </div>
+        </div>
+
+        <div className="pt-4">
+        <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
+          <Checkbox
+            variant="gray"
+            checked={true}
+            disabled
+          />
+          <label className="text-sm text-gray-700">
+            <span className="font-bold">I understand</span> that if I was not able to create the requirements for my departments on time, the system will reject the faculty member by default.
+          </label>
+        </div>
+        </div>
+
+
+      </div>
+    </div>
+  );
 }

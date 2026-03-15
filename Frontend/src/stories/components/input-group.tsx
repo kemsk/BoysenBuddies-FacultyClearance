@@ -2,10 +2,11 @@ import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { Search } from "lucide-react"
 
-import { cn } from "@/components/lib/utils";
+import { cn } from "../../components/lib/utils"
 import { Button } from "./button"
 import { Input } from "./input"
 import { Textarea } from "./textarea"
+import { Divider } from "./divider"
 
 function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
@@ -129,6 +130,206 @@ function InputGroupText({ className, ...props }: React.ComponentProps<"span">) {
   )
 }
 
+function InputGroupWithAddon({
+  className,
+  value,
+  onValueChange,
+  placeholder = "Input your remarks here",
+}: {
+  className?: string;
+  value?: string;
+  onValueChange?: (value: string) => void;
+  placeholder?: string;
+}) {
+  const [isBold, setIsBold] = React.useState(false);
+  const [isItalic, setIsItalic] = React.useState(false);
+  const [isUnderline, setIsUnderline] = React.useState(false);
+  const [isBulletList, setIsBulletList] = React.useState(false);
+  const [isNumberList, setIsNumberList] = React.useState(false);
+  const editorRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!editorRef.current) return;
+    const next = value ?? "";
+    if (editorRef.current.textContent === next) return;
+    editorRef.current.textContent = next;
+  }, [value]);
+
+  const syncToolbarState = React.useCallback(() => {
+    setIsBold(Boolean(document.queryCommandState?.("bold")));
+    setIsItalic(Boolean(document.queryCommandState?.("italic")));
+    setIsUnderline(Boolean(document.queryCommandState?.("underline")));
+    setIsBulletList(Boolean(document.queryCommandState?.("insertUnorderedList")));
+    setIsNumberList(Boolean(document.queryCommandState?.("insertOrderedList")));
+  }, []);
+
+  React.useEffect(() => {
+    const onSelectionChange = () => {
+      if (!editorRef.current) return;
+      const sel = document.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const anchorNode = sel.anchorNode;
+      if (!anchorNode) return;
+      if (!editorRef.current.contains(anchorNode)) return;
+      syncToolbarState();
+    };
+
+    document.addEventListener("selectionchange", onSelectionChange);
+    return () => document.removeEventListener("selectionchange", onSelectionChange);
+  }, [syncToolbarState]);
+
+  const exec = (
+    command:
+      | "bold"
+      | "italic"
+      | "underline"
+      | "insertUnorderedList"
+      | "insertOrderedList"
+  ) => {
+    editorRef.current?.focus();
+    document.execCommand(command);
+    syncToolbarState();
+  };
+
+  const handleBold = () => exec("bold");
+  const handleItalic = () => exec("italic");
+  const handleUnderline = () => exec("underline");
+  const handleBulletList = () => exec("insertUnorderedList");
+  const handleNumberList = () => exec("insertOrderedList");
+  const handleHyperlink = () => {
+    editorRef.current?.focus();
+
+    const selection = window.getSelection();
+    const selectedText = selection?.toString().trim() ?? "";
+
+    // If cursor/selection is already inside a link and there's no selected text,
+    // treat button as "remove link".
+    const rawAnchor = selection?.anchorNode;
+    const anchorEl =
+      rawAnchor instanceof Element
+        ? rawAnchor
+        : (rawAnchor as { parentElement?: Element | null } | null)?.parentElement ?? null;
+    const existingLink = (anchorEl?.closest("a") ?? null) as HTMLAnchorElement | null;
+    if (existingLink && selectedText.length === 0) {
+      document.execCommand("unlink");
+      syncToolbarState();
+      return;
+    }
+
+    // If the user highlighted something, assume it *is* the URL they want.
+    // Normalize to a valid href.
+    if (selectedText.length > 0) {
+      const href =
+        /^https?:\/\//i.test(selectedText) || /^mailto:/i.test(selectedText)
+          ? selectedText
+          : `https://${selectedText}`;
+
+      document.execCommand("createLink", false, href);
+      syncToolbarState();
+      return;
+    }
+
+    // Fallback: no selection, ask for URL.
+    const url = window.prompt("Enter link URL:");
+    if (!url) return;
+    const href =
+      /^https?:\/\//i.test(url) || /^mailto:/i.test(url) ? url : `https://${url}`;
+    document.execCommand("createLink", false, href);
+    syncToolbarState();
+  };
+
+  return (
+   <div className="border border-black rounded-md">
+    <div className="flex items-center justify-end mt-3">
+      <Button 
+        variant="icon" 
+        onClick={handleBold}
+        className={isBold ? "bg-gray-200" : ""}
+      > 
+        <img src="BlackBoldIcon.png" alt="BlackBoldIcon" />
+      </Button>
+      <Button 
+        variant="icon"
+        onClick={handleItalic}
+        className={isItalic ? "bg-gray-200" : ""}
+      > 
+        <img src="BlackItalicIcon.png" alt="BlackItalicIcon" />
+      </Button>
+      <Button 
+        variant="icon"
+        onClick={handleUnderline}
+        className={isUnderline ? "bg-gray-200" : ""}
+      > 
+        <img src="BlackUnderlineIcon.png" alt="BlackUnderlineIcon" />
+      </Button>
+      <Button
+        variant="icon"
+        onClick={handleBulletList}
+        className={isBulletList ? "bg-gray-200" : ""}
+      > 
+        <img src="BlackBulletinIcon.png" alt="BlackButtonIcon" />
+      </Button>
+      <Button
+        variant="icon"
+        onClick={handleNumberList}
+        className={isNumberList ? "bg-gray-200" : ""}
+      > 
+        <img src="BlackNumberingIcon.png" alt="BlackNumberingIcon" />
+      </Button>
+      <Button variant="icon" onClick={handleHyperlink}> 
+        <img src="BlackHyperlinkIcon.png" alt="BlackHyperlinkIcon" />
+      </Button>
+    </div>
+
+    <Divider className="bg-black my-2 w-full h-0.5" />
+    <div className="min-h-40">
+      <div
+        ref={editorRef}
+        contentEditable
+        suppressContentEditableWarning
+        data-placeholder={placeholder}
+        className={cn(
+          "min-h-40 w-full px-3 py-2 bg-transparent outline-none",
+          "focus:outline-none focus:ring-0",
+          "[&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-1",
+          "[&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-1",
+          "[&_li]:my-0.5",
+          "[&_a]:text-blue-600 [&_a]:underline [&_a]:underline-offset-2 [&_a]:cursor-pointer",
+          "[&:empty:before]:content-[attr(data-placeholder)] [&:empty:before]:text-muted-foreground",
+          className
+        )}
+        onInput={() => {
+          syncToolbarState();
+          onValueChange?.(editorRef.current?.textContent ?? "");
+        }}
+        onKeyUp={() => {
+          syncToolbarState();
+        }}
+        onMouseUp={() => {
+          syncToolbarState();
+        }}
+        onClick={(e) => {
+          const rawTarget = e.target as unknown;
+          const targetEl =
+            rawTarget instanceof Element
+              ? rawTarget
+              : (rawTarget as { parentElement?: Element | null } | null)?.parentElement ?? null;
+          const a = (targetEl?.closest("a") ?? null) as HTMLAnchorElement | null;
+          if (!a) return;
+
+          // In a contentEditable, normal click is usually for caret placement.
+          // Use Ctrl/Cmd+click to follow the link.
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            window.open(a.href, "_blank", "noopener,noreferrer");
+          }
+        }}
+      />
+    </div>
+   </div>
+  )
+}
+
 function InputGroupInput({
   className,
   ...props
@@ -137,7 +338,7 @@ function InputGroupInput({
     <input
       data-slot="input-group-control"
       className={cn(
-        "flex-1 rounded-none border-0 bg-transparent px-0 text-[hsl(var(--text-black))] shadow-none outline-none placeholder:text-muted-foreground focus-visible:ring-0",
+        "flex-1 rounded-none border-0 bg-transparent px-0 text-[hsl(var(--text-black))] shadow-none outline-none placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:border-transparent focus:outline-none focus:ring-0 focus:border-0 [&:focus]:outline-none [&:focus]:ring-0 [&:focus-visible]:outline-none [&:focus-visible]:ring-0 [&:focus]:!outline-none [&:focus]:!ring-0 [&:focus-visible]:!outline-none [&:focus-visible]:!ring-0",
         className
       )}
       {...props}
@@ -153,7 +354,7 @@ function InputGroupTextarea({
     <Textarea
       data-slot="input-group-control"
       className={cn(
-        "flex-1 resize-none rounded-none border-0 bg-transparent py-3 shadow-none focus-visible:ring-0 dark:bg-transparent",
+        "flex-1 resize-none rounded-none border-1 bg-transparent py-3 shadow-none focus-visible:ring-0 dark:bg-transparent",
         className
       )}
       {...props}
@@ -206,6 +407,7 @@ export {
   InputGroupText,
   InputGroupInput,
   InputGroupTextarea,
+  InputGroupWithAddon,
   DEFAULT_SEARCH_PLACEHOLDER,
   SearchInputGroup,
 }
