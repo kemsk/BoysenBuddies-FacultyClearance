@@ -230,7 +230,7 @@ def verify_otp_api(request):
     request.session.pop(_otp_session_key(email), None)
     request.session.modified = True
 
-    _login(request, user)
+    django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     dashboard_url = _dashboard_route_for_user(user)
     
     # Import role helper functions
@@ -464,11 +464,11 @@ def google_sign_in_api(request):
         return _json_error(str(e), status=401)
 
     email = verified["email"]
-    user = User.objects.filter(email__iexact=email, is_active=True).first()
+    user = User.objects.filter(email__iexact=email).first()
     if not user:
         return _json_error("Email is not registered in the system", status=403)
 
-    django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    _login(request, user)
     redirect_to = "/login-prompt"
     return JsonResponse(
         {
@@ -547,12 +547,12 @@ def ciso_profile_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
-    user = getattr(request, "user", None)
-    if not user or not getattr(user, "is_authenticated", False):
+    user = _get_authenticated_user(request)
+    if not user:
         return JsonResponse({"detail": "Authentication required"}, status=401)
 
     # Check if user has CISO role
-    if not user.is_ciso_admin():
+    if not user.userrole_set.filter(role__name='CISO', is_active=True).exists():
         return JsonResponse({"detail": "Forbidden"}, status=403)
 
     return JsonResponse(
@@ -571,12 +571,12 @@ def ovphe_profile_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
-    user = getattr(request, "user", None)
-    if not user or not getattr(user, "is_authenticated", False):
+    user = _get_authenticated_user(request)
+    if not user:
         return JsonResponse({"detail": "Authentication required"}, status=401)
 
     # Check if user has OVPHE role
-    if not user.is_ovphe_admin():
+    if not user.userrole_set.filter(role__name='OVPHE', is_active=True).exists():
         return JsonResponse({"detail": "Forbidden"}, status=403)
 
     return JsonResponse(
@@ -591,11 +591,12 @@ def ovphe_profile_api(request):
     )
 
 def _get_active_ovphe_admin(request):
-    user = getattr(request, "user", None)
-    if not user or not getattr(user, "is_authenticated", False):
+    user = _get_authenticated_user(request)
+    if not user:
         return None
     
-    if user.is_ovphe_admin():
+    # Check if user has OVPHE role
+    if user.userrole_set.filter(role__name='OVPHE', is_active=True).exists():
         return user
     return None
 
@@ -674,12 +675,12 @@ def _get_active_ciso_admin():
 
 
 def _require_ciso_admin_user(request):
-    user = getattr(request, "user", None)
-    if not user or not getattr(user, "is_authenticated", False):
+    user = _get_authenticated_user(request)
+    if not user:
         return None, JsonResponse({"detail": "Authentication required"}, status=401)
 
     # Check if user has CISO role
-    if not user.is_ciso_admin():
+    if not user.userrole_set.filter(role__name='CISO', is_active=True).exists():
         return None, JsonResponse({"detail": "Forbidden"}, status=403)
 
     return user, None
@@ -1184,7 +1185,8 @@ def ciso_system_user_detail_api(request, user_id: int):
                     "college": college_label,
                     "department": dept_label,
                     "email": user.email,
-                    "isActive": bool(user.is_active),
+                    # Derive active status from any active role assignments
+                    "isActive": user.get_active_roles().exists(),
                 }
             }
         )
@@ -1243,17 +1245,16 @@ def ciso_system_user_detail_api(request, user_id: int):
         user.first_name = first_name
         user.middle_name = middle_name
         user.last_name = last_name
-        user.is_active = is_active
-        user.is_staff = True
         user.save(update_fields=[
             "email",
             "university_id",
             "first_name",
             "middle_name",
             "last_name",
-            "is_active",
-            "is_staff",
         ])
+
+        # Update all role assignments to reflect the desired active status
+        user.userrole_set.update(is_active=is_active)
 
         if system_admin_office:
             office_norm = system_admin_office.strip().upper()
@@ -1274,7 +1275,8 @@ def ciso_system_user_detail_api(request, user_id: int):
                 user=user,
                 role=role,
                 is_active=True,
-                assigned_by=request.user if request.user.is_authenticated else user
+                # Use the authenticated CISO admin as the assigner
+                assigned_by=admin,
             )
 
         assistant_profile = getattr(user, "assistant_profile", None)
@@ -1375,11 +1377,15 @@ def ciso_system_user_detail_api(request, user_id: int):
                 role_name = "Office Admin"
             
             role = Role.objects.get(name=role_name)
-            UserRole.objects.get_or_create(
+            user_role, _ = UserRole.objects.get_or_create(
                 user=user,
                 role=role,
-                defaults={'is_active': True}
+                defaults={'is_active': True},
             )
+            # Respect the requested active flag for all roles on this user
+            if not is_active and user_role.is_active:
+                user_role.is_active = False
+                user_role.save(update_fields=["is_active"])
 
     return JsonResponse({"ok": True})
 
@@ -1965,7 +1971,8 @@ def faculty_dashboard_api(request):
     if not email and not university_id:
         email = "faculty.seed@xu.edu.ph"
 
-    qs = Faculty.objects.select_related("user", "college", "department").filter(user__is_active=True)
+    # Our custom User model has no is_active flag; rely on existence of Faculty rows instead
+    qs = Faculty.objects.select_related("user", "college", "department")
     if email:
         qs = qs.filter(user__email=email)
     if university_id:
@@ -3318,7 +3325,8 @@ def ciso_system_users_api(request):
                 "college": "N/A",
                 "department": user_role.role.name,
                 "email": u.email,
-                "isActive": bool(u.is_active),
+                # A user is considered active if they have any active roles
+                "isActive": u.get_active_roles().exists(),
             }
         )
 
@@ -3423,14 +3431,13 @@ def ciso_system_users_api(request):
         if User.objects.filter(university_id__iexact=university_id).exists():
             return JsonResponse({"detail": "University ID already exists"}, status=400)
 
-        user = User.objects.create_user(
+        # Our custom User model does not have a create_user manager or is_active/is_staff fields
+        user = User.objects.create(
             email=email,
             university_id=university_id,
             first_name=first_name,
             middle_name=middle_name,
             last_name=last_name,
-            is_active=is_active,
-            is_staff=bool(system_admin_office or approver_type),
         )
 
         if system_admin_office:

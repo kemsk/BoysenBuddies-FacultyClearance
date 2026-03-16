@@ -7,7 +7,7 @@ ROLE_MAPPING = {
     1: 'CISO', 
     2: 'OVPHE',
     3: 'APPROVER',
-    4: 'STUDENT_ASSISTANT',
+    4: 'ASSISTANT_APPROVER',
     5: 'FACULTY'
 }
 
@@ -29,7 +29,9 @@ def get_role_value_for_user(user):
     role_priority = [
         ('CISO', 1),
         ('OVPHE', 2),
-        ('Approver', 3),
+        ('College Admin', 3),
+        ('Department Chair', 3),
+        ('Office Admin', 3),
         ('Student Assistant', 4),
         ('Faculty', 5)
     ]
