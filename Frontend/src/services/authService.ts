@@ -302,13 +302,11 @@ class AuthService {
   // Role-based access checking
   canAccessFolder(folderName: string): boolean {
     const roleAccessMap = {
-      1: ['hro'],  // HRO
-      2: ['ciso'],  // CISO
-      3: ['ovphe'],  // OVPHE
-      4: ['approver'],  // APPROVER
-      5: ['assistant'],  // ASSISTANT_APPROVER
-      6: ['faculty'],  // FACULTY
-      7: ['faculty', 'approver', 'assistant']  // DUAL_ROLE
+      1: ['ciso'],      // CISO
+      2: ['ovphe'],     // OVPHE
+      3: ['approver'],  // APPROVER
+      4: ['assistant'], // ASSISTANT_APPROVER
+      5: ['faculty'],   // FACULTY
     };
 
     const userInfo = this.getCurrentUserFromSession();
@@ -323,13 +321,11 @@ class AuthService {
     return userInfo?.role_value === roleValue;
   }
 
-  isHRO(): boolean { return this.hasRole(1); }
-  isCISO(): boolean { return this.hasRole(2); }
-  isOVPHE(): boolean { return this.hasRole(3); }
-  isApprover(): boolean { return this.hasRole(4); }
-  isAssistant(): boolean { return this.hasRole(5); }
-  isFaculty(): boolean { return this.hasRole(6); }
-  isDualRole(): boolean { return this.hasRole(7); }
+  isCISO(): boolean { return this.hasRole(1); }
+  isOVPHE(): boolean { return this.hasRole(2); }
+  isApprover(): boolean { return this.hasRole(3); }
+  isAssistant(): boolean { return this.hasRole(4); }
+  isFaculty(): boolean { return this.hasRole(5); }
 
   private getCurrentUserFromSession(): { role_value?: number; } | null {
     // This would typically come from your app's state management
@@ -340,13 +336,11 @@ class AuthService {
   // Get role display name
   getRoleName(roleValue: number): string {
     const roleNames = {
-      1: 'HRO',
-      2: 'CISO',
-      3: 'OVPHE',
-      4: 'APPROVER',
-      5: 'ASSISTANT_APPROVER',
-      6: 'FACULTY',
-      7: 'DUAL_ROLE'
+      1: 'CISO',
+      2: 'OVPHE',
+      3: 'APPROVER',
+      4: 'ASSISTANT_APPROVER',
+      5: 'FACULTY'
     };
     return roleNames[roleValue as keyof typeof roleNames] || 'Unknown';
   }
@@ -354,13 +348,11 @@ class AuthService {
   // Get dashboard URL for role
   getDashboardUrl(roleValue: number): string {
     const dashboardPaths = {
-      1: '/HRO-dashboard',
-      2: '/CISO-dashboard',
-      3: '/OVPHE-dashboard',
-      4: '/approver-dashboard',
-      5: '/assistant-approver-dashboard',
-      6: '/faculty-dashboard',
-      7: '/dual-role-approver-dashboard'
+      1: '/CISO-dashboard',
+      2: '/OVPHE-dashboard',
+      3: '/approver-dashboard',
+      4: '/assistant-approver-dashboard',
+      5: '/faculty-dashboard'
     };
     return dashboardPaths[roleValue as keyof typeof dashboardPaths] || '/faculty-dashboard';
   }
