@@ -10,7 +10,6 @@ from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth import login as django_login, logout as django_logout
 from django.core.mail import send_mail
 from django.conf import settings
 from decimal import Decimal
@@ -27,6 +26,34 @@ def _json_error(detail: str, status: int = 400):
 
 def _normalize_email(value: str | None) -> str:
     return (value or "").strip().lower()
+
+
+def _login(request, user):
+    """Login function that doesn't use Django auth"""
+    from .decorators import get_role_value_for_user
+    
+    request.session['user_authenticated'] = True
+    request.session['user_id'] = str(user.id)
+    request.session['user_email'] = user.email
+    request.session['user_role_value'] = get_role_value_for_user(user)
+    request.session.modified = True
+
+
+def _logout(request):
+    """Logout function that doesn't use Django auth"""
+    request.session.flush()
+
+
+def _get_authenticated_user(request):
+    """Get currently authenticated user"""
+    if request.session.get('user_authenticated'):
+        user_id = request.session.get('user_id')
+        if user_id:
+            try:
+                return User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                pass
+    return None
 
 
 def _generate_otp(length: int = 6) -> str:
@@ -203,7 +230,7 @@ def verify_otp_api(request):
     request.session.pop(_otp_session_key(email), None)
     request.session.modified = True
 
-    django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    _login(request, user)
     dashboard_url = _dashboard_route_for_user(user)
     
     # Import role helper functions
@@ -398,19 +425,18 @@ def google_oauth_callback(request):
         return _json_error(str(e), status=401)
 
     email = verified["email"]
-    user = User.objects.filter(email__iexact=email, is_active=True).first()
+    user = User.objects.filter(email__iexact=email).first()
     if not user:
         return _json_error("Email is not registered in the system", status=403)
 
     print(f"GOOGLE OAUTH: User found: {user.email} (ID: {user.id})")
-    print(f"GOOGLE OAUTH: About to call django_login...")
+    print(f"GOOGLE OAUTH: About to call login...")
     
-    django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    _login(request, user)
     
-    print(f"GOOGLE OAUTH: Session after django_login: {dict(request.session)}")
-    print(f"GOOGLE OAUTH: Session key after: {request.session.session_key}")
-    print(f"GOOGLE OAUTH: User authenticated: {request.user.is_authenticated}")
-    print(f"GOOGLE OAUTH: User ID in session: {request.user.id}")
+    print(f"GOOGLE OAUTH: Session after login: {dict(request.session)}")
+    print(f"GOOGLE OAUTH: User authenticated: {request.session.get('user_authenticated')}")
+    print(f"GOOGLE OAUTH: User ID in session: {request.session.get('user_id')}")
     
     redirect_to = _dashboard_route_for_user(user)
     print(f"GOOGLE OAUTH: Redirecting to: {redirect_to}")
@@ -461,15 +487,14 @@ def logout_api(request):
     
     print(f"LOGOUT: Starting logout...")
     print(f"LOGOUT: Session before: {dict(request.session)}")
-    print(f"LOGOUT: Session key before: {request.session.session_key}")
     
     # Create response first to delete cookies
     response = JsonResponse({"ok": True, "message": "Logged out successfully"})
     
     try:
-        # Django's standard logout
-        django_logout(request)
-        print(f"LOGOUT: Django logout completed successfully")
+        # Logout
+        _logout(request)
+        print(f"LOGOUT: Logout completed successfully")
         
         # Force delete session cookie even if session was empty
         response.delete_cookie('sessionid', path='/')
@@ -480,10 +505,9 @@ def logout_api(request):
         print(f"LOGOUT: Session cookies force-deleted from response")
         
     except Exception as e:
-        print(f"LOGOUT: Django logout error: {e}")
+        print(f"LOGOUT: Logout error: {e}")
     
     print(f"LOGOUT: Session after: {dict(request.session)}")
-    print(f"LOGOUT: Session key after: {getattr(request.session, 'session_key', 'None')}")
     print(f"LOGOUT: Logout completed with cookie deletion")
     
     return response
@@ -493,8 +517,8 @@ def me_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
-    user = getattr(request, "user", None)
-    if not user or not getattr(user, "is_authenticated", False):
+    user = _get_authenticated_user(request)
+    if not user:
         return JsonResponse({"detail": "Authentication required"}, status=401)
 
     # Import role helper functions

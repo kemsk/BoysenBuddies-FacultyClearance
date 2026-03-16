@@ -11,21 +11,18 @@ python manage.py migrate --noinput
 
 mysql -h "${DB_HOST}" -u "${DB_USER}" -p"${DB_PASSWORD}" --ssl=0 "${DB_NAME}" << 'EOF'
 -- Seed Users
-INSERT INTO FC_user (email, university_id, password, first_name, last_name, created_at, is_active, is_staff, is_superuser)
+INSERT INTO FC_user (email, university_id, first_name, last_name, created_at)
 VALUES 
-('20220025546@my.xu.edu.ph', 20220025546, 'password', 'Albert Floyd', 'Villanueva', NOW(), 1, 1, 1),
-('20190016375@my.xu.edu.ph', 20190016375, 'password', 'Nesyl', 'Ylanan', NOW(), 1, 1, 1),
-('20220024573@my.xu.edu.ph', 20220024573, 'password', 'Kim', 'Flores', NOW(), 1, 1, 1),
-('approver.seed@xu.edu.ph', 1000000001, 'password', 'Angela', 'Santos', NOW(), 1, 1, 0),
-('assistant.seed@xu.edu.ph', 1000000002, 'password', 'Seed', 'Assistant', NOW(), 1, 1, 0),
-('faculty.seed@xu.edu.ph', 1000000003, 'password', 'John', 'Doe', NOW(), 1, 0, 0),
-('ovphe.seed@xu.edu.ph', 1000000005, 'password', 'Maria', 'Reyes', NOW(), 1, 1, 0)
+('20220025546@my.xu.edu.ph', 20220025546, 'Albert Floyd', 'Villanueva', NOW()),
+('20190016375@my.xu.edu.ph', 20190016375, 'Nesyl', 'Ylanan', NOW()),
+('20220024573@my.xu.edu.ph', 20220024573, 'Kim', 'Flores', NOW()),
+('approver.seed@xu.edu.ph', 1000000001, 'Angela', 'Santos', NOW()),
+('assistant.seed@xu.edu.ph', 1000000002, 'Seed', 'Assistant', NOW()),
+('faculty.seed@xu.edu.ph', 1000000003, 'John', 'Doe', NOW()),
+('ovphe.seed@xu.edu.ph', 1000000005, 'Maria', 'Reyes', NOW())
 ON DUPLICATE KEY UPDATE
     first_name = VALUES(first_name),
-    last_name = VALUES(last_name),
-    is_active = VALUES(is_active),
-    is_staff = VALUES(is_staff),
-    is_superuser = VALUES(is_superuser);
+    last_name = VALUES(last_name);
 
 -- Seed Roles
 INSERT INTO FC_role (name, description, is_system_role, created_at)
@@ -92,6 +89,19 @@ SELECT
 FROM FC_user u
 CROSS JOIN FC_role r
 WHERE u.email = '20190016375@my.xu.edu.ph' AND r.name = 'OVPHE'
+ON DUPLICATE KEY UPDATE
+    is_active = VALUES(is_active);
+
+INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
+SELECT 
+    u.id AS user_id, 
+    r.id AS role_id,
+    u.id AS assigned_by_id,
+    NOW() AS assigned_date,
+    1 AS is_active
+FROM FC_user u
+CROSS JOIN FC_role r
+WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'OVPHE'
 ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
 

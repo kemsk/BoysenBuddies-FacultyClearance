@@ -59,22 +59,22 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='approverflowconfig',
             name='created_by',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='approver_flow_configs', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='approver_flow_configs', to='FC.user'),
         ),
         migrations.AlterField(
             model_name='requirement',
             name='created_by',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='FC.user'),
         ),
         migrations.AlterField(
             model_name='studentassistant',
             name='supervisor_approver',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='supervised_assistants', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='supervised_assistants', to='FC.user'),
         ),
         migrations.AlterField(
             model_name='systemanalytics',
             name='generated_by',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='FC.user'),
         ),
         migrations.AddConstraint(
             model_name='clearancerequest',
@@ -83,7 +83,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='administrativesecondment',
             name='assigned_by',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='FC.user'),
         ),
         migrations.AddField(
             model_name='administrativesecondment',
@@ -98,22 +98,22 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='administrativesecondment',
             name='primary_approver',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='primary_secondments', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='primary_secondments', to='FC.user'),
         ),
         migrations.AddField(
             model_name='administrativesecondment',
             name='secondment_approver',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='secondment_assignments', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='secondment_assignments', to='FC.user'),
         ),
         migrations.AddField(
             model_name='approverassistant',
             name='assigned_by',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='created_assistants', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='created_assistants', to='FC.user'),
         ),
         migrations.AddField(
             model_name='approverassistant',
             name='assistant',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='assistant_assignments', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='assistant_assignments', to='FC.user'),
         ),
         migrations.AddField(
             model_name='approverassistant',
@@ -133,7 +133,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='approverassistant',
             name='supervisor',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='approver_supervised_assistants', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='approver_supervised_assistants', to='FC.user'),
         ),
         migrations.AlterUniqueTogether(
             name='administrativesecondment',

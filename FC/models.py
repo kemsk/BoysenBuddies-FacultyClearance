@@ -1,55 +1,16 @@
 from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.utils import timezone
 
 # Create your models here.
 
 
-class UserManager(BaseUserManager):
-    def create_user(self, email, university_id, password=None, **extra_fields):
-        if not email:
-            raise ValueError("The Email must be set")
-        if not university_id:
-            raise ValueError("The University ID must be set")
-
-        email = self.normalize_email(email)
-        user = self.model(email=email, university_id=university_id, **extra_fields)
-        if password:
-            user.set_password(password)
-        user.save(using=self._db)
-        return user
-
-    def create_superuser(self, email, university_id, password=None, **extra_fields):
-        extra_fields.setdefault("is_staff", True)
-        extra_fields.setdefault("is_superuser", True)
-        extra_fields.setdefault("is_active", True)
-
-        if extra_fields.get("is_staff") is not True:
-            raise ValueError("Superuser must have is_staff=True.")
-        if extra_fields.get("is_superuser") is not True:
-            raise ValueError("Superuser must have is_superuser=True.")
-        if password is None:
-            raise ValueError("Superuser must have a password.")
-
-        return self.create_user(email=email, university_id=university_id, password=password, **extra_fields)
-
-
-class User(AbstractBaseUser, PermissionsMixin):
+class User(models.Model):
     email = models.EmailField(max_length=150, unique=True)
-    password = models.CharField(max_length=128, verbose_name='password')
     university_id = models.CharField(max_length=50, unique=True)
     first_name = models.CharField(max_length=100, null=True, blank=True)
     middle_name = models.CharField(max_length=100, null=True, blank=True)
     last_name = models.CharField(max_length=100, null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
-
-    is_active = models.BooleanField(default=True)
-    is_staff = models.BooleanField(default=False)
-
-    objects = UserManager()
-
-    USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["university_id"]
 
     def __str__(self):
         return self.email
@@ -57,13 +18,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     def get_active_roles(self):
         """Get all active roles for this user"""
         return self.userrole_set.filter(is_active=True).select_related('role')
-    
-    def has_role_permission(self, permission_name):
-        """Check if user has specific permission through any of their roles"""
-        return any(
-            role.role.permissions.filter(codename=permission_name).exists()
-            for role in self.get_active_roles()
-        )
     
     def is_approver(self, college=None, department=None, office=None):
         """Check if user is approver for specific context"""
@@ -128,7 +82,6 @@ class Department(models.Model):
 class Role(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
-    permissions = models.ManyToManyField('auth.Permission', blank=True)
     is_system_role = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
