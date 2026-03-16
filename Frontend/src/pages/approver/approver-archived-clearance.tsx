@@ -177,7 +177,7 @@ export default function ApproverAchivedClearance() {
           
           <div className="mt-3">
             <ArchivedClearanceCard  
-             onIconClick={() => navigate("/Approver-view-clearance")}
+             onIconClick={() => navigate("/approver-view-clearance")}
              iconClassName="ml-6"
             />
           </div>

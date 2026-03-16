@@ -5,7 +5,9 @@ import { CISOHeader} from "../../stories/components/header";
 
 import {
   type AnnouncementItem,
+  NoLinkClearanceRequestsCard,
   ViewArchivedClearanceCard,
+  type NoLinkClearanceRequestItem,
 } from "../../stories/components/cards";
 
 import { Button } from "../../stories/components/button";
@@ -34,6 +36,8 @@ function postOVPHEActivityLog(payload: { event_type: string; details?: string[] 
     body: JSON.stringify(payload),
   }).catch(() => {});
 }
+
+
 
 function GuidelinesToggle({
   checked,
@@ -71,7 +75,32 @@ export default function CISOViewClearance() {
   const [selectedYear, setSelectedYear] = useState("all");
   const [sortBy, setSortBy] = useState("name");
 
+  const dummyClearanceRequests: NoLinkClearanceRequestItem[] = [
+      {
+        id: "ovphe-1",
+        name: "Juan Dela Cruz",
+        requestId: "REQ-2501-0001",
+        employeeId: "EMP-0001",
+        college: "College of Engineering",
+        department: "Computer Engineering",
+        facultyType: "Full-Time",
+        status: "pending",
+      },
+      {
+        id: "ovphe-2",
+        name: "Maria Santos",
+        requestId: "REQ-2501-0002",
+        employeeId: "EMP-0002",
+        college: "College of Arts and Sciences",
+        department: "Mathematics",
+        facultyType: "Part-Time",
+        status: "approved",
+      },
+    ];
+
   type AnnouncementApiItem = AnnouncementItem & { id: number; email?: string };
+
+  
 
   const [items, setItems] = React.useState<AnnouncementApiItem[]>([]);
   const [dialogOpen, setDialogOpen] = React.useState(false);
@@ -217,10 +246,7 @@ export default function CISOViewClearance() {
           </div>
           
           <div className="mt-3">
-            <ViewArchivedClearanceCard 
-              onViewDetails={() => console.log("View details clicked")}
-
-            />
+            <NoLinkClearanceRequestsCard items={dummyClearanceRequests} />
           </div>
         </div>
 

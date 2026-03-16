@@ -19,6 +19,7 @@ import ApproverNotification from "./pages/approver/approver-notification";
 import ApproverAchivedClearance from "./pages/approver/approver-archived-clearance";
 import ApproverViewClearance from "./pages/approver/approver-view-clearance";
 import ApproverIndividualApproval from "./pages/approver/approver-individual-approval";
+import ApproverArchivedIndividualApproval from "./pages/approver/approver-archived-individual";
 
 
 
@@ -29,6 +30,7 @@ import AssistantApproverNotification from "./pages/assistant-approver/assistant-
 import AssistantApproverAchivedClearance from "./pages/assistant-approver/assistant-approver-archived-clearance";
 import AssitantApproverIndividualApproval from "./pages/assistant-approver/assistant-approver-individual-approval";
 import AssistantApproverViewClearance from "./pages/assistant-approver/assistant-approver-view-clearance";
+import AssistantApproverArchivedIndividualApproval from "./pages/assistant-approver/assistant-approver-archived-individual";
 
 import OVPHEDashboard from "./pages/OVPHE/OVPHE-dashboard";
 import OVPHETools from "./pages/OVPHE/OVPHE-tools";
@@ -80,6 +82,7 @@ function App() {
         { <Route path="/approver-notification" element={<ApproverNotification />} />}
         { <Route path="/approver-archived-clearance" element={<ApproverAchivedClearance />} />}
         { <Route path="/approver-view-clearance" element={<ApproverViewClearance />} />}
+        { <Route path="/approver-archived-individual" element={<ApproverArchivedIndividualApproval />} />}        
         
         { <Route path="/assistant-approver-dashboard" element={<AssistantApproverDashboard />} />}
         { <Route path="/assistant-approver-requirement-list" element={<AssistantApproverRequirementList />} />}
@@ -88,6 +91,7 @@ function App() {
         { <Route path="/assistant-approver-archived-clearance" element={<AssistantApproverAchivedClearance />} />}
         { <Route path="/assistant-approver-individual-clearance" element={<AssitantApproverIndividualApproval />} />}
         { <Route path="/assistant-approver-view-clearance" element={<AssistantApproverViewClearance/>} />}        
+        { <Route path="/assistant-approver-archived-individual" element={<AssistantApproverArchivedIndividualApproval />} />}
 
 
 

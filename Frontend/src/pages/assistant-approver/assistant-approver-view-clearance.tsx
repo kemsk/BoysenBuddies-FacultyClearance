@@ -5,13 +5,11 @@ import { AssistantApproverHeader } from "../../stories/components/header";
 
 import {
   type AnnouncementItem,
-  SectionListCard,
-  ArchivedClearanceCard,
-  ViewArchivedClearanceCard,
+  ClearanceRequestsCard,
+  type ClearanceRequestItem,
 } from "../../stories/components/cards";
 
 import { Button } from "../../stories/components/button";
-import { Divider } from "../../stories/components/divider";
 
 import {
   Select,
@@ -42,8 +40,11 @@ function postOVPHEActivityLog(payload: { event_type: string; details?: string[] 
 export default function AssistantApproverViewClearance() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const [requests, setRequests] = React.useState<ClearanceRequestItem[]>([]);
+  
   const [selectedYear, setSelectedYear] = useState("all");
   const [sortBy, setSortBy] = useState("name");
+  
 
   type AnnouncementApiItem = AnnouncementItem & { id: number; email?: string };
 
@@ -78,6 +79,119 @@ export default function AssistantApproverViewClearance() {
       });
   }, [refresh]);
 
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/clearance-requests", {
+      credentials: "include",
+    })
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => {
+        const next = Array.isArray(data?.items) ? (data.items as ClearanceRequestItem[]) : [];
+        if (next.length > 0) {
+          setRequests(next);
+          return;
+        }
+        setRequests([
+          {
+            id: "1",
+            requestId: "REQ-2025-001",
+            employeeId: "2005123456789",
+            name: "Alexander H. Hamilton",
+            college: "College of Computer Studies",
+            department: "Information Technology",
+            facultyType: "Full-time Faculty (On Probation)",
+            status: "pending",
+          },
+          {
+            id: "2",
+            requestId: "REQ-2025-002",
+            employeeId: "2005987654321",
+            name: "Maria C. Santos",
+            college: "College of Engineering",
+            department: "Civil Engineering",
+            facultyType: "Full-time Faculty",
+            status: "approved",
+          },
+          {
+            id: "3",
+            requestId: "REQ-2025-003",
+            employeeId: "2005456789012",
+            name: "Juan D. Reyes",
+            college: "College of Business Administration",
+            department: "Accountancy",
+            facultyType: "Part-time Faculty",
+            status: "rejected",
+          },
+          {
+            id: "4",
+            requestId: "REQ-2025-004",
+            employeeId: "2005234567890",
+            name: "Patricia L. Garcia",
+            college: "College of Education",
+            department: "Elementary Education",
+            facultyType: "Full-time Faculty (Tenured)",
+            status: "pending",
+          },
+          {
+            id: "5",
+            requestId: "REQ-2025-005",
+            employeeId: "2005789012345",
+            name: "Roberto K. Tan",
+            college: "College of Computer Studies",
+            department: "Computer Science",
+            facultyType: "Full-time Faculty (On Probation)",
+            status: "approved",
+          },
+        ]);
+      })
+      .catch(() => {
+        setRequests([
+          {
+            id: "1",
+            requestId: "REQ-2025-001",
+            employeeId: "2005123456789",
+            name: "Alexander H. Hamilton",
+            college: "College of Computer Studies",
+            department: "Information Technology",
+            facultyType: "Full-time Faculty (On Probation)",
+            status: "pending",
+          },
+          {
+            id: "2",
+            requestId: "REQ-2025-002",
+            employeeId: "2005987654321",
+            name: "Maria C. Santos",
+            college: "College of Engineering",
+            department: "Civil Engineering",
+            facultyType: "Full-time Faculty",
+            status: "approved",
+          },
+          {
+            id: "3",
+            requestId: "REQ-2025-003",
+            employeeId: "2005456789012",
+            name: "Juan D. Reyes",
+            college: "College of Business Administration",
+            department: "Accountancy",
+            facultyType: "Part-time Faculty",
+            status: "rejected",
+          },
+        ]);
+      });
+  }, []);
+
+  const filteredRequests = React.useMemo(() => {
+      const q = query.trim().toLowerCase();
+      if (!q) return requests;
+      return requests.filter((r) => {
+        const hay = [r.requestId, r.employeeId, r.name, r.college, r.department, r.facultyType]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return hay.includes(q);
+      });
+    }, [query, requests]);
+  
+
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
       
@@ -95,13 +209,7 @@ export default function AssistantApproverViewClearance() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/Approver-action">Action</Link>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link to="/approver-archived-clearance">View Archived Clearance</Link>
+                <Link to="/assistant-approver-archived-clearance">View Archived Clearance</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -112,7 +220,7 @@ export default function AssistantApproverViewClearance() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" size="back" onClick={() => navigate("/approver-archived-clearance")}> 
+          <Button variant="back" size="back" onClick={() => navigate("/assistant-approver-archived-clearance")}> 
             <div className="flex items-center gap-2">
               <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
             </div>
@@ -181,11 +289,22 @@ export default function AssistantApproverViewClearance() {
               </div>
           </div>
 
+          <div className="flex justify-between gap-3 mt-4">
+            <Button variant="default" className="w-full font-bold whitespace-nowrap" > 
+              <div className="flex items-center justify-center gap-2">
+                <img src="/WhiteDownloadIcon.png" alt="export" className="w-6 h-6" />
+                <span>Export Current View</span>
+              </div>  
+            </Button>
+          </div>
           
           <div className="mt-3">
-            <ViewArchivedClearanceCard 
-              onViewDetails={() => console.log("View details clicked")}
-            />
+            <div className="mt-6">
+              <ClearanceRequestsCard
+                items={filteredRequests}
+                getItemHref={() => "/assistant-approver-archived-individual"}
+              />
+            </div>
           </div>
         </div>
 
