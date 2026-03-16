@@ -4,14 +4,11 @@ import "../../index.css";
 import { ApprovalHeader } from "../../stories/components/header";
 
 import {
-  type AnnouncementItem,
-  SectionListCard,
-  ArchivedClearanceCard,
-  ViewArchivedClearanceCard,
+  ClearanceRequestsCard,
+  type ClearanceRequestItem,
 } from "../../stories/components/cards";
 
 import { Button } from "../../stories/components/button";
-import { Divider } from "../../stories/components/divider";
 
 import {
   Select,
@@ -20,92 +17,58 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../stories/components/select";
-
-import {
-  loadAnnouncementsItems,
-} from "../../stories/components/edit-announcements-dialog";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
 import { SearchInputGroup } from "../../stories/components/input-group";
 import { useState } from "react";
 
-function postOVPHEActivityLog(payload: { event_type: string; details?: string[] }) {
-  fetch("/admin/xu-faculty-clearance/api/ovphe/activity-logs", {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  }).catch(() => {});
-}
-
-function GuidelinesToggle({
-  checked,
-  onChange,
-}: {
-  checked: boolean;
-  onChange: (next: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      className={
-        checked
-          ? "relative h-6 w-12 rounded-full bg-success"
-          : "relative h-6 w-12 rounded-full bg-muted-foreground/30"
-      }
-      onClick={() => onChange(!checked)}
-    >
-      <span
-        className={
-          checked
-            ? "absolute left-[26px] top-1 h-4 w-4 rounded-full bg-white"
-            : "absolute left-1 top-1 h-4 w-4 rounded-full bg-white"
-        }
-      />
-    </button>
-  );
-}
-
 export default function ApproverViewClearance() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
-  const [selectedYear, setSelectedYear] = useState("all");
-  const [sortBy, setSortBy] = useState("name");
 
-  type AnnouncementApiItem = AnnouncementItem & { id: number; email?: string };
+  const [requests, setRequests] = React.useState<ClearanceRequestItem[]>([]);
 
-  const [items, setItems] = React.useState<AnnouncementApiItem[]>([]);
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
-  const [confirm, setConfirm] = React.useState<
-    | { open: true; type: "enable" | "disable" | "delete"; index: number }
-    | { open: false }
-  >({ open: false });
-
-  const refresh = React.useCallback(() => {
-    return fetch("/admin/xu-faculty-clearance/api/ovphe/announcements")
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: { items: AnnouncementApiItem[] }) => {
-        const initial = (data.items ?? []).map((item) => ({
-          ...item,
-          enabled: item.enabled ?? true,
-        }));
-        setItems(initial);
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/clearance-requests")
+      .then((res) => res.json())
+      .then((data) => setRequests(Array.isArray(data?.items) ? data.items : []))
+      .catch(() => {
+        setRequests([
+          {
+            id: "1",
+            requestId: "REQ-2025-001",
+            employeeId: "2005123456789",
+            name: "Alexander H. Hamilton",
+            college: "College of Computer Studies",
+            department: "Information Technology",
+            facultyType: "Full-time Faculty (On Probation)",
+            status: "pending",
+          },
+          {
+            id: "2",
+            requestId: "REQ-2025-002",
+            employeeId: "2005987654321",
+            name: "Maria C. Santos",
+            college: "College of Engineering",
+            department: "Civil Engineering",
+            facultyType: "Full-time Faculty",
+            status: "approved",
+          },
+        ]);
       });
   }, []);
 
-  React.useEffect(() => {
-    refresh()
-      .catch(() => {
-        const initial = loadAnnouncementsItems().map((item) => ({
-          ...item,
-          enabled: item.enabled ?? true,
-        }));
-        setItems(initial as AnnouncementApiItem[]);
-      });
-  }, [refresh]);
+  const filteredRequests = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return requests;
+    return requests.filter((r) => {
+      const hay = [r.requestId, r.employeeId, r.name, r.college, r.department, r.facultyType]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [query, requests]);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -187,26 +150,6 @@ export default function ApproverViewClearance() {
                   <SelectItem value="complete">Complete</SelectItem>
                 </SelectContent>
               </Select>
-
-              <Select>
-                <SelectTrigger variant="pill" className="w-max gap-2">
-                  <label>College:</label>
-                  <SelectValue/> 
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="2022-2023">2022-2023</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Select>
-                <SelectTrigger variant="pill" className="w-max gap-2">
-                  <label>Department:</label>
-                  <SelectValue/> 
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="2022-2023">2022-2023</SelectItem>
-                </SelectContent>
-              </Select>
               </div>
           </div>
 
@@ -220,9 +163,12 @@ export default function ApproverViewClearance() {
           </div>
           
           <div className="mt-3">
-            <ViewArchivedClearanceCard 
-              onViewDetails={() => console.log("View details clicked")}
-            />
+            <div className="mt-6">
+              <ClearanceRequestsCard
+                items={filteredRequests}
+                getItemHref={() => "/approver-archived-individual"}
+              />
+            </div>
           </div>
         </div>
 

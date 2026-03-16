@@ -5,9 +5,8 @@ import { OVPHEHeader } from "../../stories/components/header";
 
 import {
   type AnnouncementItem,
-  SectionListCard,
-  ArchivedClearanceCard,
-  ViewArchivedClearanceCard,
+  NoLinkClearanceRequestsCard,
+  type NoLinkClearanceRequestItem,
 } from "../../stories/components/cards";
 
 import { Button } from "../../stories/components/button";
@@ -73,6 +72,29 @@ export default function OVPHEViewClearance() {
   const [query, setQuery] = useState("");
   const [selectedYear, setSelectedYear] = useState("all");
   const [sortBy, setSortBy] = useState("name");
+
+  const dummyClearanceRequests: NoLinkClearanceRequestItem[] = [
+    {
+      id: "ovphe-1",
+      name: "Juan Dela Cruz",
+      requestId: "REQ-2501-0001",
+      employeeId: "EMP-0001",
+      college: "College of Engineering",
+      department: "Computer Engineering",
+      facultyType: "Full-Time",
+      status: "pending",
+    },
+    {
+      id: "ovphe-2",
+      name: "Maria Santos",
+      requestId: "REQ-2501-0002",
+      employeeId: "EMP-0002",
+      college: "College of Arts and Sciences",
+      department: "Mathematics",
+      facultyType: "Part-Time",
+      status: "approved",
+    },
+  ];
 
   type AnnouncementApiItem = AnnouncementItem & { id: number; email?: string };
 
@@ -220,9 +242,7 @@ export default function OVPHEViewClearance() {
           </div>
           
           <div className="mt-3">
-            <ViewArchivedClearanceCard 
-              onViewDetails={() => console.log("View details clicked")}
-            />
+            <NoLinkClearanceRequestsCard items={dummyClearanceRequests} />
           </div>
         </div>
 

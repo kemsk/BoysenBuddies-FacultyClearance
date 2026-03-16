@@ -5482,3 +5482,95 @@ export function TrueAgreementCard({
     </div>
   );
 }
+
+export type NoLinkClearanceRequestItem = {
+  id: string;
+  name: string;
+  requestId: string;
+  employeeId: string;
+  college: string;
+  department: string;
+  facultyType: string;
+  status: ClearanceRequestStatus;
+};
+
+export type NoClearanceRequestsCardProps = {
+  items?: NoLinkClearanceRequestItem[];
+  className?: string;
+};
+
+export function NoLinkClearanceRequestsCard({
+  items = [],
+  className,
+}: NoClearanceRequestsCardProps) {
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set());
+
+  return (
+    <Card className={cn("overflow-hidden", className)}>
+      <CardContent className="p-0">
+        <div className="flex">
+          <Divider orientation="vertical" className="h-auto self-stretch " />
+          <div className="min-w-0 flex-1">
+
+            <div>
+              {items.length === 0 ? (
+                <div className="px-4 py-6 text-sm text-muted-foreground">No clearance requests.</div>
+              ) : null}
+              {items.map((item, idx) => (
+                <React.Fragment key={item.id}>
+                  <div className="flex gap-3 px-4 py-6">
+                    <div className="pt-1">
+
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="grid grid-cols-[1fr_auto] items-start gap-3">
+                        <div className="min-w-0">
+
+                            <div className="break-words whitespace-normal text-left text-2xl font-bold text-primary">
+                              {item.name}
+                            </div>
+                        </div>
+
+                        <div className="shrink-0">
+                          <Badge
+                            variant={getClearanceStatusBadgeVariant(item.status)}
+                            className="px-3 py-1 text-xs font-bold"
+                          >
+                            {item.status.toUpperCase()}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-[88px_1fr] gap-x-3 gap-y-1 text-sm">
+                        <div className="font-bold text-black">Request ID</div>
+                        <div className="text-black">{item.requestId}</div>
+                        <div className="font-bold text-black">Employee ID</div>
+                        <div className="text-black">{item.employeeId}</div>
+
+                        <div className="font-bold text-black">College</div>
+                        <div className="text-black">{item.college}</div>
+
+                        <div className="font-bold text-black">Department</div>
+                        <div className="text-black">{item.department}</div>
+
+                        <div className="font-bold text-black">Faculty Type</div>
+                        <div className="text-black">{item.facultyType}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {idx < items.length - 1 ? (
+                    <Divider color="border-[hsl(var(--gray-border))]" />
+                  ) : null}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+
+          <Divider orientation="vertical" className="h-auto self-stretch" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
