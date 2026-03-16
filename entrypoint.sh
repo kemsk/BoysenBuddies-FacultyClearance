@@ -11,49 +11,158 @@ python manage.py migrate --noinput
 
 mysql -h "${DB_HOST}" -u "${DB_USER}" -p"${DB_PASSWORD}" --ssl=0 "${DB_NAME}" << 'EOF'
 -- Seed Users
-INSERT INTO FC_user (email, university_id, password, first_name, last_name, role_value, created_at, is_active, is_staff, is_superuser)
+INSERT INTO FC_user (email, university_id, first_name, last_name, created_at)
 VALUES 
-('20220025546@my.xu.edu.ph', 20220025546, 'capstone', 'Albert Floyd', 'Villanueva', 4, NOW(), 1, 1, 1),
-('20190016375@my.xu.edu.ph', 20190016375, 'kemeru', 'Nesyl', 'Ylanan', 3, NOW(), 1, 1, 1),
-('20220024573@my.xu.edu.ph', 20220024573, 'kim', 'Kim', 'Flores', 4, NOW(), 1, 1, 1),
-('201131134@my.xu.edu.ph', 201131134, 'Farrah', 'Farrah', 'Apag', 3, NOW(), 1, 1, 1),
-('approver.seed@xu.edu.ph', 1000000001, 'capstone', 'Angela', 'Santos', 4, NOW(), 1, 1, 0),
-('assistant.seed@xu.edu.ph', 1000000002, 'capstone', 'Seed', 'Assistant', 5, NOW(), 1, 1, 0),
-('faculty.seed@xu.edu.ph', 1000000003, 'capstone', 'John', 'Doe', 6, NOW(), 1, 0, 0),
-('hro.seed@xu.edu.ph', 1000000004, 'capstone', 'Jane', 'Smith', 1, NOW(), 1, 1, 0),
-('ovphe.seed@xu.edu.ph', 1000000005, 'capstone', 'Maria', 'Reyes', 3, NOW(), 1, 1, 0),
-('dual.seed@xu.edu.ph', 1000000006, 'capstone', 'Carlos', 'Santos', 7, NOW(), 1, 1, 0)
+('20220025546@my.xu.edu.ph', 20220025546, 'Albert Floyd', 'Villanueva', NOW()),
+('20190016375@my.xu.edu.ph', 20190016375, 'Nesyl', 'Ylanan', NOW()),
+('20220024573@my.xu.edu.ph', 20220024573, 'Kim', 'Flores', NOW()),
+('approver.seed@xu.edu.ph', 1000000001, 'Angela', 'Santos', NOW()),
+('assistant.seed@xu.edu.ph', 1000000002, 'Seed', 'Assistant', NOW()),
+('faculty.seed@xu.edu.ph', 1000000003, 'John', 'Doe', NOW()),
+('ovphe.seed@xu.edu.ph', 1000000005, 'Maria', 'Reyes', NOW())
 ON DUPLICATE KEY UPDATE
     first_name = VALUES(first_name),
-    last_name = VALUES(last_name),
-    role_value = VALUES(role_value),
-    is_active = VALUES(is_active),
-    is_staff = VALUES(is_staff),
-    is_superuser = VALUES(is_superuser);
+    last_name = VALUES(last_name);
 
--- Seed SystemAdmins
--- INSERT INTO FC_systemadmin (user_id, admin_role, is_active)
--- SELECT 
---     id,
---     'CISO',
---     1
--- FROM FC_user WHERE email = '20220025546@my.xu.edu.ph'
--- ON DUPLICATE KEY UPDATE
---     admin_role = VALUES(admin_role),
---     is_active = VALUES(is_active);
+-- Seed Roles
+INSERT INTO FC_role (name, description, is_system_role, created_at)
+SELECT * FROM (
+    SELECT 'CISO' AS name, 'CISO System Administrator' AS description, 1 AS is_system_role, NOW() AS created_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_role r WHERE r.name = v.name
+);
 
-INSERT INTO FC_systemadmin (user_id, admin_role, is_active)
+INSERT INTO FC_role (name, description, is_system_role, created_at)
+SELECT * FROM (
+    SELECT 'OVPHE' AS name, 'OVPHE System Administrator' AS description, 1 AS is_system_role, NOW() AS created_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_role r WHERE r.name = v.name
+);
+
+INSERT INTO FC_role (name, description, is_system_role, created_at)
+SELECT * FROM (
+    SELECT 'Approver' AS name, 'Approver (handles college, department, and office contexts)' AS description, 1 AS is_system_role, NOW() AS created_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_role r WHERE r.name = v.name
+);
+
+INSERT INTO FC_role (name, description, is_system_role, created_at)
+SELECT * FROM (
+    SELECT 'Student Assistant' AS name, 'Student Assistant' AS description, 1 AS is_system_role, NOW() AS created_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_role r WHERE r.name = v.name
+);
+
+INSERT INTO FC_role (name, description, is_system_role, created_at)
+SELECT * FROM (
+    SELECT 'Faculty' AS name, 'Faculty Member' AS description, 1 AS is_system_role, NOW() AS created_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_role r WHERE r.name = v.name
+);
+
+-- Seed UserRoles for admin users
+INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
 SELECT 
-    id,
-    'OVPHE',
-    1
-FROM FC_user WHERE email = '20190016375@my.xu.edu.ph'
+    u.id AS user_id, 
+    r.id AS role_id,
+    u.id AS assigned_by_id,
+    NOW() AS assigned_date,
+    1 AS is_active
+FROM FC_user u
+CROSS JOIN FC_role r
+WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'CISO'
 ON DUPLICATE KEY UPDATE
-    admin_role = VALUES(admin_role),
     is_active = VALUES(is_active);
 
--- Ensure no SystemAdmin for the assistant approver user
-DELETE FROM FC_systemadmin WHERE user_id = (SELECT id FROM FC_user WHERE email = '20220025546@my.xu.edu.ph');
+INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
+SELECT 
+    u.id AS user_id, 
+    r.id AS role_id,
+    u.id AS assigned_by_id,
+    NOW() AS assigned_date,
+    1 AS is_active
+FROM FC_user u
+CROSS JOIN FC_role r
+WHERE u.email = '20190016375@my.xu.edu.ph' AND r.name = 'OVPHE'
+ON DUPLICATE KEY UPDATE
+    is_active = VALUES(is_active);
+
+INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
+SELECT 
+    u.id AS user_id, 
+    r.id AS role_id,
+    u.id AS assigned_by_id,
+    NOW() AS assigned_date,
+    1 AS is_active
+FROM FC_user u
+CROSS JOIN FC_role r
+WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'OVPHE'
+ON DUPLICATE KEY UPDATE
+    is_active = VALUES(is_active);
+
+-- Seed UserRoles for other users
+INSERT INTO FC_userrole (user_id, role_id, college_id, department_id, assigned_by_id, assigned_date, is_active)
+SELECT 
+    u.id AS user_id, 
+    r.id AS role_id,
+    @ccs_id AS college_id,
+    @cs_id AS department_id,
+    u.id AS assigned_by_id,
+    NOW() AS assigned_date,
+    1 AS is_active
+FROM FC_user u
+CROSS JOIN FC_role r
+WHERE u.email = 'approver.seed@xu.edu.ph' AND r.name = 'Approver'
+ON DUPLICATE KEY UPDATE
+    is_active = VALUES(is_active);
+
+INSERT INTO FC_userrole (user_id, role_id, college_id, department_id, assigned_by_id, assigned_date, is_active)
+SELECT 
+    u.id AS user_id, 
+    r.id AS role_id,
+    @ccs_id AS college_id,
+    @cs_id AS department_id,
+    @ciso_user_id AS assigned_by_id,
+    NOW() AS assigned_date,
+    1 AS is_active
+FROM FC_user u
+CROSS JOIN FC_role r
+WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'Approver'
+ON DUPLICATE KEY UPDATE
+    is_active = VALUES(is_active);
+
+INSERT INTO FC_userrole (user_id, role_id, college_id, department_id, assigned_by_id, assigned_date, is_active)
+SELECT 
+    u.id AS user_id, 
+    r.id AS role_id,
+    @ccs_id AS college_id,
+    @cs_id AS department_id,
+    @approver_user_id AS assigned_by_id,
+    NOW() AS assigned_date,
+    1 AS is_active
+FROM FC_user u
+CROSS JOIN FC_role r
+WHERE u.email = 'assistant.seed@xu.edu.ph' AND r.name = 'Student Assistant'
+ON DUPLICATE KEY UPDATE
+    is_active = VALUES(is_active);
+
+INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
+SELECT 
+    u.id AS user_id, 
+    r.id AS role_id,
+    u.id AS assigned_by_id,
+    NOW() AS assigned_date,
+    1 AS is_active
+FROM FC_user u
+CROSS JOIN FC_role r
+WHERE u.email = 'faculty.seed@xu.edu.ph' AND r.name = 'Faculty'
+ON DUPLICATE KEY UPDATE
+    is_active = VALUES(is_active);
 
 -- Seed Colleges
 INSERT INTO FC_college (name, abbreviation, is_active)
@@ -135,13 +244,9 @@ UPDATE FC_office SET display_order = 1 WHERE abbreviation = 'LIB';
 UPDATE FC_office SET display_order = 2 WHERE abbreviation = 'OVPHE';
 UPDATE FC_office SET display_order = 3 WHERE abbreviation = 'HRO';
 
--- Get admin IDs
-SET @ciso_admin_id = (SELECT sa.id FROM FC_systemadmin sa 
-                      INNER JOIN FC_user u ON sa.user_id = u.id 
-                      WHERE u.email = '20220025546@my.xu.edu.ph' LIMIT 1);
-SET @ovphe_admin_id = (SELECT sa.id FROM FC_systemadmin sa 
-                       INNER JOIN FC_user u ON sa.user_id = u.id 
-                       WHERE u.email = '20190016375@my.xu.edu.ph' LIMIT 1);
+-- Get admin IDs (using User directly)
+SET @ciso_user_id = (SELECT id FROM FC_user WHERE email = '20220025546@my.xu.edu.ph' LIMIT 1);
+SET @ovphe_user_id = (SELECT id FROM FC_user WHERE email = '20190016375@my.xu.edu.ph' LIMIT 1);
 
 -- Get user IDs
 SET @approver_user_id = (SELECT id FROM FC_user WHERE email = 'approver.seed@xu.edu.ph' LIMIT 1);
@@ -150,10 +255,101 @@ SET @faculty_user_id = (SELECT id FROM FC_user WHERE email = 'faculty.seed@xu.ed
 SET @ciso_user_id = (SELECT id FROM FC_user WHERE email = '20220025546@my.xu.edu.ph' LIMIT 1);
 SET @ovphe_user_id = (SELECT id FROM FC_user WHERE email = '20190016375@my.xu.edu.ph' LIMIT 1);
 
--- Seed ApproverFlowConfig
-INSERT INTO FC_approverflowconfig (created_by_id, created_at, updated_at)
+
+
+-- Seed Approver
+INSERT INTO FC_approver (user_id, approver_type, college_id, department_id)
+VALUES 
+(@approver_user_id, 'College', @ccs_id, @cs_id)
+ON DUPLICATE KEY UPDATE
+    approver_type = VALUES(approver_type),
+    college_id = VALUES(college_id),
+    department_id = VALUES(department_id);
+
+-- Seed Approver for main user
+INSERT INTO FC_approver (user_id, approver_type, college_id, department_id)
+VALUES 
+(@ciso_user_id, 'College', @ccs_id, @cs_id)
+ON DUPLICATE KEY UPDATE
+    approver_type = VALUES(approver_type),
+    college_id = VALUES(college_id),
+    department_id = VALUES(department_id);
+
+-- Seed StudentAssistant
+INSERT INTO FC_studentassistant (user_id, college_id, department_id)
+VALUES 
+(@assistant_user_id, @ccs_id, @cs_id)
+ON DUPLICATE KEY UPDATE
+    college_id = VALUES(college_id),
+    department_id = VALUES(department_id);
+
+-- Seed Faculty (needed for real analytics)
+INSERT INTO FC_faculty (user_id, employee_id, first_name, last_name, college_id, department_id)
 SELECT * FROM (
-    SELECT @ovphe_admin_id AS created_by_id, NOW() AS created_at, NOW() AS updated_at
+    SELECT @faculty_user_id AS user_id, 'EMP-SEED-1' AS employee_id, 'Faye' AS first_name, 'Faculty' AS last_name, @ccs_id AS college_id, @cs_id AS department_id
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_faculty f WHERE f.user_id = v.user_id
+);
+
+SET @faculty_id = (SELECT id FROM FC_faculty WHERE user_id = @faculty_user_id LIMIT 1);
+
+-- Seed Clearances for real analytics
+INSERT INTO FC_clearance (faculty_id, academic_year, term, status, submitted_date, completed_date)
+SELECT * FROM (
+    SELECT @faculty_id AS faculty_id, YEAR(NOW()) AS academic_year, '1ST' AS term, 'COMPLETED' AS status, NOW() AS submitted_date, NOW() AS completed_date
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_clearance c WHERE c.faculty_id = v.faculty_id AND c.academic_year = v.academic_year AND c.term = v.term AND c.status = v.status
+);
+
+INSERT INTO FC_clearance (faculty_id, academic_year, term, status, submitted_date, completed_date)
+SELECT * FROM (
+    SELECT @faculty_id AS faculty_id, YEAR(NOW()) AS academic_year, '1ST' AS term, 'PENDING' AS status, NOW() AS submitted_date, NULL AS completed_date
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_clearance c WHERE c.faculty_id = v.faculty_id AND c.academic_year = v.academic_year AND c.term = v.term AND c.status = v.status
+);
+
+-- Seed ClearanceTimeline FIRST
+INSERT INTO FC_clearancetimeline (name, academic_year_start, academic_year_end, term, clearance_start_date, clearance_end_date, created_by_id, is_active, created_at, updated_at)
+SELECT * FROM (
+    SELECT CONCAT('S.Y. 2025-2026 First Semester') AS name, 2025 AS academic_year_start, 2026 AS academic_year_end, '1ST' AS term, CURDATE() AS clearance_start_date, CURDATE() AS clearance_end_date, @ovphe_user_id AS created_by_id, 1 AS is_active, NOW() AS created_at, NOW() AS updated_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_clearancetimeline ct WHERE ct.academic_year_start = v.academic_year_start AND ct.academic_year_end = v.academic_year_end AND ct.term = v.term
+);
+
+-- Seed minimal Requirement + ClearanceRequest for the latest clearance row
+SET @latest_timeline_id = (
+    SELECT id FROM FC_clearancetimeline ORDER BY id DESC LIMIT 1
+);
+
+INSERT INTO FC_requirement (id, title, description, required_physical, clearance_timeline_id, last_updated, is_active, recipient_scope, created_by_id)
+SELECT * FROM (
+    SELECT 1 AS id, 'Grades Roster' AS title, 'Submit screenshot via this link: googleforms.com' AS description, 0 AS required_physical, @latest_timeline_id AS clearance_timeline_id, NOW() AS last_updated, 1 AS is_active, 'all' AS recipient_scope, NULL AS created_by_id
+) AS v
+ON DUPLICATE KEY UPDATE
+    title = VALUES(title),
+    description = VALUES(description),
+    required_physical = VALUES(required_physical),
+    clearance_timeline_id = VALUES(clearance_timeline_id),
+    last_updated = VALUES(last_updated),
+    is_active = VALUES(is_active),
+    recipient_scope = VALUES(recipient_scope);
+
+SET @latest_clearance_id = (
+    SELECT id FROM FC_clearance WHERE faculty_id = @faculty_id ORDER BY id DESC LIMIT 1
+);
+
+SET @latest_timeline_id = (
+    SELECT id FROM FC_clearancetimeline ORDER BY id DESC LIMIT 1
+);
+
+-- Seed ApproverFlowConfig
+INSERT INTO FC_approverflowconfig (created_by_id, clearance_timeline_id, created_at, updated_at)
+SELECT * FROM (
+    SELECT @ovphe_user_id AS created_by_id, @latest_timeline_id AS clearance_timeline_id, NOW() AS created_at, NOW() AS updated_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowconfig
@@ -225,87 +421,33 @@ CROSS JOIN FC_college c
 WHERE afs.config_id = @config_id 
 AND c.abbreviation IN ('CCS', 'CAS');
 
--- Seed Approver
-INSERT INTO FC_approver (user_id, approver_type, college_id, department_id, is_dual_role, is_hro)
-VALUES 
-(@approver_user_id, 'College', @ccs_id, @cs_id, 0, 0)
-ON DUPLICATE KEY UPDATE
-    approver_type = VALUES(approver_type),
-    college_id = VALUES(college_id),
-    department_id = VALUES(department_id);
-
--- Seed Approver for main user
-INSERT INTO FC_approver (user_id, approver_type, college_id, department_id, is_dual_role, is_hro)
-VALUES 
-(@ciso_user_id, 'College', @ccs_id, @cs_id, 0, 0)
-ON DUPLICATE KEY UPDATE
-    approver_type = VALUES(approver_type),
-    college_id = VALUES(college_id),
-    department_id = VALUES(department_id);
-
--- Seed StudentAssistant
-INSERT INTO FC_studentassistant (user_id, college_id, department_id)
-VALUES 
-(@assistant_user_id, @ccs_id, @cs_id)
-ON DUPLICATE KEY UPDATE
-    college_id = VALUES(college_id),
-    department_id = VALUES(department_id);
-
--- Seed Faculty (needed for real analytics)
-INSERT INTO FC_faculty (user_id, employee_id, first_name, last_name, college_id, department_id)
+INSERT INTO FC_clearancerequest (request_id, faculty_id, requirement_id, clearance_timeline_id, status, submission_notes, submission_link, submitted_date, approved_by_id, approved_date, remarks)
 SELECT * FROM (
-    SELECT @faculty_user_id AS user_id, 'EMP-SEED-1' AS employee_id, 'Faye' AS first_name, 'Faculty' AS last_name, @ccs_id AS college_id, @cs_id AS department_id
+    SELECT 
+        CONCAT(
+            (SELECT RIGHT(academic_year_start, 2) FROM FC_clearancetimeline WHERE id = @latest_timeline_id),
+            CASE 
+                WHEN (SELECT term FROM FC_clearancetimeline WHERE id = @latest_timeline_id) = '1ST' THEN '01'
+                WHEN (SELECT term FROM FC_clearancetimeline WHERE id = @latest_timeline_id) = '2ND' THEN '02'
+                ELSE '03'
+            END,
+            '-',
+            (SELECT university_id FROM FC_user WHERE id = (SELECT user_id FROM FC_faculty WHERE id = @faculty_id)),
+            '-',
+            (SELECT abbreviation FROM FC_department WHERE id = (SELECT department_id FROM FC_faculty WHERE id = @faculty_id)),
+            '-',
+            '001'
+        ) AS request_id, 
+        @faculty_id AS faculty_id, 1 AS requirement_id, @latest_timeline_id AS clearance_timeline_id, 'PENDING' AS status, '' AS submission_notes, '' AS submission_link, NOW() AS submitted_date, NULL AS approved_by_id, NULL AS approved_date, '' AS remarks
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_faculty f WHERE f.user_id = v.user_id
-);
-
-SET @faculty_id = (SELECT id FROM FC_faculty WHERE user_id = @faculty_user_id LIMIT 1);
-
--- Seed Clearances for real analytics
-INSERT INTO FC_clearance (faculty_id, academic_year, term, status, submitted_date, completed_date)
-SELECT * FROM (
-    SELECT @faculty_id AS faculty_id, YEAR(NOW()) AS academic_year, '1ST' AS term, 'COMPLETED' AS status, NOW() AS submitted_date, NOW() AS completed_date
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_clearance c WHERE c.faculty_id = v.faculty_id AND c.academic_year = v.academic_year AND c.term = v.term AND c.status = v.status
-);
-
-INSERT INTO FC_clearance (faculty_id, academic_year, term, status, submitted_date, completed_date)
-SELECT * FROM (
-    SELECT @faculty_id AS faculty_id, YEAR(NOW()) AS academic_year, '1ST' AS term, 'PENDING' AS status, NOW() AS submitted_date, NULL AS completed_date
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_clearance c WHERE c.faculty_id = v.faculty_id AND c.academic_year = v.academic_year AND c.term = v.term AND c.status = v.status
-);
-
--- Seed minimal Requirement + ClearanceRequest for the latest clearance row
-INSERT INTO FC_requirement (id, title, description, required_physical, created_date, deadline_date, is_active, created_by_id)
-SELECT * FROM (
-    SELECT 1 AS id, 'Grades Roster' AS title, 'Submit screenshot via this link: googleforms.com' AS description, 0 AS required_physical, NOW() AS created_date, NULL AS deadline_date, 1 AS is_active, NULL AS created_by_id
-) AS v
-ON DUPLICATE KEY UPDATE
-    title = VALUES(title),
-    description = VALUES(description),
-    required_physical = VALUES(required_physical),
-    is_active = VALUES(is_active);
-
-SET @latest_clearance_id = (
-    SELECT id FROM FC_clearance WHERE faculty_id = @faculty_id ORDER BY id DESC LIMIT 1
-);
-
-INSERT INTO FC_clearancerequest (clearance_id, requirement_id, status, remarks, approved_by_id, approved_date)
-SELECT * FROM (
-    SELECT @latest_clearance_id AS clearance_id, 1 AS requirement_id, 'PENDING' AS status, '' AS remarks, NULL AS approved_by_id, NULL AS approved_date
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_clearancerequest cr WHERE cr.clearance_id = v.clearance_id AND cr.requirement_id = v.requirement_id
+    SELECT 1 FROM FC_clearancerequest cr WHERE cr.request_id = v.request_id
 );
 
 -- Seed Announcements
 INSERT INTO FC_announcement (title, body, created_by_id, pin_announcement, is_active, start_date, created_at)
 SELECT * FROM (
-    SELECT 'System Maintenance Notice' AS title, 'This is seeded announcement data.' AS body, @ovphe_admin_id AS created_by_id, 1 AS pin_announcement, 1 AS is_active, NOW() AS start_date, NOW() AS created_at
+    SELECT 'System Maintenance Notice' AS title, 'This is seeded announcement data.' AS body, @ovphe_user_id AS created_by_id, 1 AS pin_announcement, 1 AS is_active, NOW() AS start_date, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_announcement a WHERE a.title = v.title
@@ -313,7 +455,7 @@ WHERE NOT EXISTS (
 
 INSERT INTO FC_announcement (title, body, created_by_id, pin_announcement, is_active, start_date, created_at)
 SELECT * FROM (
-    SELECT 'Welcome OVPHE' AS title, 'Welcome! This is seeded announcement data.' AS body, @ovphe_admin_id AS created_by_id, 0 AS pin_announcement, 1 AS is_active, NOW() AS start_date, NOW() AS created_at
+    SELECT 'Welcome OVPHE' AS title, 'Welcome! This is seeded announcement data.' AS body, @ovphe_user_id AS created_by_id, 0 AS pin_announcement, 1 AS is_active, NOW() AS start_date, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_announcement a WHERE a.title = v.title
@@ -335,21 +477,6 @@ SELECT * FROM (
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_systemguideline sg WHERE sg.title = v.title
 );
-
--- Seed ClearanceTimeline
-INSERT INTO FC_clearancetimeline (academic_year, term, term_start_date, term_end_date, clearance_start_date, clearance_end_date, created_by_id, is_active, created_at)
-SELECT * FROM (
-    SELECT YEAR(NOW()) AS academic_year, '1ST' AS term, CURDATE() AS term_start_date, CURDATE() AS term_end_date, CURDATE() AS clearance_start_date, CURDATE() AS clearance_end_date, @ovphe_admin_id AS created_by_id, 1 AS is_active, NOW() AS created_at
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_clearancetimeline ct WHERE ct.academic_year = v.academic_year AND ct.term = v.term
-);
-
-SET @seed_school_year_label = CONCAT('S.Y. ', YEAR(NOW()), '-', YEAR(NOW()) + 1);
-SET @seed_term_label = 'First Semester';
-SET @seed_dept_office_name = 'University Registrar';
-SET @seed_days_left = '7 days';
-SET @seed_announcement_title = 'System Maintenance Notice';
 
 -- Seed Notifications for OVPHE user
 SET @seed_school_year_label = CONCAT('S.Y. ', YEAR(NOW()), '-', YEAR(NOW()) + 1);
@@ -420,244 +547,242 @@ WHERE NOT EXISTS (
 );
 
 -- Seed ActivityLogs
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, approver_department, university_id, request_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, approver_department, university_id, request_id, details, created_at)
 SELECT * FROM (
-    SELECT 'approved_clearance' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, 'College of Computer Studies' AS approver_department, '2005123456789' AS university_id, '2005123456789' AS request_id, '["Seeded log"]' AS details, NOW() AS created_at
+    SELECT 'approved_clearance' AS event_type, @ovphe_user_id AS user_id, 'College of Computer Studies' AS approver_department, '2005123456789' AS university_id, '2005123456789' AS request_id, '["Seeded log"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_activitylog al
     WHERE al.event_type = v.event_type
-      AND al.actor_user_id = v.actor_user_id
-      AND (al.actor_admin_id <=> v.actor_admin_id)
+      AND al.user_id = v.user_id
       AND al.university_id = v.university_id
       AND al.request_id = v.request_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'created_guideline' AS event_type, @ciso_user_id AS actor_user_id, @ciso_admin_id AS actor_admin_id, '["Guideline Title: General Safety Guidelines"]' AS details, NOW() AS created_at
+    SELECT 'created_guideline' AS event_type, @ciso_user_id AS user_id, '["Guideline Title: General Safety Guidelines"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'edited_guideline' AS event_type, @ciso_user_id AS actor_user_id, @ciso_admin_id AS actor_admin_id, '["Guideline Title: General Safety Guidelines"]' AS details, NOW() AS created_at
+    SELECT 'edited_guideline' AS event_type, @ciso_user_id AS user_id, '["Guideline Title: General Safety Guidelines"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'set_guideline_status_active' AS event_type, @ciso_user_id AS actor_user_id, @ciso_admin_id AS actor_admin_id, '["Guideline Title: General Safety Guidelines"]' AS details, NOW() AS created_at
+    SELECT 'set_guideline_status_active' AS event_type, @ciso_user_id AS user_id, '["Guideline Title: General Safety Guidelines"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'set_guideline_status_inactive' AS event_type, @ciso_user_id AS actor_user_id, @ciso_admin_id AS actor_admin_id, '["Guideline Title: Clearance Reminders"]' AS details, NOW() AS created_at
+    SELECT 'set_guideline_status_inactive' AS event_type, @ciso_user_id AS user_id, '["Guideline Title: Clearance Reminders"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'archived_guideline' AS event_type, @ciso_user_id AS actor_user_id, @ciso_admin_id AS actor_admin_id, '["Guideline Title: Clearance Reminders"]' AS details, NOW() AS created_at
+    SELECT 'archived_guideline' AS event_type, @ciso_user_id AS user_id, '["Guideline Title: Clearance Reminders"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'created_announcement' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["Announcement Title: System Maintenance Notice"]' AS details, NOW() AS created_at
+    SELECT 'created_announcement' AS event_type, @ovphe_user_id AS user_id, '["Announcement Title: System Maintenance Notice"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'set_announcement_status_active' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["Announcement Title: System Maintenance Notice"]' AS details, NOW() AS created_at
+    SELECT 'set_announcement_status_active' AS event_type, @ovphe_user_id AS user_id, '["Announcement Title: System Maintenance Notice"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'set_announcement_status_inactive' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["Announcement Title: Welcome OVPHE"]' AS details, NOW() AS created_at
+    SELECT 'set_announcement_status_inactive' AS event_type, @ovphe_user_id AS user_id, '["Announcement Title: Welcome OVPHE"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'created_timeline' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["School Year: S.Y. 2025-2026", "Semester: First Semester"]' AS details, NOW() AS created_at
+    SELECT 'created_timeline' AS event_type, @ovphe_user_id AS user_id, '["School Year: S.Y. 2025-2026", "Semester: First Semester"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'edited_timeline' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["School Year: S.Y. 2025-2026", "Semester: First Semester"]' AS details, NOW() AS created_at
+    SELECT 'edited_timeline' AS event_type, @ovphe_user_id AS user_id, '["School Year: S.Y. 2025-2026", "Semester: First Semester"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'set_timeline_status_active' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["School Year: S.Y. 2025-2026", "Semester: First Semester"]' AS details, NOW() AS created_at
+    SELECT 'set_timeline_status_active' AS event_type, @ovphe_user_id AS user_id, '["School Year: S.Y. 2025-2026", "Semester: First Semester"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'set_timeline_status_inactive' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["School Year: S.Y. 2024-2025", "Semester: Second Semester"]' AS details, NOW() AS created_at
+    SELECT 'set_timeline_status_inactive' AS event_type, @ovphe_user_id AS user_id, '["School Year: S.Y. 2024-2025", "Semester: Second Semester"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'created_college' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["College: College of Computer Studies"]' AS details, NOW() AS created_at
+    SELECT 'created_college' AS event_type, @ovphe_user_id AS user_id, '["College: College of Computer Studies"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'edited_college' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["College: College of Computer Studies"]' AS details, NOW() AS created_at
+    SELECT 'edited_college' AS event_type, @ovphe_user_id AS user_id, '["College: College of Computer Studies"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'deleted_college' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["College: College of Arts and Sciences"]' AS details, NOW() AS created_at
+    SELECT 'deleted_college' AS event_type, @ovphe_user_id AS user_id, '["College: College of Arts and Sciences"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'created_department' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["Department: Computer Science", "College: College of Computer Studies"]' AS details, NOW() AS created_at
+    SELECT 'created_department' AS event_type, @ovphe_user_id AS user_id, '["Department: Computer Science", "College: College of Computer Studies"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'edited_department' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["Department: Computer Science", "College: College of Computer Studies"]' AS details, NOW() AS created_at
+    SELECT 'edited_department' AS event_type, @ovphe_user_id AS user_id, '["Department: Computer Science", "College: College of Computer Studies"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'deleted_department' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["Department: Information Technology", "College: College of Computer Studies"]' AS details, NOW() AS created_at
+    SELECT 'deleted_department' AS event_type, @ovphe_user_id AS user_id, '["Department: Information Technology", "College: College of Computer Studies"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'created_office' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["Office: University Registrar"]' AS details, NOW() AS created_at
+    SELECT 'created_office' AS event_type, @ovphe_user_id AS user_id, '["Office: University Registrar"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'edited_office' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["Office: University Registrar"]' AS details, NOW() AS created_at
+    SELECT 'edited_office' AS event_type, @ovphe_user_id AS user_id, '["Office: University Registrar"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'deleted_office' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["Office: University Library"]' AS details, NOW() AS created_at
+    SELECT 'deleted_office' AS event_type, @ovphe_user_id AS user_id, '["Office: University Library"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'added_to_approver_flow' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["Department/Office: University Registrar"]' AS details, NOW() AS created_at
+    SELECT 'added_to_approver_flow' AS event_type, @ovphe_user_id AS user_id, '["Department/Office: University Registrar"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'edited_approver_flow' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["Department/Office: University Registrar"]' AS details, NOW() AS created_at
+    SELECT 'edited_approver_flow' AS event_type, @ovphe_user_id AS user_id, '["Department/Office: University Registrar"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'removed_from_approver_flow' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["Department/Office: University Registrar"]' AS details, NOW() AS created_at
+    SELECT 'removed_from_approver_flow' AS event_type, @ovphe_user_id AS user_id, '["Department/Office: University Registrar"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'exported_clearance_results' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["School Year: S.Y. 2025-2026", "Semester: First Semester"]' AS details, NOW() AS created_at
+    SELECT 'exported_clearance_results' AS event_type, @ovphe_user_id AS user_id, '["School Year: S.Y. 2025-2026", "Semester: First Semester"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'user_login' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["Role: System Admin", "Department/Office: OVPHE"]' AS details, NOW() AS created_at
+    SELECT 'user_login' AS event_type, @ovphe_user_id AS user_id, '["Role: OVPHE", "Department/Office: OVPHE"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, details, created_at)
 SELECT * FROM (
-    SELECT 'user_logout' AS event_type, @ovphe_user_id AS actor_user_id, @ovphe_admin_id AS actor_admin_id, '["Role: System Admin", "Department/Office: OVPHE"]' AS details, NOW() AS created_at
+    SELECT 'user_logout' AS event_type, @ovphe_user_id AS user_id, '["Role: OVPHE", "Department/Office: OVPHE"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
-    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.actor_user_id = v.actor_user_id
+    SELECT 1 FROM FC_activitylog al WHERE al.event_type = v.event_type AND al.user_id = v.user_id
 );
 
-INSERT INTO FC_activitylog (event_type, actor_user_id, actor_admin_id, approver_department, university_id, request_id, details, created_at)
+INSERT INTO FC_activitylog (event_type, user_id, approver_department, university_id, request_id, details, created_at)
 SELECT * FROM (
-    SELECT 'approved_clearance' AS event_type, @ciso_user_id AS actor_user_id, @ciso_admin_id AS actor_admin_id, 'College of Computer Studies' AS approver_department, '2005123456789' AS university_id, '2005123456789' AS request_id, '["Seeded log"]' AS details, NOW() AS created_at
+    SELECT 'approved_clearance' AS event_type, @ciso_user_id AS user_id, 'College of Computer Studies' AS approver_department, '2005123456789' AS university_id, '2005123456789' AS request_id, '["Seeded log"]' AS details, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_activitylog al
     WHERE al.event_type = v.event_type
-      AND al.actor_user_id = v.actor_user_id
-      AND (al.actor_admin_id <=> v.actor_admin_id)
+      AND al.user_id = v.user_id
       AND al.university_id = v.university_id
       AND al.request_id = v.request_id
 );

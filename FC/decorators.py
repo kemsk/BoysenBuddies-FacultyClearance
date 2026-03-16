@@ -4,35 +4,59 @@ from functools import wraps
 
 # Role mapping based on numeric values
 ROLE_MAPPING = {
-    1: 'HRO',
-    2: 'CISO', 
-    3: 'OVPHE',
-    4: 'APPROVER',
-    5: 'ASSISTANT_APPROVER',
-    6: 'FACULTY',
-    7: 'DUAL_ROLE'
+    1: 'CISO', 
+    2: 'OVPHE',
+    3: 'APPROVER',
+    4: 'ASSISTANT_APPROVER',
+    5: 'FACULTY'
 }
 
 # Dashboard file paths for each role
 ROLE_DASHBOARD_PATHS = {
-    1: '/HRO-dashboard',
-    2: '/CISO-dashboard',
-    3: '/OVPHE-dashboard',
-    4: '/approver-dashboard',
-    5: '/assistant-approver-dashboard',
-    6: '/faculty-dashboard',
-    7: '/dual-role-approver-dashboard'
+    1: '/CISO-dashboard',
+    2: '/OVPHE-dashboard',
+    3: '/approver-dashboard',
+    4: '/assistant-approver-dashboard',
+    5: '/faculty-dashboard',
 }
+
+# Helper functions for role management
+def get_role_value_for_user(user):
+    """Get the primary role value for a user based on their active roles"""
+    user_roles = user.get_active_roles().values_list('role__name', flat=True)
+    
+    # Priority mapping for users with multiple roles
+    role_priority = [
+        ('CISO', 1),
+        ('OVPHE', 2),
+        ('College Admin', 3),
+        ('Department Chair', 3),
+        ('Office Admin', 3),
+        ('Student Assistant', 4),
+        ('Faculty', 5)
+    ]
+    
+    for role_name, role_value in role_priority:
+        if role_name in user_roles:
+            return role_value
+    
+    return 5  # Default to Faculty
+
+def get_role_name_for_value(role_value):
+    """Get role display name for role value"""
+    return ROLE_MAPPING.get(role_value, 'FACULTY')
+
+def get_user_role_names(user):
+    """Get all role names for a user"""
+    return list(user.get_active_roles().values_list('role__name', flat=True))
 
 # View folder access mapping
 ROLE_VIEW_ACCESS = {
-    1: ['hro'],  # HRO can access hro folder
-    2: ['ciso'],  # CISO can access ciso folder
-    3: ['ovphe'],  # OVPHE can access ovphe folder
-    4: ['approver'],  # APPROVER can access approver folder
-    5: ['assistant'],  # ASSISTANT_APPROVER can access assistant folder
-    6: ['faculty'],  # FACULTY can access faculty folder
-    7: ['faculty', 'approver', 'assistant']  # DUAL-ROLE can access multiple folders
+    1: ['ciso'],  # CISO can access ciso folder
+    2: ['ovphe'],  # OVPHE can access ovphe folder
+    3: ['approver'],  # APPROVER can access approver folder
+    4: ['assistant'],  # ASSISTANT_APPROVER can access assistant folder
+    5: ['faculty'],  # FACULTY can access faculty folder
 }
 
 def login_required(view_func):
@@ -90,31 +114,22 @@ def get_role_dashboard_url(role_value):
     return ROLE_DASHBOARD_PATHS.get(role_value, '/pages/faculty/faculty_member_dashboard')
 
 # Specific role decorators using numeric values
-def hro_required(view_func):
+def ciso_required(view_func):
     return role_required(1)(view_func)
 
-def ciso_required(view_func):
+def ovphe_required(view_func):
     return role_required(2)(view_func)
 
-def ovphe_required(view_func):
+def approver_required(view_func):
     return role_required(3)(view_func)
 
-def approver_required(view_func):
+def assistant_required(view_func):
     return role_required(4)(view_func)
 
-def assistant_required(view_func):
+def faculty_required(view_func):
     return role_required(5)(view_func)
 
-def faculty_required(view_func):
-    return role_required(6)(view_func)
-
-def dual_role_required(view_func):
-    return role_required(7)(view_func)
-
 # View folder access decorators
-def hro_views_required(view_func):
-    return view_folder_required('hro')(view_func)
-
 def ciso_views_required(view_func):
     return view_folder_required('ciso')(view_func)
 
