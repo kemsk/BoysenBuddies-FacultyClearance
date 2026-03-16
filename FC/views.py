@@ -666,12 +666,15 @@ def _is_office_referenced(office: Office):
     )
 
 
-def _get_active_ciso_admin():
+def _get_active_ciso_admin(request=None):
     # Get the first active CISO admin
     from .models import UserRole, Role
-    ciso_role = Role.objects.get(name='CISO')
-    user_role = UserRole.objects.filter(role=ciso_role, is_active=True).first()
-    return user_role.user if user_role else None
+    try:
+        ciso_role = Role.objects.get(name='CISO')
+        user_role = UserRole.objects.filter(role=ciso_role, is_active=True).first()
+        return user_role.user if user_role else None
+    except Role.DoesNotExist:
+        return None
 
 
 def _require_ciso_admin_user(request):
@@ -747,7 +750,7 @@ def _get_active_admin_for_role(request, role: str | None):
     if role == "ovphe":
         return _get_active_ovphe_admin(request)
     if role == "ciso":
-        return _get_active_ciso_admin()
+        return _get_active_ciso_admin(request)
     return None
 
 
@@ -783,8 +786,7 @@ def _system_guidelines_api(request, role: str):
     try:
         ActivityLog.objects.create(
             event_type=ActivityLog.EventType.CREATED_GUIDELINE,
-            actor_admin=admin,
-            actor_user=getattr(admin, "user", None),
+            user=admin.user if admin else None,
             details=[f"Guideline: {title}"],
         )
     except Exception:
@@ -821,8 +823,7 @@ def _system_guideline_detail_api(request, role: str, guideline_id: int):
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.EDITED_GUIDELINE,
-                actor_admin=admin,
-                actor_user=getattr(admin, "user", None),
+                user=admin.user if admin else None,
                 details=[f"Guideline: {title}"],
             )
         except Exception:
@@ -846,15 +847,13 @@ def _system_guideline_detail_api(request, role: str, guideline_id: int):
             evt = ActivityLog.EventType.ENABLED_GUIDELINE if guideline.is_active else ActivityLog.EventType.DISABLED_GUIDELINE
             ActivityLog.objects.create(
                 event_type=evt,
-                actor_admin=admin,
-                actor_user=getattr(admin, "user", None),
+                user=admin.user if admin else None,
                 details=[f"Guideline: {guideline.title}"],
             )
             if not guideline.is_active:
                 ActivityLog.objects.create(
                     event_type=ActivityLog.EventType.ARCHIVED_GUIDELINE,
-                    actor_admin=admin,
-                    actor_user=getattr(admin, "user", None),
+                    user=admin.user if admin else None,
                     details=[f"Guideline: {guideline.title}"],
                 )
         except Exception:
@@ -866,8 +865,7 @@ def _system_guideline_detail_api(request, role: str, guideline_id: int):
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.ARCHIVED_GUIDELINE,
-                actor_admin=admin,
-                actor_user=getattr(admin, "user", None),
+                user=admin.user if admin else None,
                 details=[f"Guideline: {guideline_title}"],
             )
         except Exception:
@@ -914,8 +912,7 @@ def _announcements_api(request, role: str):
     try:
         ActivityLog.objects.create(
             event_type=ActivityLog.EventType.CREATED_ANNOUNCEMENT,
-            actor_admin=admin,
-            actor_user=getattr(admin, "user", None),
+            user=admin.user if admin else None,
             details=[f"Announcement: {title}"] if title else [],
         )
     except Exception:
@@ -955,8 +952,7 @@ def _announcement_detail_api(request, role: str, announcement_id: int):
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.EDITED_ANNOUNCEMENT,
-                actor_admin=admin,
-                actor_user=getattr(admin, "user", None),
+                user=admin.user if admin else None,
                 details=[f"Announcement: {title}"] if title else [],
             )
         except Exception:
@@ -995,8 +991,7 @@ def _announcement_detail_api(request, role: str, announcement_id: int):
                 )
                 ActivityLog.objects.create(
                     event_type=evt,
-                    actor_admin=admin,
-                    actor_user=getattr(admin, "user", None),
+                    user=admin.user if admin else None,
                     details=[f"Announcement: {announcement.title}"] if announcement.title else [],
                 )
         except Exception:
@@ -1008,8 +1003,7 @@ def _announcement_detail_api(request, role: str, announcement_id: int):
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.DELETED_ANNOUNCEMENT,
-                actor_admin=admin,
-                actor_user=getattr(admin, "user", None),
+                user=admin.user if admin else None,
                 details=[f"Announcement: {announcement_title}"] if announcement_title else [],
             )
         except Exception:
@@ -1264,7 +1258,10 @@ def ciso_system_user_detail_api(request, user_id: int):
             # Get or create the appropriate role
             from .models import Role
             role_name = "CISO" if office_norm == "CISO" else "OVPHE"
-            role = Role.objects.get(name=role_name)
+            role, created = Role.objects.get_or_create(
+                name=role_name,
+                defaults={'description': f'{role_name} admin role'}
+            )
             
             # Remove existing admin roles for this user
             user.userrole_set.filter(role__name__in=['CISO', 'OVPHE']).delete()
@@ -1315,7 +1312,10 @@ def ciso_system_user_detail_api(request, user_id: int):
 
             # Assign Student Assistant role
             from .models import Role, UserRole
-            student_role = Role.objects.get(name='Student Assistant')
+            student_role, created = Role.objects.get_or_create(
+                name='Student Assistant',
+                defaults={'description': 'Student Assistant role'}
+            )
             UserRole.objects.get_or_create(
                 user=user,
                 role=student_role,
@@ -1376,7 +1376,10 @@ def ciso_system_user_detail_api(request, user_id: int):
             else:
                 role_name = "Office Admin"
             
-            role = Role.objects.get(name=role_name)
+            role, created = Role.objects.get_or_create(
+                name=role_name,
+                defaults={'description': f'{role_name} role'}
+            )
             user_role, _ = UserRole.objects.get_or_create(
                 user=user,
                 role=role,
@@ -1819,8 +1822,7 @@ def ovphe_clearance_timelines_api(request):
                         prev_sem = _term_to_label(prev.term)
                         ActivityLog.objects.create(
                             event_type=ActivityLog.EventType.INACTIVE_TIMELINE,
-                            actor_admin=admin,
-                            actor_user=getattr(admin, "user", None),
+                            user=admin.user if admin else None,
                             details=[prev_sy, f"Semester: {prev_sem}", "Replaced with new timeline"],
                         )
                     except Exception:
@@ -1841,8 +1843,7 @@ def ovphe_clearance_timelines_api(request):
                 new_sem = _term_to_label(term)
                 ActivityLog.objects.create(
                     event_type=ActivityLog.EventType.ACTIVE_TIMELINE,
-                    actor_admin=admin,
-                    actor_user=getattr(admin, "user", None),
+                    user=admin.user if admin else None,
                     details=[new_sy, f"Semester: {new_sem}"],
                 )
             except Exception:
@@ -1866,8 +1867,7 @@ def ovphe_clearance_timelines_api(request):
                     prev_sem = _term_to_label(prev.term)
                     ActivityLog.objects.create(
                         event_type=ActivityLog.EventType.INACTIVE_TIMELINE,
-                        actor_admin=admin,
-                        actor_user=getattr(admin, "user", None),
+                        user=admin.user if admin else None,
                         details=[prev_sy, f"Semester: {prev_sem}", "Replaced with new timeline"],
                     )
                 except Exception:
@@ -2258,8 +2258,7 @@ def ovphe_colleges_api(request):
             try:
                 ActivityLog.objects.create(
                     event_type=ActivityLog.EventType.CREATED_COLLEGE,
-                    actor_admin=admin,
-                    actor_user=getattr(admin, "user", None),
+                    user=admin.user if admin else None,
                     details=[f"College: {existing_inactive.name}"] if existing_inactive.name else [],
                 )
             except Exception:
@@ -2284,8 +2283,7 @@ def ovphe_colleges_api(request):
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.CREATED_COLLEGE,
-                actor_admin=admin,
-                actor_user=getattr(admin, "user", None),
+                user=admin.user if admin else None,
                 details=[f"College: {obj.name}"] if obj.name else [],
             )
         except Exception:
@@ -2334,8 +2332,7 @@ def ovphe_college_detail_api(request, college_id: int):
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.EDITED_COLLEGE,
-                actor_admin=admin,
-                actor_user=getattr(admin, "user", None),
+                user=admin.user if admin else None,
                 details=[f"College: {obj.name}"],
             )
         except Exception:
@@ -2355,8 +2352,7 @@ def ovphe_college_detail_api(request, college_id: int):
         try:
             log = ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.DELETED_COLLEGE,
-                actor_admin=admin,
-                actor_user=getattr(admin, "user", None),
+                user=admin.user if admin else None,
                 details=[f"College: {college_name}"] if college_name else [],
             )
             print(f"[DEBUG] ActivityLog created: id={log.id}, event_type={log.event_type}, details={log.details}")
@@ -2414,8 +2410,7 @@ def ovphe_departments_api(request):
             try:
                 ActivityLog.objects.create(
                     event_type=ActivityLog.EventType.CREATED_DEPARTMENT,
-                    actor_admin=admin,
-                    actor_user=getattr(admin, "user", None),
+                    user=admin.user if admin else None,
                     details=[f"Department: {existing_inactive.name}", f"College: {college.name}"],
                 )
             except Exception:
@@ -2441,8 +2436,7 @@ def ovphe_departments_api(request):
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.CREATED_DEPARTMENT,
-                actor_admin=admin,
-                actor_user=getattr(admin, "user", None),
+                user=admin.user if admin else None,
                 details=[f"Department: {obj.name}", f"College: {college.name}"],
             )
         except Exception:
@@ -2496,8 +2490,7 @@ def ovphe_department_detail_api(request, department_id: int):
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.EDITED_DEPARTMENT,
-                actor_admin=admin,
-                actor_user=getattr(admin, "user", None),
+                user=admin.user if admin else None,
                 details=[f"Department: {obj.name}", f"College: {obj.college.name}"],
             )
         except Exception:
@@ -2522,8 +2515,7 @@ def ovphe_department_detail_api(request, department_id: int):
             try:
                 ActivityLog.objects.create(
                     event_type=ActivityLog.EventType.DELETED_DEPARTMENT,
-                    actor_admin=admin,
-                    actor_user=getattr(admin, "user", None),
+                    user=admin.user if admin else None,
                     details=[f"Department: {dept_name}", f"College: {college_name}"],
                 )
             except Exception:
@@ -2532,8 +2524,7 @@ def ovphe_department_detail_api(request, department_id: int):
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.DELETED_DEPARTMENT,
-                actor_admin=admin,
-                actor_user=getattr(admin, "user", None),
+                user=admin.user if admin else None,
                 details=[f"Department: {dept_name}", f"College: {college_name}"],
             )
         except Exception:
@@ -2577,8 +2568,7 @@ def ovphe_offices_api(request):
             try:
                 ActivityLog.objects.create(
                     event_type=ActivityLog.EventType.CREATED_OFFICE,
-                    actor_admin=admin,
-                    actor_user=getattr(admin, "user", None),
+                    user=admin.user if admin else None,
                     details=[f"Office: {existing_inactive.name}"],
                 )
             except Exception:
@@ -2605,8 +2595,7 @@ def ovphe_offices_api(request):
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.CREATED_OFFICE,
-                actor_admin=admin,
-                actor_user=getattr(admin, "user", None),
+                user=admin.user if admin else None,
                 details=[f"Office: {obj.name}"],
             )
         except Exception:
@@ -2658,8 +2647,7 @@ def ovphe_office_detail_api(request, office_id: int):
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.EDITED_OFFICE,
-                actor_admin=admin,
-                actor_user=getattr(admin, "user", None),
+                user=admin.user if admin else None,
                 details=[f"Office: {obj.name}"],
             )
         except Exception:
@@ -2684,8 +2672,7 @@ def ovphe_office_detail_api(request, office_id: int):
             try:
                 ActivityLog.objects.create(
                     event_type=ActivityLog.EventType.DELETED_OFFICE,
-                    actor_admin=admin,
-                    actor_user=getattr(admin, "user", None),
+                    user=admin.user if admin else None,
                     details=[f"Office: {office_name}"],
                 )
             except Exception:
@@ -2694,8 +2681,7 @@ def ovphe_office_detail_api(request, office_id: int):
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.DELETED_OFFICE,
-                actor_admin=admin,
-                actor_user=getattr(admin, "user", None),
+                user=admin.user if admin else None,
                 details=[f"Office: {office_name}"],
             )
         except Exception:
@@ -2781,8 +2767,7 @@ def ovphe_approver_flow_steps_api(request):
             college_names = [c.name for c in step.colleges.all()]
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.ADDED_TO_APPROVER_FLOW,
-                actor_admin=admin,
-                actor_user=getattr(admin, "user", None),
+                user=admin.user if admin else None,
                 details=[
                     f"Category: {step.category}",
                     f"Colleges: {', '.join(college_names)}" if college_names else "",
@@ -2840,8 +2825,7 @@ def ovphe_approver_flow_step_detail_api(request, step_id: int):
             college_names = [c.name for c in step.colleges.all()]
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.EDITED_APPROVER_FLOW,
-                actor_admin=admin,
-                actor_user=getattr(admin, "user", None),
+                user=admin.user if admin else None,
                 details=[
                     f"Category: {step.category}",
                     f"Colleges: {', '.join(college_names)}" if college_names else "",
@@ -2864,8 +2848,7 @@ def ovphe_approver_flow_step_detail_api(request, step_id: int):
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.REMOVED_FROM_APPROVER_FLOW,
-                actor_admin=admin,
-                actor_user=getattr(admin, "user", None),
+                user=admin.user if admin else None,
                 details=[f"Category: {step_category}"],
             )
         except Exception:
@@ -2897,8 +2880,7 @@ def ovphe_approver_flow_order_api(request):
     try:
         ActivityLog.objects.create(
             event_type=ActivityLog.EventType.EDITED_APPROVER_FLOW,
-            actor_admin=admin,
-            actor_user=getattr(admin, "user", None),
+            user=admin.user if admin else None,
             details=["Updated approver flow order."],
         )
     except Exception:
@@ -2971,8 +2953,7 @@ def ovphe_export_clearance_results_api(request):
     try:
         ActivityLog.objects.create(
             event_type=ActivityLog.EventType.EXPORTED_CLEARANCE_RESULTS,
-            actor_admin=admin,
-            actor_user=getattr(admin, "user", None),
+            user=admin.user if admin else None,
             details=[
                 college_name or "All Colleges",
                 f"School Year: {academic_year or 'All'}",
@@ -3016,7 +2997,7 @@ def ovphe_system_analytics_api(request):
     term = (request.GET.get("term") or "").strip()
     college_id = (request.GET.get("college_id") or "").strip()
 
-    admin = _get_active_ovphe_admin() or _get_active_ciso_admin()
+    admin = _get_active_ovphe_admin(request) or _get_active_ciso_admin(request)
 
     try:
         year_val = int(academic_year) if academic_year else None
@@ -3111,8 +3092,7 @@ def ovphe_activity_logs_api(request):
 
         obj = ActivityLog.objects.create(
             event_type=event_type,
-            actor_admin=admin,
-            actor_user=getattr(admin, "user", None),
+            user=admin.user if admin else None,
             details=[str(x) for x in details if x is not None],
         )
 
@@ -3133,16 +3113,16 @@ def ovphe_activity_logs_api(request):
     page = int(request.GET.get("page") or 1)
     page_size = int(request.GET.get("pageSize") or 40)
 
-    qs = ActivityLog.objects.select_related("actor_user", "actor_admin", "faculty", "requirement").all()
+    qs = ActivityLog.objects.select_related("user", "faculty", "requirement").all()
     if q:
         qs = qs.filter(
             models.Q(event_type__icontains=q)
             | models.Q(approver_department__icontains=q)
             | models.Q(university_id__icontains=q)
             | models.Q(request_id__icontains=q)
-            | models.Q(actor_user__email__icontains=q)
-            | models.Q(actor_user__first_name__icontains=q)
-            | models.Q(actor_user__last_name__icontains=q)
+            | models.Q(user__email__icontains=q)
+            | models.Q(user__first_name__icontains=q)
+            | models.Q(user__last_name__icontains=q)
         )
 
     total = qs.count()
@@ -3166,10 +3146,8 @@ def ovphe_activity_logs_api(request):
                 "variant": log.event_type,
                 "title": title,
                 "description": description,
-                "actorFirstName": (log.actor_user.first_name if log.actor_user else "")
-                or (log.actor_admin.user.first_name if log.actor_admin else ""),
-                "actorLastName": (log.actor_user.last_name if log.actor_user else "")
-                or (log.actor_admin.user.last_name if log.actor_admin else ""),
+                "firstName": (log.user.first_name if log.user else ""),
+                "lastName": (log.user.last_name if log.user else ""),
                 "approverDepartment": log.approver_department or "",
                 "facultyFirstName": log.faculty.first_name if log.faculty else "",
                 "facultyLastName": log.faculty.last_name if log.faculty else "",
@@ -3207,7 +3185,7 @@ def ciso_notifications_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
-    admin = _get_active_ciso_admin()
+    admin = _get_active_ciso_admin(request)
     if not admin:
         return JsonResponse({"detail": "CISO user not found"}, status=404)
 
@@ -3232,7 +3210,7 @@ def ciso_activity_logs_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
-    admin = _get_active_ciso_admin()
+    admin = _get_active_ciso_admin(request)
     if not admin:
         return JsonResponse({"detail": "CISO user not found"}, status=404)
 
@@ -3240,8 +3218,8 @@ def ciso_activity_logs_api(request):
     page = int(request.GET.get("page") or 1)
     page_size = int(request.GET.get("pageSize") or 40)
 
-    qs = ActivityLog.objects.select_related("actor_user", "actor_admin", "faculty", "requirement").filter(
-        models.Q(actor_admin=admin) | models.Q(actor_user=admin.user)
+    qs = ActivityLog.objects.select_related("user", "faculty", "requirement").filter(
+        user=admin.user
     )
     if q:
         qs = qs.filter(
@@ -3249,9 +3227,9 @@ def ciso_activity_logs_api(request):
             | models.Q(approver_department__icontains=q)
             | models.Q(university_id__icontains=q)
             | models.Q(request_id__icontains=q)
-            | models.Q(actor_user__email__icontains=q)
-            | models.Q(actor_user__first_name__icontains=q)
-            | models.Q(actor_user__last_name__icontains=q)
+            | models.Q(user__email__icontains=q)
+            | models.Q(user__first_name__icontains=q)
+            | models.Q(user__last_name__icontains=q)
         )
 
     total = qs.count()
@@ -3275,10 +3253,8 @@ def ciso_activity_logs_api(request):
                 "variant": log.event_type,
                 "title": title,
                 "description": description,
-                "actorFirstName": (log.actor_user.first_name if log.actor_user else "")
-                or (log.actor_admin.user.first_name if log.actor_admin else ""),
-                "actorLastName": (log.actor_user.last_name if log.actor_user else "")
-                or (log.actor_admin.user.last_name if log.actor_admin else ""),
+                "firstName": (log.user.first_name if log.user else ""),
+                "lastName": (log.user.last_name if log.user else ""),
                 "approverDepartment": log.approver_department or "",
                 "facultyFirstName": log.faculty.first_name if log.faculty else "",
                 "facultyLastName": log.faculty.last_name if log.faculty else "",
@@ -3350,7 +3326,7 @@ def ciso_system_users_api(request):
                     else (ap.office.name if ap.office else "N/A")
                 ),
                 "email": u.email,
-                "isActive": bool(u.is_active),
+                "isActive": u.get_active_roles().exists(),
             }
         )
 
@@ -3370,7 +3346,7 @@ def ciso_system_users_api(request):
                 "college": sa.college.name if sa.college else "N/A",
                 "department": sa.department.name if sa.department else "N/A",
                 "email": u.email,
-                "isActive": bool(u.is_active),
+                "isActive": u.get_active_roles().exists(),
             }
         )
 
@@ -3445,8 +3421,18 @@ def ciso_system_users_api(request):
             if office_norm not in {"CISO", "OVPHE"}:
                 return JsonResponse({"detail": "Invalid system admin office"}, status=400)
 
-            # SystemAdmin has been removed - role assignment handled above
-            # Role assignment is handled above in the system_admin_office section
+            # Assign appropriate role for system admin users
+            from .models import Role, UserRole
+            # Create role if it doesn't exist
+            role, created = Role.objects.get_or_create(
+                name=office_norm,
+                defaults={'description': f'{office_norm} admin role'}
+            )
+            UserRole.objects.get_or_create(
+                user=user,
+                role=role,
+                defaults={'is_active': True}
+            )
 
         if approver_type:
             atype = approver_type.strip().lower()
@@ -3500,7 +3486,11 @@ def ciso_system_users_api(request):
             else:
                 role_name = "Office Admin"
             
-            role = Role.objects.get(name=role_name)
+            # Create role if it doesn't exist
+            role, created = Role.objects.get_or_create(
+                name=role_name,
+                defaults={'description': f'{role_name} role'}
+            )
             UserRole.objects.get_or_create(
                 user=user,
                 role=role,
@@ -3926,7 +3916,7 @@ def approver_assistant_approvers_api(request):
                 "college": sa.college.name if sa.college else "N/A",
                 "department": sa.department.name if sa.department else "N/A",
                 "email": u.email,
-                "isActive": bool(u.is_active),
+                "isActive": u.get_active_roles().exists(),
             }
         )
 
@@ -3998,7 +3988,10 @@ def approver_assistant_approvers_api(request):
         
         # Assign Student Assistant role
         from .models import Role, UserRole
-        student_role = Role.objects.get(name='Student Assistant')
+        student_role, created = Role.objects.get_or_create(
+            name='Student Assistant',
+            defaults={'description': 'Student Assistant role'}
+        )
         UserRole.objects.get_or_create(
             user=user,
             role=student_role,
@@ -4320,10 +4313,80 @@ def approver_assistant_list_api(request):
     return JsonResponse({"items": []})
 
 def approver_activity_logs_api(request):
-    return JsonResponse({"items": []})
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    q = (request.GET.get("query") or "").strip().lower()
+    page = int(request.GET.get("page") or 1)
+    page_size = int(request.GET.get("pageSize") or 40)
+
+    # Get activity logs related to this approver
+    qs = ActivityLog.objects.select_related("user", "faculty", "requirement").filter(
+        user=user
+    )
+    if q:
+        qs = qs.filter(
+            models.Q(event_type__icontains=q)
+            | models.Q(approver_department__icontains=q)
+            | models.Q(university_id__icontains=q)
+            | models.Q(request_id__icontains=q)
+            | models.Q(user__email__icontains=q)
+            | models.Q(user__first_name__icontains=q)
+            | models.Q(user__last_name__icontains=q)
+        )
+
+    total = qs.count()
+    start = max(0, (page - 1) * page_size)
+    logs = qs.order_by("-created_at", "pk")[start : start + page_size]
+
+    items = []
+    for log in logs:
+        dt = timezone.localtime(log.created_at)
+        title = str(log.event_type)
+        if log.approver_department:
+            title = f"{title} - {log.approver_department}"
+        description = ""
+        if log.request_id:
+            description = f"Request: {log.request_id}"
+        items.append(
+            {
+                "id": str(log.id),
+                "dateLabel": dt.strftime("%m/%d/%Y"),
+                "timeLabel": _format_time_label(dt),
+                "variant": log.event_type,
+                "title": title,
+                "description": description,
+                "firstName": (log.user.first_name if log.user else ""),
+                "lastName": (log.user.last_name if log.user else ""),
+            }
+        )
+    return JsonResponse({"items": items, "total": total})
 
 def approver_notifications_api(request):
-    return JsonResponse({"items": []})
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    notifications = Notification.objects.filter(user=user).order_by("-created_at", "-id")
+    items = []
+    for n in notifications:
+        items.append(
+            {
+                "id": str(n.id),
+                "title": n.title or "",
+                "body": n.body or "",
+                "status": n.status,
+                "is_read": bool(n.is_read),
+            }
+        )
+    return JsonResponse({"items": items})
 
 def approver_archived_clearance_api(request):
     return JsonResponse({"items": []})
@@ -4345,7 +4408,26 @@ def assistant_approver_clearance_api(request):
     return JsonResponse({"items": []})
 
 def assistant_approver_notifications_api(request):
-    return JsonResponse({"items": []})
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    notifications = Notification.objects.filter(user=user).order_by("-created_at", "-id")
+    items = []
+    for n in notifications:
+        items.append(
+            {
+                "id": str(n.id),
+                "title": n.title or "",
+                "body": n.body or "",
+                "status": n.status,
+                "is_read": bool(n.is_read),
+            }
+        )
+    return JsonResponse({"items": items})
 
 def assistant_approver_archived_clearance_api(request):
     return JsonResponse({"items": []})
@@ -4371,7 +4453,48 @@ def ciso_tools_api(request):
     return JsonResponse({"tools": []})
 
 def ciso_college_office_configuration_api(request):
-    return JsonResponse({"configuration": []})
+    admin, err = _require_ciso_admin_user(request)
+    if err:
+        return err
+    
+    # Get colleges with their departments
+    colleges = College.objects.filter(is_active=True).prefetch_related('department_set').order_by('name')
+    colleges_data = []
+    for college in colleges:
+        departments = [{'id': dept.id, 'name': dept.name} for dept in college.department_set.filter(is_active=True).order_by('name')]
+        colleges_data.append({
+            'id': college.id,
+            'name': college.name,
+            'abbreviation': college.abbreviation or '',
+            'departments': departments
+        })
+    
+    # Get offices
+    offices = Office.objects.filter(is_active=True).order_by('name')
+    offices_data = [{'id': office.id, 'name': office.name, 'abbreviation': office.abbreviation or ''} for office in offices]
+    
+    # Get approver flow configuration
+    config = get_approver_flow_config()
+    flow_steps = []
+    if config:
+        flow_steps = ApproverFlowStep.objects.filter(config=config).order_by('order').prefetch_related('colleges')
+        for step in flow_steps:
+            colleges_list = [{'id': college.id, 'name': college.name} for college in step.colleges.all()]
+            flow_steps.append({
+                'id': step.id,
+                'category': step.category,
+                'order': step.order,
+                'office': {'id': step.office.id, 'name': step.office.name} if step.office else None,
+                'colleges': colleges_list
+            })
+    
+    configuration = {
+        'colleges': colleges_data,
+        'offices': offices_data,
+        'approverFlow': flow_steps
+    }
+    
+    return JsonResponse({"configuration": configuration})
 
 def ciso_clearance_timeline_api(request):
     return JsonResponse({"timelines": []})

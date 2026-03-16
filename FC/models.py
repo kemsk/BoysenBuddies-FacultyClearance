@@ -330,6 +330,34 @@ class ActivityLog(models.Model):
         ADDED_ASSISTANT_APPROVER = "added_assistant_approver", "added_assistant_approver"
         UPDATED_ASSISTANT_APPROVER = "updated_assistant_approver", "updated_assistant_approver"
         REMOVED_ASSISTANT_APPROVER = "removed_assistant_approver", "removed_assistant_approver"
+        # Guidelines
+        CREATED_GUIDELINE = "created_guideline", "created_guideline"
+        EDITED_GUIDELINE = "edited_guideline", "edited_guideline"
+        ENABLED_GUIDELINE = "enabled_guideline", "enabled_guideline"
+        DISABLED_GUIDELINE = "disabled_guideline", "disabled_guideline"
+        ARCHIVED_GUIDELINE = "archived_guideline", "archived_guideline"
+        # Announcements
+        CREATED_ANNOUNCEMENT = "created_announcement", "created_announcement"
+        ENABLED_ANNOUNCEMENT = "enabled_announcement", "enabled_announcement"
+        DISABLED_ANNOUNCEMENT = "disabled_announcement", "disabled_announcement"
+        DELETED_ANNOUNCEMENT = "deleted_announcement", "deleted_announcement"
+        # Timeline
+        ACTIVE_TIMELINE = "active_timeline", "active_timeline"
+        INACTIVE_TIMELINE = "inactive_timeline", "inactive_timeline"
+        # College/Department/Office
+        CREATED_COLLEGE = "created_college", "created_college"
+        EDITED_COLLEGE = "edited_college", "edited_college"
+        DELETED_COLLEGE = "deleted_college", "deleted_college"
+        CREATED_DEPARTMENT = "created_department", "created_department"
+        EDITED_DEPARTMENT = "edited_department", "edited_department"
+        DELETED_DEPARTMENT = "deleted_department", "deleted_department"
+        CREATED_OFFICE = "created_office", "created_office"
+        EDITED_OFFICE = "edited_office", "edited_office"
+        DELETED_OFFICE = "deleted_office", "deleted_office"
+        # Approver Flow
+        ADDED_TO_APPROVER_FLOW = "added_to_approver_flow", "added_to_approver_flow"
+        EDITED_APPROVER_FLOW = "edited_approver_flow", "edited_approver_flow"
+        REMOVED_FROM_APPROVER_FLOW = "removed_from_approver_flow", "removed_from_approver_flow"
 
     event_type = models.CharField(max_length=50, choices=EventType.choices)
     user = models.ForeignKey(
