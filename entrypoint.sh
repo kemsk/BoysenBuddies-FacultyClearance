@@ -65,105 +65,6 @@ WHERE NOT EXISTS (
     SELECT 1 FROM FC_role r WHERE r.name = v.name
 );
 
--- Seed UserRoles for admin users
-INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
-SELECT 
-    u.id AS user_id, 
-    r.id AS role_id,
-    u.id AS assigned_by_id,
-    NOW() AS assigned_date,
-    1 AS is_active
-FROM FC_user u
-CROSS JOIN FC_role r
-WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'CISO'
-ON DUPLICATE KEY UPDATE
-    is_active = VALUES(is_active);
-
-INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
-SELECT 
-    u.id AS user_id, 
-    r.id AS role_id,
-    u.id AS assigned_by_id,
-    NOW() AS assigned_date,
-    1 AS is_active
-FROM FC_user u
-CROSS JOIN FC_role r
-WHERE u.email = '20190016375@my.xu.edu.ph' AND r.name = 'OVPHE'
-ON DUPLICATE KEY UPDATE
-    is_active = VALUES(is_active);
-
-INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
-SELECT 
-    u.id AS user_id, 
-    r.id AS role_id,
-    u.id AS assigned_by_id,
-    NOW() AS assigned_date,
-    1 AS is_active
-FROM FC_user u
-CROSS JOIN FC_role r
-WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'OVPHE'
-ON DUPLICATE KEY UPDATE
-    is_active = VALUES(is_active);
-
--- Seed UserRoles for other users
-INSERT INTO FC_userrole (user_id, role_id, college_id, department_id, assigned_by_id, assigned_date, is_active)
-SELECT 
-    u.id AS user_id, 
-    r.id AS role_id,
-    @ccs_id AS college_id,
-    @cs_id AS department_id,
-    u.id AS assigned_by_id,
-    NOW() AS assigned_date,
-    1 AS is_active
-FROM FC_user u
-CROSS JOIN FC_role r
-WHERE u.email = 'approver.seed@xu.edu.ph' AND r.name = 'Approver'
-ON DUPLICATE KEY UPDATE
-    is_active = VALUES(is_active);
-
-INSERT INTO FC_userrole (user_id, role_id, college_id, department_id, assigned_by_id, assigned_date, is_active)
-SELECT 
-    u.id AS user_id, 
-    r.id AS role_id,
-    @ccs_id AS college_id,
-    @cs_id AS department_id,
-    @ciso_user_id AS assigned_by_id,
-    NOW() AS assigned_date,
-    1 AS is_active
-FROM FC_user u
-CROSS JOIN FC_role r
-WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'Approver'
-ON DUPLICATE KEY UPDATE
-    is_active = VALUES(is_active);
-
-INSERT INTO FC_userrole (user_id, role_id, college_id, department_id, assigned_by_id, assigned_date, is_active)
-SELECT 
-    u.id AS user_id, 
-    r.id AS role_id,
-    @ccs_id AS college_id,
-    @cs_id AS department_id,
-    @approver_user_id AS assigned_by_id,
-    NOW() AS assigned_date,
-    1 AS is_active
-FROM FC_user u
-CROSS JOIN FC_role r
-WHERE u.email = 'assistant.seed@xu.edu.ph' AND r.name = 'Student Assistant'
-ON DUPLICATE KEY UPDATE
-    is_active = VALUES(is_active);
-
-INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
-SELECT 
-    u.id AS user_id, 
-    r.id AS role_id,
-    u.id AS assigned_by_id,
-    NOW() AS assigned_date,
-    1 AS is_active
-FROM FC_user u
-CROSS JOIN FC_role r
-WHERE u.email = 'faculty.seed@xu.edu.ph' AND r.name = 'Faculty'
-ON DUPLICATE KEY UPDATE
-    is_active = VALUES(is_active);
-
 -- Seed Colleges
 INSERT INTO FC_college (name, abbreviation, is_active)
 SELECT * FROM (
@@ -254,8 +155,6 @@ SET @assistant_user_id = (SELECT id FROM FC_user WHERE email = 'assistant.seed@x
 SET @faculty_user_id = (SELECT id FROM FC_user WHERE email = 'faculty.seed@xu.edu.ph' LIMIT 1);
 SET @ciso_user_id = (SELECT id FROM FC_user WHERE email = '20220025546@my.xu.edu.ph' LIMIT 1);
 SET @ovphe_user_id = (SELECT id FROM FC_user WHERE email = '20190016375@my.xu.edu.ph' LIMIT 1);
-
-
 
 -- Seed Approver
 INSERT INTO FC_approver (user_id, approver_type, college_id, department_id)
