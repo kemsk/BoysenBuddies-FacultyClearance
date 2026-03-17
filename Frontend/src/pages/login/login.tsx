@@ -1,16 +1,38 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "../../index.css"; // ensure index.css is accessible from src
 import { Button } from "../../stories/components/button";
 
 export default function Login() {
-  const [error, setError] = useState<string>("");
+  // Check for error parameters in URL during initial render
+  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+  const errorParam = urlParams.get('error');
+  
+  const getInitialError = () => {
+    if (errorParam === 'role_mismatch') {
+      return "You don't have the required permissions for this login type. Please select the correct account type.";
+    } else if (errorParam === 'no_role_selected') {
+      return "Please select your account type from the login page to continue.";
+    }
+    return "";
+  };
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const [error, setError] = useState<string>(getInitialError());
+
+  useEffect(() => {
+    // Clear the error parameter from URL after initial render
+    if (errorParam) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [errorParam]);
+
+  const handleLogin = (role: string) => {
     setError("");
-
-    // Redirect directly to Google OAuth since we only support OAuth now
-    window.location.assign("/accounts/login/google/");
+    
+    // Store the intended role in session storage for validation after OAuth
+    sessionStorage.setItem('intended_role', role);
+    
+    // Redirect to Google OAuth with role parameter
+    window.location.assign(`/accounts/login/google/?role=${role}`);
   };
 
   return (
@@ -39,7 +61,7 @@ export default function Login() {
       
 
       {/* Login Form */}
-      <form className="mt-5 p-8 w-full max-w-md" onSubmit={handleLogin}>
+      <div className="mt-5 p-8 w-full max-w-md">
 
         {error ? (
           <div className="mb-4 text-sm text-red-200">{error}</div>
@@ -55,10 +77,7 @@ export default function Login() {
             alignment="left"
             className="group"
             size="mobileXL"
-            onClick={() => {
-              setError("");
-              window.location.assign("/accounts/login/google/");
-            }}
+            onClick={() => handleLogin('faculty')}
           >
             <div className="flex items-start gap-3">
               <span className="relative w-5 h-5 flex-shrink-0 mt-0.5">
@@ -76,10 +95,7 @@ export default function Login() {
             alignment="left"
             className="group"
             size="mobileXL"
-            onClick={() => {
-              setError("");
-              window.location.assign("/accounts/login/google/");
-            }}
+            onClick={() => handleLogin('approver')}
           >
             <div className="flex items-start gap-3">
               <span className="relative w-5 h-5 flex-shrink-0 mt-0.5">
@@ -97,10 +113,7 @@ export default function Login() {
             alignment="left"
             className="group"
             size="mobileXL"
-            onClick={() => {
-              setError("");
-              window.location.assign("/accounts/login/google/");
-            }}
+            onClick={() => handleLogin('assistant')}
           >
             <div className="flex items-start gap-3">
               <span className="relative w-5 h-5 flex-shrink-0 mt-0.5">
@@ -118,10 +131,7 @@ export default function Login() {
             alignment="left"
             className="group"
             size="mobileXL"
-            onClick={() => {
-              setError("");
-              window.location.assign("/accounts/login/google/");
-            }}
+            onClick={() => handleLogin('ciso')}
           >
             <div className="flex items-start gap-3">
               <span className="relative w-5 h-5 flex-shrink-0 mt-0.5">
@@ -139,10 +149,7 @@ export default function Login() {
             alignment="left"
             className="group"
             size="mobileXL"
-            onClick={() => {
-              setError("");
-              window.location.assign("/accounts/login/google/");
-            }}
+            onClick={() => handleLogin('ovphe')}
           >
             <div className="flex items-start gap-3">
               <span className="relative w-5 h-5 flex-shrink-0 mt-0.5">
@@ -154,8 +161,8 @@ export default function Login() {
           </Button>
         </div>
         
-      </form>
       </div>
       </div>
+    </div>
   );
 }

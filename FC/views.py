@@ -59,6 +59,51 @@ def _get_authenticated_user(request):
 
 
 
+def _validate_and_redirect_by_role(intended_role: str, user_roles: list) -> str | None:
+    """
+    Validate the intended role against user's actual roles and return appropriate redirect URL.
+    Returns None if role validation fails.
+    """
+    print(f"GOOGLE OAUTH: _validate_and_redirect_by_role called with intended_role='{intended_role}', user_roles={user_roles}")
+    
+    role_mapping = {
+        'faculty': ['Faculty'],
+        'approver': ['Approver'],
+        'assistant': ['Student Assistant'],
+        'ciso': ['CISO'],
+        'ovphe': ['OVPHE']
+    }
+    
+    # Check if intended role is valid
+    if intended_role not in role_mapping:
+        print(f"GOOGLE OAUTH: Invalid intended role: {intended_role}")
+        return None
+    
+    # Check if user has the required role(s)
+    required_roles = role_mapping[intended_role]
+    has_required_role = any(role in user_roles for role in required_roles)
+    
+    print(f"GOOGLE OAUTH: Required roles for {intended_role}: {required_roles}")
+    print(f"GOOGLE OAUTH: User has required role: {has_required_role}")
+    
+    if not has_required_role:
+        print(f"GOOGLE OAUTH: User {user_roles} does not have required role(s) {required_roles} for intended role {intended_role}")
+        return None
+    
+    # Return appropriate dashboard URL based on intended role
+    dashboard_urls = {
+        'faculty': '/faculty-dashboard',
+        'approver': '/approver-dashboard',
+        'assistant': '/assistant-approver-dashboard',
+        'ciso': '/CISO-dashboard',
+        'ovphe': '/OVPHE-dashboard'
+    }
+    
+    result = dashboard_urls.get(intended_role, '/faculty-dashboard')
+    print(f"GOOGLE OAUTH: Returning dashboard URL: {result}")
+    return result
+
+
 def _dashboard_route_for_user(user: "User") -> str:
     # Check user's active roles and return appropriate dashboard
     user_roles = user.get_active_roles().values_list('role__name', flat=True)
@@ -169,9 +214,17 @@ def google_oauth_start(request):
     if not client_id or not redirect_uri:
         return _json_error("Google OAuth is not configured", status=500)
     
+    # Get the intended role from URL parameter
+    intended_role = request.GET.get('role', '').strip()
+    print(f"GOOGLE OAUTH: google_oauth_start called with role parameter: '{intended_role}'")
+    
     #session
     state = secrets.token_urlsafe(24)
     request.session["google_oauth_state"] = state
+    request.session["intended_role"] = intended_role
+    request.session.modified = True
+    
+    print(f"GOOGLE OAUTH: Stored intended_role in session: '{intended_role}'")
 
     params = {
         "client_id": client_id,
@@ -193,8 +246,10 @@ def google_oauth_callback(request):
     code = (request.GET.get("code") or "").strip()
     state = (request.GET.get("state") or "").strip()
     expected_state = request.session.get("google_oauth_state")
+    intended_role = request.session.get("intended_role", "").strip()
     
     print(f"GOOGLE OAUTH: OAuth state found: {bool(expected_state)}")
+    print(f"GOOGLE OAUTH: Intended role: {intended_role}")
 
     if not code:
         return _json_error("Missing code", status=400)
@@ -234,14 +289,40 @@ def google_oauth_callback(request):
     print(f"GOOGLE OAUTH: User found: {user.email} (ID: {user.id})")
     print(f"GOOGLE OAUTH: About to call login...")
     
+    # Validate intended role against user's actual roles
+    user_roles = user.get_active_roles().values_list('role__name', flat=True)
+    user_roles_list = list(user_roles)
+    print(f"GOOGLE OAUTH: User email: {user.email}")
+    print(f"GOOGLE OAUTH: User roles: {user_roles_list}")
+    print(f"GOOGLE OAUTH: Intended role: '{intended_role}'")
+    
+    # If no intended role, redirect back to login with error
+    if not intended_role:
+        error_url = "/?error=no_role_selected"
+        print(f"GOOGLE OAUTH: No role selected, redirecting to: {error_url}")
+        return HttpResponseRedirect(error_url)
+    
+    # Role validation and redirection logic
+    redirect_to = _validate_and_redirect_by_role(intended_role, user_roles_list)
+    print(f"GOOGLE OAUTH: Validation result: {redirect_to}")
+    
+    if redirect_to is None:
+        # Role mismatch - redirect to login with error message
+        error_url = "/?error=role_mismatch"
+        print(f"GOOGLE OAUTH: Role mismatch detected, redirecting to: {error_url}")
+        return HttpResponseRedirect(error_url)
+    
     _login(request, user)
     
     print(f"GOOGLE OAUTH: Session after login: {dict(request.session)}")
     print(f"GOOGLE OAUTH: User authenticated: {request.session.get('user_authenticated')}")
     print(f"GOOGLE OAUTH: User ID in session: {request.session.get('user_id')}")
-    
-    redirect_to = _dashboard_route_for_user(user)
     print(f"GOOGLE OAUTH: Redirecting to: {redirect_to}")
+    
+    # Clear the intended role from session
+    request.session.pop("intended_role", None)
+    request.session.modified = True
+    
     return HttpResponseRedirect(redirect_to)
 
 

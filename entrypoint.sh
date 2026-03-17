@@ -75,7 +75,7 @@ SELECT
     1 AS is_active
 FROM FC_user u
 CROSS JOIN FC_role r
-WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'CISO'
+WHERE u.email = '20220024573@my.xu.edu.ph' AND r.name = 'CISO'
 ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
 
@@ -101,7 +101,7 @@ SELECT
     1 AS is_active
 FROM FC_user u
 CROSS JOIN FC_role r
-WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'OVPHE'
+WHERE u.email = '20220024573@my.xu.edu.ph' AND r.name = 'OVPHE'
 ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
 
@@ -160,7 +160,7 @@ SELECT
     1 AS is_active
 FROM FC_user u
 CROSS JOIN FC_role r
-WHERE u.email = 'faculty.seed@xu.edu.ph' AND r.name = 'Faculty'
+WHERE u.email = '20220024573@my.xu.edu.ph' AND r.name = 'Faculty'
 ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
 
