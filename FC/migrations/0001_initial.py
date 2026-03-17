@@ -92,13 +92,10 @@ class Migration(migrations.Migration):
                 ('is_active', models.BooleanField(default=True)),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='FC.user')),
                 ('role', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='FC.role')),
-                ('college', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='FC.college')),
-                ('department', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='FC.department')),
-                ('office', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='FC.office')),
                 ('assigned_by', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='assigned_roles', to='FC.user')),
             ],
             options={
-                'unique_together': {('user', 'role', 'college', 'department', 'office')},
+                'unique_together': {('user', 'role')},
             },
         ),
         migrations.CreateModel(

@@ -19,22 +19,6 @@ class User(models.Model):
         """Get all active roles for this user"""
         return self.userrole_set.filter(is_active=True).select_related('role')
     
-    def is_approver(self, college=None, department=None, office=None):
-        """Check if user is approver for specific context"""
-        queryset = self.userrole_set.filter(
-            role__name='Approver',
-            is_active=True
-        )
-        
-        if college:
-            queryset = queryset.filter(college=college)
-        if department:
-            queryset = queryset.filter(department=department)
-        if office:
-            queryset = queryset.filter(office=office)
-            
-        return queryset.exists()
-    
     def is_ciso_admin(self):
         """Check if user is CISO admin"""
         return self.userrole_set.filter(
@@ -92,15 +76,12 @@ class Role(models.Model):
 class UserRole(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     role = models.ForeignKey(Role, on_delete=models.CASCADE)
-    college = models.ForeignKey(College, on_delete=models.SET_NULL, null=True, blank=True)
-    department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
-    office = models.ForeignKey(Office, on_delete=models.SET_NULL, null=True, blank=True)
     assigned_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='assigned_roles')
     assigned_date = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
     
     class Meta:
-        unique_together = ['user', 'role', 'college', 'department', 'office']
+        unique_together = ['user', 'role']
 
     def __str__(self):
         return f"{self.user.email} - {self.role.name}"
