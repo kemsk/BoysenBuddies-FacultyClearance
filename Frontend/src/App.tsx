@@ -1,7 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import Login from "./pages/login/login";
-import Otp from "./pages/login/otp";
 import LoginPrompt from "./pages/login/login-prompt";
 
 import Facultydashboard from "./pages/faculty/faculty-dashboard";
@@ -62,7 +61,6 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Login />} />
-        <Route path="/otp" element={<Otp />} />
         <Route path="/login-prompt" element={<LoginPrompt />} />
 
         { <Route path="/faculty-dashboard" element={<Facultydashboard />} />}

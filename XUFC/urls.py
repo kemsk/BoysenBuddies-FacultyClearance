@@ -21,8 +21,5 @@ urlpatterns = [
     path('admin/xu-faculty-clearance/', include('FC.urls')),
     path('accounts/login/google/', fc_views.google_oauth_start, name='google_oauth_start'),
     path('accounts/login/google/callback/', fc_views.google_oauth_callback, name='google_oauth_callback'),
-    path('login/check-email/', fc_views.check_email_api, name='check_email_api'),
-    path('login/request-otp/', fc_views.request_otp_api, name='request_otp_api'),
-    path('login/verify-otp/', fc_views.verify_otp_api, name='verify_otp_api'),
 ]
 

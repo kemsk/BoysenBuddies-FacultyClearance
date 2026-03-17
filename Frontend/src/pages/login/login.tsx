@@ -1,40 +1,16 @@
 import { useState } from "react";
 import "../../index.css"; // ensure index.css is accessible from src
-import { Checkbox } from "../../stories/components/checkbox";
-import { Divider } from "../../stories/components/divider";
 import { Button } from "../../stories/components/button";
-import { Input } from "../../stories/components/input";
-import { authService } from "../../services/authService";
-import { useNavigate } from "react-router-dom";
 
 export default function Login() {
   const [error, setError] = useState<string>("");
-  const [email, setEmail] = useState<string>("");
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    const normalizedEmail = email.trim().toLowerCase();
-    if (!normalizedEmail) {
-      setError("Please enter your XU Email");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      await authService.checkEmail(normalizedEmail);
-      localStorage.setItem('otp_email', normalizedEmail);
-      localStorage.setItem('otp_should_send', '1');
-      navigate('/otp');
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Login failed";
-      setError(message);
-    } finally {
-      setIsLoading(false);
-    }
+    // Redirect directly to Google OAuth since we only support OAuth now
+    window.location.assign("/accounts/login/google/");
   };
 
   return (

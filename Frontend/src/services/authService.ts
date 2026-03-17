@@ -39,73 +39,8 @@ class AuthService {
     return '';
   }
 
-  async checkEmail(email: string): Promise<{ success: boolean; message: string }>
-  {
-    const response = await fetch(`${API_BASE_URL}/login/check-email/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': this.getCSRFToken(),
-      },
-      credentials: 'include',
-      body: JSON.stringify({ email }),
-    });
 
-    const data = await response.json().catch(() => null);
-    const message = data && typeof data === 'object' && 'message' in data ? String((data as { message?: unknown }).message || '') : '';
-    if (!response.ok) {
-      throw new Error(message || 'Email check failed');
-    }
-    return data as { success: boolean; message: string };
-  }
 
-  async requestOtp(email: string): Promise<LoginResponse> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/login/request-otp/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': this.getCSRFToken(),
-        },
-        credentials: 'include',
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await response.json().catch(() => null);
-      const message = data && typeof data === 'object' && 'message' in data ? String((data as { message?: unknown }).message || '') : '';
-      if (!response.ok) {
-        throw new Error(message || 'Failed to request OTP');
-      }
-      return data as LoginResponse;
-    } catch (error) {
-      console.error('Request OTP error:', error);
-      throw error;
-    }
-  }
-
-  async verifyOtp(otp: string): Promise<LoginResponse> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/login/verify-otp/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': this.getCSRFToken(),
-        },
-        credentials: 'include',
-        body: JSON.stringify({ otp }),
-      });
-
-      const data = await response.json().catch(() => null);
-      const message = data && typeof data === 'object' && 'message' in data ? String((data as { message?: unknown }).message || '') : '';
-      if (!response.ok) {
-        throw new Error(message || 'OTP verification failed');
-      }
-      return data as LoginResponse;
-    } catch (error) {
-      console.error('Verify OTP error:', error);
-      throw error;
-    }
-  }
 
   async login(email: string, password: string): Promise<LoginResponse> {
     try {
