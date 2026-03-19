@@ -28,6 +28,7 @@ urlpatterns = [
     path('api/ciso/archived-clearance', views.ciso_archived_clearance_api, name='CISOArchivedClearance'),
     path('api/ciso/view-clearance', views.ciso_view_clearance_api, name='CISOViewClearance'),
     path('api/ciso/archived-faculty', views.ciso_archived_faculty_api, name='CISOArchivedFaculty'),
+    path('api/ciso/archived-faculty/<int:archived_id>/download', views.ciso_archived_faculty_download_api, name='CISOArchivedFacultyDownload'),
     path('api/ovphe-profile', views.ovphe_profile_api, name='OVPHEProfile'),
     path('api/ovphe/system-guidelines', views.ovphe_system_guidelines_api, name='OVPHESystemGuidelines'),
     path('api/ovphe/system-guidelines/<int:guideline_id>', views.ovphe_system_guideline_detail_api, name='OVPHEGuidelineDetail'),

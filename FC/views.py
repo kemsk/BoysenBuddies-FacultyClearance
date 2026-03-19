@@ -1494,22 +1494,17 @@ def ciso_faculty_dump_import_api(request):
     updated_count = 0
     skipped_count = 0
     errors: list[dict] = []
-    ad_success_count = 0
-    ad_error_count = 0
 
     def _clean(value: str | None):
         return (value or "").strip()
 
-    # Active Directory endpoint
-    ad_url = "http://host.docker.internal:8002/api/faculty/batch"
-    ad_headers = {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-    }
+    # Get or create Faculty role
+    try:
+        faculty_role = Role.objects.get(name='Faculty')
+    except Role.DoesNotExist:
+        faculty_role = Role.objects.create(name='Faculty', description='Faculty member', is_system_role=True)
 
-    faculty_batch_data = []
-
-    # Process CSV and prepare data for Active Directory
+    # Process CSV and create faculty directly
     for idx, row in enumerate(reader, start=2):
         email = _clean(row.get("email"))
         university_id = _clean(row.get("university_id"))
@@ -1537,57 +1532,96 @@ def ciso_faculty_dump_import_api(request):
         college_name = _clean(row.get("college"))
         department_name = _clean(row.get("department"))
 
-        # Prepare faculty data for Active Directory
-        faculty_data = {
-            "email": email,
-            "university_id": university_id,
-            "employee_id": employee_id,
-            "first_name": first_name,
-            "middle_name": middle_name,
-            "last_name": last_name,
-            "faculty_type": faculty_type,
-            "phone_number": phone_number,
-            "office": office_name,
-            "college": college_name,
-            "department": department_name,
-            "is_active": True
-        }
-        
-        faculty_batch_data.append(faculty_data)
-        created_count += 1
-
-    # Send batch data to Active Directory
-    if faculty_batch_data:
         try:
-            ad_response = requests.post(
-                ad_url,
-                json={"faculty": faculty_batch_data},
-                headers=ad_headers,
-                timeout=30
-            )
-            
-            if ad_response.status_code == 200 or ad_response.status_code == 201:
-                ad_result = ad_response.json()
-                ad_success_count = len(faculty_batch_data)
-                updated_count = ad_result.get("updated_count", 0)
-            else:
-                ad_error_count = len(faculty_batch_data)
-                errors.append({
-                    "message": f"Active Directory error: {ad_response.status_code} - {ad_response.text}"
-                })
-        except requests.exceptions.RequestException as e:
-            ad_error_count = len(faculty_batch_data)
-            errors.append({
-                "message": f"Failed to connect to Active Directory: {str(e)}"
-            })
+            with transaction.atomic():
+                # Create or update User
+                user, user_created = User.objects.get_or_create(
+                    email=email.lower(),
+                    defaults={
+                        'university_id': university_id,
+                        'first_name': first_name,
+                        'middle_name': middle_name,
+                        'last_name': last_name,
+                    }
+                )
+                
+                if not user_created:
+                    # Update existing user
+                    user.university_id = university_id
+                    user.first_name = first_name
+                    user.middle_name = middle_name
+                    user.last_name = last_name
+                    user.save()
+
+                # Create or update Faculty profile
+                faculty, faculty_created = Faculty.objects.get_or_create(
+                    user=user,
+                    defaults={
+                        'employee_id': employee_id,
+                        'faculty_type': faculty_type,
+                        'phone_number': phone_number,
+                        'first_name': first_name,
+                        'middle_name': middle_name,
+                        'last_name': last_name,
+                    }
+                )
+                
+                if not faculty_created:
+                    # Update existing faculty
+                    faculty.employee_id = employee_id
+                    faculty.faculty_type = faculty_type
+                    faculty.phone_number = phone_number
+                    faculty.first_name = first_name
+                    faculty.middle_name = middle_name
+                    faculty.last_name = last_name
+                    faculty.save()
+
+                # Handle relationships
+                if college_name:
+                    college, _ = College.objects.get_or_create(
+                        name=college_name,
+                        defaults={'is_active': True}
+                    )
+                    faculty.college = college
+                
+                if department_name and college_name:
+                    department, _ = Department.objects.get_or_create(
+                        name=department_name,
+                        college=college,
+                        defaults={'is_active': True}
+                    )
+                    faculty.department = department
+                
+                if office_name:
+                    office, _ = Office.objects.get_or_create(
+                        name=office_name,
+                        defaults={'is_active': True}
+                    )
+                    faculty.office = office
+                
+                faculty.save()
+
+                # Assign Faculty role
+                UserRole.objects.get_or_create(
+                    user=user,
+                    role=faculty_role,
+                    defaults={'is_active': True}
+                )
+
+                if user_created or faculty_created:
+                    created_count += 1
+                else:
+                    updated_count += 1
+
+        except Exception as e:
+            errors.append({"row": idx, "message": f"Error creating faculty: {str(e)}"})
+            skipped_count += 1
 
     return JsonResponse(
         {
             "created_count": created_count,
             "updated_count": updated_count,
             "skipped_count": skipped_count,
-            "ad_success_count": ad_success_count,
-            "ad_error_count": ad_error_count,
             "errors": errors,
         }
     )
@@ -4389,4 +4423,117 @@ def ciso_view_clearance_api(request):
     return JsonResponse({"items": []})
 
 def ciso_archived_faculty_api(request):
-    return JsonResponse({"items": []})
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    # Get authenticated CISO user
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    # Check if user has CISO role
+    if not user.userrole_set.filter(role__name='CISO', is_active=True).exists():
+        return JsonResponse({"detail": "Forbidden"}, status=403)
+
+    # Get archived clearances with faculty data
+    archived_clearances = ArchivedClearance.objects.select_related(
+        'faculty', 
+        'faculty__user',
+        'clearance_timeline'
+    ).order_by("-archived_date", "-academic_year", "-semester")
+
+    items = []
+    for archived in archived_clearances:
+        # Format academic year
+        academic_year = f"{archived.academic_year}"
+        
+        # Get timeline info if available
+        timeline_info = ""
+        if archived.clearance_timeline:
+            timeline_info = f"{archived.clearance_timeline.academic_year}-{archived.clearance_timeline.academic_year + 1} {archived.clearance_timeline.term}"
+        
+        # Format dates
+        archived_date = _format_timestamp(archived.archived_date)
+        clearance_period = ""
+        if archived.clearance_period_start and archived.clearance_period_end:
+            clearance_period = f"{archived.clearance_period_start.strftime('%m/%d/%Y')} - {archived.clearance_period_end.strftime('%m/%d/%Y')}"
+        
+        # CSV file info
+        csv_filename = ""
+        csv_filesize = ""
+        if archived.csv_dump_path:
+            # Extract filename from path
+            csv_filename = archived.csv_dump_path.split('/')[-1] if archived.csv_dump_path else ""
+            csv_filesize = archived.csv_dump_size or ""
+        
+        # Count faculty and clearances for this period
+        total_faculty = ArchivedClearance.objects.filter(
+            academic_year=archived.academic_year,
+            semester=archived.semester
+        ).count()
+        
+        completed_clearances = ArchivedClearance.objects.filter(
+            academic_year=archived.academic_year,
+            semester=archived.semester,
+            status=ArchivedClearance.Status.COMPLETED
+        ).count()
+
+        items.append({
+            "id": str(archived.id),
+            "academicYear": academic_year,
+            "semester": archived.semester,
+            "clearancePeriod": clearance_period,
+            "archivedDate": archived_date,
+            "csvFileName": csv_filename,
+            "csvFileSize": csv_filesize,
+            "totalFaculty": str(total_faculty),
+            "completedClearances": str(completed_clearances),
+            "status": archived.status,
+            "facultyId": str(archived.faculty.id) if archived.faculty else "",
+            "facultyName": f"{archived.faculty.user.first_name or ''} {archived.faculty.user.last_name or ''}".strip() if archived.faculty and archived.faculty.user else "",
+            "employeeId": archived.faculty.employee_id if archived.faculty else "",
+            "csvDumpPath": archived.csv_dump_path,
+        })
+
+    return JsonResponse({"items": items})
+
+def ciso_archived_faculty_download_api(request, archived_id: int):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    # Get authenticated CISO user
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    # Check if user has CISO role
+    if not user.userrole_set.filter(role__name='CISO', is_active=True).exists():
+        return JsonResponse({"detail": "Forbidden"}, status=403)
+
+    try:
+        archived = ArchivedClearance.objects.get(id=archived_id)
+    except ArchivedClearance.DoesNotExist:
+        return JsonResponse({"detail": "Archived record not found"}, status=404)
+
+    if not archived.csv_dump_path:
+        return JsonResponse({"detail": "CSV file not available for this record"}, status=404)
+
+    # Try to serve the file
+    try:
+        import os
+        from django.conf import settings
+        
+        # Construct the full file path
+        file_path = os.path.join(settings.MEDIA_ROOT if hasattr(settings, 'MEDIA_ROOT') else '', archived.csv_dump_path)
+        
+        if not os.path.exists(file_path):
+            return JsonResponse({"detail": "CSV file not found on server"}, status=404)
+        
+        # Read and serve the file
+        with open(file_path, 'rb') as f:
+            response = HttpResponse(f.read(), content_type='text/csv')
+            response['Content-Disposition'] = f'attachment; filename="{archived.csv_dump_path.split("/")[-1]}"'
+            return response
+            
+    except Exception as e:
+        return JsonResponse({"detail": f"Error serving file: {str(e)}"}, status=500)

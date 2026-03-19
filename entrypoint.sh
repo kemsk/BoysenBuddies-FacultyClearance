@@ -88,6 +88,19 @@ SELECT
     1 AS is_active
 FROM FC_user u
 CROSS JOIN FC_role r
+WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'CISO'
+ON DUPLICATE KEY UPDATE
+    is_active = VALUES(is_active);
+
+INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
+SELECT 
+    u.id AS user_id, 
+    r.id AS role_id,
+    u.id AS assigned_by_id,
+    NOW() AS assigned_date,
+    1 AS is_active
+FROM FC_user u
+CROSS JOIN FC_role r
 WHERE u.email = '20190016375@my.xu.edu.ph' AND r.name = 'OVPHE'
 ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);

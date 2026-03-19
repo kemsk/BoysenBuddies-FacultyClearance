@@ -4482,7 +4482,7 @@ export function ViewArchivedClearanceCard({
   iconAlt = "Archive",
   onIconClick,
   iconClassName = "ml-4",
-}: ArchivedClearanceCardProps) {
+}: ViewArchivedClearanceCardProps) {
   return (
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
         <div className="text-center text-xl font-bold text-foreground flex items-center justify-between p-6">
@@ -4525,11 +4525,16 @@ export function ViewArchivedClearanceCard({
           <div className="text-sm text-black text-left break-words">{FacultyCSVDump}</div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground"></div>
-          <div className="text-sm text-black text-left break-words">{Size}</div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="text-md font-bold text-foreground">Total Faculty</div>
+            <div className="text-sm text-black text-left break-words">{totalFaculty}</div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="text-md font-bold text-foreground">Completed Clearances</div>
+            <div className="text-sm text-black text-left break-words">{completedClearances}</div>
+          </div>
         </div>
-      </div>
       </Card>
     );
   }
