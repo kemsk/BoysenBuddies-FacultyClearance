@@ -5,11 +5,19 @@ cp -r /app/frontend_dist/* /app/staticfiles/frontend/
 
 mkdir -p /app/static
 
-python manage.py collectstatic --noinput
-python manage.py makemigrations FC --noinput
-python manage.py migrate --noinput
+echo "Waiting for MySQL TCP port at ${DB_HOST}:${DB_PORT:-3306}..."
+until bash -c "</dev/tcp/${DB_HOST}/${DB_PORT:-3306}" >/dev/null 2>&1; do
+  echo "MySQL is unavailable - retrying in 2 seconds..."
+  sleep 2
+done
 
-mysql -h "${DB_HOST}" -u "${DB_USER}" -p"${DB_PASSWORD}" --ssl=0 "${DB_NAME}" << 'EOF'
+python manage.py collectstatic --noinput
+until python manage.py migrate --noinput; do
+  echo "Django migration failed because database is not fully ready - retrying in 2 seconds..."
+  sleep 2
+done
+
+mysql -h "${DB_HOST}" -P "${DB_PORT:-3306}" -u "${DB_USER}" -p"${DB_PASSWORD}" --ssl=0 "${DB_NAME}" << 'EOF'
 -- Seed Users
 INSERT INTO FC_user (email, university_id, first_name, last_name, created_at)
 VALUES 

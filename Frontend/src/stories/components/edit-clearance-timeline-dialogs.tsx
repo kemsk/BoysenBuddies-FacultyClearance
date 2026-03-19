@@ -5,22 +5,12 @@ import { Calendar, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";
 import { Dialog, DialogContent, DialogTrigger } from "./dialog";
-import { DatePicker } from "./picker";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./select";
 
 export type ClearanceTimelineDialogValues = {
-  startYear: string;
-  endYear: string;
-  semester: string;
-  semesterStartDate: string;
-  semesterEndDate: string;
+  academicYearStart: string;
+  academicYearEnd: string;
+  term: string;
   clearanceStartDate: string;
   clearanceEndDate: string;
   setAsActive: boolean;
@@ -40,7 +30,11 @@ export type CreateClearanceTimelineDialogProps = {
   trigger?: React.ReactNode;
   initialValues?: Partial<ClearanceTimelineDialogValues>;
   onCreate?: (payload: ClearanceTimelineDialogValues) => void;
+  hideTermField?: boolean;
+  presetTerm?: string;
 };
+
+const TERM_OPTIONS = ["First Semester", "Second Semester", "Intersession"] as const;
 
 function YearField(props: {
   label: string;
@@ -125,10 +119,8 @@ function DateField(props: {
   label: string;
   value: string;
   onChange: (v: string) => void;
-  fromYear?: number;
-  toYear?: number;
 }) {
-  const { label, value, onChange, fromYear, toYear } = props;
+  const { label, value, onChange } = props;
   const [open, setOpen] = React.useState(false);
   const [currentMonth, setCurrentMonth] = React.useState(new Date());
   
@@ -148,7 +140,6 @@ function DateField(props: {
     const year = date.getFullYear();
     const month = date.getMonth();
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - firstDay.getDay());
     
@@ -258,8 +249,10 @@ function TimelineDialogShell(props: {
   trigger?: React.ReactNode;
   initialValues?: Partial<ClearanceTimelineDialogValues>;
   onSubmit?: (payload: ClearanceTimelineDialogValues) => void;
+  hideTermField?: boolean;
+  presetTerm?: string;
 }) {
-  const { mode, open, onOpenChange, trigger, initialValues, onSubmit } = props;
+  const { mode, open, onOpenChange, trigger, initialValues, onSubmit, hideTermField, presetTerm } = props;
 
   const [internalOpen, setInternalOpen] = React.useState(false);
   const isControlled = typeof open === "boolean";
@@ -271,9 +264,7 @@ function TimelineDialogShell(props: {
 
   const [startYear, setStartYear] = React.useState("");
   const [endYear, setEndYear] = React.useState("");
-  const [semester, setSemester] = React.useState("");
-  const [semesterStartDate, setSemesterStartDate] = React.useState("");
-  const [semesterEndDate, setSemesterEndDate] = React.useState("");
+  const [term, setTerm] = React.useState("");
   const [clearanceStartDate, setClearanceStartDate] = React.useState("");
   const [clearanceEndDate, setClearanceEndDate] = React.useState("");
   const [setAsActive, setSetAsActive] = React.useState(false);
@@ -290,38 +281,27 @@ function TimelineDialogShell(props: {
     return numericStartYear + 1;
   }, [numericStartYear]);
 
-  const numericEndYear = React.useMemo(() => {
-    const n = Number(endYear);
-    if (!Number.isFinite(n)) return undefined;
-    if (String(Math.trunc(n)).length !== 4) return undefined;
-    return Math.trunc(n);
-  }, [endYear]);
-
   React.useEffect(() => {
     if (!effectiveOpen) return;
-    setStartYear(initialValues?.startYear ?? "");
-    setEndYear(initialValues?.endYear ?? "");
-    setSemester(initialValues?.semester ?? "");
-    setSemesterStartDate(initialValues?.semesterStartDate ?? "");
-    setSemesterEndDate(initialValues?.semesterEndDate ?? "");
+    setStartYear(initialValues?.academicYearStart ?? "");
+    setEndYear(initialValues?.academicYearEnd ?? "");
+    setTerm(initialValues?.term ?? presetTerm ?? "");
     setClearanceStartDate(initialValues?.clearanceStartDate ?? "");
     setClearanceEndDate(initialValues?.clearanceEndDate ?? "");
     setSetAsActive(initialValues?.setAsActive ?? false);
   }, [
     effectiveOpen,
+    initialValues?.academicYearEnd,
+    initialValues?.academicYearStart,
     initialValues?.clearanceEndDate,
     initialValues?.clearanceStartDate,
-    initialValues?.endYear,
-    initialValues?.semester,
-    initialValues?.semesterEndDate,
-    initialValues?.semesterStartDate,
     initialValues?.setAsActive,
-    initialValues?.startYear,
+    initialValues?.term,
+    presetTerm,
   ]);
 
   const title = mode === "edit" ? "Edit Timeline" : "Create Timeline";
   const submitLabel = mode === "edit" ? "Save" : "Create";
-  const schoolYearLabel = startYear && endYear ? `${startYear}-${endYear}` : "";
 
   return (
     <Dialog open={effectiveOpen} onOpenChange={setOpen}>
@@ -363,22 +343,43 @@ function TimelineDialogShell(props: {
                 }}
               />
 
+              {hideTermField ? null : (
+                presetTerm ? (
+                  <div>
+                    <div className="text-xs font-semibold text-foreground">Term</div>
+                    <div className="mt-2">{presetTerm}</div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="text-xs font-semibold text-foreground">Term</div>
+                    <select
+                      className="mt-2 h-10 w-full rounded-md border border-primary bg-background px-3 text-sm text-foreground"
+                      value={term}
+                      onChange={(event) => setTerm(event.target.value)}
+                    >
+                      <option value="">Select term</option>
+                      {TERM_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )
+              )}
+
               <div className="mt-5" />
 
               <DateField
                 label="Clearance Period Start Date"
                 value={clearanceStartDate}
                 onChange={setClearanceStartDate}
-                fromYear={numericStartYear}
-                toYear={numericEndYear}
               />
 
               <DateField
                 label="Clearance Period End Date"
                 value={clearanceEndDate}
                 onChange={setClearanceEndDate}
-                fromYear={numericStartYear}
-                toYear={numericEndYear}
               />
 
               <div className="pt-2">
@@ -410,16 +411,13 @@ function TimelineDialogShell(props: {
                 className="h-11 w-full rounded-md"
                 onClick={() => {
                   onSubmit?.({
-                    startYear,
-                    endYear,
-                    semester,
-                    semesterStartDate,
-                    semesterEndDate,
+                    academicYearStart: startYear,
+                    academicYearEnd: endYear,
+                    term,
                     clearanceStartDate,
                     clearanceEndDate,
                     setAsActive,
                   });
-                  setOpen(false);
                 }}
               >
                 {submitLabel}
@@ -447,7 +445,7 @@ export function EditClearanceTimelineDialog(props: EditClearanceTimelineDialogPr
 }
 
 export function CreateClearanceTimelineDialog(props: CreateClearanceTimelineDialogProps) {
-  const { open, onOpenChange, trigger, initialValues, onCreate } = props;
+  const { open, onOpenChange, trigger, initialValues, onCreate, hideTermField, presetTerm } = props;
   return (
     <TimelineDialogShell
       mode="create"
@@ -456,6 +454,8 @@ export function CreateClearanceTimelineDialog(props: CreateClearanceTimelineDial
       trigger={trigger}
       initialValues={initialValues}
       onSubmit={onCreate}
+      hideTermField={hideTermField}
+      presetTerm={presetTerm}
     />
   );
 }

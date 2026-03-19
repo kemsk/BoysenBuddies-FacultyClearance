@@ -168,6 +168,12 @@ class Clearance(models.Model):
     submitted_date = models.DateTimeField(null=True, blank=True)
     completed_date = models.DateTimeField(null=True, blank=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["academic_year", "term"]),
+            models.Index(fields=["faculty", "academic_year", "term"]),
+        ]
+
     def __str__(self):
         return f"{self.faculty.employee_id} - {self.academic_year} {self.term}"
 
@@ -186,7 +192,11 @@ class ClearanceTimeline(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        pass
+        indexes = [
+            models.Index(fields=["is_active"]),
+            models.Index(fields=["academic_year_start", "id"]),
+            models.Index(fields=["term"]),
+        ]
 
     def __str__(self):
         return self.name
@@ -245,6 +255,10 @@ class ClearanceRequest(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["request_id"], name="uniq_request_id")
+        ]
+        indexes = [
+            models.Index(fields=["clearance_timeline"]),
+            models.Index(fields=["status"]),
         ]
 
     def __str__(self):

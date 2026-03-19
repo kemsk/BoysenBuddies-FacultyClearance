@@ -27,7 +27,18 @@ RUN apt-get update && apt-get install -y \
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
- 
+
+# Stage 2.5: Frontend build stage
+FROM node:22-alpine AS frontend-builder
+
+WORKDIR /frontend
+
+COPY Frontend/package*.json /frontend/
+RUN npm ci
+
+COPY Frontend /frontend
+RUN npm run build
+  
 # Stage 3: Production stage
 FROM python:3.13-slim
  
@@ -47,8 +58,7 @@ WORKDIR /app
 # Copy application code
 COPY --chown=appuser:appuser . .
  
-# Create empty frontend_dist directory (will be populated by volume mount)
-RUN mkdir -p /app/frontend_dist
+COPY --from=frontend-builder --chown=appuser:appuser /static/frontend /app/frontend_dist
  
 # Set environment variables to optimize Python
 ENV PYTHONDONTWRITEBYTECODE=1

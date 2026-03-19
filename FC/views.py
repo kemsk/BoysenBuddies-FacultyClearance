@@ -946,11 +946,8 @@ def _parse_int(value: str | None):
     except Exception:
         return None
 
-
-def _get_active_timeline():
-    return ClearanceTimeline.objects.filter(is_active=True).order_by("-id").first()
-
-
+ 
+ 
 def _to_request_status(value: str | None):
     if value == ClearanceRequest.Status.APPROVED:
         return "approved"
@@ -969,18 +966,17 @@ def clearance_requests_api(request):
 
     qs = (
         ClearanceRequest.objects.select_related(
-            "clearance",
-            "clearance__faculty",
-            "clearance__faculty__college",
-            "clearance__faculty__department",
+            "faculty",
+            "faculty__college",
+            "faculty__department",
         )
-        .filter(timeline=active_timeline)
+        .filter(clearance_timeline=active_timeline)
         .order_by("-id")
     )
 
     items = []
     for r in qs:
-        faculty = getattr(r.clearance, "faculty", None)
+        faculty = getattr(r, "faculty", None)
 
         first_name = (getattr(faculty, "first_name", "") or "").strip()
         middle_name = (getattr(faculty, "middle_name", "") or "").strip()
@@ -1276,7 +1272,7 @@ def ciso_system_user_detail_api(request, user_id: int):
     return JsonResponse({"ok": True})
 
 
-def active_clearance_timeline_api(request):
+def _legacy_active_clearance_timeline_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
@@ -1284,8 +1280,8 @@ def active_clearance_timeline_api(request):
     if not t:
         return JsonResponse({"academicYear": "", "semester": ""})
 
-    if t.academic_year is not None:
-        academic_year = f"{t.academic_year}–{t.academic_year + 1}"
+    if t.academic_year_start is not None and t.academic_year_end is not None:
+        academic_year = f"{t.academic_year_start}–{t.academic_year_end}"
     else:
         academic_year = ""
 
@@ -1345,18 +1341,17 @@ def clearance_requests_api(request):
 
     qs = (
         ClearanceRequest.objects.select_related(
-            "clearance",
-            "clearance__faculty",
-            "clearance__faculty__college",
-            "clearance__faculty__department",
+            "faculty",
+            "faculty__college",
+            "faculty__department",
         )
-        .filter(timeline=active_timeline)
+        .filter(clearance_timeline=active_timeline)
         .order_by("-id")
     )
 
     items = []
     for r in qs:
-        faculty = getattr(r.clearance, "faculty", None)
+        faculty = getattr(r, "faculty", None)
 
         first_name = (getattr(faculty, "first_name", "") or "").strip()
         middle_name = (getattr(faculty, "middle_name", "") or "").strip()
@@ -1395,8 +1390,8 @@ def active_clearance_timeline_api(request):
     if not t:
         return JsonResponse({"academicYear": "", "semester": ""})
 
-    if t.academic_year is not None:
-        academic_year = f"{t.academic_year}–{t.academic_year + 1}"
+    if t.academic_year_start is not None and t.academic_year_end is not None:
+        academic_year = f"{t.academic_year_start}–{t.academic_year_end}"
     else:
         academic_year = ""
 
@@ -1631,225 +1626,191 @@ def ovphe_announcement_detail_api(request, announcement_id: int):
     return _announcement_detail_api(request, "ovphe", announcement_id)
 
 
-@csrf_exempt
-@csrf_exempt
-def ovphe_clearance_timelines_api(request):
+def _parse_int(value: str | None):
+    value = (value or "").strip()
+    if not value:
+        return None
+    try:
+        return int(value)
+    except Exception:
+        return None
+
+
+def _clearance_term_code(term: str | None):
+    if term == Clearance.Term.FIRST:
+        return "01"
+    if term == Clearance.Term.SECOND:
+        return "02"
+    if term == Clearance.Term.INTERSESSION:
+        return "03"
+    return ""
+
+
+def _clearance_timeline_name(start_year: int | None, end_year: int | None, term: str | None):
+    year_code = str(start_year)[-2:] if start_year else ""
+    term_code = _clearance_term_code(term)
+    if year_code and term_code:
+        return f"{year_code}{term_code} Faculty Clearance"
+    if year_code:
+        return f"{year_code} Faculty Clearance"
+    return "Faculty Clearance"
+
+
+def _clearance_timelines_api(request, admin_getter, not_found_detail: str):
     if request.method == "GET":
-        timelines = ClearanceTimeline.objects.order_by("-is_active", "-academic_year", "-id")
+        timelines = ClearanceTimeline.objects.filter(archive_date__isnull=True).order_by("-is_active", "-academic_year_start", "-id")
         items = []
         for t in timelines:
-            start_year = str(t.academic_year or "")
-            end_year = str((t.academic_year + 1) if t.academic_year else "")
+            start_year = str(t.academic_year_start or "")
+            end_year = str(t.academic_year_end or "")
             items.append(
                 {
                     "id": str(t.id),
-                    "startYear": start_year,
-                    "endYear": end_year,
-                    "semester": _term_to_label(t.term),
-                    "semesterStartDate": t.term_start_date.isoformat() if t.term_start_date else "",
-                    "semesterEndDate": t.term_end_date.isoformat() if t.term_end_date else "",
-                    "clearanceStartDate": t.clearance_start_date.isoformat() if t.clearance_start_date else "",
-                    "clearanceEndDate": t.clearance_end_date.isoformat() if t.clearance_end_date else "",
+                    "name": t.name or _clearance_timeline_name(t.academic_year_start, t.academic_year_end, t.term),
+                    "academicYearStart": start_year,
+                    "academicYearEnd": end_year,
+                    "term": _term_to_label(t.term),
+                    "clearanceStartDate": t.clearance_start_date.date().isoformat() if t.clearance_start_date else "",
+                    "clearanceEndDate": t.clearance_end_date.date().isoformat() if t.clearance_end_date else "",
                     "setAsActive": bool(t.is_active),
                     "createdAt": _format_timestamp(t.created_at),
                 }
             )
         return JsonResponse({"items": items})
-    if request.method == "GET":
-        timelines = ClearanceTimeline.objects.order_by("-is_active", "-academic_year", "-id")
-        items = []
-        for t in timelines:
-            start_year = str(t.academic_year or "")
-            end_year = str((t.academic_year + 1) if t.academic_year else "")
-            items.append(
-                {
-                    "id": str(t.id),
-                    "startYear": start_year,
-                    "endYear": end_year,
-                    "semester": _term_to_label(t.term),
-                    "semesterStartDate": t.term_start_date.isoformat() if t.term_start_date else "",
-                    "semesterEndDate": t.term_end_date.isoformat() if t.term_end_date else "",
-                    "clearanceStartDate": t.clearance_start_date.isoformat() if t.clearance_start_date else "",
-                    "clearanceEndDate": t.clearance_end_date.isoformat() if t.clearance_end_date else "",
-                    "setAsActive": bool(t.is_active),
-                    "createdAt": _format_timestamp(t.created_at),
-                }
-            )
-        return JsonResponse({"items": items})
 
-    if request.method in {"POST", "PUT"}:
-        try:
-            payload = json.loads((request.body or b"{}").decode("utf-8"))
-        except Exception:
-            payload = {}
+    if request.method not in {"POST", "PUT", "DELETE"}:
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
 
-        start_year = _parse_int(payload.get("startYear"))
-        term = _label_to_term(payload.get("semester"))
-        term_start_date = _parse_iso_date(payload.get("semesterStartDate"))
-        term_end_date = _parse_iso_date(payload.get("semesterEndDate"))
-        clearance_start_date = _parse_iso_date(payload.get("clearanceStartDate"))
-        clearance_end_date = _parse_iso_date(payload.get("clearanceEndDate"))
-        set_as_active = bool(payload.get("setAsActive"))
+    try:
+        payload = json.loads((request.body or b"{}").decode("utf-8"))
+    except Exception:
+        payload = {}
 
-        admin = _get_active_ovphe_admin(request)
-        if not admin:
-            return JsonResponse({"detail": "OVPHE user not found"}, status=404)
+    admin = admin_getter(request)
+    if not admin:
+        return JsonResponse({"detail": not_found_detail}, status=404)
 
-        if request.method == "POST":
-            if set_as_active:
-                prev_active = list(ClearanceTimeline.objects.filter(is_active=True))
-                ClearanceTimeline.objects.filter(is_active=True).update(is_active=False)
-                for prev in prev_active:
-                    try:
-                        prev_sy = f"S.Y. {prev.academic_year}-{(prev.academic_year or 0) + 1}"
-                        prev_sem = _term_to_label(prev.term)
-                        ActivityLog.objects.create(
-                            event_type=ActivityLog.EventType.INACTIVE_TIMELINE,
-                            user=admin.user if admin else None,
-                            details=[prev_sy, f"Semester: {prev_sem}", "Replaced with new timeline"],
-                        )
-                    except Exception:
-                        pass
-
-            t = ClearanceTimeline.objects.create(
-                academic_year=start_year,
-                term=term,
-                term_start_date=term_start_date,
-                term_end_date=term_end_date,
-                clearance_start_date=clearance_start_date,
-                clearance_end_date=clearance_end_date,
-                created_by=admin,
-                is_active=set_as_active,
-            )
-            try:
-                new_sy = f"S.Y. {start_year}-{(start_year or 0) + 1}"
-                new_sem = _term_to_label(term)
-                ActivityLog.objects.create(
-                    event_type=ActivityLog.EventType.ACTIVE_TIMELINE,
-                    user=admin.user if admin else None,
-                    details=[new_sy, f"Semester: {new_sem}"],
-                )
-            except Exception:
-                pass
-            return JsonResponse({"id": str(t.id)}, status=201)
-
+    if request.method == "DELETE":
         timeline_id = payload.get("id")
+        action = (payload.get("action") or "archive").strip().lower()
         if not timeline_id:
             return JsonResponse({"detail": "Missing id"}, status=400)
 
-        t = ClearanceTimeline.objects.filter(id=timeline_id).first()
+        t = ClearanceTimeline.objects.filter(id=timeline_id, archive_date__isnull=True).first()
         if not t:
             return JsonResponse({"detail": "Timeline not found"}, status=404)
 
+        if action == "delete":
+            return JsonResponse({"detail": "Delete is not allowed for clearance timelines"}, status=405)
+
+        t.archive_date = timezone.now()
+        t.is_active = False
+        t.save(update_fields=["archive_date", "is_active", "updated_at"])
+        return JsonResponse({"ok": True, "archived": True})
+
+    start_year = _parse_int(payload.get("academicYearStart") or payload.get("startYear"))
+    end_year = _parse_int(payload.get("academicYearEnd") or payload.get("endYear")) or ((start_year + 1) if start_year is not None else None)
+    term = _label_to_term(payload.get("term") or payload.get("semester"))
+    clearance_start_date = _parse_iso_date(payload.get("clearanceStartDate") or payload.get("semesterStartDate"))
+    clearance_end_date = _parse_iso_date(payload.get("clearanceEndDate") or payload.get("semesterEndDate"))
+    set_as_active = bool(payload.get("setAsActive"))
+
+    if start_year is None or end_year is None or term is None or clearance_start_date is None or clearance_end_date is None:
+        return JsonResponse({"detail": "Missing or invalid timeline fields"}, status=400)
+
+    if request.method == "POST":
         if set_as_active:
-            prev_active = list(ClearanceTimeline.objects.exclude(id=t.id).filter(is_active=True))
-            ClearanceTimeline.objects.exclude(id=t.id).filter(is_active=True).update(is_active=False)
+            prev_active = list(ClearanceTimeline.objects.filter(is_active=True))
+            ClearanceTimeline.objects.filter(is_active=True).update(is_active=False)
             for prev in prev_active:
                 try:
-                    prev_sy = f"S.Y. {prev.academic_year}-{(prev.academic_year or 0) + 1}"
+                    prev_sy = f"S.Y. {prev.academic_year_start}-{(prev.academic_year_start or 0) + 1}"
                     prev_sem = _term_to_label(prev.term)
                     ActivityLog.objects.create(
                         event_type=ActivityLog.EventType.INACTIVE_TIMELINE,
-                        user=admin.user if admin else None,
+                        user=admin,
                         details=[prev_sy, f"Semester: {prev_sem}", "Replaced with new timeline"],
                     )
                 except Exception:
                     pass
 
-        t.academic_year = start_year
-        t.term = term
-        t.term_start_date = term_start_date
-        t.term_end_date = term_end_date
-        t.clearance_start_date = clearance_start_date
-        t.clearance_end_date = clearance_end_date
-        t.is_active = set_as_active
-        t.save(update_fields=[
-            "academic_year",
-            "term",
-            "term_start_date",
-            "term_end_date",
-            "clearance_start_date",
-            "clearance_end_date",
-            "is_active",
-        ])
-
-        return JsonResponse({"id": str(t.id)})
-
-    return JsonResponse({"detail": "Method not allowed"}, status=405)
-
-    if request.method in {"POST", "PUT"}:
+        t = ClearanceTimeline.objects.create(
+            name=_clearance_timeline_name(start_year, end_year, term),
+            academic_year_start=start_year,
+            academic_year_end=end_year,
+            term=term,
+            clearance_start_date=clearance_start_date,
+            clearance_end_date=clearance_end_date,
+            created_by=admin,
+            is_active=set_as_active,
+        )
         try:
-            payload = json.loads((request.body or b"{}").decode("utf-8"))
-        except Exception:
-            payload = {}
-
-        start_year = _parse_int(payload.get("startYear"))
-        term = _label_to_term(payload.get("semester"))
-        term_start_date = _parse_iso_date(payload.get("semesterStartDate"))
-        term_end_date = _parse_iso_date(payload.get("semesterEndDate"))
-        clearance_start_date = _parse_iso_date(payload.get("clearanceStartDate"))
-        clearance_end_date = _parse_iso_date(payload.get("clearanceEndDate"))
-        set_as_active = bool(payload.get("setAsActive"))
-
-        admin = _get_active_ovphe_admin(request)
-        if not admin:
-            return JsonResponse({"detail": "OVPHE user not found"}, status=404)
-
-        if request.method == "POST":
-            if set_as_active:
-                ClearanceTimeline.objects.filter(is_active=True).update(is_active=False)
-
-            t = ClearanceTimeline.objects.create(
-                academic_year=start_year,
-                term=term,
-                term_start_date=term_start_date,
-                term_end_date=term_end_date,
-                clearance_start_date=clearance_start_date,
-                clearance_end_date=clearance_end_date,
-                created_by=admin,
-                is_active=set_as_active,
+            new_sy = f"S.Y. {start_year}-{end_year or (start_year or 0) + 1}"
+            new_sem = _term_to_label(term)
+            ActivityLog.objects.create(
+                event_type=ActivityLog.EventType.ACTIVE_TIMELINE,
+                user=admin,
+                details=[new_sy, f"Semester: {new_sem}"],
             )
-            return JsonResponse({"id": str(t.id)}, status=201)
+        except Exception:
+            pass
+        return JsonResponse({"id": str(t.id)}, status=201)
 
-        timeline_id = payload.get("id")
-        if not timeline_id:
-            return JsonResponse({"detail": "Missing id"}, status=400)
+    timeline_id = payload.get("id")
+    if not timeline_id:
+        return JsonResponse({"detail": "Missing id"}, status=400)
 
-        t = ClearanceTimeline.objects.filter(id=timeline_id).first()
-        if not t:
-            return JsonResponse({"detail": "Timeline not found"}, status=404)
+    t = ClearanceTimeline.objects.filter(id=timeline_id).first()
+    if not t:
+        return JsonResponse({"detail": "Timeline not found"}, status=404)
 
-        if set_as_active:
-            ClearanceTimeline.objects.exclude(id=t.id).filter(is_active=True).update(is_active=False)
+    if set_as_active:
+        prev_active = list(ClearanceTimeline.objects.exclude(id=t.id).filter(is_active=True))
+        ClearanceTimeline.objects.exclude(id=t.id).filter(is_active=True).update(is_active=False)
+        for prev in prev_active:
+            try:
+                prev_sy = f"S.Y. {prev.academic_year_start}-{(prev.academic_year_start or 0) + 1}"
+                prev_sem = _term_to_label(prev.term)
+                ActivityLog.objects.create(
+                    event_type=ActivityLog.EventType.INACTIVE_TIMELINE,
+                    user=admin,
+                    details=[prev_sy, f"Semester: {prev_sem}", "Replaced with new timeline"],
+                )
+            except Exception:
+                pass
 
-        t.academic_year = start_year
-        t.term = term
-        t.term_start_date = term_start_date
-        t.term_end_date = term_end_date
-        t.clearance_start_date = clearance_start_date
-        t.clearance_end_date = clearance_end_date
-        t.is_active = set_as_active
-        t.save(update_fields=[
-            "academic_year",
-            "term",
-            "term_start_date",
-            "term_end_date",
-            "clearance_start_date",
-            "clearance_end_date",
-            "is_active",
-        ])
+    t.name = _clearance_timeline_name(start_year, end_year, term)
+    t.academic_year_start = start_year
+    t.academic_year_end = end_year
+    t.term = term
+    t.clearance_start_date = clearance_start_date
+    t.clearance_end_date = clearance_end_date
+    t.is_active = set_as_active
+    t.save(update_fields=[
+        "name",
+        "academic_year_start",
+        "academic_year_end",
+        "term",
+        "clearance_start_date",
+        "clearance_end_date",
+        "is_active",
+    ])
 
-        return JsonResponse({"id": str(t.id)})
-
-    return JsonResponse({"detail": "Method not allowed"}, status=405)
+    return JsonResponse({"id": str(t.id)})
 
 
-def faculty_dashboard_api(request):
+@csrf_exempt
+def ovphe_clearance_timelines_api(request):
+    return _clearance_timelines_api(request, _get_active_ovphe_admin, "OVPHE user not found")
+
+
+def _legacy_faculty_dashboard_api_v1(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
     email = (request.GET.get("email") or "").strip()
     university_id = (request.GET.get("university_id") or "").strip()
+    timeline_id = (request.GET.get("timelineId") or request.GET.get("timeline_id") or "").strip()
 
     if not email and not university_id:
         email = "faculty.seed@xu.edu.ph"
@@ -1865,8 +1826,14 @@ def faculty_dashboard_api(request):
     if not faculty:
         return JsonResponse({"detail": "Faculty not found"}, status=404)
 
-    timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year", "-id").first()
-    academic_year = timeline.academic_year if timeline else None
+    timeline = None
+    if timeline_id:
+        timeline = ClearanceTimeline.objects.filter(id=timeline_id).first()
+        if not timeline:
+            return JsonResponse({"detail": "Timeline not found"}, status=404)
+    else:
+        timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year_start", "-id").first()
+    academic_year = timeline.academic_year_start if timeline else None
     term = timeline.term if timeline else None
 
     clearance = None
@@ -1877,9 +1844,18 @@ def faculty_dashboard_api(request):
             .first()
         )
 
+    if timeline:
+        timeline_requests = ClearanceRequest.objects.filter(
+            faculty=faculty,
+            clearance_timeline=timeline,
+        )
+    else:
+        timeline_requests = ClearanceRequest.objects.none()
+
     total_reqs = 0
     approved_reqs = 0
     status = "Pending"
+    steps_payload = []
     if clearance:
         if clearance.status == Clearance.Status.PENDING:
             status = "Pending"
@@ -1892,9 +1868,9 @@ def faculty_dashboard_api(request):
         else:
             status = str(clearance.status)
 
-        total_reqs = ClearanceRequest.objects.filter(clearance=clearance).count()
-        approved_reqs = ClearanceRequest.objects.filter(
-            clearance=clearance, status=ClearanceRequest.Status.APPROVED
+        total_reqs = timeline_requests.count()
+        approved_reqs = timeline_requests.filter(
+            status=ClearanceRequest.Status.APPROVED
         ).count()
 
     return JsonResponse(
@@ -1918,6 +1894,7 @@ def faculty_dashboard_api(request):
                 "approvedCount": approved_reqs,
                 "totalCount": total_reqs,
             },
+            "steps": steps_payload,
         }
     )
 
@@ -2587,7 +2564,6 @@ def ovphe_org_structure_order_api(request):
     data, jerr = _parse_json_body(request)
     if jerr:
         return jerr
-
     office_ids = data.get("offices") or []
 
     with transaction.atomic():
@@ -2890,9 +2866,9 @@ def ovphe_system_analytics_api(request):
     term_val = term or None
 
     if not year_val or not term_val:
-        active_timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year", "-id").first()
+        active_timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year_start", "-id").first()
         if active_timeline:
-            year_val = year_val or active_timeline.academic_year
+            year_val = year_val or active_timeline.academic_year_start
             term_val = term_val or active_timeline.term
 
     if not year_val or not term_val:
@@ -3383,17 +3359,19 @@ def ciso_system_users_api(request):
     return JsonResponse({"ok": True, "id": str(user.id)})
 
 
-def faculty_dashboard_api(request):
+def _legacy_faculty_dashboard_api_v2(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
     email = (request.GET.get("email") or "").strip()
     university_id = (request.GET.get("university_id") or "").strip()
+    timeline_id = (request.GET.get("timelineId") or request.GET.get("timeline_id") or "").strip()
 
     if not email and not university_id:
         email = "faculty.seed@xu.edu.ph"
 
-    qs = Faculty.objects.select_related("user", "college", "department").filter(user__is_active=True)
+    # Our custom User model has no is_active flag; rely on existence of Faculty rows instead
+    qs = Faculty.objects.select_related("user", "college", "department")
     if email:
         qs = qs.filter(user__email=email)
     if university_id:
@@ -3403,8 +3381,14 @@ def faculty_dashboard_api(request):
     if not faculty:
         return JsonResponse({"detail": "Faculty not found"}, status=404)
 
-    timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year", "-id").first()
-    academic_year = timeline.academic_year if timeline else None
+    timeline = None
+    if timeline_id:
+        timeline = ClearanceTimeline.objects.filter(id=timeline_id).first()
+        if not timeline:
+            return JsonResponse({"detail": "Timeline not found"}, status=404)
+    else:
+        timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year_start", "-id").first()
+    academic_year = timeline.academic_year_start if timeline else None
     term = timeline.term if timeline else None
 
     clearance = None
@@ -3415,10 +3399,17 @@ def faculty_dashboard_api(request):
             .first()
         )
 
+    if timeline:
+        timeline_requests = ClearanceRequest.objects.filter(
+            faculty=faculty,
+            clearance_timeline=timeline,
+        )
+    else:
+        timeline_requests = ClearanceRequest.objects.none()
+
     total_reqs = 0
     approved_reqs = 0
     status = "Pending"
-    steps_payload = []
     if clearance:
         if clearance.status == Clearance.Status.PENDING:
             status = "Pending"
@@ -3430,12 +3421,13 @@ def faculty_dashboard_api(request):
             status = "Rejected"
         else:
             status = str(clearance.status)
-        total_reqs = ClearanceRequest.objects.filter(clearance=clearance).count()
-        approved_reqs = ClearanceRequest.objects.filter(
-            clearance=clearance, status=ClearanceRequest.Status.APPROVED
+
+        total_reqs = timeline_requests.count()
+        approved_reqs = timeline_requests.filter(
+            status=ClearanceRequest.Status.APPROVED
         ).count()
 
-        config = ApproverFlowConfig.objects.order_by("id").first()
+        config = get_approver_flow_config(timeline_id=timeline.id if timeline else None)
         if config:
             flow_steps = (
                 ApproverFlowStep.objects.select_related("office")
@@ -3448,20 +3440,32 @@ def faculty_dashboard_api(request):
             # Department Chair: requirements tied to the faculty department
             # College Dean: requirements tied to the faculty college
             # Office-based steps: requirements tied to that office
-            dept_reqs = Requirement.objects.filter(departments=faculty.department).distinct() if faculty.department_id else Requirement.objects.none()
-            college_reqs = Requirement.objects.filter(colleges=faculty.college).distinct() if faculty.college_id else Requirement.objects.none()
+            dept_reqs = Requirement.objects.filter(
+                clearance_timeline=timeline,
+                target_departments=faculty.department,
+                is_active=True,
+            ).distinct() if faculty.department_id else Requirement.objects.none()
+            college_reqs = Requirement.objects.filter(
+                clearance_timeline=timeline,
+                target_colleges=faculty.college,
+                is_active=True,
+            ).distinct() if faculty.college_id else Requirement.objects.none()
             office_requirements = {}
             office_ids = [fs.office_id for fs in flow_steps if fs.office_id]
             if office_ids:
                 for office_id in set(office_ids):
                     office_requirements[office_id] = list(
-                        Requirement.objects.filter(offices__id=office_id).distinct().order_by("id")
+                        Requirement.objects.filter(
+                            clearance_timeline=timeline,
+                            target_offices__id=office_id,
+                            is_active=True,
+                        ).distinct().order_by("id")
                     )
 
             # Map clearance request status by requirement
             req_status_by_id = {
                 cr.requirement_id: cr.status
-                for cr in ClearanceRequest.objects.select_related("requirement").filter(clearance=clearance)
+                for cr in timeline_requests.select_related("requirement")
             }
 
             def _step_status_label(req_statuses):
@@ -3545,7 +3549,6 @@ def faculty_dashboard_api(request):
                 "approvedCount": approved_reqs,
                 "totalCount": total_reqs,
             },
-            "steps": steps_payload,
         }
     )
 
@@ -3587,17 +3590,19 @@ def faculty_notifications_api(request):
 
     return JsonResponse({"items": items})
 
+
 def faculty_dashboard_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
     email = (request.GET.get("email") or "").strip()
     university_id = (request.GET.get("university_id") or "").strip()
+    timeline_id = (request.GET.get("timelineId") or request.GET.get("timeline_id") or "").strip()
 
     if not email and not university_id:
         email = "faculty.seed@xu.edu.ph"
 
-    qs = Faculty.objects.select_related("user", "college", "department").filter(user__is_active=True)
+    qs = Faculty.objects.select_related("user", "college", "department")
     if email:
         qs = qs.filter(user__email=email)
     if university_id:
@@ -3607,8 +3612,14 @@ def faculty_dashboard_api(request):
     if not faculty:
         return JsonResponse({"detail": "Faculty not found"}, status=404)
 
-    timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year", "-id").first()
-    academic_year = timeline.academic_year if timeline else None
+    timeline = None
+    if timeline_id:
+        timeline = ClearanceTimeline.objects.filter(id=timeline_id).first()
+        if not timeline:
+            return JsonResponse({"detail": "Timeline not found"}, status=404)
+    else:
+        timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year_start", "-id").first()
+    academic_year = timeline.academic_year_start if timeline else None
     term = timeline.term if timeline else None
 
     clearance = None
@@ -3618,6 +3629,14 @@ def faculty_dashboard_api(request):
             .order_by("-id")
             .first()
         )
+
+    if timeline:
+        timeline_requests = ClearanceRequest.objects.filter(
+            faculty=faculty,
+            clearance_timeline=timeline,
+        )
+    else:
+        timeline_requests = ClearanceRequest.objects.none()
 
     total_reqs = 0
     approved_reqs = 0
@@ -3633,16 +3652,17 @@ def faculty_dashboard_api(request):
             status = "Rejected"
         else:
             status = str(clearance.status)
-        total_reqs = ClearanceRequest.objects.filter(clearance=clearance).count()
-        approved_reqs = ClearanceRequest.objects.filter(
-            clearance=clearance, status=ClearanceRequest.Status.APPROVED
-        ).count()
+    elif timeline_requests.filter(status=ClearanceRequest.Status.APPROVED).exists():
+        status = "In Progress"
+
+    total_reqs = timeline_requests.count()
+    approved_reqs = timeline_requests.filter(status=ClearanceRequest.Status.APPROVED).count()
 
     # Generate steps data for frontend
     steps = []
-    if clearance:
+    if timeline:
         # Get clearance requests grouped by approver category/office
-        clearance_requests = ClearanceRequest.objects.filter(clearance=clearance).select_related('requirement')
+        clearance_requests = timeline_requests.select_related('requirement')
         
         # Define step order based on approver flow
         step_order = [
@@ -3770,6 +3790,8 @@ def faculty_notifications_api(request):
         )
 
     return JsonResponse({"items": items})
+
+
 @csrf_exempt
 def approver_assistant_approvers_api(request):
     user, err = _require_approver_user(request)
@@ -4076,15 +4098,22 @@ def faculty_view_clearance_api(request):
     faculty = getattr(user, "faculty_profile", None)
     if not faculty:
         return JsonResponse({"detail": "Faculty profile not found"}, status=404)
-    
-    # Get current active clearance
-    timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year", "-id").first()
+
+    timeline_id = (request.GET.get("timelineId") or request.GET.get("timeline_id") or "").strip()
+
+    timeline = None
+    if timeline_id:
+        timeline = ClearanceTimeline.objects.filter(id=timeline_id).first()
+        if not timeline:
+            return JsonResponse({"detail": "Timeline not found"}, status=404)
+    else:
+        timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year_start", "-id").first()
     if not timeline:
         return JsonResponse({"detail": "No active clearance timeline"}, status=404)
     
     clearance = Clearance.objects.filter(
         faculty=faculty, 
-        academic_year=timeline.academic_year, 
+        academic_year=timeline.academic_year_start, 
         term=timeline.term
     ).first()
     
@@ -4092,7 +4121,10 @@ def faculty_view_clearance_api(request):
         return JsonResponse({"detail": "Clearance not found"}, status=404)
     
     # Get all clearance requests with details
-    requests = ClearanceRequest.objects.filter(clearance=clearance).select_related('requirement', 'approved_by')
+    requests = ClearanceRequest.objects.filter(
+        faculty=faculty,
+        clearance_timeline=timeline,
+    ).select_related('requirement', 'approved_by')
     
     clearance_requests = []
     for req in requests:
@@ -4136,7 +4168,7 @@ def approver_dashboard_api(request):
         return JsonResponse({"detail": "Access denied"}, status=403)
     
     # Get active timeline
-    timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year", "-id").first()
+    timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year_start", "-id").first()
     
     # Get pending clearance requests for this approver
     pending_requests = []
@@ -4159,6 +4191,7 @@ def approver_dashboard_api(request):
                 requirements = requirements.filter(target_offices=approver.office)
         
         clearance_requests = ClearanceRequest.objects.filter(
+            clearance_timeline=timeline,
             requirement__in=requirements,
             status=ClearanceRequest.Status.PENDING
         ).select_related('faculty__user', 'requirement')
@@ -4177,7 +4210,7 @@ def approver_dashboard_api(request):
         "pendingRequests": pending_requests,
         "pendingCount": len(pending_requests),
         "timeline": {
-            "academicYear": timeline.academic_year if timeline else None,
+            "academicYear": timeline.academic_year_start if timeline else None,
             "term": timeline.term if timeline else None,
         }
     })
@@ -4379,8 +4412,14 @@ def ciso_college_office_configuration_api(request):
     
     return JsonResponse({"configuration": configuration})
 
+def _get_active_ciso_user(request):
+    user, _ = _require_ciso_admin_user(request)
+    return user
+
+
+@csrf_exempt
 def ciso_clearance_timeline_api(request):
-    return JsonResponse({"timelines": []})
+    return _clearance_timelines_api(request, _get_active_ciso_user, "CISO user not found")
 
 def ciso_archived_clearance_api(request):
     return JsonResponse({"items": []})
