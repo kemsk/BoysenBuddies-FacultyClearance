@@ -88,6 +88,19 @@ SELECT
     1 AS is_active
 FROM FC_user u
 CROSS JOIN FC_role r
+WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'CISO'
+ON DUPLICATE KEY UPDATE
+    is_active = VALUES(is_active);
+
+INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
+SELECT 
+    u.id AS user_id, 
+    r.id AS role_id,
+    u.id AS assigned_by_id,
+    NOW() AS assigned_date,
+    1 AS is_active
+FROM FC_user u
+CROSS JOIN FC_role r
 WHERE u.email = '20190016375@my.xu.edu.ph' AND r.name = 'OVPHE'
 ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
@@ -167,7 +180,7 @@ ON DUPLICATE KEY UPDATE
 -- Seed Colleges
 INSERT INTO FC_college (name, abbreviation, is_active)
 SELECT * FROM (
-    SELECT 'College of Computer Studies' AS name, 'CCS' AS abbreviation, 1 AS is_active
+    SELECT 'College of Agriculture' AS name, 'COA' AS abbreviation, 1 AS is_active
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_college c WHERE c.abbreviation = v.abbreviation
@@ -181,14 +194,255 @@ WHERE NOT EXISTS (
     SELECT 1 FROM FC_college c WHERE c.abbreviation = v.abbreviation
 );
 
--- Get college IDs
-SET @ccs_id = (SELECT id FROM FC_college WHERE abbreviation = 'CCS' LIMIT 1);
-SET @cas_id = (SELECT id FROM FC_college WHERE abbreviation = 'CAS' LIMIT 1);
+INSERT INTO FC_college (name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT 'College of Computer Studies' AS name, 'CCS' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_college c WHERE c.abbreviation = v.abbreviation
+);
 
--- Seed Departments for CCS
+INSERT INTO FC_college (name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT 'College of Engineering' AS name, 'COE' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_college c WHERE c.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_college (name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT 'College of Nursing' AS name, 'CON' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_college c WHERE c.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_college (name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT 'School of Business and Management' AS name, 'SBM' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_college c WHERE c.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_college (name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT 'School of Education' AS name, 'SOE' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_college c WHERE c.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_college (name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT 'School of Law' AS name, 'SOL' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_college c WHERE c.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_college (name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT 'School of Medicine' AS name, 'SOM' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_college c WHERE c.abbreviation = v.abbreviation
+);
+
+-- Get college IDs
+SET @coa_id = (SELECT id FROM FC_college WHERE abbreviation = 'COA' LIMIT 1);
+SET @cas_id = (SELECT id FROM FC_college WHERE abbreviation = 'CAS' LIMIT 1);
+SET @ccs_id = (SELECT id FROM FC_college WHERE abbreviation = 'CCS' LIMIT 1);
+SET @coe_id = (SELECT id FROM FC_college WHERE abbreviation = 'COE' LIMIT 1);
+SET @con_id = (SELECT id FROM FC_college WHERE abbreviation = 'CON' LIMIT 1);
+SET @sbm_id = (SELECT id FROM FC_college WHERE abbreviation = 'SBM' LIMIT 1);
+SET @soe_id = (SELECT id FROM FC_college WHERE abbreviation = 'SOE' LIMIT 1);
+SET @sol_id = (SELECT id FROM FC_college WHERE abbreviation = 'SOL' LIMIT 1);
+SET @som_id = (SELECT id FROM FC_college WHERE abbreviation = 'SOM' LIMIT 1);
+
+-- Seed Departments for College of Agriculture (COA)
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @coa_id AS college_id, 'College Dean' AS name, 'COA_DEAN' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @coa_id AS college_id, 'Agricultural Sciences' AS name, 'AGRI' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @coa_id AS college_id, 'Agricultural Business' AS name, 'AGBUS' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @coa_id AS college_id, 'Agriculture and Biosystems Engineering' AS name, 'AGBENG' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @coa_id AS college_id, 'Food Technology' AS name, 'FOODTECH' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+-- Seed Departments for College of Arts and Sciences (CAS)
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @cas_id AS college_id, 'College Dean' AS name, 'CAS_DEAN' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @cas_id AS college_id, 'Biology' AS name, 'BIO' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @cas_id AS college_id, 'Chemistry' AS name, 'CHEM' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @cas_id AS college_id, 'Development Communications' AS name, 'DEVCOM' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @cas_id AS college_id, 'Economics' AS name, 'ECON' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @cas_id AS college_id, 'English' AS name, 'ENG' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @cas_id AS college_id, 'General Education & Integrated Discipline Studies' AS name, 'GEIDS' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @cas_id AS college_id, 'International Studies' AS name, 'IS' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @cas_id AS college_id, 'Math' AS name, 'MATH' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @cas_id AS college_id, 'Philosophy' AS name, 'PHIL' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @cas_id AS college_id, 'Physics' AS name, 'PHYS' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @cas_id AS college_id, 'Psychology' AS name, 'PSYCH' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @cas_id AS college_id, 'Sociology' AS name, 'SOCIO' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @cas_id AS college_id, 'Theology' AS name, 'THEO' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+-- Seed Departments for College of Computer Studies (CCS)
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @ccs_id AS college_id, 'College Dean' AS name, 'CCS_DEAN' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
 INSERT INTO FC_department (college_id, name, abbreviation, is_active)
 SELECT * FROM (
     SELECT @ccs_id AS college_id, 'Computer Science' AS name, 'CS' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @ccs_id AS college_id, 'Entertainment and Multimedia Computing' AS name, 'EMC' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @ccs_id AS college_id, 'Information Systems' AS name, 'IS' AS abbreviation, 1 AS is_active
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
@@ -202,29 +456,157 @@ WHERE NOT EXISTS (
     SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
 );
 
--- Get department IDs
+-- Seed Departments for College of Engineering (COE)
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @coe_id AS college_id, 'College Dean' AS name, 'COE_DEAN' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @coe_id AS college_id, 'Chemical Engineering' AS name, 'CHE' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @coe_id AS college_id, 'Civil Engineering' AS name, 'CIV' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @coe_id AS college_id, 'Electrical Engineering' AS name, 'EE' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @coe_id AS college_id, 'Electronics Engineering' AS name, 'ECE' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @coe_id AS college_id, 'Industrial Engineering' AS name, 'IE' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @coe_id AS college_id, 'Mechanical Engineering' AS name, 'ME' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+-- Seed Departments for College of Nursing (CON)
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @con_id AS college_id, 'College Dean' AS name, 'CON_DEAN' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+-- Seed Departments for School of Business and Management (SBM)
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @sbm_id AS college_id, 'School Dean' AS name, 'SBM_DEAN' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @sbm_id AS college_id, 'Graduate Studies' AS name, 'GS' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @sbm_id AS college_id, 'Accountancy' AS name, 'ACC' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @sbm_id AS college_id, 'Business and Administration' AS name, 'BUSADMIN' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+-- Seed Departments for School of Education (SOE)
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @soe_id AS college_id, 'School Dean' AS name, 'SOE_DEAN' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+-- Seed Departments for School of Law (SOL)
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @sol_id AS college_id, 'School Dean' AS name, 'SOL_DEAN' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+-- Seed Departments for School of Medicine (SOM)
+INSERT INTO FC_department (college_id, name, abbreviation, is_active)
+SELECT * FROM (
+    SELECT @som_id AS college_id, 'School Dean' AS name, 'SOM_DEAN' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
+-- Get department IDs for commonly used departments
 SET @cs_id = (SELECT id FROM FC_department WHERE abbreviation = 'CS' AND college_id = @ccs_id LIMIT 1);
+SET @cas_dean_id = (SELECT id FROM FC_department WHERE abbreviation = 'CAS_DEAN' AND college_id = @cas_id LIMIT 1);
+SET @ccs_dean_id = (SELECT id FROM FC_department WHERE abbreviation = 'CCS_DEAN' AND college_id = @ccs_id LIMIT 1);
 
 -- Seed Offices
 INSERT INTO FC_office (name, abbreviation, is_active, display_order)
 SELECT * FROM (
+    SELECT 'University Library' AS name, 'LIB' AS abbreviation, 1 AS is_active, 0 AS display_order
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_office o WHERE o.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_office (name, abbreviation, is_active, display_order)
+SELECT * FROM (
+    SELECT 'University Registrar' AS name, 'REG' AS abbreviation, 1 AS is_active, 1 AS display_order
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_office o WHERE o.abbreviation = v.abbreviation
+);
+
+INSERT INTO FC_office (name, abbreviation, is_active, display_order)
+SELECT * FROM (
     SELECT 'Office of the Vice President for Higher Education' AS name, 'OVPHE' AS abbreviation, 1 AS is_active, 2 AS display_order
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_office o WHERE o.abbreviation = v.abbreviation
-);
-
-INSERT INTO FC_office (name, abbreviation, is_active, display_order)
-SELECT * FROM (
-    SELECT 'University Registrar' AS name, 'REG' AS abbreviation, 1 AS is_active, 0 AS display_order
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_office o WHERE o.abbreviation = v.abbreviation
-);
-
-INSERT INTO FC_office (name, abbreviation, is_active, display_order)
-SELECT * FROM (
-    SELECT 'University Library' AS name, 'LIB' AS abbreviation, 1 AS is_active, 1 AS display_order
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_office o WHERE o.abbreviation = v.abbreviation
@@ -239,8 +621,8 @@ WHERE NOT EXISTS (
 );
 
 -- Enforce Office display_order alignment with current approver flow office-step order
-UPDATE FC_office SET display_order = 0 WHERE abbreviation = 'REG';
-UPDATE FC_office SET display_order = 1 WHERE abbreviation = 'LIB';
+UPDATE FC_office SET display_order = 0 WHERE abbreviation = 'LIB';
+UPDATE FC_office SET display_order = 1 WHERE abbreviation = 'REG';
 UPDATE FC_office SET display_order = 2 WHERE abbreviation = 'OVPHE';
 UPDATE FC_office SET display_order = 3 WHERE abbreviation = 'HRO';
 
@@ -786,6 +1168,7 @@ WHERE NOT EXISTS (
       AND al.university_id = v.university_id
       AND al.request_id = v.request_id
 );
+
 EOF
 
 echo "Database initialized."
