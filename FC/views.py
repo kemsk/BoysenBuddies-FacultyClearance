@@ -16,6 +16,7 @@ import csv
 import io
 import requests
 from django.db import models, transaction
+from django.middleware.csrf import get_token
 from .models import *
 
 
@@ -36,6 +37,10 @@ def _login(request, user):
     request.session['user_email'] = user.email
     request.session['user_role_value'] = get_role_value_for_user(user)
     request.session.modified = True
+
+    print(
+        f"SESSION: logging in -> session_key={request.session.session_key} user_id={user.id} email={user.email}"
+    )
 
 
 def _logout(request):
@@ -368,59 +373,107 @@ def logout_api(request):
     if request.method not in {"POST", "GET"}:
         return _json_error("Method not allowed", status=405)
     
-    print(f"LOGOUT: Starting logout...")
+    print(f"LOGOUT: Starting logout... method={request.method}")
+    print(f"SESSION: used session is now being cleared -> session_key={request.session.session_key}")
     print(f"LOGOUT: Session before: {dict(request.session)}")
     
-    # Create response first to delete cookies
-    response = JsonResponse({"ok": True, "message": "Logged out successfully"})
-    
     try:
-        # Logout
         _logout(request)
-        print(f"LOGOUT: Logout completed successfully")
-        
-        # Force delete session cookie even if session was empty
-        response.delete_cookie('sessionid', path='/')
-        response.delete_cookie('sessionid', path='/', domain='localhost')
-        response.delete_cookie('sessionid', path='/', domain='127.0.0.1')
-        response.delete_cookie('csrftoken', path='/')
-        
-        print(f"LOGOUT: Session cookies force-deleted from response")
-        
+        print(f"LOGOUT: Session flushed successfully")
     except Exception as e:
         print(f"LOGOUT: Logout error: {e}")
     
-    print(f"LOGOUT: Session after: {dict(request.session)}")
-    print(f"LOGOUT: Logout completed with cookie deletion")
-    
+    print(f"SESSION: cleared -> session_key={getattr(request.session, 'session_key', 'None')}")
+
+    if request.method == 'GET':
+        from django.http import HttpResponseRedirect
+        response = HttpResponseRedirect('/')
+        response.delete_cookie('sessionid', path='/')
+        response.delete_cookie('csrftoken', path='/')
+        print(f"LOGOUT: GET request -> redirecting to /")
+        return response
+
+    response = JsonResponse({"ok": True, "message": "Logged out successfully"})
+    response.delete_cookie('sessionid', path='/')
+    response.delete_cookie('sessionid', path='/', domain='localhost')
+    response.delete_cookie('sessionid', path='/', domain='127.0.0.1')
+    response.delete_cookie('csrftoken', path='/')
+    print(f"LOGOUT: POST request -> returning JSON")
     return response
+
+
+@csrf_exempt
+def heartbeat_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    now = timezone.now()
+    request.session["last_seen"] = now.isoformat()
+    request.session.modified = True
+
+    payload = {
+        "ok": True,
+        "authenticated": bool(request.session.get("user_authenticated")),
+        "server_time": now.isoformat(),
+        "last_seen": request.session.get("last_seen"),
+    }
+
+    if not payload["authenticated"]:
+        return JsonResponse(payload, status=401)
+
+    return JsonResponse(payload)
 
 
 def me_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
+    get_token(request)
+
     user = _get_authenticated_user(request)
     if not user:
         return JsonResponse({"detail": "Authentication required"}, status=401)
 
-    # Import role helper functions
-    from .decorators import get_role_value_for_user, get_role_name_for_value
-    role_value = get_role_value_for_user(user)
-    role_name = get_role_name_for_value(role_value)
-
     return JsonResponse(
         {
             "email": user.email,
-            "university_id": getattr(user, "university_id", ""),
-            "first_name": getattr(user, "first_name", None),
-            "middle_name": getattr(user, "middle_name", None),
-            "last_name": getattr(user, "last_name", None),
-            "role_value": role_value,
-            "role_name": role_name,
-            "roles": list(user.get_active_roles().values_list('role__name', flat=True)),
+            "role_value": request.session.get("user_role_value"),
         }
     )
+
+
+@csrf_exempt
+def idle_check_api(request):
+    """
+    API endpoint that forces Django middleware to run and check idle timeout.
+    This will trigger the IdleTimeoutMiddleware to clear session if needed.
+    """
+    print(f"IDLE CHECK: {request.method} request received")
+    print(f"IDLE CHECK: User authenticated: {request.user.is_authenticated}")
+    print(f"IDLE CHECK: User email: {request.user.email if request.user.is_authenticated else 'Anonymous'}")
+    
+    if request.method != "POST":
+        print(f"IDLE CHECK: Method not allowed: {request.method}")
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    user = getattr(request, "user", None)
+    if not user or not getattr(user, "is_authenticated", False):
+        print(f"IDLE CHECK: User not authenticated, session already cleared")
+        return JsonResponse({"status": "logged_out", "message": "User not authenticated"})
+
+    # If we reach here, middleware didn't clear the session, so user is still active
+    current_time = timezone.now().timestamp()
+    last_activity = request.session.get('last_activity', current_time)
+    
+    print(f"IDLE CHECK: User still active. Last activity: {last_activity}, Current: {current_time}")
+    
+    return JsonResponse({
+        "status": "active",
+        "last_activity": last_activity,
+        "current_time": current_time,
+        "user": user.email if hasattr(user, 'email') else 'Unknown'
+    })
+
 
 def dashboard_view(request):
     return render(request, 'system/dashboard.html')

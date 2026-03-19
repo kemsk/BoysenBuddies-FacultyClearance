@@ -15,6 +15,7 @@ INSERT INTO FC_user (email, university_id, first_name, last_name, created_at)
 VALUES 
 ('20220025546@my.xu.edu.ph', 20220025546, 'Albert Floyd', 'Villanueva', NOW()),
 ('20190016375@my.xu.edu.ph', 20190016375, 'Nesyl', 'Ylanan', NOW()),
+('201131134@my.xu.edu.ph', 201131134, 'Farrah', 'Apag', NOW()),
 ('20220024573@my.xu.edu.ph', 20220024573, 'Kim', 'Flores', NOW()),
 ('approver.seed@xu.edu.ph', 1000000001, 'Angela', 'Santos', NOW()),
 ('assistant.seed@xu.edu.ph', 1000000002, 'Seed', 'Assistant', NOW()),
@@ -66,6 +67,28 @@ WHERE NOT EXISTS (
 );
 
 -- Seed UserRoles for admin users
+INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
+SELECT * FROM (
+    SELECT 
+        u.id AS user_id, 
+        r.id AS role_id,
+        u.id AS assigned_by_id,
+        NOW() AS assigned_date,
+        1 AS is_active
+    FROM FC_user u
+    CROSS JOIN FC_role r
+    WHERE u.email = '201131134@my.xu.edu.ph'
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM FC_userrole ur
+    WHERE ur.user_id = v.user_id
+      AND ur.role_id = v.role_id
+      AND ur.college_id IS NULL
+      AND ur.department_id IS NULL
+      AND ur.office_id IS NULL
+);
+
 INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
 SELECT 
     u.id AS user_id, 

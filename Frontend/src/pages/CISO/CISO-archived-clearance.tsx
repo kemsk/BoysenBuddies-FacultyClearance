@@ -178,7 +178,7 @@ export default function CISOArchiveClearance() {
           
           <div className="mt-3">
             <ArchivedClearanceCard  
-             onIconClick={() => navigate("/OVPHE-view-clearance")}
+             onIconClick={() => navigate("/CISO-view-clearance")}
              iconClassName="ml-6"
             />
           </div>
