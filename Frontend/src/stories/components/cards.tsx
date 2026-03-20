@@ -4375,19 +4375,19 @@ export type ViewArchivedClearanceWithStatusCardProps  = {
 
 export function ViewArchivedClearanceWithStatusCard({
   className,
-  title = "Archived Clearance",
-  AcademicYear = "2025 - 2026",
-  Semester = "1",
-  ClearancePeriod = "11/22/2025 - 11/23/2025",
-  LastUpdate = "November 1, 2025, 04:02 PM",
-  Archived = "November 1, 2025, 04:02 PM",
-  status = "incomplete",
-  FacultyCSVDump = "2526_FacultyData.csv",
-  Size = "250 MB",
-  iconAlt = "Archive",
+  title,
+  AcademicYear,
+  Semester,
+  ClearancePeriod,
+  LastUpdate,
+  Archived,
+  status,
+  FacultyCSVDump,
+  Size,
+  iconAlt,
 
   onIconClick,
-  iconClassName = "ml-4",
+  iconClassName,
 }: ViewArchivedClearanceWithStatusCardProps) {
   return (
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
@@ -4471,17 +4471,17 @@ export type ViewArchivedClearanceCardProps = {
 
 export function ViewArchivedClearanceCard({
   className,
-  title = "Archived Clearance",
-  AcademicYear = "2025 - 2026",
-  Semester = "1",
-  ClearancePeriod = "11/22/2025 - 11/23/2025",
-  LastUpdate = "November 1, 2025, 04:02 PM",
-  Archived = "November 1, 2025, 04:02 PM",
-  FacultyCSVDump = "2526_FacultyData.csv",
-  Size = "250 MB",
-  iconAlt = "Archive",
+  title,
+  AcademicYear,
+  Semester,
+  ClearancePeriod,
+  LastUpdate,
+  Archived,
+  FacultyCSVDump,
+  Size,
+  iconAlt,
   onIconClick,
-  iconClassName = "ml-4",
+  iconClassName,
 }: ViewArchivedClearanceCardProps) {
   return (
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
@@ -4525,16 +4525,11 @@ export function ViewArchivedClearanceCard({
           <div className="text-sm text-black text-left break-words">{FacultyCSVDump}</div>
         </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div className="text-md font-bold text-foreground">Total Faculty</div>
-            <div className="text-sm text-black text-left break-words">{totalFaculty}</div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div className="text-md font-bold text-foreground">Completed Clearances</div>
-            <div className="text-sm text-black text-left break-words">{completedClearances}</div>
-          </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Size</div>
+          <div className="text-sm text-black text-left break-words">{Size}</div>
         </div>
+      </div>
       </Card>
     );
   }
