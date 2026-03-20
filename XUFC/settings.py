@@ -97,6 +97,8 @@ DATABASES = {
         'PORT': os.environ.get('DB_PORT'),            
         'OPTIONS': {
             'sql_mode': 'STRICT_TRANS_TABLES',
+            'charset': 'utf8mb4',
+            'init_command': "SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci'",
         },
     }
 }

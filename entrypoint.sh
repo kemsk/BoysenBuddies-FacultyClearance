@@ -10,6 +10,10 @@ python manage.py makemigrations FC --noinput
 python manage.py migrate --noinput
 
 mysql -h "${DB_HOST}" -u "${DB_USER}" -p"${DB_PASSWORD}" --ssl=0 "${DB_NAME}" << 'EOF'
+SET NAMES utf8mb4;
+SET CHARACTER SET utf8mb4;
+SET collation_connection = 'utf8mb4_unicode_ci';
+
 -- Seed Users
 INSERT INTO FC_user (email, university_id, first_name, last_name, created_at)
 VALUES 
