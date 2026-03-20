@@ -17,7 +17,7 @@ import io
 import requests
 from django.db import models, transaction
 from .models import *
-from .jwt_utils import generate_jwt_token
+from .jwt_utils import generate_jwt_token, set_jwt_cookie
 
 
 def _json_error(detail: str, status: int = 400):
@@ -317,8 +317,10 @@ def google_oauth_callback(request):
         jwt_token = generate_jwt_token(user)
         print(f"GOOGLE OAUTH: JWT Token generated for user: {user.email}")
         print(f"GOOGLE OAUTH: JWT Token (first 50 chars): {jwt_token[:50]}...")
+        print(f"GOOGLE OAUTH: Full JWT Token: {jwt_token}")
     except Exception as e:
         print(f"GOOGLE OAUTH: Error generating JWT token: {str(e)}")
+        jwt_token = None
 
     print(f"GOOGLE OAUTH: Session after login: {dict(request.session)}")
     print(f"GOOGLE OAUTH: User authenticated: {request.session.get('user_authenticated')}")
@@ -328,7 +330,12 @@ def google_oauth_callback(request):
     request.session.pop("intended_role", None)
     request.session.modified = True
 
-    return HttpResponseRedirect(redirect_to)
+    # Create response and set JWT cookie
+    response = HttpResponseRedirect(redirect_to)
+    if jwt_token:
+        set_jwt_cookie(response, jwt_token)
+
+    return response
 
 
 @csrf_exempt
@@ -362,18 +369,28 @@ def google_sign_in_api(request):
         jwt_token = generate_jwt_token(user)
         print(f"GOOGLE SIGN IN API: JWT Token generated for user: {user.email}")
         print(f"GOOGLE SIGN IN API: JWT Token (first 50 chars): {jwt_token[:50]}...")
+        print(f"GOOGLE SIGN IN API: Full JWT Token: {jwt_token}")
     except Exception as e:
         print(f"GOOGLE SIGN IN API: Error generating JWT token: {str(e)}")
+        jwt_token = None
 
     redirect_to = "/login-prompt"
-    return JsonResponse(
+    
+    # Create response and set JWT cookie
+    response = JsonResponse(
         {
             "ok": True,
             "email": user.email,
             "roles": list(user.get_active_roles().values_list('role__name', flat=True)),
             "redirect": redirect_to,
+            "jwt_token": jwt_token  # Include token in response for console access
         }
     )
+    
+    if jwt_token:
+        set_jwt_cookie(response, jwt_token)
+
+    return response
 
 
 @csrf_exempt
@@ -398,7 +415,12 @@ def logout_api(request):
         response.delete_cookie('sessionid', path='/', domain='127.0.0.1')
         response.delete_cookie('csrftoken', path='/')
         
-        print(f"LOGOUT: Session cookies force-deleted from response")
+        # Delete JWT cookie
+        response.delete_cookie('jwt_token', path='/')
+        response.delete_cookie('jwt_token', path='/', domain='localhost')
+        response.delete_cookie('jwt_token', path='/', domain='127.0.0.1')
+        
+        print(f"LOGOUT: Session and JWT cookies force-deleted from response")
         
     except Exception as e:
         print(f"LOGOUT: Logout error: {e}")

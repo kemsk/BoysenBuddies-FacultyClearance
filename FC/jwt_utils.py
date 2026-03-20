@@ -2,6 +2,7 @@ import jwt
 import logging
 from django.conf import settings
 from datetime import datetime, timedelta
+from django.http import HttpResponse
 from .models import User
 
 logger = logging.getLogger(__name__)
@@ -104,11 +105,34 @@ def refresh_jwt_token(token):
         logger.error(f"Error refreshing JWT token: {str(e)}")
         return None
 
+def set_jwt_cookie(response, token):
+    """Set JWT token as HTTP-only cookie"""
+    response.set_cookie(
+        'jwt_token',
+        token,
+        max_age=24 * 60 * 60,  # 24 hours
+        httponly=True,
+        samesite='Lax',
+        secure=not settings.DEBUG  # Only HTTPS in production
+    )
+    logger.info(f"JWT Token set as cookie for browser access")
+    return response
+
 def log_jwt_request(request):
     """Log JWT token from request for debugging"""
+    # Check Authorization header first
     auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+    token = None
+    
     if auth_header.startswith('Bearer '):
         token = auth_header[7:]  # Remove 'Bearer ' prefix
-        logger.info(f"JWT Request token: {token[:50]}...")
+        logger.info(f"JWT Request token from header: {token[:50]}...")
     else:
-        logger.warning("Request missing JWT Authorization header")
+        # Check cookies
+        token = request.COOKIES.get('jwt_token')
+        if token:
+            logger.info(f"JWT Request token from cookie: {token[:50]}...")
+        else:
+            logger.warning("Request missing JWT Authorization header and cookie")
+    
+    return token
