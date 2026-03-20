@@ -12,6 +12,8 @@ export default function Login() {
       return "You don't have the required permissions for this login type. Please select the correct account type.";
     } else if (errorParam === 'no_role_selected') {
       return "Please select your account type from the login page to continue.";
+    } else if (errorParam === 'invalid_role') {
+      return "Invalid login type detected. Please select your account type from the options below.";
     }
     return "";
   };

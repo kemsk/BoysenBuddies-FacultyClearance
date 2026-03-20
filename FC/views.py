@@ -1,21 +1,29 @@
-from datetime import datetime
+from django.shortcuts import render, HttpResponseRedirect
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.utils.decorators import method_decorator
+from django.db import transaction
+from django.db.models import Q, Count, Sum, Avg, Max, Min, Prefetch
+from django.core.paginator import Paginator
+from django.core.exceptions import ValidationError
+from django.utils import timezone
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
 import json
+import logging
 import os
 import secrets
-from urllib.parse import urlencode
 import urllib.request
 import urllib.error
+from urllib.parse import urlencode
+from datetime import datetime, timedelta
 from decimal import Decimal
-from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
-from django.shortcuts import render
-from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
-from decimal import Decimal
-import csv
-import io
-import requests
-from django.db import models, transaction
+from .decorators import (
+    login_required, role_required, ciso_required, ovphe_required, 
+    approver_required, assistant_required, faculty_required
+)
 from .models import *
 
 
@@ -29,13 +37,34 @@ def _normalize_email(value: str | None) -> str:
 
 def _login(request, user):
     """Login function that doesn't use Django auth"""
-    from .decorators import get_role_value_for_user
+    from .decorators import get_role_value_for_user, get_role_value_for_name
+    
+    # Check if there's an intended role in the session
+    intended_role = request.session.get('intended_role', '').strip()
+    
+    if intended_role:
+        # Use the intended role if specified
+        role_value = get_role_value_for_name(intended_role)
+        if role_value is None:
+            # Invalid role name, fall back to priority-based selection
+            print(f"GOOGLE OAUTH: Invalid intended role '{intended_role}', falling back to priority-based role")
+            role_value = get_role_value_for_user(user)
+        else:
+            print(f"GOOGLE OAUTH: Using intended role '{intended_role}' with value {role_value}")
+    else:
+        # Fall back to priority-based role selection
+        role_value = get_role_value_for_user(user)
+        print(f"GOOGLE OAUTH: No intended role, using priority-based role value {role_value}")
     
     request.session['user_authenticated'] = True
     request.session['user_id'] = str(user.id)
     request.session['user_email'] = user.email
-    request.session['user_role_value'] = get_role_value_for_user(user)
+    request.session['user_role_value'] = role_value
     request.session.modified = True
+
+    print(
+        f"SESSION: logging in -> session_key={request.session.session_key} user_id={user.id} email={user.email} role_value={role_value}"
+    )
 
 
 def _logout(request):
@@ -77,6 +106,7 @@ def _validate_and_redirect_by_role(intended_role: str, user_roles: list) -> str 
     # Check if intended role is valid
     if intended_role not in role_mapping:
         print(f"GOOGLE OAUTH: Invalid intended role: {intended_role}")
+        print(f"GOOGLE OAUTH: Valid roles are: {list(role_mapping.keys())}")
         return None
     
     # Check if user has the required role(s)
@@ -214,6 +244,9 @@ def google_oauth_start(request):
     if not client_id or not redirect_uri:
         return _json_error("Google OAuth is not configured", status=500)
     
+    # Clear any existing authentication to prevent role conflicts
+    _logout(request)
+    
     # Get the intended role from URL parameter
     intended_role = request.GET.get('role', '').strip()
     print(f"GOOGLE OAUTH: google_oauth_start called with role parameter: '{intended_role}'")
@@ -302,14 +335,26 @@ def google_oauth_callback(request):
         print(f"GOOGLE OAUTH: No role selected, redirecting to: {error_url}")
         return HttpResponseRedirect(error_url)
     
+    # Validate that the intended role is one of the supported roles
+    valid_roles = ['faculty', 'approver', 'assistant', 'ciso', 'ovphe']
+    if intended_role not in valid_roles:
+        # Clear the invalid role from session
+        request.session.pop("intended_role", None)
+        request.session.modified = True
+        error_url = "/?error=invalid_role"
+        print(f"GOOGLE OAUTH: Invalid role '{intended_role}', cleared from session, redirecting to: {error_url}")
+        return HttpResponseRedirect(error_url)
+    
     # Role validation and redirection logic
     redirect_to = _validate_and_redirect_by_role(intended_role, user_roles_list)
     print(f"GOOGLE OAUTH: Validation result: {redirect_to}")
     
     if redirect_to is None:
-        # Role mismatch - redirect to login with error message
+        # Role mismatch - clear the intended role and redirect to login with error message
+        request.session.pop("intended_role", None)
+        request.session.modified = True
         error_url = "/?error=role_mismatch"
-        print(f"GOOGLE OAUTH: Role mismatch detected, redirecting to: {error_url}")
+        print(f"GOOGLE OAUTH: Role mismatch detected, cleared intended role, redirecting to: {error_url}")
         return HttpResponseRedirect(error_url)
     
     _login(request, user)
@@ -368,32 +413,55 @@ def logout_api(request):
     if request.method not in {"POST", "GET"}:
         return _json_error("Method not allowed", status=405)
     
-    print(f"LOGOUT: Starting logout...")
+    print(f"LOGOUT: Starting logout... method={request.method}")
+    print(f"SESSION: used session is now being cleared -> session_key={request.session.session_key}")
     print(f"LOGOUT: Session before: {dict(request.session)}")
     
-    # Create response first to delete cookies
-    response = JsonResponse({"ok": True, "message": "Logged out successfully"})
-    
     try:
-        # Logout
         _logout(request)
-        print(f"LOGOUT: Logout completed successfully")
-        
-        # Force delete session cookie even if session was empty
-        response.delete_cookie('sessionid', path='/')
-        response.delete_cookie('sessionid', path='/', domain='localhost')
-        response.delete_cookie('sessionid', path='/', domain='127.0.0.1')
-        response.delete_cookie('csrftoken', path='/')
-        
-        print(f"LOGOUT: Session cookies force-deleted from response")
-        
+        print(f"LOGOUT: Session flushed successfully")
     except Exception as e:
         print(f"LOGOUT: Logout error: {e}")
     
-    print(f"LOGOUT: Session after: {dict(request.session)}")
-    print(f"LOGOUT: Logout completed with cookie deletion")
-    
+    print(f"SESSION: cleared -> session_key={getattr(request.session, 'session_key', 'None')}")
+
+    if request.method == 'GET':
+        from django.http import HttpResponseRedirect
+        response = HttpResponseRedirect('/')
+        response.delete_cookie('sessionid', path='/')
+        response.delete_cookie('csrftoken', path='/')
+        print(f"LOGOUT: GET request -> redirecting to /")
+        return response
+
+    response = JsonResponse({"ok": True, "message": "Logged out successfully"})
+    response.delete_cookie('sessionid', path='/')
+    response.delete_cookie('sessionid', path='/', domain='localhost')
+    response.delete_cookie('sessionid', path='/', domain='127.0.0.1')
+    response.delete_cookie('csrftoken', path='/')
+    print(f"LOGOUT: POST request -> returning JSON")
     return response
+
+
+@csrf_exempt
+def heartbeat_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    now = timezone.now()
+    request.session["last_seen"] = now.isoformat()
+    request.session.modified = True
+
+    payload = {
+        "ok": True,
+        "authenticated": bool(request.session.get("user_authenticated")),
+        "server_time": now.isoformat(),
+        "last_seen": request.session.get("last_seen"),
+    }
+
+    if not payload["authenticated"]:
+        return JsonResponse(payload, status=401)
+
+    return JsonResponse(payload)
 
 
 def me_api(request):
@@ -404,23 +472,50 @@ def me_api(request):
     if not user:
         return JsonResponse({"detail": "Authentication required"}, status=401)
 
-    # Import role helper functions
-    from .decorators import get_role_value_for_user, get_role_name_for_value
-    role_value = get_role_value_for_user(user)
-    role_name = get_role_name_for_value(role_value)
-
     return JsonResponse(
         {
             "email": user.email,
-            "university_id": getattr(user, "university_id", ""),
-            "first_name": getattr(user, "first_name", None),
-            "middle_name": getattr(user, "middle_name", None),
-            "last_name": getattr(user, "last_name", None),
-            "role_value": role_value,
-            "role_name": role_name,
-            "roles": list(user.get_active_roles().values_list('role__name', flat=True)),
+            "university_id": user.university_id,
+            "first_name": user.first_name,
+            "middle_name": user.middle_name,
+            "last_name": user.last_name,
+            "role_value": request.session.get("user_role_value"),
         }
     )
+
+
+@csrf_exempt
+def idle_check_api(request):
+    """
+    API endpoint that forces Django middleware to run and check idle timeout.
+    This will trigger the IdleTimeoutMiddleware to clear session if needed.
+    """
+    print(f"IDLE CHECK: {request.method} request received")
+    print(f"IDLE CHECK: User authenticated: {request.user.is_authenticated}")
+    print(f"IDLE CHECK: User email: {request.user.email if request.user.is_authenticated else 'Anonymous'}")
+    
+    if request.method != "POST":
+        print(f"IDLE CHECK: Method not allowed: {request.method}")
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    user = getattr(request, "user", None)
+    if not user or not getattr(user, "is_authenticated", False):
+        print(f"IDLE CHECK: User not authenticated, session already cleared")
+        return JsonResponse({"status": "logged_out", "message": "User not authenticated"})
+
+    # If we reach here, middleware didn't clear the session, so user is still active
+    current_time = timezone.now().timestamp()
+    last_activity = request.session.get('last_activity', current_time)
+    
+    print(f"IDLE CHECK: User still active. Last activity: {last_activity}, Current: {current_time}")
+    
+    return JsonResponse({
+        "status": "active",
+        "last_activity": last_activity,
+        "current_time": current_time,
+        "user": user.email if hasattr(user, 'email') else 'Unknown'
+    })
+
 
 def dashboard_view(request):
     return render(request, 'system/dashboard.html')
@@ -3021,6 +3116,7 @@ def ovphe_activity_logs_api(request):
 
 
 @csrf_exempt
+@ciso_required
 def ciso_system_guidelines_api(request):
     return _system_guidelines_api(request, "ciso")
 
@@ -3591,6 +3687,7 @@ def faculty_notifications_api(request):
     return JsonResponse({"items": items})
 
 
+@faculty_required
 def faculty_dashboard_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
@@ -4155,6 +4252,7 @@ def faculty_view_clearance_api(request):
     })
 
 # Approver endpoints
+@approver_required
 def approver_dashboard_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
@@ -4314,6 +4412,7 @@ def approver_individual_approval_api(request):
     return JsonResponse({"items": []})
 
 # Assistant Approver endpoints
+@assistant_required
 def assistant_approver_dashboard_api(request):
     return JsonResponse({"pendingRequests": [], "pendingCount": 0})
 

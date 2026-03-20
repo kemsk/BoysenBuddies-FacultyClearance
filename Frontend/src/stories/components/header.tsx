@@ -22,6 +22,8 @@ import {
 
 import { Divider } from "./divider";
 
+import { authService } from "../../services/authService";
+
 type HeaderVariantProps = {
   sheetTitle?: string;
   sheetDescription?: string;
@@ -94,6 +96,21 @@ export function Header() {
 export function FacultyHeader() {
   const navigate = useNavigate();
   const unreadCount = 3;
+
+  const handleLogout = async () => {
+    console.log("LOGOUT: FacultyHeader handleLogout called!");
+    try {
+      console.log("LOGOUT: Calling authService.logout...");
+      await authService.logout();
+      console.log("LOGOUT: authService.logout completed, navigating to /login");
+      navigate("/login");
+    } catch (error) {
+      console.error("LOGOUT: Logout failed:", error);
+      // Still navigate to login even if logout API fails
+      console.log("LOGOUT: Navigating to /login despite error");
+      navigate("/login");
+    }
+  };
 
   return (
     <HeaderVariant>
@@ -204,7 +221,7 @@ export function FacultyHeader() {
               <AlertDialogFooter className="mt-2 flex flex-col gap-2 sm:flex-col sm:space-x-0">
                 <AlertDialogAction
                   className="w-full"
-                  onClick={() => navigate("/login")}
+                  onClick={handleLogout}
                 >                 
                   Logout
                 </AlertDialogAction>
@@ -230,6 +247,32 @@ export function AdminHeader() {
 export function ApprovalHeader() {
   const navigate = useNavigate();
   const unreadCount = 3;
+
+  const handleLogout = async () => {
+    try {
+      console.log("LOGOUT(UI): Clearing current session...");
+      const response = await fetch(
+        "/admin/xu-faculty-clearance/api/auth/logout",
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("LOGOUT(UI): Logout request failed", response.status);
+      } else {
+        console.log("LOGOUT(UI): Session cleared");
+      }
+    } catch (err) {
+      console.error("LOGOUT(UI): Logout request error", err);
+    } finally {
+      navigate("/login");
+    }
+  };
 
   return (
     <HeaderVariant>
@@ -415,7 +458,7 @@ export function ApprovalHeader() {
               <AlertDialogFooter className="mt-2 flex flex-col gap-2 sm:flex-col sm:space-x-0">
                 <AlertDialogAction
                   className="w-full"
-                  onClick={() => navigate("/login")}
+                  onClick={handleLogout}
                 >
                   Logout
                 </AlertDialogAction>
@@ -433,6 +476,32 @@ export function ApprovalHeader() {
 export function HROHeader() {
   const navigate = useNavigate();
   const unreadCount = 3;
+
+  const handleLogout = async () => {
+    try {
+      console.log("LOGOUT(UI): Clearing current session...");
+      const response = await fetch(
+        "/admin/xu-faculty-clearance/api/auth/logout",
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("LOGOUT(UI): Logout request failed", response.status);
+      } else {
+        console.log("LOGOUT(UI): Session cleared");
+      }
+    } catch (err) {
+      console.error("LOGOUT(UI): Logout request error", err);
+    } finally {
+      navigate("/login");
+    }
+  };
 
   return (
     <HeaderVariant>
@@ -616,7 +685,7 @@ export function HROHeader() {
               <AlertDialogFooter className="mt-2 flex flex-col gap-2 sm:flex-col sm:space-x-0">
                 <AlertDialogAction
                   className="w-full"
-                  onClick={() => navigate("/login")}
+                  onClick={handleLogout}
                 >
                   Logout
                 </AlertDialogAction>
@@ -633,6 +702,32 @@ export function HROHeader() {
 export function CISOHeader() {
   const navigate = useNavigate();
   const unreadCount = 3;
+
+  const handleLogout = async () => {
+    try {
+      console.log("LOGOUT(UI): Clearing current session...");
+      const response = await fetch(
+        "/admin/xu-faculty-clearance/api/auth/logout",
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("LOGOUT(UI): Logout request failed", response.status);
+      } else {
+        console.log("LOGOUT(UI): Session cleared");
+      }
+    } catch (err) {
+      console.error("LOGOUT(UI): Logout request error", err);
+    } finally {
+      navigate("/login");
+    }
+  };
 
   return (
     <HeaderVariant>
@@ -840,7 +935,7 @@ export function CISOHeader() {
               <AlertDialogFooter className="mt-2 flex flex-col gap-2 sm:flex-col sm:space-x-0">
                 <AlertDialogAction
                   className="w-full"
-                  onClick={() => navigate("/login")}
+                  onClick={handleLogout}
                 >
                   Logout
                 </AlertDialogAction>
@@ -857,6 +952,32 @@ export function CISOHeader() {
 export function OVPHEHeader() {
   const navigate = useNavigate();
   const unreadCount = 3;
+
+  const handleLogout = async () => {
+    try {
+      console.log("LOGOUT(UI): Clearing current session...");
+      const response = await fetch(
+        "/admin/xu-faculty-clearance/api/auth/logout",
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("LOGOUT(UI): Logout request failed", response.status);
+      } else {
+        console.log("LOGOUT(UI): Session cleared");
+      }
+    } catch (err) {
+      console.error("LOGOUT(UI): Logout request error", err);
+    } finally {
+      navigate("/login");
+    }
+  };
 
   return (
     <HeaderVariant>
@@ -1028,7 +1149,7 @@ export function OVPHEHeader() {
               <AlertDialogFooter className="mt-2 flex flex-col gap-2 sm:flex-col sm:space-x-0">
                 <AlertDialogAction
                   className="w-full"
-                  onClick={() => navigate("/login")}
+                  onClick={handleLogout}
                 >
                   Logout
                 </AlertDialogAction>
@@ -1045,6 +1166,32 @@ export function OVPHEHeader() {
 export function AssistantApproverHeader() {
   const navigate = useNavigate();
   const unreadCount = 3;
+
+  const handleLogout = async () => {
+    try {
+      console.log("LOGOUT(UI): Clearing current session...");
+      const response = await fetch(
+        "/admin/xu-faculty-clearance/api/auth/logout",
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("LOGOUT(UI): Logout request failed", response.status);
+      } else {
+        console.log("LOGOUT(UI): Session cleared");
+      }
+    } catch (err) {
+      console.error("LOGOUT(UI): Logout request error", err);
+    } finally {
+      navigate("/login");
+    }
+  };
 
   return (
     <HeaderVariant>
@@ -1198,7 +1345,7 @@ export function AssistantApproverHeader() {
               <AlertDialogFooter className="mt-2 flex flex-col gap-2 sm:flex-col sm:space-x-0">
                 <AlertDialogAction
                   className="w-full"
-                  onClick={() => navigate("/login")}
+                  onClick={handleLogout}
                 >
                   Logout
                 </AlertDialogAction>

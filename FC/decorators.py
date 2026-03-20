@@ -42,6 +42,17 @@ def get_role_value_for_user(user):
     
     return 5  # Default to Faculty
 
+def get_role_value_for_name(role_name):
+    """Get role value for a specific role name"""
+    role_mapping = {
+        'ciso': 1,
+        'ovphe': 2,
+        'approver': 3,
+        'assistant': 4,
+        'faculty': 5
+    }
+    return role_mapping.get(role_name.lower())
+
 def get_role_name_for_value(role_value):
     """Get role display name for role value"""
     return ROLE_MAPPING.get(role_value, 'FACULTY')

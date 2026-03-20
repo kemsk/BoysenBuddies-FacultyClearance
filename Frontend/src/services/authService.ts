@@ -92,14 +92,17 @@ class AuthService {
 
   async logout(): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await fetch(`${API_BASE_URL}/logout`, {
+      console.log('LOGOUT(authService): calling backend logout endpoint...');
+
+      const response = await fetch(`/admin/xu-faculty-clearance/api/auth/logout`, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
-          'X-CSRFToken': this.getCSRFToken(),
         },
-        credentials: 'same-origin',
+        credentials: 'include',
       });
+
+      console.log('LOGOUT(authService): response status=', response.status);
 
       if (!response.ok) {
         throw new Error('Logout failed');
