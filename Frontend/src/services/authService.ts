@@ -1,19 +1,12 @@
 const API_BASE_URL = '';
 
 export interface LoginResponse {
-  success: boolean;
-  message: string;
-  requires_pin?: boolean;
-  user_info?: {
-    id?: number;
-    email: string;
-    first_name: string;
-    last_name: string;
-    role_value?: number;
-    role_name?: string;
-    university_id?: string;
-    dashboard_url?: string;
-  };
+  ok: boolean;
+  token?: string;
+  email: string;
+  roles: string[];
+  redirect: string;
+  message?: string;
 }
 
 export interface AuthStatusResponse {
@@ -37,6 +30,43 @@ class AuthService {
       }
     }
     return '';
+  }
+
+  // Store JWT token
+  setToken(token: string): void {
+    console.log('AUTH_SERVICE: Storing JWT token:', token);
+    localStorage.setItem('jwt_token', token);
+  }
+
+  // Get JWT token
+  getToken(): string | null {
+    const token = localStorage.getItem('jwt_token');
+    console.log('AUTH_SERVICE: Retrieved JWT token:', token);
+    return token;
+  }
+
+  // Clear JWT token
+  clearToken(): void {
+    console.log('AUTH_SERVICE: Clearing JWT token');
+    localStorage.removeItem('jwt_token');
+    localStorage.removeItem('user_info');
+  }
+
+  // Add JWT to request headers
+  private getAuthHeaders(): HeadersInit {
+    const token = this.getToken();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+      console.log('AUTH_SERVICE: Adding Authorization header:', `Bearer ${token.substring(0, 50)}...`);
+    } else {
+      console.log('AUTH_SERVICE: No JWT token available for Authorization header');
+    }
+    
+    return headers;
   }
 
 
@@ -92,9 +122,11 @@ class AuthService {
 
   async logout(): Promise<{ success: boolean; message: string }> {
     try {
-      console.log('LOGOUT(authService): calling backend logout endpoint...');
+      console.log('AUTH_SERVICE: Initiating logout');
 
-      const response = await fetch(`/admin/xu-faculty-clearance/api/auth/logout`, {
+      this.clearToken();
+
+      const response = await fetch(`${API_BASE_URL}/admin/xu-faculty-clearance/api/auth/logout`, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
@@ -108,16 +140,18 @@ class AuthService {
         throw new Error('Logout failed');
       }
 
-      return await response.json();
+      const result = await response.json();
+      console.log('AUTH_SERVICE: Logout successful', result);
+      return result;
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('AUTH_SERVICE: Logout error:', error);
       throw error;
     }
   }
 
   async getAuthStatus(): Promise<AuthStatusResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/login`, {
+      const response = await fetch(`${API_BASE_URL}/admin/xu-faculty-clearance/api/me`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -126,23 +160,79 @@ class AuthService {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get auth status');
+        return { authenticated: false };
       }
 
-      return await response.json();
+      const userData = await response.json();
+      console.log('AUTH_SERVICE: Auth status successful:', userData);
+      
+      return {
+        authenticated: true,
+        user_info: {
+          email: userData.email,
+          role_value: userData.role_value,
+          role_name: userData.role_name,
+          first_name: userData.first_name,
+          last_name: userData.last_name,
+        }
+      };
     } catch (error) {
-      console.error('Auth status error:', error);
-      throw error;
+      console.error('AUTH_SERVICE: Auth status error:', error);
+      return { authenticated: false };
     }
   }
 
   async loginWithGoogle(): Promise<void> {
     try {
+      console.log('AUTH_SERVICE: Initiating Google OAuth login');
       // Direct redirect to Google OAuth endpoint
-      window.location.href = `${API_BASE_URL}/login/google/`;
+      window.location.href = `${API_BASE_URL}/accounts/login/google/`;
     } catch (error) {
-      console.error('Google login error:', error);
+      console.error('AUTH_SERVICE: Google login error:', error);
       throw error;
+    }
+  }
+
+  // Handle OAuth callback with JWT token
+  handleOAuthCallback(): void {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    
+    if (token) {
+      console.log('AUTH_SERVICE: Received JWT token from OAuth callback:', token);
+      this.setToken(token);
+      
+      // Store user info (would need to get from token or API)
+      const userInfo = this.parseJWT(token);
+      if (userInfo) {
+        localStorage.setItem('user_info', JSON.stringify({
+          email: userInfo.email,
+          roles: userInfo.roles || []
+        }));
+      }
+      
+      // Remove token from URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+      console.log('AUTH_SERVICE: No token found in OAuth callback');
+    }
+  }
+
+  // Parse JWT token (simple implementation)
+  private parseJWT(token: string): any {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch (error) {
+      console.error('AUTH_SERVICE: Error parsing JWT:', error);
+      return null;
     }
   }
 
@@ -222,23 +312,26 @@ class AuthService {
 
   // Check if user is authenticated
   isAuthenticated(): boolean {
-    // This is a simple check - you might want to implement a more robust solution
     return document.cookie.includes('sessionid');
   }
 
-  // Get current user info from session storage or make an API call
+  // Get current user info from JWT token
   async getCurrentUser() {
     try {
       const authStatus = await this.getAuthStatus();
+      console.log('AUTH_SERVICE: Current user from auth status:', authStatus.user_info);
       return authStatus.user_info;
     } catch (error) {
-      console.error('Failed to get current user:', error);
+      console.error('AUTH_SERVICE: Failed to get current user:', error);
       return null;
     }
   }
 
   // Role-based access checking
   canAccessFolder(folderName: string): boolean {
+    const userInfo = this.getCurrentUserFromSession();
+    if (!userInfo || !userInfo.role_value) return false;
+
     const roleAccessMap = {
       1: ['ciso'],      // CISO
       2: ['ovphe'],     // OVPHE
@@ -246,9 +339,6 @@ class AuthService {
       4: ['assistant'], // ASSISTANT_APPROVER
       5: ['faculty'],   // FACULTY
     };
-
-    const userInfo = this.getCurrentUserFromSession();
-    if (!userInfo || !userInfo.role_value) return false;
 
     const accessibleFolders = roleAccessMap[userInfo.role_value as keyof typeof roleAccessMap] || [];
     return accessibleFolders.includes(folderName);
@@ -266,8 +356,14 @@ class AuthService {
   isFaculty(): boolean { return this.hasRole(5); }
 
   private getCurrentUserFromSession(): { role_value?: number; } | null {
-    // This would typically come from your app's state management
-    // For now, return null - you'd implement this based on your state management
+    const userInfoStr = localStorage.getItem('user_info');
+    if (userInfoStr) {
+      try {
+        return JSON.parse(userInfoStr);
+      } catch (error) {
+        console.error('AUTH_SERVICE: Error parsing user info from session:', error);
+      }
+    }
     return null;
   }
 

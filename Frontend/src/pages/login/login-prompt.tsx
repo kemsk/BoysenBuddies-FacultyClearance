@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import "../../index.css"; // ensure index.css is accessible from src
 import { Progress } from "../../stories/components/progress";
+import { authService } from "../../services/authService";
 
 export default function LoginPrompt() {
   const [progress, setProgress] = useState(0);
@@ -16,46 +17,40 @@ export default function LoginPrompt() {
   useEffect(() => {
     if (progress < 100) return;
 
-    const roleDashboardMap: Record<number, string> = {
-      1: '/HRO-dashboard',
-      2: '/CISO-dashboard',
-      3: '/OVPHE-dashboard',
-      4: '/approver-dashboard',
-      5: '/assistant-approver-dashboard',
-      6: '/faculty-dashboard',
-      7: '/dual-role-approver-dashboard',
-    };
-
     const resolveAndRedirect = async () => {
-      const raw = localStorage.getItem('login_user_info');
-      let userInfo: { role_value?: number; dashboard_url?: string } | null = null;
+      // Handle OAuth callback with JWT token
+      authService.handleOAuthCallback();
+      
+      // Get user info using JWT token
       try {
-        userInfo = raw ? (JSON.parse(raw) as { role_value?: number; dashboard_url?: string }) : null;
-      } catch {
-        userInfo = null;
-      }
+        const authStatus = await authService.getAuthStatus();
+        console.log('LOGIN_PROMPT: Auth status:', authStatus);
+        
+        if (authStatus.authenticated && authStatus.user_info) {
+          const roleValue = authStatus.user_info.role_value;
+          console.log('LOGIN_PROMPT: User role value:', roleValue);
+          
+          // Role-based dashboard mapping
+          const roleDashboardMap: Record<number, string> = {
+            1: '/CISO-dashboard',
+            2: '/OVPHE-dashboard', 
+            3: '/approver-dashboard',
+            4: '/assistant-approver-dashboard',
+            5: '/faculty-dashboard',
+          };
 
-      if (!userInfo) {
-        try {
-          const resp = await fetch('/admin/xu-faculty-clearance/api/me', { credentials: 'include' });
-          const me = (await resp.json().catch(() => null)) as { role_value?: number } | null;
-          if (resp.ok && me && typeof me === 'object') {
-            userInfo = { role_value: me.role_value };
-          }
-        } catch {
-          userInfo = null;
+          const target = roleDashboardMap[roleValue] || '/faculty-dashboard';
+          console.log('LOGIN_PROMPT: Redirecting to:', target);
+          
+          window.location.replace(target);
+        } else {
+          console.log('LOGIN_PROMPT: No valid authentication, redirecting to login');
+          window.location.replace('/');
         }
+      } catch (error) {
+        console.error('LOGIN_PROMPT: Error during authentication:', error);
+        window.location.replace('/');
       }
-
-      const roleValue = userInfo?.role_value;
-      const dashboardUrl = userInfo?.dashboard_url;
-
-      const target = dashboardUrl || (roleValue ? roleDashboardMap[roleValue] : undefined) || '/';
-
-      localStorage.removeItem('otp_should_send');
-      localStorage.removeItem('otp_requested_at');
-
-      window.location.replace(target);
     };
 
     resolveAndRedirect();

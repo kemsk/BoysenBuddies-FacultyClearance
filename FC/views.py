@@ -25,6 +25,7 @@ from .decorators import (
     approver_required, assistant_required, faculty_required
 )
 from .models import *
+from .jwt_utils import generate_jwt_token
 
 
 def _json_error(detail: str, status: int = 400):
@@ -348,7 +349,7 @@ def google_oauth_callback(request):
     # Role validation and redirection logic
     redirect_to = _validate_and_redirect_by_role(intended_role, user_roles_list)
     print(f"GOOGLE OAUTH: Validation result: {redirect_to}")
-    
+
     if redirect_to is None:
         # Role mismatch - clear the intended role and redirect to login with error message
         request.session.pop("intended_role", None)
@@ -356,18 +357,24 @@ def google_oauth_callback(request):
         error_url = "/?error=role_mismatch"
         print(f"GOOGLE OAUTH: Role mismatch detected, cleared intended role, redirecting to: {error_url}")
         return HttpResponseRedirect(error_url)
-    
+
     _login(request, user)
-    
+
+    try:
+        jwt_token = generate_jwt_token(user)
+        print(f"GOOGLE OAUTH: JWT Token generated for user: {user.email}")
+        print(f"GOOGLE OAUTH: JWT Token (first 50 chars): {jwt_token[:50]}...")
+    except Exception as e:
+        print(f"GOOGLE OAUTH: Error generating JWT token: {str(e)}")
+
     print(f"GOOGLE OAUTH: Session after login: {dict(request.session)}")
     print(f"GOOGLE OAUTH: User authenticated: {request.session.get('user_authenticated')}")
     print(f"GOOGLE OAUTH: User ID in session: {request.session.get('user_id')}")
     print(f"GOOGLE OAUTH: Redirecting to: {redirect_to}")
-    
-    # Clear the intended role from session
+
     request.session.pop("intended_role", None)
     request.session.modified = True
-    
+
     return HttpResponseRedirect(redirect_to)
 
 
@@ -397,6 +404,14 @@ def google_sign_in_api(request):
         return _json_error("Email is not registered in the system", status=403)
 
     _login(request, user)
+
+    try:
+        jwt_token = generate_jwt_token(user)
+        print(f"GOOGLE SIGN IN API: JWT Token generated for user: {user.email}")
+        print(f"GOOGLE SIGN IN API: JWT Token (first 50 chars): {jwt_token[:50]}...")
+    except Exception as e:
+        print(f"GOOGLE SIGN IN API: Error generating JWT token: {str(e)}")
+
     redirect_to = "/login-prompt"
     return JsonResponse(
         {
@@ -471,6 +486,10 @@ def me_api(request):
     user = _get_authenticated_user(request)
     if not user:
         return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    from .decorators import get_role_value_for_user, get_role_name_for_value
+    role_value = get_role_value_for_user(user)
+    role_name = get_role_name_for_value(role_value)
 
     return JsonResponse(
         {
