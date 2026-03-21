@@ -33,11 +33,17 @@ FROM node:22-alpine AS frontend-builder
 
 WORKDIR /frontend
 
+# Ensure devDependencies are installed (Vite is in devDependencies)
+ENV NODE_ENV=development
+ENV NPM_CONFIG_PRODUCTION=false
+ENV NPM_CONFIG_OMIT=
+
 COPY Frontend/package*.json /frontend/
-RUN npm ci
+RUN npm ci --include=dev
 
 COPY Frontend /frontend
-RUN npm run build
+RUN test -f /frontend/node_modules/.bin/vite
+RUN /frontend/node_modules/.bin/vite build
   
 # Stage 3: Production stage
 FROM python:3.13-slim
