@@ -736,7 +736,7 @@ def _serialize_announcement(a: Announcement):
         "id": a.id,
         "title": a.title or "",
         "description": a.body or "",
-        "email": a.created_by.user.email if getattr(a.created_by, "user", None) else "",
+        "email": a.created_by.email if a.created_by else "",
         "timestamp": _format_timestamp(a.created_at),
         "pinned": bool(a.pin_announcement),
         "enabled": bool(a.is_active),
@@ -772,7 +772,7 @@ def _system_guidelines_api(request, role: str):
         return JsonResponse({"detail": "title is required"}, status=400)
 
     admin = _get_active_admin_for_role(request, role)
-    created_by = admin.user if admin else None
+    created_by = admin if admin else None
 
     guideline = SystemGuideline.objects.create(
         title=title,
@@ -783,7 +783,7 @@ def _system_guidelines_api(request, role: str):
     try:
         ActivityLog.objects.create(
             event_type=ActivityLog.EventType.CREATED_GUIDELINE,
-            user=admin.user if admin else None,
+            user=admin if admin else None,
             details=[f"Guideline: {title}"],
         )
     except Exception:
@@ -799,7 +799,7 @@ def _system_guideline_detail_api(request, role: str, guideline_id: int):
         return JsonResponse({"detail": "Not found"}, status=404)
 
     admin = _get_active_admin_for_role(request, role)
-    editor_user = admin.user if admin else None
+    editor_user = admin if admin else None
 
     if request.method == "PUT":
         payload = _json_body(request)
@@ -820,7 +820,7 @@ def _system_guideline_detail_api(request, role: str, guideline_id: int):
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.EDITED_GUIDELINE,
-                user=admin.user if admin else None,
+                user=admin if admin else None,
                 details=[f"Guideline: {title}"],
             )
         except Exception:
@@ -844,13 +844,13 @@ def _system_guideline_detail_api(request, role: str, guideline_id: int):
             evt = ActivityLog.EventType.ENABLED_GUIDELINE if guideline.is_active else ActivityLog.EventType.DISABLED_GUIDELINE
             ActivityLog.objects.create(
                 event_type=evt,
-                user=admin.user if admin else None,
+                user=admin if admin else None,
                 details=[f"Guideline: {guideline.title}"],
             )
             if not guideline.is_active:
                 ActivityLog.objects.create(
                     event_type=ActivityLog.EventType.ARCHIVED_GUIDELINE,
-                    user=admin.user if admin else None,
+                    user=admin if admin else None,
                     details=[f"Guideline: {guideline.title}"],
                 )
         except Exception:
@@ -862,7 +862,7 @@ def _system_guideline_detail_api(request, role: str, guideline_id: int):
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.ARCHIVED_GUIDELINE,
-                user=admin.user if admin else None,
+                user=admin if admin else None,
                 details=[f"Guideline: {guideline_title}"],
             )
         except Exception:
