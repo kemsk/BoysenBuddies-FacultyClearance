@@ -43,7 +43,7 @@ RUN npm ci --include=dev
 
 COPY Frontend /frontend
 RUN test -f /frontend/node_modules/.bin/vite
-RUN /frontend/node_modules/.bin/vite build
+RUN node /frontend/node_modules/vite/bin/vite.js build
   
 # Stage 3: Production stage
 FROM python:3.13-slim
