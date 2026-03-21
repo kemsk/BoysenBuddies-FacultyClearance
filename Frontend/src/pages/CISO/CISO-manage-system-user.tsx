@@ -48,7 +48,7 @@ import {
   const [adminEmail, setAdminEmail] = React.useState<string>("");
 
   const apiBase = "/admin/xu-faculty-clearance/api/ciso/system-users";
-  const orgStructureApi = "/admin/xu-faculty-clearance/api/ovphe/org-structure";
+  const orgStructureApi = "/admin/xu-faculty-clearance/api/ciso/org-structure";
 
   function isXuEmail(email: string) {
     const e = (email || "").trim().toLowerCase();
