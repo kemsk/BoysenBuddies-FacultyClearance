@@ -395,6 +395,9 @@ class ActivityLog(models.Model):
     approver_department = models.CharField(max_length=150, null=True, blank=True)
     university_id = models.CharField(max_length=50, null=True, blank=True)
     request_id = models.CharField(max_length=50, null=True, blank=True)
+    is_superadmin = models.BooleanField(default=False)
+    is_staff = models.BooleanField(default=False)
+    user_role = models.CharField(max_length=100, null=True, blank=True)
     details = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
