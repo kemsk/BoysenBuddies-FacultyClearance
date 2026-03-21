@@ -640,7 +640,6 @@ def _is_college_referenced(college: College):
         Faculty.objects.filter(college=college).exists()
         or Approver.objects.filter(college=college).exists()
         or StudentAssistant.objects.filter(college=college).exists()
-        or Requirement.colleges.through.objects.filter(college_id=college.id).exists()
         or ApproverFlowStep.colleges.through.objects.filter(college_id=college.id).exists()
         or Department.objects.filter(college=college).exists()
     )
@@ -651,7 +650,6 @@ def _is_department_referenced(dept: Department):
         Faculty.objects.filter(department=dept).exists()
         or Approver.objects.filter(department=dept).exists()
         or StudentAssistant.objects.filter(department=dept).exists()
-        or Requirement.departments.through.objects.filter(department_id=dept.id).exists()
     )
 
 
@@ -659,7 +657,8 @@ def _is_office_referenced(office: Office):
     return (
         Faculty.objects.filter(office=office).exists()
         or Approver.objects.filter(office=office).exists()
-        or Requirement.offices.through.objects.filter(office_id=office.id).exists()
+        # Requirement currently has no offices m2m; rely on direct usages instead.
+        or ApproverFlowStep.objects.filter(office=office).exists()
     )
 
 
@@ -2287,6 +2286,14 @@ def ciso_college_detail_api(request, college_id: int):
     except College.DoesNotExist:
         return JsonResponse({"detail": "Not found"}, status=404)
 
+    if request.method == "GET":
+        return JsonResponse({
+            "id": str(obj.id),
+            "name": obj.name,
+            "short": obj.abbreviation or "",
+            "isActive": bool(obj.is_active),
+        })
+
     if request.method == "PATCH":
         data, jerr = _parse_json_body(request)
         if jerr:
@@ -2326,7 +2333,7 @@ def ciso_college_detail_api(request, college_id: int):
         try:
             log = ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.DELETED_COLLEGE,
-                user=admin.user if admin else None,
+                user=admin if admin else None,
                 details=[f"College: {college_name}"] if college_name else [],
             )
             print(f"[DEBUG] ActivityLog created: id={log.id}, event_type={log.event_type}, details={log.details}")
@@ -2440,6 +2447,15 @@ def ciso_department_detail_api(request, department_id: int):
     except Department.DoesNotExist:
         return JsonResponse({"detail": "Not found"}, status=404)
 
+    if request.method == "GET":
+        return JsonResponse({
+            "id": str(obj.id),
+            "collegeId": str(obj.college_id),
+            "name": obj.name,
+            "short": obj.abbreviation or "",
+            "isActive": bool(obj.is_active),
+        })
+
     if request.method == "PATCH":
         data, jerr = _parse_json_body(request)
         if jerr:
@@ -2489,7 +2505,7 @@ def ciso_department_detail_api(request, department_id: int):
             try:
                 ActivityLog.objects.create(
                     event_type=ActivityLog.EventType.DELETED_DEPARTMENT,
-                    user=admin.user if admin else None,
+                    user=admin if admin else None,
                     details=[f"Department: {dept_name}", f"College: {college_name}"],
                 )
             except Exception:
@@ -2498,7 +2514,7 @@ def ciso_department_detail_api(request, department_id: int):
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.DELETED_DEPARTMENT,
-                user=admin.user if admin else None,
+                user=admin if admin else None,
                 details=[f"Department: {dept_name}", f"College: {college_name}"],
             )
         except Exception:
@@ -2599,6 +2615,15 @@ def ciso_office_detail_api(request, office_id: int):
     except Office.DoesNotExist:
         return JsonResponse({"detail": "Not found"}, status=404)
 
+    if request.method == "GET":
+        return JsonResponse({
+            "id": str(obj.id),
+            "name": obj.name,
+            "short": obj.abbreviation or "",
+            "displayOrder": int(obj.display_order),
+            "isActive": bool(obj.is_active),
+        })
+
     if request.method == "PATCH":
         data, jerr = _parse_json_body(request)
         if jerr:
@@ -2645,7 +2670,7 @@ def ciso_office_detail_api(request, office_id: int):
             try:
                 ActivityLog.objects.create(
                     event_type=ActivityLog.EventType.DELETED_OFFICE,
-                    user=admin.user if admin else None,
+                    user=admin if admin else None,
                     details=[f"Office: {office_name}"],
                 )
             except Exception:
@@ -2654,7 +2679,7 @@ def ciso_office_detail_api(request, office_id: int):
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.DELETED_OFFICE,
-                user=admin.user if admin else None,
+                user=admin if admin else None,
                 details=[f"Office: {office_name}"],
             )
         except Exception:

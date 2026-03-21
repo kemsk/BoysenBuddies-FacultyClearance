@@ -118,25 +118,9 @@ async function apiJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   return (await r.json()) as T;
 }
 
-function postCISOActivityLog(payload: { event_type: string; details?: string[] }) {
-  fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
-    method: "POST",
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  })
-    .then((r) => {
-      if (r.ok) return;
-      r.text().catch(() => "");
-      // eslint-disable-next-line no-console
-      console.warn("CISO activity log POST failed", r.status);
-    })
-    .catch((e) => {
-      // eslint-disable-next-line no-console
-      console.warn("CISO activity log POST error", e);
-    });
+function postCISOActivityLog(_payload: { event_type: string; details?: string[] }) {
+  // Temporarily disabled on this page: no activity log POST from College & Office Configuration.
+  return;
 }
 
 function AddCollegeDialog(props: {
@@ -1205,6 +1189,7 @@ export default function CISOCollegeOfficeConfiguration() {
           categories={approverCategories}
           onCreate={(payload) => {
             (async () => {
+
               // Check for duplicate approver with same category and colleges
               const isDuplicate = approverFlow.some(existing => {
                 const categoryMatch = existing.category === payload.category;
@@ -1220,17 +1205,6 @@ export default function CISOCollegeOfficeConfiguration() {
               const addedCollegeNames = payload.collegeIds
                 .map((id) => colleges.find((c) => c.id === id)?.name)
                 .filter(Boolean);
-              const created = await apiJson<ApproverFlowItem>(
-                `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps${selectedTimelineId ? `?timeline_id=${selectedTimelineId}` : ''}`,
-                {
-                  method: "POST",
-                  body: JSON.stringify({
-                    category: payload.category,
-                    collegeIds: payload.collegeIds,
-                    order: approverFlow.length,
-                  }),
-                }
-              );
 
               postCISOActivityLog({
                 event_type: "added_to_approver_flow",
@@ -1239,7 +1213,18 @@ export default function CISOCollegeOfficeConfiguration() {
                   addedCollegeNames.length ? `Colleges: ${addedCollegeNames.join(", ")}` : "",
                 ].filter(Boolean),
               });
-              setApproverFlow((prev) => [...prev, created]);
+
+              // Only update local approverFlow; persistence happens when configuration is saved
+              setApproverFlow((prev) => [
+                ...prev,
+                {
+                  id: `temp-${Date.now()}-${prev.length}`,
+                  category: payload.category,
+                  collegeIds: payload.collegeIds,
+                  order: prev.length,
+                },
+              ]);
+
             })().catch(() => {
               // ignore; can be handled by UI later
             });
