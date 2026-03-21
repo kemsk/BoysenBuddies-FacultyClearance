@@ -80,6 +80,18 @@ type ApproverFlowItem = {
   order?: number;
 };
 
+type ClearanceTimeline = {
+  id: string;
+  name: string;
+  academicYearStart: string;
+  academicYearEnd: string;
+  term: string;
+  clearanceStartDate: string;
+  clearanceEndDate: string;
+  setAsActive: boolean;
+  createdAt: string;
+};
+
 type DraftDepartment = { name: string; short: string };
 
 const FALLBACK_APPROVER_CATEGORIES = [
@@ -106,8 +118,8 @@ async function apiJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   return (await r.json()) as T;
 }
 
-function postOVPHEActivityLog(payload: { event_type: string; details?: string[] }) {
-  fetch("/admin/xu-faculty-clearance/api/ovphe/activity-logs", {
+function postCISOActivityLog(payload: { event_type: string; details?: string[] }) {
+  fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
     method: "POST",
     credentials: "include",
     headers: {
@@ -115,15 +127,15 @@ function postOVPHEActivityLog(payload: { event_type: string; details?: string[] 
     },
     body: JSON.stringify(payload),
   })
-    .then(async (r) => {
+    .then((r) => {
       if (r.ok) return;
-      const text = await r.text().catch(() => "");
+      r.text().catch(() => "");
       // eslint-disable-next-line no-console
-      console.warn("OVPHE activity log POST failed", r.status, text);
+      console.warn("CISO activity log POST failed", r.status);
     })
     .catch((e) => {
       // eslint-disable-next-line no-console
-      console.warn("OVPHE activity log POST error", e);
+      console.warn("CISO activity log POST error", e);
     });
 }
 
@@ -602,6 +614,15 @@ export default function CISOCollegeOfficeConfiguration() {
   const [departments, setDepartments] = React.useState<DepartmentItem[]>([]);
   const [offices, setOffices] = React.useState<OfficeItem[]>([]);
   const [approverFlow, setApproverFlow] = React.useState<ApproverFlowItem[]>([]);
+  const [timelines, setTimelines] = React.useState<ClearanceTimeline[]>([]);
+  const [selectedTimelineId, setSelectedTimelineId] = React.useState<string>(() => {
+    // Load saved timeline from localStorage on initial load
+    return localStorage.getItem('ciso-selected-timeline') || "";
+  });
+  const [isConfigurationLocked, setIsConfigurationLocked] = React.useState(false);
+  const [checkbox1Checked, setCheckbox1Checked] = React.useState(false);
+  const [checkbox2Checked, setCheckbox2Checked] = React.useState(false);
+  const [isSaving, setIsSaving] = React.useState(false);
 
   const [selectedCollegeId, setSelectedCollegeId] = React.useState<string>("");
 
@@ -628,7 +649,26 @@ export default function CISOCollegeOfficeConfiguration() {
   >({ open: false });
 
   React.useEffect(() => {
-    fetch("/admin/xu-faculty-clearance/api/ovphe/org-structure")
+    // Fetch timelines first
+    fetch("/admin/xu-faculty-clearance/api/ciso/clearance-timeline")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { items: ClearanceTimeline[] }) => {
+        const timelineItems = data.items ?? [];
+        // Sort timelines alphabetically by name
+        const sortedTimelines = timelineItems.sort((a, b) => a.name.localeCompare(b.name));
+        setTimelines(sortedTimelines);
+        
+        // Auto-select the first timeline if available
+        if (sortedTimelines.length > 0 && !selectedTimelineId) {
+          setSelectedTimelineId(sortedTimelines[0].id);
+        }
+      })
+      .catch(() => {
+        setTimelines([]);
+      });
+
+    // Fetch org structure
+    fetch("/admin/xu-faculty-clearance/api/ciso/org-structure")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: { colleges: CollegeItem[]; departments: DepartmentItem[]; offices: OfficeItem[] }) => {
         const initialColleges = data.colleges ?? [];
@@ -646,8 +686,15 @@ export default function CISOCollegeOfficeConfiguration() {
         setOffices([]);
         setSelectedCollegeId("");
       });
+  }, []);
 
-    fetch("/admin/xu-faculty-clearance/api/ovphe/approver-flow")
+  // Fetch approver flow when timeline changes
+  React.useEffect(() => {
+    const approverFlowUrl = selectedTimelineId 
+      ? `/admin/xu-faculty-clearance/api/ciso/approver-flow?timeline_id=${selectedTimelineId}`
+      : "/admin/xu-faculty-clearance/api/ciso/approver-flow";
+    
+    fetch(approverFlowUrl)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: { steps: ApproverFlowItem[] }) => {
         const steps = (data.steps ?? []).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -656,12 +703,26 @@ export default function CISOCollegeOfficeConfiguration() {
       .catch(() => {
         setApproverFlow([]);
       });
-  }, []);
+  }, [selectedTimelineId]);
+
+  // Check if selected timeline is active
+  React.useEffect(() => {
+    const selectedTimeline = timelines.find(t => t.id === selectedTimelineId);
+    setIsConfigurationLocked(selectedTimeline?.setAsActive ?? false);
+  }, [selectedTimelineId, timelines]);
 
   const approverCategories = React.useMemo(() => {
     const raw = approverFlow.map((s) => (s.category ?? "").trim()).filter(Boolean);
     const unique = Array.from(new Set(raw));
-    return unique.length ? unique : FALLBACK_APPROVER_CATEGORIES;
+    // Always include fallback categories to ensure all options are available
+    const allCategories = [...FALLBACK_APPROVER_CATEGORIES];
+    // Add any custom categories from the current approver flow
+    unique.forEach(category => {
+      if (!allCategories.includes(category)) {
+        allCategories.push(category);
+      }
+    });
+    return allCategories;
   }, [approverFlow]);
 
   const filteredDepartments = React.useMemo(
@@ -693,6 +754,44 @@ export default function CISOCollegeOfficeConfiguration() {
     () => (editingApproverId ? approverFlow.find((a) => a.id === editingApproverId) : undefined),
     [approverFlow, editingApproverId]
   );
+
+  const handleSaveConfiguration = React.useCallback(async () => {
+    if (!selectedTimelineId || !checkbox1Checked || !checkbox2Checked) return;
+    
+    setIsSaving(true);
+    try {
+      // Save configuration for the selected timeline
+      const response = await fetch(`/admin/xu-faculty-clearance/api/ciso/college-office-configuration?timeline_id=${selectedTimelineId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          timelineId: selectedTimelineId,
+          colleges,
+          departments,
+          offices,
+          approverFlow,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save configuration');
+      }
+      
+      // Show success message
+      alert('Configuration saved successfully!');
+      
+      // Reset checkboxes after successful save
+      setCheckbox1Checked(false);
+      setCheckbox2Checked(false);
+    } catch (error) {
+      console.error('Error saving configuration:', error);
+      alert('Failed to save configuration. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [selectedTimelineId, checkbox1Checked, checkbox2Checked, colleges, departments, offices, approverFlow]);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -734,22 +833,39 @@ export default function CISOCollegeOfficeConfiguration() {
           <div className="w-full bg-white rounded-lg border border-gray-200 p-6">
             <div className="text-black font-bold">Choose Semester</div>
             <div className="mt-3">
-              <Select>
-                <SelectTrigger >
-                  <SelectValue placeholder="Select semester" />
+              <Select value={selectedTimelineId} onValueChange={(value) => {
+                setSelectedTimelineId(value);
+                localStorage.setItem('ciso-selected-timeline', value);
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select clearance timeline" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">1st Semester</SelectItem>
-                  <SelectItem value="2">2nd Semester</SelectItem>
+                  {timelines.map((timeline) => (
+                    <SelectItem key={timeline.id} value={timeline.id}>
+                      {timeline.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="mt-3">
-              <Button variant="default" className="w-full font-bold">
-                Save Configuration
-              </Button>
-
-            </div>
+            {selectedTimelineId && (
+              <div className="mt-2">
+                {(() => {
+                  const timeline = timelines.find(t => t.id === selectedTimelineId);
+                  if (!timeline) return null;
+                  return (
+                    <div className="text-sm text-gray-600">
+                      <div>Academic Year: {timeline.academicYearStart}-{timeline.academicYearEnd}</div>
+                      <div>Clearance Period: {timeline.clearanceStartDate} to {timeline.clearanceEndDate}</div>
+                      <div className={`mt-1 font-semibold ${timeline.setAsActive ? 'text-red-600' : 'text-green-600'}`}>
+                        Status: {timeline.setAsActive ? 'Active (Configuration Locked)' : 'Inactive'}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </div>
           
           <div className="w-full space-y-5">
@@ -1034,14 +1150,14 @@ export default function CISOCollegeOfficeConfiguration() {
           onCreate={({ college, departments: newDepartments }) => {
             (async () => {
               const created = await apiJson<CollegeItem>(
-                "/admin/xu-faculty-clearance/api/ovphe/colleges",
+                "/admin/xu-faculty-clearance/api/ciso/colleges",
                 {
                   method: "POST",
                   body: JSON.stringify({ name: college.name, short: college.short }),
                 }
               );
 
-              postOVPHEActivityLog({
+              postCISOActivityLog({
                 event_type: "created_college",
                 details: created?.name ? [`College: ${created.name}`] : [],
               });
@@ -1053,7 +1169,7 @@ export default function CISOCollegeOfficeConfiguration() {
               if (deptDrafts.length) {
                 const createdDepts = await Promise.all(
                   deptDrafts.map((d) =>
-                    apiJson<DepartmentItem>("/admin/xu-faculty-clearance/api/ovphe/departments", {
+                    apiJson<DepartmentItem>("/admin/xu-faculty-clearance/api/ciso/departments", {
                       method: "POST",
                       body: JSON.stringify({
                         collegeId: created.id,
@@ -1064,7 +1180,7 @@ export default function CISOCollegeOfficeConfiguration() {
                   )
                 );
                 for (const dept of createdDepts) {
-                  postOVPHEActivityLog({
+                  postCISOActivityLog({
                     event_type: "created_department",
                     details: [
                       dept?.name ? `Department: ${dept.name}` : "",
@@ -1087,11 +1203,23 @@ export default function CISOCollegeOfficeConfiguration() {
           categories={approverCategories}
           onCreate={(payload) => {
             (async () => {
+              // Check for duplicate approver with same category and colleges
+              const isDuplicate = approverFlow.some(existing => {
+                const categoryMatch = existing.category === payload.category;
+                const collegeMatch = JSON.stringify(existing.collegeIds.sort()) === JSON.stringify(payload.collegeIds.sort());
+                return categoryMatch && collegeMatch;
+              });
+              
+              if (isDuplicate) {
+                alert('An approver with this category and college selection already exists!');
+                return;
+              }
+              
               const addedCollegeNames = payload.collegeIds
                 .map((id) => colleges.find((c) => c.id === id)?.name)
                 .filter(Boolean);
               const created = await apiJson<ApproverFlowItem>(
-                "/admin/xu-faculty-clearance/api/ovphe/approver-flow/steps",
+                `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps${selectedTimelineId ? `?timeline_id=${selectedTimelineId}` : ''}`,
                 {
                   method: "POST",
                   body: JSON.stringify({
@@ -1102,7 +1230,7 @@ export default function CISOCollegeOfficeConfiguration() {
                 }
               );
 
-              postOVPHEActivityLog({
+              postCISOActivityLog({
                 event_type: "added_to_approver_flow",
                 details: [
                   payload.category ? `Category: ${payload.category}` : "",
@@ -1124,7 +1252,7 @@ export default function CISOCollegeOfficeConfiguration() {
             if (!selectedCollegeId) return;
             (async () => {
               const created = await apiJson<DepartmentItem>(
-                "/admin/xu-faculty-clearance/api/ovphe/departments",
+                "/admin/xu-faculty-clearance/api/ciso/departments",
                 {
                   method: "POST",
                   body: JSON.stringify({
@@ -1135,7 +1263,7 @@ export default function CISOCollegeOfficeConfiguration() {
                 }
               );
 
-              postOVPHEActivityLog({
+              postCISOActivityLog({
                 event_type: "created_department",
                 details: [
                   created?.name ? `Department: ${created.name}` : "",
@@ -1155,14 +1283,14 @@ export default function CISOCollegeOfficeConfiguration() {
           onCreate={(payload) => {
             (async () => {
               const created = await apiJson<OfficeItem>(
-                "/admin/xu-faculty-clearance/api/ovphe/offices",
+                "/admin/xu-faculty-clearance/api/ciso/offices",
                 {
                   method: "POST",
                   body: JSON.stringify({ name: payload.name, short: payload.short }),
                 }
               );
 
-              postOVPHEActivityLog({
+              postCISOActivityLog({
                 event_type: "created_office",
                 details: created?.name ? [`Office: ${created.name}`] : [],
               });
@@ -1192,14 +1320,14 @@ export default function CISOCollegeOfficeConfiguration() {
             (async () => {
               const previousName = colleges.find((c) => c.id === editingCollegeId)?.name ?? "";
               const updated = await apiJson<CollegeItem>(
-                `/admin/xu-faculty-clearance/api/ovphe/colleges/${editingCollegeId}`,
+                `/admin/xu-faculty-clearance/api/ciso/colleges/${editingCollegeId}`,
                 {
                   method: "PATCH",
                   body: JSON.stringify({ name: payload.name, short: payload.short }),
                 }
               );
 
-              postOVPHEActivityLog({
+              postCISOActivityLog({
                 event_type: "edited_college",
                 details: [
                   previousName ? `College: ${previousName}` : "",
@@ -1234,14 +1362,14 @@ export default function CISOCollegeOfficeConfiguration() {
               const prevDeptName = prevDept?.name ?? "";
               const prevCollegeName = colleges.find((c) => c.id === prevDept?.collegeId)?.name ?? "";
               const updated = await apiJson<DepartmentItem>(
-                `/admin/xu-faculty-clearance/api/ovphe/departments/${editingDepartmentId}`,
+                `/admin/xu-faculty-clearance/api/ciso/departments/${editingDepartmentId}`,
                 {
                   method: "PATCH",
                   body: JSON.stringify({ name: payload.name, short: payload.short }),
                 }
               );
 
-              postOVPHEActivityLog({
+              postCISOActivityLog({
                 event_type: "edited_department",
                 details: [
                   prevDeptName ? `Department: ${prevDeptName}` : "",
@@ -1277,14 +1405,14 @@ export default function CISOCollegeOfficeConfiguration() {
             (async () => {
               const prevOfficeName = offices.find((o) => o.id === editingOfficeId)?.name ?? "";
               const updated = await apiJson<OfficeItem>(
-                `/admin/xu-faculty-clearance/api/ovphe/offices/${editingOfficeId}`,
+                `/admin/xu-faculty-clearance/api/ciso/offices/${editingOfficeId}`,
                 {
                   method: "PATCH",
                   body: JSON.stringify({ name: payload.name, short: payload.short }),
                 }
               );
 
-              postOVPHEActivityLog({
+              postCISOActivityLog({
                 event_type: "edited_office",
                 details: [
                   prevOfficeName ? `Office: ${prevOfficeName}` : "",
@@ -1323,14 +1451,14 @@ export default function CISOCollegeOfficeConfiguration() {
                 .map((id) => colleges.find((c) => c.id === id)?.name)
                 .filter(Boolean);
               const updated = await apiJson<ApproverFlowItem>(
-                `/admin/xu-faculty-clearance/api/ovphe/approver-flow/steps/${editingApproverId}`,
+                `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps/${editingApproverId}`,
                 {
                   method: "PATCH",
                   body: JSON.stringify({ category: payload.category, collegeIds: payload.collegeIds }),
                 }
               );
 
-              postOVPHEActivityLog({
+              postCISOActivityLog({
                 event_type: "edited_approver_flow",
                 details: [
                   prevCategory ? `Category: ${prevCategory}` : "",
@@ -1353,14 +1481,14 @@ export default function CISOCollegeOfficeConfiguration() {
             (async () => {
               setApproverFlow(next);
               await apiJson<{ ok: boolean }>(
-                "/admin/xu-faculty-clearance/api/ovphe/approver-flow/order",
+                "/admin/xu-faculty-clearance/api/ciso/approver-flow/order",
                 {
                   method: "PUT",
                   body: JSON.stringify({ stepIds: next.map((s) => s.id) }),
                 }
               );
 
-              postOVPHEActivityLog({
+              postCISOActivityLog({
                 event_type: "edited_approver_flow",
                 details: ["Updated approver flow."],
               });
@@ -1402,12 +1530,12 @@ export default function CISOCollegeOfficeConfiguration() {
 
                     if (confirmDelete.type === "college") {
                       (async () => {
-                        postOVPHEActivityLog({
+                        postCISOActivityLog({
                           event_type: "deleted_college",
                           details: confirmDelete.label ? [`College: ${confirmDelete.label}`] : [],
                         });
                         await apiJson(
-                          `/admin/xu-faculty-clearance/api/ovphe/colleges/${confirmDelete.id}`,
+                          `/admin/xu-faculty-clearance/api/ciso/colleges/${confirmDelete.id}`,
                           { method: "DELETE" }
                         );
                         setColleges((prev) => prev.filter((c) => c.id !== confirmDelete.id));
@@ -1420,12 +1548,12 @@ export default function CISOCollegeOfficeConfiguration() {
 
                     if (confirmDelete.type === "department") {
                       (async () => {
-                        postOVPHEActivityLog({
+                        postCISOActivityLog({
                           event_type: "deleted_department",
                           details: confirmDelete.label ? [`Department: ${confirmDelete.label}`] : [],
                         });
                         await apiJson(
-                          `/admin/xu-faculty-clearance/api/ovphe/departments/${confirmDelete.id}`,
+                          `/admin/xu-faculty-clearance/api/ciso/departments/${confirmDelete.id}`,
                           { method: "DELETE" }
                         );
                         setDepartments((prev) => prev.filter((d) => d.id !== confirmDelete.id));
@@ -1436,12 +1564,12 @@ export default function CISOCollegeOfficeConfiguration() {
 
                     if (confirmDelete.type === "office") {
                       (async () => {
-                        postOVPHEActivityLog({
+                        postCISOActivityLog({
                           event_type: "deleted_office",
                           details: confirmDelete.label ? [`Office: ${confirmDelete.label}`] : [],
                         });
                         await apiJson(
-                          `/admin/xu-faculty-clearance/api/ovphe/offices/${confirmDelete.id}`,
+                          `/admin/xu-faculty-clearance/api/ciso/offices/${confirmDelete.id}`,
                           { method: "DELETE" }
                         );
                         setOffices((prev) => prev.filter((o) => o.id !== confirmDelete.id));
@@ -1452,12 +1580,12 @@ export default function CISOCollegeOfficeConfiguration() {
 
                     if (confirmDelete.type === "approver") {
                       (async () => {
-                        postOVPHEActivityLog({
+                        postCISOActivityLog({
                           event_type: "removed_from_approver_flow",
                           details: confirmDelete.label ? [`Approver: ${confirmDelete.label}`] : [],
                         });
                         await apiJson(
-                          `/admin/xu-faculty-clearance/api/ovphe/approver-flow/steps/${confirmDelete.id}`,
+                          `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps/${confirmDelete.id}`,
                           { method: "DELETE" }
                         );
                         setApproverFlow((prev) => prev.filter((a) => a.id !== confirmDelete.id));
@@ -1488,18 +1616,38 @@ export default function CISOCollegeOfficeConfiguration() {
 
             <div className="space-y-3">
               <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
-                <Checkbox variant="gray"> </Checkbox> 
+                <Checkbox 
+                  variant="gray" 
+                  checked={checkbox1Checked}
+                  onCheckedChange={(checked) => setCheckbox1Checked(checked === true)}
+                  disabled={isConfigurationLocked}
+                /> 
                 <label htmlFor="checkbox1" className="text-sm text-gray-700"><span className="font-bold">I agree</span> that all Colleges, Departments, and Offices that are necessary to the Faculty Clearance Process are present and are readily configured in this page.</label>
               </div>
               <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
-                <Checkbox variant="gray"> </Checkbox> 
-                <label htmlFor="checkbox2" className="text-sm text-gray-700"><span className="font-bold">I understand</span> that once a Clearance Timeline is in an “Active” state, I cannot make any changes to the configuration.</label>
+                <Checkbox 
+                  variant="gray" 
+                  checked={checkbox2Checked}
+                  onCheckedChange={(checked) => setCheckbox2Checked(checked === true)}
+                  disabled={isConfigurationLocked}
+                /> 
+                <label htmlFor="checkbox2" className="text-sm text-gray-700"><span className="font-bold">I understand</span> that once a Clearance Timeline is in an "Active" state, I cannot make any changes to the configuration.</label>
               </div>
             </div>
             <div className="mt-3">
-              <Button variant="default" className="w-full font-bold">
-                I Agree and Understand
+              <Button 
+                variant="default" 
+                className="w-full font-bold"
+                disabled={!checkbox1Checked || !checkbox2Checked || isSaving || isConfigurationLocked}
+                onClick={handleSaveConfiguration}
+              >
+                {isSaving ? 'Saving...' : 'I Agree and Understand'}
               </Button>
+              {isConfigurationLocked && (
+                <div className="mt-2 text-sm text-red-600 text-center">
+                  Configuration is locked because the timeline is active.
+                </div>
+              )}
             </div>
           </div>
         </div>
