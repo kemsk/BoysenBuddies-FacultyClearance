@@ -707,7 +707,7 @@ export default function CISOCollegeOfficeConfiguration() {
 
   // Check if selected timeline is active
   React.useEffect(() => {
-    const selectedTimeline = timelines.find(t => t.id === selectedTimelineId);
+    const selectedTimeline = timelines.find((t) => t.id === selectedTimelineId);
     setIsConfigurationLocked(selectedTimeline?.setAsActive ?? false);
   }, [selectedTimelineId, timelines]);
 
@@ -776,7 +776,9 @@ export default function CISOCollegeOfficeConfiguration() {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to save configuration');
+        const errorText = await response.text();
+        console.error('Save configuration error:', errorText);
+        throw new Error(`Failed to save configuration: ${errorText}`);
       }
       
       // Show success message
@@ -1579,19 +1581,12 @@ export default function CISOCollegeOfficeConfiguration() {
                     }
 
                     if (confirmDelete.type === "approver") {
-                      (async () => {
-                        postCISOActivityLog({
-                          event_type: "removed_from_approver_flow",
-                          details: confirmDelete.label ? [`Approver: ${confirmDelete.label}`] : [],
-                        });
-                        await apiJson(
-                          `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps/${confirmDelete.id}`,
-                          { method: "DELETE" }
-                        );
-                        setApproverFlow((prev) => prev.filter((a) => a.id !== confirmDelete.id));
-                      })().catch(() => {
-                        // ignore; can be handled by UI later
+                      postCISOActivityLog({
+                        event_type: "DELETED_APPROVER_FLOW_STEP",
+                        details: confirmDelete.label ? [`Approver: ${confirmDelete.label}`] : [],
                       });
+                      // Only update local approverFlow; persistence happens when configuration is saved
+                      setApproverFlow((prev) => prev.filter((a) => a.id !== confirmDelete.id));
                     }
 
                     setConfirmDelete({ open: false });

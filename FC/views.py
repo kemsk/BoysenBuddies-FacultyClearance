@@ -2642,7 +2642,6 @@ def ciso_office_detail_api(request, office_id: int):
             if obj.is_active:
                 obj.is_active = False
                 obj.save(update_fields=["is_active"])
-                ApproverFlowStep.objects.filter(office=obj).update(office=None)
             try:
                 ActivityLog.objects.create(
                     event_type=ActivityLog.EventType.DELETED_OFFICE,
@@ -4556,7 +4555,7 @@ def ciso_college_office_configuration_api(request):
             
             try:
                 timeline = ClearanceTimeline.objects.get(id=timeline_id)
-                if timeline.setAsActive:
+                if timeline.is_active:
                     return JsonResponse({"detail": "Cannot save configuration for active timeline"}, status=400)
             except ClearanceTimeline.DoesNotExist:
                 return JsonResponse({"detail": "Timeline not found"}, status=400)
@@ -4572,13 +4571,16 @@ def ciso_college_office_configuration_api(request):
             config.steps.all().delete()
             approver_flow_data = data.get('approverFlow', [])
             for i, step_data in enumerate(approver_flow_data):
-                ApproverFlowStep.objects.create(
+                step = ApproverFlowStep.objects.create(
                     config=config,
                     category=step_data.get('category', ''),
                     order=i,
                     office_id=step_data.get('officeId') if step_data.get('officeId') else None,
-                    created_by=admin
                 )
+                # Add college associations if provided
+                college_ids = step_data.get('collegeIds', [])
+                if college_ids:
+                    step.colleges.set(College.objects.filter(pk__in=college_ids, is_active=True))
             
             return JsonResponse({"message": "Configuration saved successfully"})
         except json.JSONDecodeError:
