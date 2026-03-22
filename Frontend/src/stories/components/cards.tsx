@@ -4093,6 +4093,12 @@ export type FacultyDataDumpCardProps = {
 
   accept?: string;
 
+  semesters?: { id: string; label: string }[];
+
+  selectedSemesterId?: string;
+
+  onSemesterChange?: (id: string) => void;
+
 };
 
 
@@ -4111,9 +4117,19 @@ export function FacultyDataDumpCard({
 
   accept = ".csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 
+  semesters,
+
+  selectedSemesterId,
+
+  onSemesterChange,
+
 }: FacultyDataDumpCardProps) {
 
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const [internalSemesterId, setInternalSemesterId] = React.useState("");
+
+  const currentSemesterId = selectedSemesterId ?? internalSemesterId;
 
 
 
@@ -4138,16 +4154,43 @@ export function FacultyDataDumpCard({
         <div className="text-center text-base font-bold text-foreground">{title}</div>
 
         <div className="mt-4">
-          <Select>
+
+          <Select
+
+            value={currentSemesterId}
+
+            onValueChange={(val) => {
+
+              setInternalSemesterId(val);
+
+              onSemesterChange?.(val);
+
+            }}
+
+          >
+
             <SelectTrigger className="w-full">
+
               <SelectValue placeholder="Select Semester" />
+
             </SelectTrigger>
+
             <SelectContent>
-              <SelectItem value="first">First Semester</SelectItem>
-              <SelectItem value="second">Second Semester</SelectItem>
-              <SelectItem value="third">Third Semester</SelectItem>
+
+              {(semesters ?? []).map((s) => (
+
+                <SelectItem key={s.id} value={s.id}>
+
+                  {s.label}
+
+                </SelectItem>
+
+              ))}
+
             </SelectContent>
+
           </Select>
+
         </div>
 
 

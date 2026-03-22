@@ -1656,7 +1656,7 @@ def ciso_faculty_dump_import_api(request):
             errors.append({"row": idx, "message": f"Error creating faculty: {str(e)}"})
             skipped_count += 1
 
-    # After processing rows, save the uploaded CSV to disk and create/update
+    # After processing rows, save the uploaded CSV to disk and create
     # a FacultyDumpArchive entry tied to the selected clearance timeline.
     try:
         import os
@@ -1666,9 +1666,12 @@ def ciso_faculty_dump_import_api(request):
         dumps_dir = os.path.join(media_root, "faculty_dumps")
         os.makedirs(dumps_dir, exist_ok=True)
 
-        # Build a deterministic-ish filename: timeline-<id>-<original-name>
+        # Build a unique filename for each import so that multiple dumps for
+        # the same timeline create distinct archive entries and do not
+        # overwrite the previous file on disk.
         safe_name = upload.name.replace("/", "_").replace("\\", "_")
-        file_name = f"timeline-{clearance_timeline.id}-{safe_name}"
+        timestamp = timezone.localtime().strftime("%Y%m%d%H%M%S")
+        file_name = f"timeline-{clearance_timeline.id}-{timestamp}-{safe_name}"
         file_path = os.path.join(dumps_dir, file_name)
 
         with open(file_path, "wb") as f:
@@ -1681,15 +1684,13 @@ def ciso_faculty_dump_import_api(request):
         # Store relative path from MEDIA_ROOT
         relative_path = os.path.relpath(file_path, media_root) if media_root else file_name
 
-        FacultyDumpArchive.objects.update_or_create(
+        FacultyDumpArchive.objects.create(
             clearance_timeline=clearance_timeline,
-            defaults={
-                "academic_year_start": clearance_timeline.academic_year_start,
-                "academic_year_end": clearance_timeline.academic_year_end,
-                "term": clearance_timeline.term,
-                "dump_file_path": relative_path,
-                "dump_file_size": size_label,
-            },
+            academic_year_start=clearance_timeline.academic_year_start,
+            academic_year_end=clearance_timeline.academic_year_end,
+            term=clearance_timeline.term,
+            dump_file_path=relative_path,
+            dump_file_size=size_label,
         )
     except Exception as e:
         errors.append({"row": 0, "message": f"Error saving dump archive: {str(e)}"})
@@ -4491,7 +4492,49 @@ def ciso_college_office_configuration_api(request):
     return JsonResponse({"configuration": configuration})
 
 def ciso_clearance_timeline_api(request):
-    return JsonResponse({"timelines": []})
+    """Return clearance timelines for CISO semester selection.
+
+    Response shape is aligned with the CISO Faculty Data Dump page, which
+    expects either a "timelines" or "items" array of objects with at least:
+    - id
+    - academicYearStart / academicYearEnd
+    - term (human-readable label)
+    - clearanceStartDate / clearanceEndDate (ISO strings, optional)
+    - isActive (bool)
+    """
+
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    # Require an authenticated CISO user
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    if not user.userrole_set.filter(role__name="CISO", is_active=True).exists():
+        return JsonResponse({"detail": "Forbidden"}, status=403)
+
+    timelines = (
+        ClearanceTimeline.objects.all()
+        .order_by("-is_active", "-academic_year_start", "-academic_year_end", "-id")
+    )
+
+    items: list[dict] = []
+    for t in timelines:
+        items.append(
+            {
+                "id": str(t.id),
+                "academicYearStart": t.academic_year_start,
+                "academicYearEnd": t.academic_year_end,
+                "term": _term_to_label(t.term),
+                "clearanceStartDate": t.clearance_start_date.isoformat() if t.clearance_start_date else "",
+                "clearanceEndDate": t.clearance_end_date.isoformat() if t.clearance_end_date else "",
+                "isActive": bool(t.is_active),
+                "createdAt": _format_timestamp(t.created_at),
+            }
+        )
+
+    return JsonResponse({"timelines": items})
 
 def ciso_archived_clearance_api(request):
     return JsonResponse({"items": []})
