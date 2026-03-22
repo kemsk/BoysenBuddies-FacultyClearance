@@ -4539,6 +4539,100 @@ export function ViewArchivedClearanceCard({
     );
   }
 
+export type ViewArchivedFacultyCardProps = {
+  className?: string;
+  academicYear: string;
+  semester: string;
+  clearancePeriod: string;
+  archivedDate: string;
+  csvFileName: string;
+  csvFileSize: string;
+  totalFaculty?: string;
+  completedClearances?: string;
+  onDownloadCSV?: () => void;
+  onIconClick?: () => void;
+};
+
+export function ViewArchivedFacultyCard({
+  className,
+  academicYear,
+  semester,
+  clearancePeriod,
+  archivedDate,
+  csvFileName,
+  csvFileSize,
+  totalFaculty = "",
+  completedClearances = "",
+  onDownloadCSV,
+  onIconClick,
+}: ViewArchivedFacultyCardProps) {
+  return (
+    <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
+      <div className="text-center text-xl font-bold text-foreground flex items-center justify-between p-6">
+        <div>Archived Faculty</div>
+        <Button
+          variant="icon"
+          className="ml-4"
+          size="icon"
+          onClick={onDownloadCSV ?? onIconClick}
+          disabled={!onDownloadCSV}
+        >
+          <img src="/PrimaryDownloadIcon.png" alt="Download CSV" className="h-6 w-6" />
+        </Button>
+      </div>
+
+      <Divider className="bg-foreground " />
+
+      <div className="p-6">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Academic Year</div>
+          <div className="text-sm text-black text-left break-words">{academicYear}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Semester</div>
+          <div className="text-sm text-black text-left break-words">{semester}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Clearance Period</div>
+          <div className="text-sm text-black text-left break-words">{clearancePeriod}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Last Update</div>
+          <div className="text-sm text-black text-left break-words">{archivedDate}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Archived</div>
+          <div className="text-sm text-black text-left break-words">{archivedDate}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Faculty CSV Dump</div>
+          <div className="text-sm text-black text-left break-words">{csvFileName}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Size</div>
+          <div className="text-sm text-black text-left break-words">{csvFileSize}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Total Faculty</div>
+          <div className="text-sm text-black text-left break-words">{totalFaculty}</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="text-md font-bold text-foreground">Completed Clearances</div>
+          <div className="text-sm text-black text-left break-words">{completedClearances}</div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export type SystemUser = {
   id: string;
   name: string;

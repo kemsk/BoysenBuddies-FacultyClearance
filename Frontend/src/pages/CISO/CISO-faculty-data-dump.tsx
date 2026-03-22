@@ -21,6 +21,46 @@ import * as React from "react";
 export default function CISOFacultyDataDump() {
   const navigate = useNavigate();
   const [busy, setBusy] = React.useState(false);
+  const [timelines, setTimelines] = React.useState<{ id: string; label: string }[]>([]);
+  const [selectedTimelineId, setSelectedTimelineId] = React.useState("");
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function loadTimelines() {
+      try {
+        const res = await fetch("/admin/xu-faculty-clearance/api/ciso/clearance-timeline");
+        if (!res.ok) {
+          return;
+        }
+        const data = await res.json().catch(() => null);
+        const raw = (data && (data.timelines || data.items)) || [];
+        if (!Array.isArray(raw)) return;
+
+        const options = raw.map((t: any) => {
+          const id = String(t.id ?? "");
+          const start = t.academicYearStart ?? t.startYear ?? t.academic_year_start;
+          const end = t.academicYearEnd ?? t.endYear ?? t.academic_year_end;
+          const sem = t.semester ?? t.term ?? "";
+          const ay = start && end ? `${start} - ${end}` : "";
+          const label = ay && sem ? `${ay} • ${sem}` : sem || ay || id;
+          return { id, label };
+        }).filter((opt: { id: string }) => !!opt.id);
+
+        if (!cancelled) {
+          setTimelines(options);
+        }
+      } catch {
+        // ignore; page still works but user must rely on backend validation
+      }
+    }
+
+    loadTimelines();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -58,14 +98,35 @@ export default function CISOFacultyDataDump() {
         </div>
        
        <div className="mt-2 space-y-3">
+        <div className="max-w-sm mb-4">
+          <label className="block text-sm font-bold text-foreground mb-1">Semester</label>
+          <select
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            value={selectedTimelineId}
+            onChange={(e) => setSelectedTimelineId(e.target.value)}
+          >
+            <option value="">Select semester based on Clearance Timeline</option>
+            {timelines.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <FacultyDataDumpCard
          accept=".csv,text/csv"
           onFileSelected={async (file) => {
             if (busy) return;
+            if (!selectedTimelineId) {
+              alert("Please select a semester based on an existing clearance timeline before importing the faculty CSV.");
+              return;
+            }
             setBusy(true);
             try {
               const formData = new FormData();
               formData.append("file", file);
+              formData.append("clearance_timeline_id", selectedTimelineId);
 
               const res = await fetch("/admin/xu-faculty-clearance/api/ciso/faculty-dump/import", {
                 method: "POST",

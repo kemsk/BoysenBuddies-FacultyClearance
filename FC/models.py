@@ -497,6 +497,23 @@ class SystemAnalytics(models.Model):
         return str(self.pk)
 
 
+class FacultyDumpArchive(models.Model):
+    clearance_timeline = models.ForeignKey(ClearanceTimeline, on_delete=models.CASCADE, related_name="faculty_dumps")
+    academic_year_start = models.IntegerField()
+    academic_year_end = models.IntegerField()
+    term = models.CharField(max_length=20, choices=Clearance.Term.choices)
+    dump_file_path = models.CharField(max_length=500)
+    dump_file_size = models.CharField(max_length=50, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return f"Faculty dump {self.academic_year_start}-{self.academic_year_end} {self.term}"
+
+
 class Notification(models.Model):
     class Status(models.TextChoices):
         APPROVED = "approved", "approved"

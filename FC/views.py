@@ -1470,6 +1470,36 @@ def ciso_faculty_dump_import_api(request):
     if request.method != "POST":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
+    # Validate clearance timeline / semester selection.
+    # Primary path: use explicit clearance_timeline_id coming from the
+    # frontend. If it is missing (e.g., older bundle), fall back to the
+    # single active ClearanceTimeline if one exists.
+    timeline_id = (request.POST.get("clearance_timeline_id") or "").strip()
+
+    clearance_timeline: ClearanceTimeline | None = None
+    if timeline_id:
+        try:
+            clearance_timeline = ClearanceTimeline.objects.get(id=timeline_id)
+        except ClearanceTimeline.DoesNotExist:
+            return JsonResponse(
+                {"detail": "Selected semester does not exist in the current clearance timelines."},
+                status=400,
+            )
+    else:
+        # Graceful fallback: use the active timeline, if there is one.
+        clearance_timeline = (
+            ClearanceTimeline.objects.filter(is_active=True)
+            .order_by("-academic_year_start", "-academic_year_end", "-id")
+            .first()
+        )
+        if not clearance_timeline:
+            return JsonResponse(
+                {
+                    "detail": "Missing clearance_timeline_id and no active clearance timeline found; please configure a clearance timeline first.",
+                },
+                status=400,
+            )
+
     upload = request.FILES.get("file")
     if not upload:
         return JsonResponse({"detail": "Missing file"}, status=400)
@@ -1625,6 +1655,44 @@ def ciso_faculty_dump_import_api(request):
         except Exception as e:
             errors.append({"row": idx, "message": f"Error creating faculty: {str(e)}"})
             skipped_count += 1
+
+    # After processing rows, save the uploaded CSV to disk and create/update
+    # a FacultyDumpArchive entry tied to the selected clearance timeline.
+    try:
+        import os
+        from django.conf import settings
+
+        media_root = getattr(settings, "MEDIA_ROOT", "") or ""
+        dumps_dir = os.path.join(media_root, "faculty_dumps")
+        os.makedirs(dumps_dir, exist_ok=True)
+
+        # Build a deterministic-ish filename: timeline-<id>-<original-name>
+        safe_name = upload.name.replace("/", "_").replace("\\", "_")
+        file_name = f"timeline-{clearance_timeline.id}-{safe_name}"
+        file_path = os.path.join(dumps_dir, file_name)
+
+        with open(file_path, "wb") as f:
+            f.write(raw)
+
+        size_bytes = os.path.getsize(file_path)
+        size_mb = size_bytes / (1024 * 1024) if size_bytes else 0
+        size_label = f"{size_mb:.0f} MB" if size_mb >= 1 else f"{size_bytes} B"
+
+        # Store relative path from MEDIA_ROOT
+        relative_path = os.path.relpath(file_path, media_root) if media_root else file_name
+
+        FacultyDumpArchive.objects.update_or_create(
+            clearance_timeline=clearance_timeline,
+            defaults={
+                "academic_year_start": clearance_timeline.academic_year_start,
+                "academic_year_end": clearance_timeline.academic_year_end,
+                "term": clearance_timeline.term,
+                "dump_file_path": relative_path,
+                "dump_file_size": size_label,
+            },
+        )
+    except Exception as e:
+        errors.append({"row": 0, "message": f"Error saving dump archive: {str(e)}"})
 
     return JsonResponse(
         {
@@ -4444,65 +4512,41 @@ def ciso_archived_faculty_api(request):
     if not user.userrole_set.filter(role__name='CISO', is_active=True).exists():
         return JsonResponse({"detail": "Forbidden"}, status=403)
 
-    # Get archived clearances with faculty data
-    archived_clearances = ArchivedClearance.objects.select_related(
-        'faculty', 
-        'faculty__user',
-        'clearance_timeline'
-    ).order_by("-archived_date", "-academic_year", "-semester")
+    # Get archived faculty dumps tied to clearance timelines
+    dumps = FacultyDumpArchive.objects.select_related("clearance_timeline").order_by("-created_at", "-id")
 
     items = []
-    for archived in archived_clearances:
-        # Format academic year
-        academic_year = f"{archived.academic_year}"
-        
-        # Get timeline info if available
-        timeline_info = ""
-        if archived.clearance_timeline:
-            timeline_info = f"{archived.clearance_timeline.academic_year}-{archived.clearance_timeline.academic_year + 1} {archived.clearance_timeline.term}"
-        
-        # Format dates
-        archived_date = _format_timestamp(archived.archived_date)
-        clearance_period = ""
-        if archived.clearance_period_start and archived.clearance_period_end:
-            clearance_period = f"{archived.clearance_period_start.strftime('%m/%d/%Y')} - {archived.clearance_period_end.strftime('%m/%d/%Y')}"
-        
-        # CSV file info
-        csv_filename = ""
-        csv_filesize = ""
-        if archived.csv_dump_path:
-            # Extract filename from path
-            csv_filename = archived.csv_dump_path.split('/')[-1] if archived.csv_dump_path else ""
-            csv_filesize = archived.csv_dump_size or ""
-        
-        # Count faculty and clearances for this period
-        total_faculty = ArchivedClearance.objects.filter(
-            academic_year=archived.academic_year,
-            semester=archived.semester
-        ).count()
-        
-        completed_clearances = ArchivedClearance.objects.filter(
-            academic_year=archived.academic_year,
-            semester=archived.semester,
-            status=ArchivedClearance.Status.COMPLETED
-        ).count()
+    for dump in dumps:
+        tl = dump.clearance_timeline
 
-        items.append({
-            "id": str(archived.id),
-            "academicYear": academic_year,
-            "semester": archived.semester,
-            "clearancePeriod": clearance_period,
-            "archivedDate": archived_date,
-            "csvFileName": csv_filename,
-            "csvFileSize": csv_filesize,
-            "totalFaculty": str(total_faculty),
-            "completedClearances": str(completed_clearances),
-            "status": archived.status,
-            "facultyId": str(archived.faculty.id) if archived.faculty else "",
-            "facultyName": f"{archived.faculty.user.first_name or ''} {archived.faculty.user.last_name or ''}".strip() if archived.faculty and archived.faculty.user else "",
-            "employeeId": archived.faculty.employee_id if archived.faculty else "",
-            "csvDumpPath": archived.csv_dump_path,
-        })
+        academic_year = f"{dump.academic_year_start} - {dump.academic_year_end}" if dump.academic_year_start and dump.academic_year_end else ""
+
+        clearance_period = ""
+        if tl and tl.clearance_start_date and tl.clearance_end_date:
+            clearance_period = f"{tl.clearance_start_date.strftime('%m/%d/%Y')} - {tl.clearance_end_date.strftime('%m/%d/%Y')}"
+
+        csv_filename = ""
+        if dump.dump_file_path:
+            csv_filename = dump.dump_file_path.split('/')[-1]
+
+        items.append(
+            {
+                "id": str(dump.id),
+                "academicYear": academic_year,
+                "semester": _term_to_label(dump.term),
+                "clearancePeriod": clearance_period,
+                "archivedDate": _format_timestamp(dump.created_at),
+                "csvFileName": csv_filename,
+                "csvFileSize": dump.dump_file_size or "",
+                "totalFaculty": "",  # can be wired to analytics later
+                "completedClearances": "",  # optional; not used for pure dumps
+                "status": "COMPLETED",
+                "facultyId": "",
+                "facultyName": "",
+                "employeeId": "",
+                "csvDumpPath": dump.dump_file_path,
+            }
+        )
 
     return JsonResponse({"items": items})
 
@@ -4520,12 +4564,12 @@ def ciso_archived_faculty_download_api(request, archived_id: int):
         return JsonResponse({"detail": "Forbidden"}, status=403)
 
     try:
-        archived = ArchivedClearance.objects.get(id=archived_id)
-    except ArchivedClearance.DoesNotExist:
-        return JsonResponse({"detail": "Archived record not found"}, status=404)
+        dump = FacultyDumpArchive.objects.get(id=archived_id)
+    except FacultyDumpArchive.DoesNotExist:
+        return JsonResponse({"detail": "Archived faculty dump not found"}, status=404)
 
-    if not archived.csv_dump_path:
-        return JsonResponse({"detail": "CSV file not available for this record"}, status=404)
+    if not dump.dump_file_path:
+        return JsonResponse({"detail": "CSV file not available for this archived faculty dump"}, status=404)
 
     # Try to serve the file
     try:
@@ -4533,7 +4577,7 @@ def ciso_archived_faculty_download_api(request, archived_id: int):
         from django.conf import settings
         
         # Construct the full file path
-        file_path = os.path.join(settings.MEDIA_ROOT if hasattr(settings, 'MEDIA_ROOT') else '', archived.csv_dump_path)
+        file_path = os.path.join(settings.MEDIA_ROOT if hasattr(settings, 'MEDIA_ROOT') else '', dump.dump_file_path)
         
         if not os.path.exists(file_path):
             return JsonResponse({"detail": "CSV file not found on server"}, status=404)
@@ -4541,7 +4585,7 @@ def ciso_archived_faculty_download_api(request, archived_id: int):
         # Read and serve the file
         with open(file_path, 'rb') as f:
             response = HttpResponse(f.read(), content_type='text/csv')
-            response['Content-Disposition'] = f'attachment; filename="{archived.csv_dump_path.split("/")[-1]}"'
+            response['Content-Disposition'] = f'attachment; filename="{dump.dump_file_path.split('/')[-1]}"'
             return response
             
     except Exception as e:
