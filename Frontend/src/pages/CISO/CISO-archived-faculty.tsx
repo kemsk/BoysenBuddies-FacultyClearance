@@ -4,7 +4,7 @@ import "../../index.css";
 import { CISOHeader} from "../../stories/components/header";
 
 import {
-  ViewArchivedClearanceWithStatusCard,
+  ViewArchivedFacultyCard,
 } from "../../stories/components/cards";
 
 import { Button } from "../../stories/components/button";
@@ -42,7 +42,8 @@ export default function CISOArchivedFaculty() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [selectedYear, setSelectedYear] = useState("all");
-    const [archivedData, setArchivedData] = React.useState<ArchivedFacultyData[]>([]);
+  const [sortBy, setSortBy] = useState("name");
+  const [archivedData, setArchivedData] = React.useState<ArchivedFacultyData[]>([]);
   const [loading, setLoading] = React.useState(false);
 
   const fetchArchivedFaculty = React.useCallback(async () => {
@@ -65,7 +66,7 @@ export default function CISOArchivedFaculty() {
   React.useEffect(() => {
     fetchArchivedFaculty();
   }, [fetchArchivedFaculty]);
-  
+
   const handleDownloadCSV = async (archivedId: string, fileName: string) => {
     try {
       const res = await fetch(`/admin/xu-faculty-clearance/api/ciso/archived-faculty/${archivedId}/download`);
@@ -87,7 +88,11 @@ export default function CISOArchivedFaculty() {
     }
   };
 
-  
+  const handleViewDetails = (archivedId: string) => {
+    // Navigate to detailed view or open modal
+    navigate(`/CISO-archived-faculty/${archivedId}`);
+  };
+
   // Filter data based on search query and selected year
   const filteredData = archivedData.filter(item => {
     const matchesSearch = !query || 
@@ -174,20 +179,18 @@ export default function CISOArchivedFaculty() {
               <div className="text-center py-8">No archived faculty data found</div>
             ) : (
               filteredData.map((item) => (
-                <ViewArchivedClearanceWithStatusCard
+                <ViewArchivedFacultyCard
                   key={item.id}
-                  title="Archived Faculty"
-                  AcademicYear={item.academicYear}
-                  Semester={item.semester}
-                  ClearancePeriod={item.clearancePeriod}
-                  LastUpdate={item.archivedDate}
-                  Archived={item.archivedDate}
-                  status={item.status === "complete" ? "complete" : "incomplete"}
-                  FacultyCSVDump={item.csvFileName}
-                  Size={item.csvFileSize}
-                  iconAlt="Archive"
-                  onIconClick={() => handleDownloadCSV(item.id, item.csvFileName)}
-                  iconClassName="ml-6"
+                  academicYear={item.academicYear}
+                  semester={item.semester}
+                  clearancePeriod={item.clearancePeriod}
+                  archivedDate={item.archivedDate}
+                  csvFileName={item.csvFileName}
+                  csvFileSize={item.csvFileSize}
+                  totalFaculty={item.totalFaculty}
+                  completedClearances={item.completedClearances}
+                  onDownloadCSV={() => handleDownloadCSV(item.id, item.csvFileName)}
+                  onIconClick={() => handleViewDetails(item.id)}
                 />
               ))
             )}
