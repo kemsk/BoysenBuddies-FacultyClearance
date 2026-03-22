@@ -4562,15 +4562,37 @@ def ciso_archived_faculty_api(request):
     for dump in dumps:
         tl = dump.clearance_timeline
 
-        academic_year = f"{dump.academic_year_start} - {dump.academic_year_end}" if dump.academic_year_start and dump.academic_year_end else ""
+        academic_year = (
+            f"{dump.academic_year_start} - {dump.academic_year_end}"
+            if dump.academic_year_start and dump.academic_year_end
+            else ""
+        )
 
         clearance_period = ""
         if tl and tl.clearance_start_date and tl.clearance_end_date:
             clearance_period = f"{tl.clearance_start_date.strftime('%m/%d/%Y')} - {tl.clearance_end_date.strftime('%m/%d/%Y')}"
 
-        csv_filename = ""
+        # Base filename as stored on disk (for download)
+        csv_basename = ""
         if dump.dump_file_path:
-            csv_filename = dump.dump_file_path.split('/')[-1]
+            csv_basename = dump.dump_file_path.split("/")[-1]
+
+        # Strip internal prefix "timeline-<id>-<timestamp>-" if present so that
+        # the user-facing label only shows the original CSV name.
+        original_name = csv_basename
+        if csv_basename.startswith("timeline-"):
+            parts = csv_basename.split("-", 3)
+            if len(parts) == 4:
+                original_name = parts[3]
+
+        # Human-friendly display name, e.g. "2025 - 2026 First Semester - Faculty Dump.csv"
+        term_label = _term_to_label(dump.term)
+        if academic_year and term_label and original_name:
+            csv_display_name = f"{academic_year} {term_label} - {original_name}"
+        elif original_name:
+            csv_display_name = original_name
+        else:
+            csv_display_name = ""
 
         items.append(
             {
@@ -4579,7 +4601,7 @@ def ciso_archived_faculty_api(request):
                 "semester": _term_to_label(dump.term),
                 "clearancePeriod": clearance_period,
                 "archivedDate": _format_timestamp(dump.created_at),
-                "csvFileName": csv_filename,
+                "csvFileName": csv_display_name,
                 "csvFileSize": dump.dump_file_size or "",
                 "totalFaculty": "",  # can be wired to analytics later
                 "completedClearances": "",  # optional; not used for pure dumps
