@@ -4547,8 +4547,6 @@ export type ViewArchivedFacultyCardProps = {
   archivedDate: string;
   csvFileName: string;
   csvFileSize: string;
-  totalFaculty?: string;
-  completedClearances?: string;
   onDownloadCSV?: () => void;
   onIconClick?: () => void;
 };
@@ -4561,8 +4559,6 @@ export function ViewArchivedFacultyCard({
   archivedDate,
   csvFileName,
   csvFileSize,
-  totalFaculty = "",
-  completedClearances = "",
   onDownloadCSV,
   onIconClick,
 }: ViewArchivedFacultyCardProps) {
@@ -4617,16 +4613,6 @@ export function ViewArchivedFacultyCard({
         <div className="grid grid-cols-2 gap-2">
           <div className="text-md font-bold text-foreground">Size</div>
           <div className="text-sm text-black text-left break-words">{csvFileSize}</div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Total Faculty</div>
-          <div className="text-sm text-black text-left break-words">{totalFaculty}</div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Completed Clearances</div>
-          <div className="text-sm text-black text-left break-words">{completedClearances}</div>
         </div>
       </div>
     </Card>

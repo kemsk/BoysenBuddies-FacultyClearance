@@ -132,6 +132,10 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# Media files (uploaded files such as faculty CSV dumps)
+MEDIA_ROOT = BASE_DIR  / 'media'
+MEDIA_URL = '/media/'
+
 
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))

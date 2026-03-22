@@ -187,8 +187,6 @@ export default function CISOArchivedFaculty() {
                   archivedDate={item.archivedDate}
                   csvFileName={item.csvFileName}
                   csvFileSize={item.csvFileSize}
-                  totalFaculty={item.totalFaculty}
-                  completedClearances={item.completedClearances}
                   onDownloadCSV={() => handleDownloadCSV(item.id, item.csvFileName)}
                   onIconClick={() => handleViewDetails(item.id)}
                 />
