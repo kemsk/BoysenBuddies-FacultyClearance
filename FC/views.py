@@ -1457,7 +1457,10 @@ def ciso_faculty_dump_template_api(request):
     for row in sample_rows:
         writer.writerow([row.get(h, "") for h in headers])
 
-    resp = HttpResponse(output.getvalue(), content_type="text/csv")
+    # Add UTF-8 bom for excel compatibility
+    csv_content = output.getvalue()
+    bom_content = '\ufeff' + csv_content
+    resp = HttpResponse(bom_content, content_type="text/csv;charset=utf-8")
     resp["Content-Disposition"] = 'attachment; filename="faculty_template.csv"'
     return resp
 
@@ -1475,10 +1478,16 @@ def ciso_faculty_dump_import_api(request):
         return JsonResponse({"detail": "Only CSV files are supported"}, status=400)
 
     raw = upload.read()
-    try:
-        text = raw.decode("utf-8-sig")
-    except Exception:
-        return JsonResponse({"detail": "Unable to decode CSV; please upload a UTF-8 CSV"}, status=400)
+    text = None
+    # Try common encodings: UTF-8 with BOM, plain UTF-8, then Latin-1/Windows-1252
+    for enc in ("utf-8-sig", "utf-8", "latin-1"):
+        try:
+            text = raw.decode(enc)
+            break
+        except Exception:
+            continue
+    if text is None:
+        return JsonResponse({"detail": "Unable to decode CSV; please upload a UTF-8 or Latin-1 encoded csv"}, status=400)
 
     reader = csv.DictReader(io.StringIO(text))
     required_cols = {"email", "university_id", "employee_id"}
