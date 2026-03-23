@@ -640,7 +640,6 @@ def _is_college_referenced(college: College):
         Faculty.objects.filter(college=college).exists()
         or Approver.objects.filter(college=college).exists()
         or StudentAssistant.objects.filter(college=college).exists()
-        or Requirement.colleges.through.objects.filter(college_id=college.id).exists()
         or ApproverFlowStep.colleges.through.objects.filter(college_id=college.id).exists()
         or Department.objects.filter(college=college).exists()
     )
@@ -651,7 +650,6 @@ def _is_department_referenced(dept: Department):
         Faculty.objects.filter(department=dept).exists()
         or Approver.objects.filter(department=dept).exists()
         or StudentAssistant.objects.filter(department=dept).exists()
-        or Requirement.departments.through.objects.filter(department_id=dept.id).exists()
     )
 
 
@@ -659,7 +657,8 @@ def _is_office_referenced(office: Office):
     return (
         Faculty.objects.filter(office=office).exists()
         or Approver.objects.filter(office=office).exists()
-        or Requirement.offices.through.objects.filter(office_id=office.id).exists()
+        # Requirement currently has no offices m2m; rely on direct usages instead.
+        or ApproverFlowStep.objects.filter(office=office).exists()
     )
 
 
@@ -2051,7 +2050,7 @@ def faculty_notifications_api(request):
     return JsonResponse({"items": items})
 
 
-def ovphe_org_structure_api(request):
+def ciso_org_structure_api(request):
     if request.method != "GET":
         return _json_method_not_allowed()
 
@@ -2104,11 +2103,11 @@ def ovphe_org_structure_api(request):
     )
 
 
-def ovphe_approver_flow_api(request):
+def ciso_approver_flow_api(request):
     if request.method != "GET":
         return _json_method_not_allowed()
 
-    admin, err = _require_ovphe_admin(request)
+    admin, err = _require_ciso_admin_user(request)
     if err:
         return err
 
@@ -2202,8 +2201,8 @@ def _relink_flow_steps_for_office(*, office: Office, timeline_id=None):
 
 
 @csrf_exempt
-def ovphe_colleges_api(request):
-    admin, err = _require_ovphe_admin(request)
+def ciso_colleges_api(request):
+    admin, err = _require_ciso_admin_user(request)
     if err:
         return err
 
@@ -2276,9 +2275,9 @@ def ovphe_colleges_api(request):
 
 
 @csrf_exempt
-def ovphe_college_detail_api(request, college_id: int):
+def ciso_college_detail_api(request, college_id: int):
     print(f"[DEBUG] ovphe_college_detail_api called: method={request.method}, college_id={college_id}")
-    admin, err = _require_ovphe_admin(request)
+    admin, err = _require_ciso_admin_user(request)
     if err:
         return err
 
@@ -2286,6 +2285,14 @@ def ovphe_college_detail_api(request, college_id: int):
         obj = College.objects.get(pk=college_id)
     except College.DoesNotExist:
         return JsonResponse({"detail": "Not found"}, status=404)
+
+    if request.method == "GET":
+        return JsonResponse({
+            "id": str(obj.id),
+            "name": obj.name,
+            "short": obj.abbreviation or "",
+            "isActive": bool(obj.is_active),
+        })
 
     if request.method == "PATCH":
         data, jerr = _parse_json_body(request)
@@ -2326,7 +2333,7 @@ def ovphe_college_detail_api(request, college_id: int):
         try:
             log = ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.DELETED_COLLEGE,
-                user=admin.user if admin else None,
+                user=admin if admin else None,
                 details=[f"College: {college_name}"] if college_name else [],
             )
             print(f"[DEBUG] ActivityLog created: id={log.id}, event_type={log.event_type}, details={log.details}")
@@ -2344,8 +2351,8 @@ def ovphe_college_detail_api(request, college_id: int):
 
 
 @csrf_exempt
-def ovphe_departments_api(request):
-    admin, err = _require_ovphe_admin(request)
+def ciso_departments_api(request):
+    admin, err = _require_ciso_admin_user(request)
     if err:
         return err
 
@@ -2430,8 +2437,8 @@ def ovphe_departments_api(request):
 
 
 @csrf_exempt
-def ovphe_department_detail_api(request, department_id: int):
-    admin, err = _require_ovphe_admin(request)
+def ciso_department_detail_api(request, department_id: int):
+    admin, err = _require_ciso_admin_user(request)
     if err:
         return err
 
@@ -2439,6 +2446,15 @@ def ovphe_department_detail_api(request, department_id: int):
         obj = Department.objects.select_related("college").get(pk=department_id)
     except Department.DoesNotExist:
         return JsonResponse({"detail": "Not found"}, status=404)
+
+    if request.method == "GET":
+        return JsonResponse({
+            "id": str(obj.id),
+            "collegeId": str(obj.college_id),
+            "name": obj.name,
+            "short": obj.abbreviation or "",
+            "isActive": bool(obj.is_active),
+        })
 
     if request.method == "PATCH":
         data, jerr = _parse_json_body(request)
@@ -2489,7 +2505,7 @@ def ovphe_department_detail_api(request, department_id: int):
             try:
                 ActivityLog.objects.create(
                     event_type=ActivityLog.EventType.DELETED_DEPARTMENT,
-                    user=admin.user if admin else None,
+                    user=admin if admin else None,
                     details=[f"Department: {dept_name}", f"College: {college_name}"],
                 )
             except Exception:
@@ -2498,7 +2514,7 @@ def ovphe_department_detail_api(request, department_id: int):
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.DELETED_DEPARTMENT,
-                user=admin.user if admin else None,
+                user=admin if admin else None,
                 details=[f"Department: {dept_name}", f"College: {college_name}"],
             )
         except Exception:
@@ -2510,8 +2526,8 @@ def ovphe_department_detail_api(request, department_id: int):
 
 
 @csrf_exempt
-def ovphe_offices_api(request):
-    admin, err = _require_ovphe_admin(request)
+def ciso_offices_api(request):
+    admin, err = _require_ciso_admin_user(request)
     if err:
         return err
 
@@ -2589,8 +2605,8 @@ def ovphe_offices_api(request):
 
 
 @csrf_exempt
-def ovphe_office_detail_api(request, office_id: int):
-    admin, err = _require_ovphe_admin(request)
+def ciso_office_detail_api(request, office_id: int):
+    admin, err = _require_ciso_admin_user(request)
     if err:
         return err
 
@@ -2598,6 +2614,15 @@ def ovphe_office_detail_api(request, office_id: int):
         obj = Office.objects.get(pk=office_id)
     except Office.DoesNotExist:
         return JsonResponse({"detail": "Not found"}, status=404)
+
+    if request.method == "GET":
+        return JsonResponse({
+            "id": str(obj.id),
+            "name": obj.name,
+            "short": obj.abbreviation or "",
+            "displayOrder": int(obj.display_order),
+            "isActive": bool(obj.is_active),
+        })
 
     if request.method == "PATCH":
         data, jerr = _parse_json_body(request)
@@ -2642,11 +2667,10 @@ def ovphe_office_detail_api(request, office_id: int):
             if obj.is_active:
                 obj.is_active = False
                 obj.save(update_fields=["is_active"])
-                ApproverFlowStep.objects.filter(office=obj).update(office=None)
             try:
                 ActivityLog.objects.create(
                     event_type=ActivityLog.EventType.DELETED_OFFICE,
-                    user=admin.user if admin else None,
+                    user=admin if admin else None,
                     details=[f"Office: {office_name}"],
                 )
             except Exception:
@@ -2655,7 +2679,7 @@ def ovphe_office_detail_api(request, office_id: int):
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.DELETED_OFFICE,
-                user=admin.user if admin else None,
+                user=admin if admin else None,
                 details=[f"Office: {office_name}"],
             )
         except Exception:
@@ -2667,8 +2691,8 @@ def ovphe_office_detail_api(request, office_id: int):
 
 
 @csrf_exempt
-def ovphe_org_structure_order_api(request):
-    admin, err = _require_ovphe_admin(request)
+def ciso_org_structure_order_api(request):
+    admin, err = _require_ciso_admin_user(request)
     if err:
         return err
 
@@ -2688,8 +2712,8 @@ def ovphe_org_structure_order_api(request):
 
 
 @csrf_exempt
-def ovphe_approver_flow_steps_api(request):
-    admin, err = _require_ovphe_admin(request)
+def ciso_approver_flow_steps_api(request):
+    admin, err = _require_ciso_admin_user(request)
     if err:
         return err
 
@@ -2763,8 +2787,8 @@ def ovphe_approver_flow_steps_api(request):
 
 
 @csrf_exempt
-def ovphe_approver_flow_step_detail_api(request, step_id: int):
-    admin, err = _require_ovphe_admin(request)
+def ciso_approver_flow_step_detail_api(request, step_id: int):
+    admin, err = _require_ciso_admin_user(request)
     if err:
         return err
 
@@ -2833,8 +2857,8 @@ def ovphe_approver_flow_step_detail_api(request, step_id: int):
 
 
 @csrf_exempt
-def ovphe_approver_flow_order_api(request):
-    admin, err = _require_ovphe_admin(request)
+def ciso_approver_flow_order_api(request):
+    admin, err = _require_ciso_admin_user(request)
     if err:
         return err
 
@@ -2889,7 +2913,7 @@ def ovphe_notifications_api(request):
 
 @csrf_exempt
 def ovphe_export_clearance_results_api(request):
-    admin, err = _require_ovphe_admin(request)
+    admin, err = _require_ciso_admin_user(request)
     if err:
         return err
 
@@ -3427,7 +3451,7 @@ def ciso_system_users_api(request):
 
                 college = College.objects.filter(name__iexact=college_name, is_active=True).first()
                 if not college:
-                    return JsonResponse({"detail": "College not found"}, status=400)
+                    return JsonResponse({"detail": f"College '{college_name}' not found"}, status=400)
 
                 department = Department.objects.filter(
                     name__iexact=dept_name,
@@ -3435,7 +3459,7 @@ def ciso_system_users_api(request):
                     is_active=True,
                 ).first()
                 if not department:
-                    return JsonResponse({"detail": "Department not found"}, status=400)
+                    return JsonResponse({"detail": f"Department '{dept_name}' not found in college '{college_name}'"}, status=400)
 
             if atype == "office":
                 office_name = (data.get("office") or "").strip()
@@ -3443,7 +3467,7 @@ def ciso_system_users_api(request):
                     return JsonResponse({"detail": "Office is required"}, status=400)
                 office = Office.objects.filter(name__iexact=office_name, is_active=True).first()
                 if not office:
-                    return JsonResponse({"detail": "Office not found"}, status=400)
+                    return JsonResponse({"detail": f"Office '{office_name}' not found"}, status=400)
 
             Approver.objects.create(
                 user=user,
@@ -4486,49 +4510,111 @@ def ovphe_view_clearance_api(request):
 def ciso_tools_api(request):
     return JsonResponse({"tools": []})
 
+@csrf_exempt
 def ciso_college_office_configuration_api(request):
-    admin, err = _require_ciso_admin_user(request)
-    if err:
-        return err
-    
-    # Get colleges with their departments
-    colleges = College.objects.filter(is_active=True).prefetch_related('department_set').order_by('name')
-    colleges_data = []
-    for college in colleges:
-        departments = [{'id': dept.id, 'name': dept.name} for dept in college.department_set.filter(is_active=True).order_by('name')]
-        colleges_data.append({
-            'id': college.id,
-            'name': college.name,
-            'abbreviation': college.abbreviation or '',
-            'departments': departments
-        })
-    
-    # Get offices
-    offices = Office.objects.filter(is_active=True).order_by('name')
-    offices_data = [{'id': office.id, 'name': office.name, 'abbreviation': office.abbreviation or ''} for office in offices]
-    
-    # Get approver flow configuration
-    config = get_approver_flow_config()
-    flow_steps = []
-    if config:
-        flow_steps = ApproverFlowStep.objects.filter(config=config).order_by('order').prefetch_related('colleges')
-        for step in flow_steps:
-            colleges_list = [{'id': college.id, 'name': college.name} for college in step.colleges.all()]
-            flow_steps.append({
-                'id': step.id,
-                'category': step.category,
-                'order': step.order,
-                'office': {'id': step.office.id, 'name': step.office.name} if step.office else None,
-                'colleges': colleges_list
+    if request.method == "GET":
+        admin, err = _require_ciso_admin_user(request)
+        if err:
+            return err
+        
+        # Get colleges with their departments
+        colleges = College.objects.filter(is_active=True).prefetch_related('department_set').order_by('name')
+        colleges_data = []
+        for college in colleges:
+            departments = [{'id': dept.id, 'name': dept.name} for dept in college.department_set.filter(is_active=True).order_by('name')]
+            colleges_data.append({
+                'id': college.id,
+                'name': college.name,
+                'abbreviation': college.abbreviation or '',
+                'departments': departments
             })
+        
+        # Get offices
+        offices = Office.objects.filter(is_active=True).order_by('name')
+        offices_data = [{'id': office.id, 'name': office.name, 'abbreviation': office.abbreviation or ''} for office in offices]
+        
+        # Get approver flow configuration
+        timeline_id = request.GET.get('timeline_id')
+        config = None
+        if timeline_id:
+            try:
+                timeline = ClearanceTimeline.objects.get(id=timeline_id)
+                config = ApproverFlowConfig.objects.filter(clearance_timeline=timeline).order_by("-updated_at", "pk").first()
+            except ClearanceTimeline.DoesNotExist:
+                return JsonResponse({"detail": "Timeline not found"}, status=404)
+        
+        if not config:
+            config = ApproverFlowConfig.objects.filter(clearance_timeline__isnull=True).order_by("-updated_at", "pk").first()
+        
+        flow_steps = []
+        if config:
+            flow_steps = ApproverFlowStep.objects.filter(config=config).order_by('order').prefetch_related('colleges')
+            for step in flow_steps:
+                colleges_list = [{'id': college.id, 'name': college.name} for college in step.colleges.all()]
+                flow_steps.append({
+                    'id': step.id,
+                    'category': step.category,
+                    'order': step.order,
+                    'office': {'id': step.office.id, 'name': step.office.name} if step.office else None,
+                    'collegeIds': [str(c.id) for c in step.colleges.all()]
+                })
+        
+        configuration = {
+            'colleges': colleges_data,
+            'offices': offices_data,
+            'approverFlow': flow_steps
+        }
+        
+        return JsonResponse({"configuration": configuration})
     
-    configuration = {
-        'colleges': colleges_data,
-        'offices': offices_data,
-        'approverFlow': flow_steps
-    }
+    elif request.method == "POST":
+        admin, err = _require_ciso_admin_user(request)
+        if err:
+            return err
+        
+        try:
+            data = json.loads(request.body)
+            timeline_id = data.get('timelineId')
+            if not timeline_id:
+                return JsonResponse({"detail": "Timeline ID is required"}, status=400)
+            
+            try:
+                timeline = ClearanceTimeline.objects.get(id=timeline_id)
+                if timeline.is_active:
+                    return JsonResponse({"detail": "Cannot save configuration for active timeline"}, status=400)
+            except ClearanceTimeline.DoesNotExist:
+                return JsonResponse({"detail": "Timeline not found"}, status=400)
+            
+            config, created = ApproverFlowConfig.objects.get_or_create(
+                clearance_timeline_id=timeline_id,
+                defaults={'created_by': admin}
+            )
+            if not created:
+                config.updated_by = admin
+                config.save()
+            
+            config.steps.all().delete()
+            approver_flow_data = data.get('approverFlow', [])
+            for i, step_data in enumerate(approver_flow_data):
+                step = ApproverFlowStep.objects.create(
+                    config=config,
+                    category=step_data.get('category', ''),
+                    order=i,
+                    office_id=step_data.get('officeId') if step_data.get('officeId') else None,
+                )
+                # Add college associations if provided
+                college_ids = step_data.get('collegeIds', [])
+                if college_ids:
+                    step.colleges.set(College.objects.filter(pk__in=college_ids, is_active=True))
+            
+            return JsonResponse({"message": "Configuration saved successfully"})
+        except json.JSONDecodeError:
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
+        except Exception as e:
+            return JsonResponse({"detail": str(e)}, status=500)
     
-    return JsonResponse({"configuration": configuration})
+    else:
+        return _json_method_not_allowed()
 
 def _get_active_ciso_user(request):
     user, _ = _require_ciso_admin_user(request)
