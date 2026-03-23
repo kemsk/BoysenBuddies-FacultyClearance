@@ -41,20 +41,15 @@ export default function AssistantApproverViewClearance() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [requests, setRequests] = React.useState<ClearanceRequestItem[]>([]);
-  
-  const [selectedYear, setSelectedYear] = useState("all");
-  const [sortBy, setSortBy] = useState("name");
+  const timelineId = React.useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("timelineId") || "";
+  }, []);
   
 
   type AnnouncementApiItem = AnnouncementItem & { id: number; email?: string };
 
-  const [items, setItems] = React.useState<AnnouncementApiItem[]>([]);
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
-  const [confirm, setConfirm] = React.useState<
-    | { open: true; type: "enable" | "disable" | "delete"; index: number }
-    | { open: false }
-  >({ open: false });
+  const [, setItems] = React.useState<AnnouncementApiItem[]>([]);
 
   const refresh = React.useCallback(() => {
     return fetch("/admin/xu-faculty-clearance/api/ovphe/announcements")
@@ -80,104 +75,31 @@ export default function AssistantApproverViewClearance() {
   }, [refresh]);
 
   React.useEffect(() => {
-    fetch("/admin/xu-faculty-clearance/api/clearance-requests", {
+    if (!timelineId) {
+      setRequests([]);
+      return;
+    }
+
+    const params = new URLSearchParams({ timelineId });
+
+    fetch(`/admin/xu-faculty-clearance/api/assistant-approver/view-clearance?${params.toString()}`, {
       credentials: "include",
     })
       .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then((data) => {
-        const next = Array.isArray(data?.items) ? (data.items as ClearanceRequestItem[]) : [];
-        if (next.length > 0) {
-          setRequests(next);
-          return;
-        }
-        setRequests([
-          {
-            id: "1",
-            requestId: "REQ-2025-001",
-            employeeId: "2005123456789",
-            name: "Alexander H. Hamilton",
-            college: "College of Computer Studies",
-            department: "Information Technology",
-            facultyType: "Full-time Faculty (On Probation)",
-            status: "pending",
-          },
-          {
-            id: "2",
-            requestId: "REQ-2025-002",
-            employeeId: "2005987654321",
-            name: "Maria C. Santos",
-            college: "College of Engineering",
-            department: "Civil Engineering",
-            facultyType: "Full-time Faculty",
-            status: "approved",
-          },
-          {
-            id: "3",
-            requestId: "REQ-2025-003",
-            employeeId: "2005456789012",
-            name: "Juan D. Reyes",
-            college: "College of Business Administration",
-            department: "Accountancy",
-            facultyType: "Part-time Faculty",
-            status: "rejected",
-          },
-          {
-            id: "4",
-            requestId: "REQ-2025-004",
-            employeeId: "2005234567890",
-            name: "Patricia L. Garcia",
-            college: "College of Education",
-            department: "Elementary Education",
-            facultyType: "Full-time Faculty (Tenured)",
-            status: "pending",
-          },
-          {
-            id: "5",
-            requestId: "REQ-2025-005",
-            employeeId: "2005789012345",
-            name: "Roberto K. Tan",
-            college: "College of Computer Studies",
-            department: "Computer Science",
-            facultyType: "Full-time Faculty (On Probation)",
-            status: "approved",
-          },
-        ]);
+      .then((data: { items?: Array<Omit<ClearanceRequestItem, "status" | "requestId"> & { status?: string }> }) => {
+        const next: ClearanceRequestItem[] = Array.isArray(data?.items)
+          ? data.items.map((item) => ({
+              ...item,
+              requestId: item.employeeId || item.id,
+              status: item.status === "COMPLETED" ? "approved" as const : "pending" as const,
+            }))
+          : [];
+        setRequests(next);
       })
       .catch(() => {
-        setRequests([
-          {
-            id: "1",
-            requestId: "REQ-2025-001",
-            employeeId: "2005123456789",
-            name: "Alexander H. Hamilton",
-            college: "College of Computer Studies",
-            department: "Information Technology",
-            facultyType: "Full-time Faculty (On Probation)",
-            status: "pending",
-          },
-          {
-            id: "2",
-            requestId: "REQ-2025-002",
-            employeeId: "2005987654321",
-            name: "Maria C. Santos",
-            college: "College of Engineering",
-            department: "Civil Engineering",
-            facultyType: "Full-time Faculty",
-            status: "approved",
-          },
-          {
-            id: "3",
-            requestId: "REQ-2025-003",
-            employeeId: "2005456789012",
-            name: "Juan D. Reyes",
-            college: "College of Business Administration",
-            department: "Accountancy",
-            facultyType: "Part-time Faculty",
-            status: "rejected",
-          },
-        ]);
+        setRequests([]);
       });
-  }, []);
+  }, [timelineId]);
 
   const filteredRequests = React.useMemo(() => {
       const q = query.trim().toLowerCase();
@@ -190,6 +112,31 @@ export default function AssistantApproverViewClearance() {
         return hay.includes(q);
       });
     }, [query, requests]);
+  
+  const handleExport = React.useCallback(() => {
+    if (!timelineId || filteredRequests.length === 0) return;
+
+    const headers = ["Employee ID", "Name", "College", "Department", "Faculty Type", "Status"];
+    const rows = filteredRequests.map((item) => [
+      item.employeeId,
+      item.name,
+      item.college,
+      item.department,
+      item.facultyType,
+      item.status,
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `assistant-approver-archived-clearance-${timelineId}-export.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  }, [filteredRequests, timelineId]);
   
 
   return (
@@ -290,7 +237,7 @@ export default function AssistantApproverViewClearance() {
           </div>
 
           <div className="flex justify-between gap-3 mt-4">
-            <Button variant="default" className="w-full font-bold whitespace-nowrap" > 
+            <Button variant="default" className="w-full font-bold whitespace-nowrap" onClick={handleExport} disabled={filteredRequests.length === 0}> 
               <div className="flex items-center justify-center gap-2">
                 <img src="/WhiteDownloadIcon.png" alt="export" className="w-6 h-6" />
                 <span>Export Current View</span>

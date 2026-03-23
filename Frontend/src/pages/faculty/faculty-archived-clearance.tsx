@@ -27,6 +27,17 @@ import { useState } from "react";
 
 
 
+type ArchivedTimelineItem = {
+  id: string;
+  name: string;
+  academicYear: string;
+  semester: string;
+  clearancePeriodStart: string;
+  clearancePeriodEnd: string;
+  lastUpdated: string;
+  archivedDate: string;
+};
+
 export default function FacultyArchiveClearance() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
@@ -34,12 +45,27 @@ export default function FacultyArchiveClearance() {
   type AnnouncementApiItem = AnnouncementItem & { id: number; email?: string };
 
   const [items, setItems] = React.useState<AnnouncementApiItem[]>([]);
+  const [timelines, setTimelines] = React.useState<ArchivedTimelineItem[]>([]);
+  const [loading, setLoading] = React.useState(false);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
   const [confirm, setConfirm] = React.useState<
     | { open: true; type: "enable" | "disable" | "delete"; index: number }
     | { open: false }
   >({ open: false });
+
+  const loadTimelines = React.useCallback(() => {
+    setLoading(true);
+    return fetch("/admin/xu-faculty-clearance/api/faculty/archived-clearance")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { items: ArchivedTimelineItem[] }) => {
+        setTimelines(data.items ?? []);
+      })
+      .catch(() => {
+        setTimelines([]);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   const refresh = React.useCallback(() => {
     return fetch("/admin/xu-faculty-clearance/api/ovphe/announcements")
@@ -52,6 +78,10 @@ export default function FacultyArchiveClearance() {
         setItems(initial);
       });
   }, []);
+
+  React.useEffect(() => {
+    loadTimelines();
+  }, [loadTimelines]);
 
   React.useEffect(() => {
     refresh()
@@ -90,50 +120,40 @@ export default function FacultyArchiveClearance() {
         </div>
 
         <div className="mt-3 space-y-4">
-          <div className="w-full flex flex-col sm:flex-row gap-3 justify-start mt-5" style={{ marginLeft: '0', paddingLeft: '0' }}>
-              <div className="flex flex-wrap items-center gap-3">
-              <Select>
-                <SelectTrigger variant="pill" className="w-max gap-2">
-                  <SelectValue placeholder="School Year" /> 
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="2022-2023">2022-2023</SelectItem>
-                  <SelectItem value="2021-2022">2021-2022</SelectItem>
-                  <SelectItem value="2020-2021">2020-2021</SelectItem>
-                </SelectContent>
-              </Select>
-            
-              <Select>
-                <SelectTrigger variant="pill" className="w-max gap-2">
-                  <SelectValue placeholder="Term" /> 
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="name">Name</SelectItem>
-                </SelectContent>
-              </Select>
-
-               <Select>
-                 <SelectTrigger variant="pill" className="w-max gap-2">
-                   <label>Status:</label>
-                   <SelectValue/> 
-                 </SelectTrigger>
-                 <SelectContent>
-                   <SelectItem value="all">All</SelectItem>
-                   <SelectItem value="incomplete">Incomplete</SelectItem>
-                   <SelectItem value="complete">Complete</SelectItem>
-                 </SelectContent>
-               </Select>             
+          <div className="space-y-3">
+            {timelines.map((timeline) => (
+              <div
+                key={timeline.id}
+                className="border rounded-lg p-4 bg-white cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => navigate(`/faculty-view-clearance?timelineId=${timeline.id}`)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg">{timeline.name}</h3>
+                    <p className="text-sm text-gray-600">Academic Year: {timeline.academicYear}</p>
+                    <p className="text-sm text-gray-600">Semester: {timeline.semester}</p>
+                    <p className="text-sm text-gray-600">Clearance Period: {timeline.clearancePeriodStart} - {timeline.clearancePeriodEnd}</p>
+                    <p className="text-sm text-gray-600">Last Updated: {timeline.lastUpdated}</p>
+                    <p className="text-sm text-gray-600">Archived: {timeline.archivedDate}</p>
+                  </div>
+                  <div className="ml-4">
+                    <span className="text-2xl">→</span>
+                  </div>
+                </div>
               </div>
-          </div>
-          
-          <div className="mt-3">
-            <ViewArchivedClearanceWithStatusCard  
-             onIconClick={() => navigate("/faculty-view-clearance")}
-             iconClassName="ml-6"
-            />
+            ))}
+            {timelines.length === 0 && !loading && (
+              <div className="text-center py-8 text-gray-500">
+                No archived timelines found.
+              </div>
+            )}
+            {loading && (
+              <div className="text-center py-8 text-gray-500">
+                Loading...
+              </div>
+            )}
           </div>
         </div>
-
 
       </main>
 
