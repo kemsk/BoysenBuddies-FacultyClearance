@@ -119,8 +119,10 @@ function DateField(props: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  minDate?: Date;
+  maxDate?: Date;
 }) {
-  const { label, value, onChange } = props;
+  const { label, value, onChange, minDate, maxDate } = props;
   const [open, setOpen] = React.useState(false);
   const [currentMonth, setCurrentMonth] = React.useState(new Date());
   
@@ -157,6 +159,19 @@ function DateField(props: {
   const navigateMonth = (direction: number) => {
     setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + direction, 1));
   };
+
+  const isDateSelectable = (date: Date) => {
+    if (minDate && date < minDate) return false;
+    if (maxDate && date > maxDate) return false;
+    return true;
+  };
+
+  // Set initial month to minDate or current date if within range
+  React.useEffect(() => {
+    if (minDate && new Date() < minDate) {
+      setCurrentMonth(new Date(minDate.getFullYear(), minDate.getMonth(), 1));
+    }
+  }, [minDate]);
   
   return (
     <div>
@@ -209,19 +224,20 @@ function DateField(props: {
                 const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
                 const isSelected = parsedDate && date.toDateString() === parsedDate.toDateString();
                 const isToday = new Date().toDateString() === date.toDateString();
+                const isSelectable = isDateSelectable(date);
                 
                 return (
                   <button
                     key={i}
                     type="button"
-                    disabled={!isCurrentMonth}
+                    disabled={!isCurrentMonth || !isSelectable}
                     className={`p-2 rounded hover:bg-accent ${
-                      !isCurrentMonth ? "text-muted-foreground cursor-not-allowed" : ""
+                      !isCurrentMonth || !isSelectable ? "text-muted-foreground cursor-not-allowed" : ""
                     } ${isSelected ? "bg-primary text-primary-foreground" : ""} ${
                       isToday ? "border border-primary" : ""
                     }`}
                     onClick={() => {
-                      if (isCurrentMonth) {
+                      if (isCurrentMonth && isSelectable) {
                         const y = date.getFullYear();
                         const m = String(date.getMonth() + 1).padStart(2, "0");
                         const d = String(date.getDate()).padStart(2, "0");
@@ -280,6 +296,18 @@ function TimelineDialogShell(props: {
     if (typeof numericStartYear !== "number") return undefined;
     return numericStartYear + 1;
   }, [numericStartYear]);
+
+  // Calculate min and max dates for clearance period based on academic year
+  const clearanceMinDate = React.useMemo(() => {
+    if (typeof numericStartYear !== "number") return undefined;
+    return new Date(numericStartYear, 0, 1); // January 1st of start year
+  }, [numericStartYear]);
+
+  const clearanceMaxDate = React.useMemo(() => {
+    const numericEndYear = Number(endYear);
+    if (typeof numericEndYear !== "number" || String(Math.trunc(numericEndYear)).length !== 4) return undefined;
+    return new Date(numericEndYear, 11, 31); // December 31st of end year
+  }, [endYear]);
 
   React.useEffect(() => {
     if (!effectiveOpen) return;
@@ -374,12 +402,16 @@ function TimelineDialogShell(props: {
                 label="Clearance Period Start Date"
                 value={clearanceStartDate}
                 onChange={setClearanceStartDate}
+                minDate={clearanceMinDate}
+                maxDate={clearanceMaxDate}
               />
 
               <DateField
                 label="Clearance Period End Date"
                 value={clearanceEndDate}
                 onChange={setClearanceEndDate}
+                minDate={clearanceMinDate}
+                maxDate={clearanceMaxDate}
               />
 
               <div className="pt-2">
@@ -440,6 +472,7 @@ export function EditClearanceTimelineDialog(props: EditClearanceTimelineDialogPr
       trigger={trigger}
       initialValues={initialValues}
       onSubmit={onSave}
+      hideTermField
     />
   );
 }
