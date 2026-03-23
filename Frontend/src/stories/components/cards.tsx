@@ -4605,10 +4605,21 @@ export function ViewArchivedFacultyCard({
   onDownloadCSV,
   onIconClick,
 }: ViewArchivedFacultyCardProps) {
+  const yearMatch = academicYear.match(/(\d{4})/);
+  const startYear = yearMatch ? yearMatch[1] : "";
+  const yearCode = startYear ? startYear.slice(2) : "";
+
+  const normalizedSemester = semester.toLowerCase();
+  let termCode = "";
+  if (normalizedSemester.includes("first")) termCode = "01";
+  else if (normalizedSemester.includes("second")) termCode = "02";
+  else if (normalizedSemester.includes("intersession")) termCode = "03";
+
+  const displayTitle = yearCode && termCode ? `${yearCode}${termCode} Archived Faculty` : "Archived Faculty";
   return (
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
       <div className="text-center text-xl font-bold text-foreground flex items-center justify-between p-6">
-        <div>Archived Faculty</div>
+        <div>{displayTitle}</div>
         <Button
           variant="icon"
           className="ml-4"
