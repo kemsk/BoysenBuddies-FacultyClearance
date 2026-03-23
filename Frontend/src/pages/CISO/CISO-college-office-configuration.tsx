@@ -634,14 +634,13 @@ export default function CISOCollegeOfficeConfiguration() {
 
   React.useEffect(() => {
     // Fetch timelines first
-    fetch("/admin/xu-faculty-clearance/api/ciso/clearance-timeline")
+    fetch("/admin/xu-faculty-clearance/api/ciso/clearance-timeline", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: { items: ClearanceTimeline[] }) => {
         const timelineItems = data.items ?? [];
         // Sort timelines alphabetically by name
         const sortedTimelines = timelineItems.sort((a, b) => a.name.localeCompare(b.name));
         setTimelines(sortedTimelines);
-        
         // Auto-select the first timeline if available
         if (sortedTimelines.length > 0 && !selectedTimelineId) {
           setSelectedTimelineId(sortedTimelines[0].id);
@@ -652,7 +651,7 @@ export default function CISOCollegeOfficeConfiguration() {
       });
 
     // Fetch org structure
-    fetch("/admin/xu-faculty-clearance/api/ciso/org-structure")
+    fetch("/admin/xu-faculty-clearance/api/ciso/org-structure", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: { colleges: CollegeItem[]; departments: DepartmentItem[]; offices: OfficeItem[] }) => {
         const initialColleges = data.colleges ?? [];
@@ -678,7 +677,7 @@ export default function CISOCollegeOfficeConfiguration() {
       ? `/admin/xu-faculty-clearance/api/ciso/approver-flow?timeline_id=${selectedTimelineId}`
       : "/admin/xu-faculty-clearance/api/ciso/approver-flow";
     
-    fetch(approverFlowUrl)
+    fetch(approverFlowUrl, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: { steps: ApproverFlowItem[] }) => {
         const steps = (data.steps ?? []).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -747,6 +746,7 @@ export default function CISOCollegeOfficeConfiguration() {
       // Save configuration for the selected timeline
       const response = await fetch(`/admin/xu-faculty-clearance/api/ciso/college-office-configuration?timeline_id=${selectedTimelineId}`, {
         method: 'POST',
+        credentials: "include",
         headers: {
           'Content-Type': 'application/json',
         },
