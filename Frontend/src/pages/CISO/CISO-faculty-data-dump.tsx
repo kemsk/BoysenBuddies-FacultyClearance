@@ -1,9 +1,7 @@
 import "../../index.css"; 
 import { CISOHeader } from "../../stories/components/header";
 
-import {
-  FacultyDataDumpCard,
-} from "../../stories/components/cards";
+import { FacultyDataDumpCard } from "../../stories/components/cards";
 
 import {
   Breadcrumb,
@@ -21,6 +19,50 @@ import * as React from "react";
 export default function CISOFacultyDataDump() {
   const navigate = useNavigate();
   const [busy, setBusy] = React.useState(false);
+  const [timelines, setTimelines] = React.useState<{ id: string; label: string }[]>([]);
+  const [selectedTimelineId, setSelectedTimelineId] = React.useState("");
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function loadTimelines() {
+      try {
+        const res = await fetch("/admin/xu-faculty-clearance/api/ciso/clearance-timeline");
+        if (!res.ok) return;
+        const data = await res.json().catch(() => null);
+        const raw = (data && (data.timelines || data.items)) || [];
+        if (!Array.isArray(raw)) return;
+
+        const options = raw
+          .map((t: any) => {
+            const id = String(t.id ?? "");
+            const start = t.academicYearStart ?? t.startYear ?? t.academic_year_start;
+            const end = t.academicYearEnd ?? t.endYear ?? t.academic_year_end;
+            const sem = t.semester ?? t.term ?? "";
+            const ay = start && end ? `${start} - ${end}` : "";
+            const label = ay && sem ? `${ay} • ${sem}` : sem || ay || id;
+            return { id, label };
+          })
+          .filter((opt: { id: string }) => !!opt.id);
+
+        if (!cancelled) {
+          setTimelines(options);
+          // Prefer the first active/most recent timeline if none chosen yet
+          if (!selectedTimelineId && options.length) {
+            setSelectedTimelineId(options[0].id);
+          }
+        }
+      } catch {
+        // ignore; backend will still validate on import
+      }
+    }
+
+    loadTimelines();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTimelineId]);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -56,16 +98,25 @@ export default function CISOFacultyDataDump() {
               </div>
           </Button>
         </div>
-       
+      
        <div className="mt-2 space-y-3">
+
         <FacultyDataDumpCard
-         accept=".csv,text/csv"
+          accept=".csv,text/csv"
+          semesters={timelines}
+          selectedSemesterId={selectedTimelineId}
+          onSemesterChange={setSelectedTimelineId}
           onFileSelected={async (file) => {
             if (busy) return;
+            if (!selectedTimelineId) {
+              alert("Please select a semester based on an existing clearance timeline before importing the faculty CSV.");
+              return;
+            }
             setBusy(true);
             try {
               const formData = new FormData();
               formData.append("file", file);
+              formData.append("clearance_timeline_id", selectedTimelineId);
 
               const res = await fetch("/admin/xu-faculty-clearance/api/ciso/faculty-dump/import", {
                 method: "POST",

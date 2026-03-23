@@ -4,8 +4,6 @@ import "../../index.css";
 import { CISOHeader} from "../../stories/components/header";
 
 import {
-  type AnnouncementItem,
-  ViewArchivedClearanceCard,
   ViewArchivedFacultyCard,
 } from "../../stories/components/cards";
 
@@ -18,52 +16,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../stories/components/select";
-
-import {
-  loadAnnouncementsItems,
-} from "../../stories/components/edit-announcements-dialog";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
 import { SearchInputGroup } from "../../stories/components/input-group";
 import { useState } from "react";
 
-function postOVPHEActivityLog(payload: { event_type: string; details?: string[] }) {
-  fetch("/admin/xu-faculty-clearance/api/ovphe/activity-logs", {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  }).catch(() => {});
-}
-
-function GuidelinesToggle({
-  checked,
-  onChange,
-}: {
-  checked: boolean;
-  onChange: (next: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      className={
-        checked
-          ? "relative h-6 w-12 rounded-full bg-success"
-          : "relative h-6 w-12 rounded-full bg-muted-foreground/30"
-      }
-      onClick={() => onChange(!checked)}
-    >
-      <span
-        className={
-          checked
-            ? "absolute left-[26px] top-1 h-4 w-4 rounded-full bg-white"
-            : "absolute left-1 top-1 h-4 w-4 rounded-full bg-white"
-        }
-      />
-    </button>
-  );
+interface ArchivedFacultyData {
+  id: string;
+  academicYear: string;
+  semester: string;
+  clearancePeriod: string;
+  archivedDate: string;
+  csvFileName: string;
+  csvFileSize: string;
+  totalFaculty: string;
+  completedClearances: string;
+  status: string;
+  facultyId: string;
+  facultyName: string;
+  employeeId: string;
+  csvDumpPath: string;
 }
 
 export default function CISOArchivedFaculty() {
@@ -71,39 +43,71 @@ export default function CISOArchivedFaculty() {
   const [query, setQuery] = useState("");
   const [selectedYear, setSelectedYear] = useState("all");
   const [sortBy, setSortBy] = useState("name");
+  const [archivedData, setArchivedData] = React.useState<ArchivedFacultyData[]>([]);
+  const [loading, setLoading] = React.useState(false);
 
-  type AnnouncementApiItem = AnnouncementItem & { id: number; email?: string };
-
-  const [items, setItems] = React.useState<AnnouncementApiItem[]>([]);
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
-  const [confirm, setConfirm] = React.useState<
-    | { open: true; type: "enable" | "disable" | "delete"; index: number }
-    | { open: false }
-  >({ open: false });
-
-  const refresh = React.useCallback(() => {
-    return fetch("/admin/xu-faculty-clearance/api/ovphe/announcements")
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: { items: AnnouncementApiItem[] }) => {
-        const initial = (data.items ?? []).map((item) => ({
-          ...item,
-          enabled: item.enabled ?? true,
-        }));
-        setItems(initial);
-      });
+  const fetchArchivedFaculty = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/admin/xu-faculty-clearance/api/ciso/archived-faculty");
+      if (!res.ok) {
+        throw new Error("Failed to fetch archived faculty data");
+      }
+      const data = await res.json();
+      setArchivedData(data.items || []);
+    } catch (error) {
+      console.error("Error fetching archived faculty:", error);
+      setArchivedData([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   React.useEffect(() => {
-    refresh()
-      .catch(() => {
-        const initial = loadAnnouncementsItems().map((item) => ({
-          ...item,
-          enabled: item.enabled ?? true,
-        }));
-        setItems(initial as AnnouncementApiItem[]);
-      });
-  }, [refresh]);
+    fetchArchivedFaculty();
+  }, [fetchArchivedFaculty]);
+
+  const handleDownloadCSV = async (archivedId: string, fileName: string) => {
+    try {
+      const res = await fetch(`/admin/xu-faculty-clearance/api/ciso/archived-faculty/${archivedId}/download`);
+      if (!res.ok) {
+        throw new Error("Failed to download CSV");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading CSV:", error);
+      alert("Failed to download CSV file");
+    }
+  };
+
+  const handleViewDetails = (archivedId: string) => {
+    // Navigate to detailed view or open modal
+    navigate(`/CISO-archived-faculty/${archivedId}`);
+  };
+
+  // Filter data based on search query and selected year
+  const filteredData = archivedData.filter(item => {
+    const matchesSearch = !query || 
+      item.facultyName.toLowerCase().includes(query.toLowerCase()) ||
+      item.employeeId.toLowerCase().includes(query.toLowerCase()) ||
+      item.academicYear.toLowerCase().includes(query.toLowerCase()) ||
+      item.semester.toLowerCase().includes(query.toLowerCase());
+    
+    const matchesYear = selectedYear === "all" || item.academicYear === selectedYear;
+    
+    return matchesSearch && matchesYear;
+  });
+
+  // Get unique years for filter
+  const uniqueYears = Array.from(new Set(archivedData.map(item => item.academicYear))).sort();
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -127,9 +131,7 @@ export default function CISOArchivedFaculty() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <BreadcrumbPage>View Archived Faculty</BreadcrumbPage>
-              </BreadcrumbLink>
+              <BreadcrumbPage>View Archived Faculty</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -148,45 +150,51 @@ export default function CISOArchivedFaculty() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               containerClassName="h-10"
-              placeholder="Search by name, ID, or email..."
+              placeholder="Search by name, ID, academic year, or semester..."
             />
           </div>
         </div>
 
         <div className="mt-3 space-y-4">
           <div className="w-full flex flex-col sm:flex-row gap-3 justify-start mt-5" style={{ marginLeft: '0', paddingLeft: '0' }}>
-              <div className="flex gap-3">
-              <Select>
+            <div className="flex gap-3">
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
                 <SelectTrigger variant="pill" className="w-max gap-2">
-                  <SelectValue placeholder="School Year" /> 
+                  <SelectValue placeholder="Academic Year" /> 
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="2022-2023">2022-2023</SelectItem>
-                  <SelectItem value="2021-2022">2021-2022</SelectItem>
-                  <SelectItem value="2020-2021">2020-2021</SelectItem>
+                  <SelectItem value="all">All Years</SelectItem>
+                  {uniqueYears.map(year => (
+                    <SelectItem key={year} value={year}>{year}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-            
-              <Select>
-                <SelectTrigger variant="pill" className="w-max gap-2">
-                  <SelectValue placeholder="Term" /> 
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="name">Name</SelectItem>
-                </SelectContent>
-              </Select>
-              </div>
+            </div>
           </div>
           
-          <div className="mt-3">
-            <ViewArchivedClearanceCard
-            />
+          <div className="mt-3 space-y-4">
+            {loading ? (
+              <div className="text-center py-8">Loading archived faculty data...</div>
+            ) : filteredData.length === 0 ? (
+              <div className="text-center py-8">No archived faculty data found</div>
+            ) : (
+              filteredData.map((item) => (
+                <ViewArchivedFacultyCard
+                  key={item.id}
+                  academicYear={item.academicYear}
+                  semester={item.semester}
+                  clearancePeriod={item.clearancePeriod}
+                  archivedDate={item.archivedDate}
+                  csvFileName={item.csvFileName}
+                  csvFileSize={item.csvFileSize}
+                  onDownloadCSV={() => handleDownloadCSV(item.id, item.csvFileName)}
+                  onIconClick={() => handleViewDetails(item.id)}
+                />
+              ))
+            )}
           </div>
         </div>
-
-
       </main>
-
     </div>
   );
 }

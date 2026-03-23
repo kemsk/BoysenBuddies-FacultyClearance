@@ -17,6 +17,8 @@ import os
 import secrets
 import urllib.request
 import urllib.error
+import io
+import csv
 from urllib.parse import urlencode
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -1511,6 +1513,8 @@ def active_clearance_timeline_api(request):
     semester = _term_to_label(t.term)
     return JsonResponse({"academicYear": academic_year, "semester": semester})
 
+@csrf_exempt
+@ciso_required
 def ciso_faculty_dump_template_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
@@ -1565,7 +1569,10 @@ def ciso_faculty_dump_template_api(request):
     for row in sample_rows:
         writer.writerow([row.get(h, "") for h in headers])
 
-    resp = HttpResponse(output.getvalue(), content_type="text/csv")
+    # Add UTF-8 bom for excel compatibility
+    csv_content = output.getvalue()
+    bom_content = '\ufeff' + csv_content
+    resp = HttpResponse(bom_content, content_type="text/csv;charset=utf-8")
     resp["Content-Disposition"] = 'attachment; filename="faculty_template.csv"'
     return resp
 
@@ -1575,6 +1582,36 @@ def ciso_faculty_dump_import_api(request):
     if request.method != "POST":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
+    # Validate clearance timeline / semester selection.
+    # Primary path: use explicit clearance_timeline_id coming from the
+    # frontend. If it is missing (e.g., older bundle), fall back to the
+    # single active ClearanceTimeline if one exists.
+    timeline_id = (request.POST.get("clearance_timeline_id") or "").strip()
+
+    clearance_timeline: ClearanceTimeline | None = None
+    if timeline_id:
+        try:
+            clearance_timeline = ClearanceTimeline.objects.get(id=timeline_id)
+        except ClearanceTimeline.DoesNotExist:
+            return JsonResponse(
+                {"detail": "Selected semester does not exist in the current clearance timelines."},
+                status=400,
+            )
+    else:
+        # Graceful fallback: use the active timeline, if there is one.
+        clearance_timeline = (
+            ClearanceTimeline.objects.filter(is_active=True)
+            .order_by("-academic_year_start", "-academic_year_end", "-id")
+            .first()
+        )
+        if not clearance_timeline:
+            return JsonResponse(
+                {
+                    "detail": "Missing clearance_timeline_id and no active clearance timeline found; please configure a clearance timeline first.",
+                },
+                status=400,
+            )
+
     upload = request.FILES.get("file")
     if not upload:
         return JsonResponse({"detail": "Missing file"}, status=400)
@@ -1583,10 +1620,16 @@ def ciso_faculty_dump_import_api(request):
         return JsonResponse({"detail": "Only CSV files are supported"}, status=400)
 
     raw = upload.read()
-    try:
-        text = raw.decode("utf-8-sig")
-    except Exception:
-        return JsonResponse({"detail": "Unable to decode CSV; please upload a UTF-8 CSV"}, status=400)
+    text = None
+    # Try common encodings: UTF-8 with BOM, plain UTF-8, then Latin-1/Windows-1252
+    for enc in ("utf-8-sig", "utf-8", "latin-1"):
+        try:
+            text = raw.decode(enc)
+            break
+        except Exception:
+            continue
+    if text is None:
+        return JsonResponse({"detail": "Unable to decode CSV; please upload a UTF-8 or Latin-1 encoded csv"}, status=400)
 
     reader = csv.DictReader(io.StringIO(text))
     required_cols = {"email", "university_id", "employee_id"}
@@ -1602,22 +1645,17 @@ def ciso_faculty_dump_import_api(request):
     updated_count = 0
     skipped_count = 0
     errors: list[dict] = []
-    ad_success_count = 0
-    ad_error_count = 0
 
     def _clean(value: str | None):
         return (value or "").strip()
 
-    # Active Directory endpoint
-    ad_url = "http://host.docker.internal:8002/api/faculty/batch"
-    ad_headers = {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-    }
+    # Get or create Faculty role
+    try:
+        faculty_role = Role.objects.get(name='Faculty')
+    except Role.DoesNotExist:
+        faculty_role = Role.objects.create(name='Faculty', description='Faculty member', is_system_role=True)
 
-    faculty_batch_data = []
-
-    # Process CSV and prepare data for Active Directory
+    # Process CSV and create faculty directly
     for idx, row in enumerate(reader, start=2):
         email = _clean(row.get("email"))
         university_id = _clean(row.get("university_id"))
@@ -1645,57 +1683,135 @@ def ciso_faculty_dump_import_api(request):
         college_name = _clean(row.get("college"))
         department_name = _clean(row.get("department"))
 
-        # Prepare faculty data for Active Directory
-        faculty_data = {
-            "email": email,
-            "university_id": university_id,
-            "employee_id": employee_id,
-            "first_name": first_name,
-            "middle_name": middle_name,
-            "last_name": last_name,
-            "faculty_type": faculty_type,
-            "phone_number": phone_number,
-            "office": office_name,
-            "college": college_name,
-            "department": department_name,
-            "is_active": True
-        }
-        
-        faculty_batch_data.append(faculty_data)
-        created_count += 1
-
-    # Send batch data to Active Directory
-    if faculty_batch_data:
         try:
-            ad_response = requests.post(
-                ad_url,
-                json={"faculty": faculty_batch_data},
-                headers=ad_headers,
-                timeout=30
-            )
-            
-            if ad_response.status_code == 200 or ad_response.status_code == 201:
-                ad_result = ad_response.json()
-                ad_success_count = len(faculty_batch_data)
-                updated_count = ad_result.get("updated_count", 0)
-            else:
-                ad_error_count = len(faculty_batch_data)
-                errors.append({
-                    "message": f"Active Directory error: {ad_response.status_code} - {ad_response.text}"
-                })
-        except requests.exceptions.RequestException as e:
-            ad_error_count = len(faculty_batch_data)
-            errors.append({
-                "message": f"Failed to connect to Active Directory: {str(e)}"
-            })
+            with transaction.atomic():
+                # Create or update User
+                user, user_created = User.objects.get_or_create(
+                    email=email.lower(),
+                    defaults={
+                        'university_id': university_id,
+                        'first_name': first_name,
+                        'middle_name': middle_name,
+                        'last_name': last_name,
+                    }
+                )
+                
+                if not user_created:
+                    # Update existing user
+                    user.university_id = university_id
+                    user.first_name = first_name
+                    user.middle_name = middle_name
+                    user.last_name = last_name
+                    user.save()
+
+                # Create or update Faculty profile
+                faculty, faculty_created = Faculty.objects.get_or_create(
+                    user=user,
+                    defaults={
+                        'employee_id': employee_id,
+                        'faculty_type': faculty_type,
+                        'phone_number': phone_number,
+                        'first_name': first_name,
+                        'middle_name': middle_name,
+                        'last_name': last_name,
+                    }
+                )
+                
+                if not faculty_created:
+                    # Update existing faculty
+                    faculty.employee_id = employee_id
+                    faculty.faculty_type = faculty_type
+                    faculty.phone_number = phone_number
+                    faculty.first_name = first_name
+                    faculty.middle_name = middle_name
+                    faculty.last_name = last_name
+                    faculty.save()
+
+                # Handle relationships
+                if college_name:
+                    college, _ = College.objects.get_or_create(
+                        name=college_name,
+                        defaults={'is_active': True}
+                    )
+                    faculty.college = college
+                
+                if department_name and college_name:
+                    department, _ = Department.objects.get_or_create(
+                        name=department_name,
+                        college=college,
+                        defaults={'is_active': True}
+                    )
+                    faculty.department = department
+                
+                if office_name:
+                    office, _ = Office.objects.get_or_create(
+                        name=office_name,
+                        defaults={'is_active': True}
+                    )
+                    faculty.office = office
+                
+                faculty.save()
+
+                # Assign Faculty role
+                UserRole.objects.get_or_create(
+                    user=user,
+                    role=faculty_role,
+                    defaults={'is_active': True}
+                )
+
+                if user_created or faculty_created:
+                    created_count += 1
+                else:
+                    updated_count += 1
+
+        except Exception as e:
+            errors.append({"row": idx, "message": f"Error creating faculty: {str(e)}"})
+            skipped_count += 1
+
+    # After processing rows, save the uploaded CSV to disk and create
+    # a FacultyDumpArchive entry tied to the selected clearance timeline.
+    try:
+        import os
+        from django.conf import settings
+
+        media_root = getattr(settings, "MEDIA_ROOT", "") or ""
+        dumps_dir = os.path.join(media_root, "faculty_dumps")
+        os.makedirs(dumps_dir, exist_ok=True)
+
+        # Build a unique filename for each import so that multiple dumps for
+        # the same timeline create distinct archive entries and do not
+        # overwrite the previous file on disk.
+        safe_name = upload.name.replace("/", "_").replace("\\", "_")
+        timestamp = timezone.localtime().strftime("%Y%m%d%H%M%S")
+        file_name = f"timeline-{clearance_timeline.id}-{timestamp}-{safe_name}"
+        file_path = os.path.join(dumps_dir, file_name)
+
+        with open(file_path, "wb") as f:
+            f.write(raw)
+
+        size_bytes = os.path.getsize(file_path)
+        size_mb = size_bytes / (1024 * 1024) if size_bytes else 0
+        size_label = f"{size_mb:.0f} MB" if size_mb >= 1 else f"{size_bytes} B"
+
+        # Store relative path from MEDIA_ROOT
+        relative_path = os.path.relpath(file_path, media_root) if media_root else file_name
+
+        FacultyDumpArchive.objects.create(
+            clearance_timeline=clearance_timeline,
+            academic_year_start=clearance_timeline.academic_year_start,
+            academic_year_end=clearance_timeline.academic_year_end,
+            term=clearance_timeline.term,
+            dump_file_path=relative_path,
+            dump_file_size=size_label,
+        )
+    except Exception as e:
+        errors.append({"row": 0, "message": f"Error saving dump archive: {str(e)}"})
 
     return JsonResponse(
         {
             "created_count": created_count,
             "updated_count": updated_count,
             "skipped_count": skipped_count,
-            "ad_success_count": ad_success_count,
-            "ad_error_count": ad_error_count,
             "errors": errors,
         }
     )
@@ -4623,7 +4739,49 @@ def _get_active_ciso_user(request):
 
 @csrf_exempt
 def ciso_clearance_timeline_api(request):
-    return _clearance_timelines_api(request, _get_active_ciso_user, "CISO user not found")
+    """Return clearance timelines for CISO semester selection.
+
+    Response shape is aligned with the CISO Faculty Data Dump page, which
+    expects either a "timelines" or "items" array of objects with at least:
+    - id
+    - academicYearStart / academicYearEnd
+    - term (human-readable label)
+    - clearanceStartDate / clearanceEndDate (ISO strings, optional)
+    - isActive (bool)
+    """
+
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    # Require an authenticated CISO user
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    if not user.userrole_set.filter(role__name="CISO", is_active=True).exists():
+        return JsonResponse({"detail": "Forbidden"}, status=403)
+
+    timelines = (
+        ClearanceTimeline.objects.all()
+        .order_by("-is_active", "-academic_year_start", "-academic_year_end", "-id")
+    )
+
+    items: list[dict] = []
+    for t in timelines:
+        items.append(
+            {
+                "id": str(t.id),
+                "academicYearStart": t.academic_year_start,
+                "academicYearEnd": t.academic_year_end,
+                "term": _term_to_label(t.term),
+                "clearanceStartDate": t.clearance_start_date.isoformat() if t.clearance_start_date else "",
+                "clearanceEndDate": t.clearance_end_date.isoformat() if t.clearance_end_date else "",
+                "isActive": bool(t.is_active),
+                "createdAt": _format_timestamp(t.created_at),
+            }
+        )
+
+    return JsonResponse({"timelines": items})
 
 def ciso_archived_clearance_api(request):
     return JsonResponse({"items": []})
@@ -4632,4 +4790,115 @@ def ciso_view_clearance_api(request):
     return JsonResponse({"items": []})
 
 def ciso_archived_faculty_api(request):
-    return JsonResponse({"items": []})
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    # Get authenticated CISO user
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    # Check if user has CISO role
+    if not user.userrole_set.filter(role__name='CISO', is_active=True).exists():
+        return JsonResponse({"detail": "Forbidden"}, status=403)
+
+    # Get archived faculty dumps tied to clearance timelines
+    dumps = FacultyDumpArchive.objects.select_related("clearance_timeline").order_by("-created_at", "-id")
+
+    items = []
+    for dump in dumps:
+        tl = dump.clearance_timeline
+
+        academic_year = (
+            f"{dump.academic_year_start} - {dump.academic_year_end}"
+            if dump.academic_year_start and dump.academic_year_end
+            else ""
+        )
+
+        clearance_period = ""
+        if tl and tl.clearance_start_date and tl.clearance_end_date:
+            clearance_period = f"{tl.clearance_start_date.strftime('%m/%d/%Y')} - {tl.clearance_end_date.strftime('%m/%d/%Y')}"
+
+        # Base filename as stored on disk (for download)
+        csv_basename = ""
+        if dump.dump_file_path:
+            csv_basename = dump.dump_file_path.split("/")[-1]
+
+        # Strip internal prefix "timeline-<id>-<timestamp>-" if present so that
+        # the user-facing label only shows the original CSV name.
+        original_name = csv_basename
+        if csv_basename.startswith("timeline-"):
+            parts = csv_basename.split("-", 3)
+            if len(parts) == 4:
+                original_name = parts[3]
+
+        # Human-friendly display name, e.g. "2025 - 2026 First Semester - Faculty Dump.csv"
+        term_label = _term_to_label(dump.term)
+        if academic_year and term_label and original_name:
+            csv_display_name = f"{academic_year} {term_label} - {original_name}"
+        elif original_name:
+            csv_display_name = original_name
+        else:
+            csv_display_name = ""
+
+        items.append(
+            {
+                "id": str(dump.id),
+                "academicYear": academic_year,
+                "semester": _term_to_label(dump.term),
+                "clearancePeriod": clearance_period,
+                "archivedDate": _format_timestamp(dump.created_at),
+                "csvFileName": csv_display_name,
+                "csvFileSize": dump.dump_file_size or "",
+                "totalFaculty": "",  # can be wired to analytics later
+                "completedClearances": "",  # optional; not used for pure dumps
+                "status": "COMPLETED",
+                "facultyId": "",
+                "facultyName": "",
+                "employeeId": "",
+                "csvDumpPath": dump.dump_file_path,
+            }
+        )
+
+    return JsonResponse({"items": items})
+
+def ciso_archived_faculty_download_api(request, archived_id: int):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    # Get authenticated CISO user
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    # Check if user has CISO role
+    if not user.userrole_set.filter(role__name='CISO', is_active=True).exists():
+        return JsonResponse({"detail": "Forbidden"}, status=403)
+
+    try:
+        dump = FacultyDumpArchive.objects.get(id=archived_id)
+    except FacultyDumpArchive.DoesNotExist:
+        return JsonResponse({"detail": "Archived faculty dump not found"}, status=404)
+
+    if not dump.dump_file_path:
+        return JsonResponse({"detail": "CSV file not available for this archived faculty dump"}, status=404)
+
+    # Try to serve the file
+    try:
+        import os
+        from django.conf import settings
+        
+        # Construct the full file path
+        file_path = os.path.join(settings.MEDIA_ROOT if hasattr(settings, 'MEDIA_ROOT') else '', dump.dump_file_path)
+        
+        if not os.path.exists(file_path):
+            return JsonResponse({"detail": "CSV file not found on server"}, status=404)
+        
+        # Read and serve the file
+        with open(file_path, 'rb') as f:
+            response = HttpResponse(f.read(), content_type='text/csv')
+            response['Content-Disposition'] = f'attachment; filename="{dump.dump_file_path.split('/')[-1]}"'
+            return response
+            
+    except Exception as e:
+        return JsonResponse({"detail": f"Error serving file: {str(e)}"}, status=500)

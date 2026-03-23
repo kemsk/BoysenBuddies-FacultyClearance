@@ -42,6 +42,7 @@ urlpatterns = [
     path('api/ciso/approver-flow/steps', views.ciso_approver_flow_steps_api, name='CISOApproverFlowSteps'),
     path('api/ciso/approver-flow/steps/<int:step_id>', views.ciso_approver_flow_step_detail_api, name='CISOApproverFlowStepDetail'),
     path('api/ciso/approver-flow/order', views.ciso_approver_flow_order_api, name='CISOApproverFlowOrder'),
+    path('api/ciso/archived-faculty/<int:archived_id>/download', views.ciso_archived_faculty_download_api, name='CISOArchivedFacultyDownload'),
     path('api/ovphe-profile', views.ovphe_profile_api, name='OVPHEProfile'),
     path('api/ovphe/system-guidelines', views.ovphe_system_guidelines_api, name='OVPHESystemGuidelines'),
     path('api/ovphe/system-guidelines/<int:guideline_id>', views.ovphe_system_guideline_detail_api, name='OVPHEGuidelineDetail'),

@@ -97,6 +97,8 @@ DATABASES = {
         'PORT': os.environ.get('DB_PORT'),            
         'OPTIONS': {
             'sql_mode': 'STRICT_TRANS_TABLES',
+            'charset': 'utf8mb4',
+            'init_command': "SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci'",
         },
     }
 }
@@ -120,6 +122,10 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Media files (uploaded files such as faculty CSV dumps)
+MEDIA_ROOT = BASE_DIR  / 'media'
+MEDIA_URL = '/media/'
 
 
 # Default primary key field type
