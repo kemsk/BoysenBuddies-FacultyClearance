@@ -1547,7 +1547,7 @@ def ciso_faculty_dump_template_api(request):
             "last_name": "Faculty",
             "faculty_type": "Full-time",
             "phone_number": "09171234567",
-            "office": "Department Chair",
+            "office": "",
             "college": "College of Computer Studies",
             "department": "Information Technology",
         },
