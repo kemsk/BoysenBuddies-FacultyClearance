@@ -3931,9 +3931,25 @@ def faculty_dashboard_api(request):
         
         if approver_flow_config:
             # Use dynamic approver flow from timeline configuration
-            flow_steps = approver_flow_config.steps.order_by('order')
+            flow_steps = approver_flow_config.steps.order_by('order').prefetch_related('colleges')
             
-            for i, flow_step in enumerate(flow_steps, 1):
+            display_index = 1  # Use separate index for display after filtering
+            for flow_step in flow_steps:
+                # Check if this step applies to the faculty's college
+                # If step has no colleges specified, it applies to all
+                # If step has colleges specified, only show if faculty's college is included
+                step_colleges = list(flow_step.colleges.all())
+                if step_colleges and faculty.college and faculty.college not in step_colleges:
+                    # This step doesn't apply to this faculty's college, skip it
+                    continue
+                
+                # Generate dynamic step title based on faculty's college/department
+                step_title = flow_step.category
+                if flow_step.category.lower() == "department chair" and faculty.department:
+                    step_title = f"{faculty.department.name} Department Chair"
+                elif flow_step.category.lower() == "college dean" and faculty.college:
+                    step_title = f"{faculty.college.name} Dean"
+                
                 # Find requests for this step
                 step_requests = clearance_requests.filter(
                     requirement__title__icontains=flow_step.category
@@ -3967,27 +3983,29 @@ def faculty_dashboard_api(request):
                         })
                     
                     steps.append({
-                        "index": i,
-                        "title": flow_step.category,
+                        "index": display_index,
+                        "title": step_title,
                         "statusLabel": status_label,
                         "statusVariant": status_variant,
                         "collapsedType": collapsed_type,
-                        "submittedTo": f"{flow_step.category} Office",
+                        "submittedTo": f"{step_title}",
                         "submittedOn": clearance.submitted_date.strftime("%B %d, %Y") if clearance and clearance.submitted_date else "",
                         "requirements": requirements
                     })
+                    display_index += 1
                 else:
                     # Step not applicable or locked
                     steps.append({
-                        "index": i,
-                        "title": flow_step.category,
+                        "index": display_index,
+                        "title": step_title,
                         "statusLabel": "LOCKED",
                         "statusVariant": "muted",
                         "collapsedType": "locked",
-                        "submittedTo": f"{flow_step.category} Office",
+                        "submittedTo": f"{step_title}",
                         "submittedOn": "",
                         "requirements": []
                     })
+                    display_index += 1
         else:
             # No approver flow configuration found - return empty steps
             # This requires administrators to configure approver flows for clearance timelines
