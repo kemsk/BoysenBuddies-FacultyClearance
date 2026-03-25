@@ -34,9 +34,21 @@ FROM node:22-alpine AS frontend-builder
 WORKDIR /frontend
 
 COPY Frontend/package*.json /frontend/
-RUN npm ci
+RUN npm ci --include=dev
 
-COPY Frontend /frontend
+COPY Frontend/index.html /frontend/
+COPY Frontend/components.json /frontend/
+COPY Frontend/eslint.config.js /frontend/
+COPY Frontend/postcss.config.js /frontend/
+COPY Frontend/tailwind.config.js /frontend/
+COPY Frontend/tsconfig.json /frontend/
+COPY Frontend/tsconfig.app.json /frontend/
+COPY Frontend/tsconfig.node.json /frontend/
+COPY Frontend/vite.config.ts /frontend/
+COPY Frontend/vitest.shims.d.ts /frontend/
+COPY Frontend/public /frontend/public
+COPY Frontend/src /frontend/src
+COPY Frontend/.storybook /frontend/.storybook
 RUN npm run build
   
 # Stage 3: Production stage
