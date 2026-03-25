@@ -1552,7 +1552,7 @@ def ciso_faculty_dump_template_api(request):
             "last_name": "Faculty",
             "faculty_type": "Full-time",
             "phone_number": "09171234567",
-            "office": "Department Chair",
+            "office": "",
             "college": "College of Computer Studies",
             "department": "Information Technology",
         },
@@ -3991,12 +3991,18 @@ def faculty_dashboard_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
+    # Get the authenticated user
+    authenticated_user = _get_authenticated_user(request)
+    if not authenticated_user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
     email = (request.GET.get("email") or "").strip()
     university_id = (request.GET.get("university_id") or "").strip()
     timeline_id = (request.GET.get("timelineId") or request.GET.get("timeline_id") or "").strip()
 
+    # Use authenticated user's email if no specific email provided
     if not email and not university_id:
-        email = "faculty.seed@xu.edu.ph"
+        email = authenticated_user.email
 
     qs = Faculty.objects.select_related("user", "college", "department")
     if email:
@@ -4060,69 +4066,90 @@ def faculty_dashboard_api(request):
         # Get clearance requests grouped by approver category/office
         clearance_requests = timeline_requests.select_related('requirement')
         
-        # Define step order based on approver flow
-        step_order = [
-            {"title": "Library", "category": "Library"},
-            {"title": "Department Chair", "category": "Department"},
-            {"title": "College Dean", "category": "College"},
-            {"title": "OVPHE", "category": "OVPHE"},
-            {"title": "CISO", "category": "CISO"},
-            {"title": "HRO", "category": "HRO"}
-        ]
+        # Get approver flow configuration from active timeline
+        approver_flow_config = timeline.approver_flow_configs.first()
         
-        for i, step_info in enumerate(step_order, 1):
-            # Find requests for this step
-            step_requests = clearance_requests.filter(requirement__title__icontains=step_info["category"])
+        if approver_flow_config:
+            # Use dynamic approver flow from timeline configuration
+            flow_steps = approver_flow_config.steps.order_by('order').prefetch_related('colleges')
             
-            if step_requests.exists():
-                # Determine step status based on requests
-                approved_count = step_requests.filter(status=ClearanceRequest.Status.APPROVED).count()
-                total_count = step_requests.count()
+            display_index = 1  # Use separate index for display after filtering
+            for flow_step in flow_steps:
+                # Check if this step applies to the faculty's college
+                # If step has no colleges specified, it applies to all
+                # If step has colleges specified, only show if faculty's college is included
+                step_colleges = list(flow_step.colleges.all())
+                if step_colleges and faculty.college and faculty.college not in step_colleges:
+                    # This step doesn't apply to this faculty's college, skip it
+                    continue
                 
-                if approved_count == total_count and total_count > 0:
-                    status_label = "APPROVED"
-                    status_variant = "success"
-                    collapsed_type = "status"
-                elif approved_count > 0:
-                    status_label = "IN_PROGRESS"
-                    status_variant = "warning"
-                    collapsed_type = "status"
-                else:
-                    status_label = "PENDING"
-                    status_variant = "warning"
-                    collapsed_type = "status"
+                # Generate dynamic step title based on faculty's college/department
+                step_title = flow_step.category
+                if flow_step.category.lower() == "department chair" and faculty.department:
+                    step_title = f"{faculty.department.name} Department Chair"
+                elif flow_step.category.lower() == "college dean" and faculty.college:
+                    step_title = f"{faculty.college.name} Dean"
                 
-                # Get requirements for this step
-                requirements = []
-                for req in step_requests:
-                    requirements.append({
-                        "title": req.requirement.title,
-                        "description": req.requirement.description or "",
-                        "completed": req.status == ClearanceRequest.Status.APPROVED
+                # Find requests for this step
+                step_requests = clearance_requests.filter(
+                    requirement__title__icontains=flow_step.category
+                )
+                
+                if step_requests.exists():
+                    # Determine step status based on requests
+                    approved_count = step_requests.filter(status=ClearanceRequest.Status.APPROVED).count()
+                    total_count = step_requests.count()
+                    
+                    if approved_count == total_count and total_count > 0:
+                        status_label = "APPROVED"
+                        status_variant = "success"
+                        collapsed_type = "status"
+                    elif approved_count > 0:
+                        status_label = "IN_PROGRESS"
+                        status_variant = "warning"
+                        collapsed_type = "status"
+                    else:
+                        status_label = "PENDING"
+                        status_variant = "warning"
+                        collapsed_type = "status"
+                    
+                    # Get requirements for this step
+                    requirements = []
+                    for req in step_requests:
+                        requirements.append({
+                            "title": req.requirement.title,
+                            "description": req.requirement.description or "",
+                            "completed": req.status == ClearanceRequest.Status.APPROVED
+                        })
+                    
+                    steps.append({
+                        "index": display_index,
+                        "title": step_title,
+                        "statusLabel": status_label,
+                        "statusVariant": status_variant,
+                        "collapsedType": collapsed_type,
+                        "submittedTo": f"{step_title}",
+                        "submittedOn": clearance.submitted_date.strftime("%B %d, %Y") if clearance and clearance.submitted_date else "",
+                        "requirements": requirements
                     })
-                
-                steps.append({
-                    "index": i,
-                    "title": step_info["title"],
-                    "statusLabel": status_label,
-                    "statusVariant": status_variant,
-                    "collapsedType": collapsed_type,
-                    "submittedTo": f"{step_info['category']} Office",
-                    "submittedOn": clearance.submitted_date.strftime("%B %d, %Y") if clearance.submitted_date else "",
-                    "requirements": requirements
-                })
-            else:
-                # Step not applicable or locked
-                steps.append({
-                    "index": i,
-                    "title": step_info["title"],
-                    "statusLabel": "LOCKED",
-                    "statusVariant": "muted",
-                    "collapsedType": "locked",
-                    "submittedTo": f"{step_info['category']} Office",
-                    "submittedOn": "",
-                    "requirements": []
-                })
+                    display_index += 1
+                else:
+                    # Step not applicable or locked
+                    steps.append({
+                        "index": display_index,
+                        "title": step_title,
+                        "statusLabel": "LOCKED",
+                        "statusVariant": "muted",
+                        "collapsedType": "locked",
+                        "submittedTo": f"{step_title}",
+                        "submittedOn": "",
+                        "requirements": []
+                    })
+                    display_index += 1
+        else:
+            # No approver flow configuration found - return empty steps
+            # This requires administrators to configure approver flows for clearance timelines
+            pass
 
     return JsonResponse(
         {
@@ -5136,6 +5163,7 @@ def ciso_clearance_timeline_api(request):
 
     if request.method not in {"POST", "PUT", "DELETE"}:
         return JsonResponse({"detail": "Method not allowed"}, status=405)
+    """Handle CRUD operations for clearance timelines for CISO."""
 
     user = _get_authenticated_user(request)
     if not user:

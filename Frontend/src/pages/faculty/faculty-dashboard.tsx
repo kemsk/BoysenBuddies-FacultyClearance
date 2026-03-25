@@ -55,50 +55,7 @@ export default function Facultydashboard() {
       : 0;
   const isClearanceApproved = clearancePercent >= 100;
 
-  const dummySteps = React.useMemo(
-    () => [
-      {
-        index: 1,
-        title: "Library",
-        statusLabel: "PENDING",
-        statusVariant: "warning" as const,
-        collapsedType: "status" as const,
-        submittedTo: "Library Office",
-        submittedOn: "December 1, 2025",
-        requirements: [
-          {
-            title: "Borrowed Books Report",
-            description: "Report the status of borrowed books",
-            completed: true,
-          },
-          {
-            title: "Return All Books",
-            description: "Return all borrowed books to the library",
-            completed: false,
-          },
-        ],
-      },
-      {
-        index: 2,
-        title: "Department Chair",
-        statusLabel: "LOCKED",
-        statusVariant: "muted" as const,
-        collapsedType: "locked" as const,
-        submittedTo: "Department Office",
-        submittedOn: "",
-        requirements: [
-          {
-            title: "Clearance Form",
-            description: "Submit clearance form for department approval",
-            completed: false,
-          },
-        ],
-      },
-    ],
-    []
-  );
-
-  const stepsToRender = profile?.steps?.length ? profile.steps : dummySteps;
+  const stepsToRender = profile?.steps || [];
 
   const [meProfile, setMeProfile] = React.useState<{
     email: string;
