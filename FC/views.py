@@ -665,14 +665,19 @@ def _is_office_referenced(office: Office):
 
 
 def _get_active_ciso_admin(request=None):
-    # Get the first active CISO admin
-    from .models import UserRole, Role
-    try:
-        ciso_role = Role.objects.get(name='CISO')
-        user_role = UserRole.objects.filter(role=ciso_role, is_active=True).first()
-        return user_role.user if user_role else None
-    except Role.DoesNotExist:
+    # Get the currently authenticated user with CISO role
+    if not request:
         return None
+    
+    user = _get_authenticated_user(request)
+    if not user:
+        return None
+    
+    # Check if user has active CISO role
+    if user.userrole_set.filter(role__name='CISO', is_active=True).exists():
+        return user
+    
+    return None
 
 
 def _require_ciso_admin_user(request):
