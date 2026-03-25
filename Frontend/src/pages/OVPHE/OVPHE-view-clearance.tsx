@@ -10,7 +10,6 @@ import {
 } from "../../stories/components/cards";
 
 import { Button } from "../../stories/components/button";
-import { Divider } from "../../stories/components/divider";
 
 import {
   Select,

@@ -28,6 +28,24 @@ export default function RequirementList() {
   const [showSuccess, setShowSuccess] = React.useState(false);
   const [showTrueAgreement, setShowTrueAgreement] = React.useState(false);
 
+  const postApproverActivityLog = React.useCallback(
+    async (event_type: string, details: string[] = []) => {
+      try {
+        await fetch("/admin/xu-faculty-clearance/api/approver/activity-logs", {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ event_type, details }),
+        });
+      } catch {
+      }
+    },
+    []
+  );
+
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
       
@@ -72,7 +90,9 @@ export default function RequirementList() {
               </div>
             </Button>
           }
-          onSave={() => {}}
+          onSave={(payload) => {
+            void postApproverActivityLog("created_requirements", [payload.title]);
+          }}
         />
         <RequirementEditCard
             title="Reporting of Borrowed Books"
@@ -83,8 +103,12 @@ export default function RequirementList() {
             CreatedBy="Jose Rizal"
             ClearanceTimeline="2501 Faculty Clearance"
             physicalSubmission={true}
-            onEdit={() => {}}
-            onDelete={() => {}}
+            onEdit={(payload) => {
+              void postApproverActivityLog("edited_requirement", [payload?.title || "Reporting of Borrowed Books"]);
+            }}
+            onDelete={() => {
+              void postApproverActivityLog("deleted_requirements", ["Reporting of Borrowed Books"]);
+            }}
         />
 
         <RequirementEditCard
@@ -96,8 +120,12 @@ export default function RequirementList() {
             ClearanceTimeline=""
             physicalSubmission={false}
             submissionDeadline="December 3, 2025, 9:30 AM"
-            onEdit={() => {}}
-            onDelete={() => {}}
+            onEdit={(payload) => {
+              void postApproverActivityLog("edited_requirement", [payload?.title || "Reporting of Borrowed Books"]);
+            }}
+            onDelete={() => {
+              void postApproverActivityLog("deleted_requirements", ["Reporting of Borrowed Books"]);
+            }}
         />
 
         {showTrueAgreement ? (

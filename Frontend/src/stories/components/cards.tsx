@@ -3,6 +3,37 @@ import * as React from "react";
 import { Check, ChevronLeft, ChevronRight, Download, Eye, Pencil, Plus, Trash2, Upload, X, ArrowBigLeft, ArrowBigRight, UserCheck, UserMinus, UserPlus } from "lucide-react";
 
 import { Link } from "react-router-dom";
+import { cn } from "../../components/lib/utils";
+import { Badge } from "./badge";
+import { Button } from "./button";
+import { Checkbox } from "./checkbox";
+import { ApproveConfirmDialog, RejectAlertDialog } from "./clearance-action-dialogs";
+import { AddRequirementDialog, type AddRequirementPayload } from "./add-requirement-dialog";
+import { Divider } from "./divider";
+import { DeactivateAlert, ActivateAlert, DeleteAlert } from "./alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "./alert-dialog";
+
+import { CommentDialog } from "./dialog";
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "./card";
+import { RadioGroup, RadioGroupItem } from "./radio-group";
+import { InputGroup, InputGroupInput, InputGroupWithAddon } from "./input-group";
 
 import {
   Select,
@@ -88,46 +119,6 @@ export function GuidelinesToggle({
   );
 }
 
-
-import { cn } from "../../components/lib/utils";
-
-import { Badge } from "./badge";
-
-import { Button } from "./button";
-
-import { Checkbox } from "./checkbox";
-
-import { ApproveConfirmDialog, RejectAlertDialog } from "./clearance-action-dialogs";
-
-import { AddRequirementDialog, type AddRequirementPayload } from "./add-requirement-dialog";
-
-import { Divider } from "./divider";
-
-import { DeactivateAlert, ActivateAlert, DeleteAlert } from "./alert";
-
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "./alert-dialog";
-
-import { CommentDialog } from "./dialog";
-
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "./card";
-import { RadioGroup, RadioGroupItem } from "./radio-group";
-import { InputGroup, InputGroupInput, InputGroupWithAddon } from "./input-group";
 
 type DashboardBadgeVariant = "default" | "success" | "warning" | "muted";
 
@@ -437,11 +428,10 @@ export function StudentAssistantsCard({
 }
 
 export type RequirementEditCardProps = {
-  title: string;
-  Recipients: string;
-  description: string;
+  title?: string;
+  description?: string;
   physicalSubmission?: boolean;
-  submissionDeadline?: string;
+  Recipients?: string;
   className?: string;
   LastUpdated?: string;
   CreatedBy?: string;
@@ -815,7 +805,6 @@ export function ClearanceRequestsCard({
               ))}
             </div>
           </div>
-
           <Divider orientation="vertical" className="h-auto self-stretch" />
         </div>
       </CardContent>
@@ -1155,8 +1144,9 @@ export function ExportArchiveClearanceCard({
     </Card>
 
   );
+};
 
-}
+
 
 
 
@@ -1243,9 +1233,13 @@ export function RequirementsListCard({
                       variant="icon"
                       className="mt-0.5 text-primary"
                     >
-                      <Link to={headerActionHref}>
+                      {headerActionHref ? (
+                        <Link to={headerActionHref}>
+                          <img src="BlackChevronIcon.png" className="h-5" />
+                        </Link>
+                      ) : (
                         <img src="BlackChevronIcon.png" className="h-5" />
-                     </Link>
+                      )}
                     </Button>
                   </div>
                   
@@ -1324,158 +1318,87 @@ export type AnnouncementsCardProps = {
 export function AnnouncementsCard({
 
   items,
-
   className,
-
   headerActionHref,
-
   headerActionImgSrc,
-
   headerActionImgAlt,
-
   showHeaderChevron = true,
 
 }: AnnouncementsCardProps) {
 
   return (
-
     <Card className={cn("overflow-hidden", className)}>
-
       <CardHeader className="bg-[hsl(var(--yellow))] py-3 shadow-sm">
-
         <CardTitle className="relative flex items-center justify-center text-base font-bold text-foreground">
-
           <div className="text-center font-bold">Announcements</div>
-
-
-
           {headerActionImgSrc && headerActionImgAlt ? (
-
             headerActionHref ? (
-
               <Button
-
                 asChild
-
                 variant="icon"
-
                 size="icon"
-
                 className="absolute right-[-8px] top-1/2 -translate-y-1/2"
-
               >
-
                 <Link to={headerActionHref}>
-
                   <img
-
                     src={headerActionImgSrc}
-
                     alt={headerActionImgAlt}
-
                     className="h-6 w-6 object-contain"
-
                   />
-
                 </Link>
-
               </Button>
 
             ) : (
 
               <div className="absolute right-0 top-1/2 -translate-y-1/2">
-
                 <img
-
                   src={headerActionImgSrc}
-
                   alt={headerActionImgAlt}
-
                   className="h-6 w-6 object-contain"
-
                 />
-
               </div>
-
             )
-
           ) : showHeaderChevron ? (
-
             <div className="absolute right-1 top-1/2 -translate-y-1/2">
-
               <ChevronRight className="h-5 w-5 text-foreground" />
-
             </div>
-
           ) : null}
-
         </CardTitle>
-
       </CardHeader>
 
-
-
       <CardContent className="p-4">
-
         <div className="space-y-3">
-
           {items.map((item) => (
-
             <div key={item.title} className="rounded-md bg-foregroundLight p-4">
-
               <div className="flex items-start gap-3">
-
                 {item.pinned ? (
-
                   <img src="/BlackBookmarkIcon.png" alt="Pin" className="mt-0.5 h-4 w-4 text-foreground" />
-
                 ) : null}
-
                 <div className="min-w-0">
-
                   {item.imageSrc ? (
-
                     <img
-
                       src={item.imageSrc}
-
                       alt={item.imageAlt ?? "Announcement"}
-
                       className="mb-3 h-32 w-full rounded-md object-cover"
-
                     />
-
                   ) : null}
-
                   {item.pinned ? (
-
                     <div className="text-xs font-bold text-muted-foreground">PINNED</div>
-
                   ) : null}
-
                   <div className="text-sm font-bold text-foreground mt-2">{item.title}</div>
-
                   <div className="mt-1 text-sm text-muted-foreground">{item.description}</div>
-
                   <div className="mt-3 text-xs text-muted-foreground">{item.timestamp}</div>
-
                 </div>
-
               </div>
-
             </div>
-
           ))}
-
         </div>
-
       </CardContent>
-
     </Card>
-
   );
-
 }
+
+
 
 
 
@@ -1693,15 +1616,13 @@ export function NotificationsCard({
 
             </div>
 
-
-
-            {index < pagedItems.length - 1 ? <div className="h-px w-full bg-[hsl(var(--gray-border))]" /> : null}
+            {index < pagedItems.length - 1 ? (
+              <div className="h-px w-full bg-[hsl(var(--gray-border))]" />
+            ) : null}
 
           </div>
 
         ))}
-
-
 
         <div className="px-6 pb-4">
 
@@ -1784,91 +1705,51 @@ export function NotificationsCard({
 }
 
 
-
 export type ActivityLogVariant =
-
   | "approved_clearance"
-
   | "rejected_clearance"
-
   | "create_request"
-
   | "edited_requirements"
-
   | "created_requirements"
-
   | "deleted_requirements"
-
   | "added_assistant_approver"
-
   | "updated_assistant_approver"
-
   | "removed_assistant_approver"
-
   | "user_logout"
-
   | "user_login"
-
   | "exported_clearance_results"
-
   | "created_guideline"
-
   | "edited_guideline"
-
+  | "enabled_guideline"
+  | "disabled_guideline"
+  | "delete_guideline"
   | "set_guideline_status_active"
-
   | "set_guideline_status_inactive"
-
   | "archived_guideline"
-
   | "created_announcement"
-
   | "set_announcement_status_active"
-
   | "set_announcement_status_inactive"
-
   | "edited_announcement"
-
   | "created_timeline"
-
   | "edited_timeline"
-
   | "set_timeline_status_active"
-
   | "set_timeline_status_inactive"
-
   | "created_college"
-
   | "edited_college"
-
   | "deleted_college"
-
   | "created_department"
-
   | "edited_department"
-
   | "deleted_department"
-
   | "created_office"
-
   | "edited_office"
-
   | "deleted_office"
-
   | "added_to_approver_flow"
-
   | "edited_approver_flow"
-
   | "removed_from_approver_flow"
-
   | "created_approver"
-
   | "edited_approver"
-
   | "removed_approver"
-
   | "uploaded_faculty_data_dump"
-
   | "removed_faculty_data_dump";
 
 
@@ -1876,63 +1757,34 @@ export type ActivityLogVariant =
 export type ActivityLogItem = {
 
   id: string;
-
   dateLabel: string;
-
   timeLabel: string;
-
   variant: ActivityLogVariant;
-
   event_type?: string;  // Add event_type from backend API
-
   title?: string;
-
   description?: string;
-
   actorFirstName?: string;
-
   actorLastName?: string;
-
   actorRole?: string;
-
   facultyFirstName?: string;
-
   facultyLastName?: string;
-
   facultyCollege?: string;
-
   facultyDepartment?: string;
-
   universityId?: string;
-
   requestId?: string;
-
   details: string[];
-
   schoolYear?: string;
-
   semester?: string;
-
   guidelineTitle?: string;
-
   announcementTitle?: string;
-
   requirementTitle?: string;
-
   collegeName?: string;
-
   departmentName?: string;
-
   approverDepartment?: string;
-
   approverFlowField?: string;
-
   approverFirstName?: string;
-
   approverLastName?: string;
-
   assistantApproverFirstName?: string;
-
   assistantApproverLastName?: string;
 
 };
@@ -1940,11 +1792,8 @@ export type ActivityLogItem = {
 
 
 export type ActivityLogsCardProps = {
-
   items: ActivityLogItem[];
-
   className?: string;
-
 };
 
 
@@ -1965,9 +1814,21 @@ function getActivityIcon(variant: ActivityLogVariant) {
 
   }
 
+  if (variant === "archived_guideline") {
 
+    return (
 
-  if (variant === "rejected_clearance" || variant === "set_guideline_status_inactive" || variant === "set_announcement_status_inactive" || variant === "set_timeline_status_inactive") { 
+      <div className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-success p-0.2">
+
+        <Check strokeWidth={4} className="h-3 w-3 text-white transform translate-y-[0.5px]" />
+
+      </div>
+
+    );
+
+  }
+
+  if (variant === "rejected_clearance" || variant === "set_guideline_status_inactive" || variant === "set_announcement_status_inactive" || variant === "set_timeline_status_inactive" || variant === "disabled_guideline" || variant === "delete_guideline") { 
 
     return (
 
@@ -1981,9 +1842,7 @@ function getActivityIcon(variant: ActivityLogVariant) {
 
   }
 
-
-
-  if (variant === "create_request" || variant === "created_requirements" || variant === "created_guideline" || variant === "created_announcement" || variant === "created_timeline" || variant === "created_college" || variant === "created_department" || variant === "added_to_approver_flow") {
+  if (variant === "create_request" || variant === "created_requirements" || variant === "created_guideline" || variant === "created_announcement" || variant === "created_timeline" || variant === "created_college" || variant === "created_department" || variant === "added_to_approver_flow" || variant === "enabled_guideline") {
 
     return (
 
@@ -1996,8 +1855,6 @@ function getActivityIcon(variant: ActivityLogVariant) {
     );
 
   }
-
-
 
   if (variant === "edited_requirements" || variant === "edited_approver_flow" || variant === "edited_guideline" || variant === "edited_announcement" || variant === "edited_college" || variant === "edited_department" || variant === "edited_office" || variant === "edited_approver" || variant === "edited_timeline") {
 
@@ -2013,12 +1870,6 @@ function getActivityIcon(variant: ActivityLogVariant) {
 
   }
 
-
-
-
-
-
-
   if (variant === "updated_assistant_approver") {
 
     return (
@@ -2032,8 +1883,6 @@ function getActivityIcon(variant: ActivityLogVariant) {
     );
 
   }
-
-
 
   if (variant === "removed_assistant_approver" || variant === "removed_approver") {
 
@@ -2049,8 +1898,6 @@ function getActivityIcon(variant: ActivityLogVariant) {
 
   }
 
-
-
   if (variant === "created_approver" || variant === "added_assistant_approver") {
 
     return (
@@ -2064,8 +1911,6 @@ function getActivityIcon(variant: ActivityLogVariant) {
     );
 
   }
-
-
 
   if (variant === "user_logout") {
 
@@ -2081,8 +1926,6 @@ function getActivityIcon(variant: ActivityLogVariant) {
 
   }
 
-
-
   if (variant === "user_login") {
 
     return (
@@ -2096,8 +1939,6 @@ function getActivityIcon(variant: ActivityLogVariant) {
     );
 
   }
-
-
 
   if (variant === "exported_clearance_results") {
 
@@ -2113,62 +1954,12 @@ function getActivityIcon(variant: ActivityLogVariant) {
 
   }
 
-
-
-
-
-  if (variant === "archived_guideline") {
-
-    return (
-
-      <div className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-destructive">
-
-        <svg
-
-          viewBox="0 0 24 24"
-
-          fill="none"
-
-          xmlns="http://www.w3.org/2000/svg"
-
-          className="h-3 w-3"
-
-          aria-hidden="true"
-
-        >
-
-          <path
-
-            d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"
-
-            stroke="white"
-
-            strokeWidth="4"
-
-            strokeLinejoin="round"
-
-          />
-
-        </svg>
-
-      </div>
-
-    );
-
-  }
-
-
-
-
-
   if (variant === "set_timeline_status_active" || variant === "set_guideline_status_active" || variant === "set_announcement_status_active") {
 
     return (
 
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-success p-0.2">
-
         <Check strokeWidth={4} className="h-3 w-3 text-white transform translate-y-[0.5px]" />
-
       </div>
 
     );
@@ -2307,7 +2098,7 @@ function formatActivityLogText(item: ActivityLogItem) {
 
     const title = "Created Guideline";
 
-    const description = `User ${userName} created guideline${guidelineTail}`;
+    const description = `User ${userName} created ${guidelineTail}`;
 
     return { title, description };
 
@@ -2319,7 +2110,43 @@ function formatActivityLogText(item: ActivityLogItem) {
 
     const title = "Edited Guideline";
 
-    const description = `User ${userName} edited guideline${guidelineTail}`;
+    const description = `User ${userName} edited ${guidelineTail}`;
+
+    return { title, description };
+
+  }
+
+
+
+  if (item.variant === "enabled_guideline") {
+
+    const title = "Enabled Guideline";
+
+    const description = `User ${userName} enabled ${guidelineTail}`;
+
+    return { title, description };
+
+  }
+
+
+
+  if (item.variant === "disabled_guideline") {
+
+    const title = "Disabled Guideline";
+
+    const description = `User ${userName} disabled ${guidelineTail}`;
+
+    return { title, description };
+
+  }
+
+
+
+  if (item.variant === "delete_guideline") {
+
+    const title = "Deleted Guideline";
+
+    const description = `User ${userName} deleted ${guidelineTail}`;
 
     return { title, description };
 
@@ -2331,7 +2158,7 @@ function formatActivityLogText(item: ActivityLogItem) {
 
     const title = "Set Guideline Status to \"Active\"";
 
-    const description = `User ${userName} set guideline, ${guidelineTitle || ""} status to Active.`;
+    const description = `User ${userName} set ${guidelineTitle || ""} status to Active.`;
 
     return { title, description };
 
@@ -2343,7 +2170,7 @@ function formatActivityLogText(item: ActivityLogItem) {
 
     const title = "Set Guideline Status to \"Inactive\"";
 
-    const description = `User ${userName} set guideline, ${guidelineTitle || ""} status to Inactive.`;
+    const description = `User ${userName} set ${guidelineTitle || ""} status to Inactive.`;
 
     return { title, description };
 
@@ -2355,7 +2182,7 @@ function formatActivityLogText(item: ActivityLogItem) {
 
     const title = "Archived Guideline";
 
-    const description = `User ${userName} archived guideline${guidelineTail}`;
+    const description = `User ${userName} archived ${guidelineTail}`;
 
     return { title, description };
 
@@ -2510,11 +2337,8 @@ function formatActivityLogText(item: ActivityLogItem) {
   if (item.variant === "deleted_college") {
 
     const title = "Deleted College";
-
     const collegeTail = collegeName ? `: ${collegeName}.` : ".";
-
     const description = `User ${userName} deleted college${collegeTail}`;
-
     return { title, description };
 
   }
@@ -2570,37 +2394,21 @@ function formatActivityLogText(item: ActivityLogItem) {
 
 
   if (item.variant === "user_logout") {
-
     const title = "User Logout";
-
     const firstName = item.actorFirstName?.trim() || userName;
-
     const roleTail = item.actorRole?.trim() ? ` as ${item.actorRole.trim()}` : "";
-
     const inTail = deptOffice ? ` in ${deptOffice}.` : ".";
-
     const description = `User ${firstName} logged out${roleTail}${inTail}`;
-
     return { title, description };
-
   }
 
-
-
   if (item.variant === "user_login") {
-
     const title = "User Login";
-
     const firstName = item.actorFirstName?.trim() || userName;
-
     const roleTail = item.actorRole?.trim() ? ` as ${item.actorRole.trim()}` : "";
-
     const inTail = deptOffice ? ` in ${deptOffice}.` : ".";
-
     const description = `User ${firstName} logged in${roleTail}${inTail}`;
-
     return { title, description };
-
   }
 
 
@@ -2705,334 +2513,166 @@ function formatActivityLogText(item: ActivityLogItem) {
 
   }
 
-
-
-  const title = "Rejected Clearance";
-
-  const description = `User ${actorName} of Department/Office ${item.approverDepartment || ""}, rejected clearance for faculty member ${facultyName}.`;
-
-  return { title, description };
+  return {
+    title: item.title ?? String(item.variant ?? ""),
+    description: item.description ?? "",
+  };
 
 }
 
 export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): React.ReactElement {
-
-  const parseDateParts = (dateLabel: string) => {
-
+  const parseDateParts = React.useCallback((dateLabel: string) => {
     const today = new Date();
 
     const shortMonths = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
-
-
     if (dateLabel === "Today") {
-
       return {
-
         year: String(today.getFullYear()),
-
         monthIndex: today.getMonth(),
-
         monthShort: shortMonths[today.getMonth()],
-
         day: String(today.getDate()).padStart(2, "0"),
-
         key: `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`,
-
       };
-
     }
-
-
 
     const mmddyyyy = /^\d{2}\/\d{2}\/\d{4}$/.test(dateLabel);
-
     if (mmddyyyy) {
-
       const [mm, dd, yyyy] = dateLabel.split("/");
-
       const monthIndex = Math.max(0, Math.min(11, Number(mm) - 1));
-
       const dayNum = Number(dd);
-
       return {
-
         year: yyyy,
-
         monthIndex,
-
         monthShort: shortMonths[monthIndex],
-
         day: String(dayNum).padStart(2, "0"),
-
         key: `${yyyy}-${monthIndex}-${dayNum}`,
-
       };
-
     }
 
-
-
     return {
-
       year: "",
-
       monthIndex: 0,
-
       monthShort: "",
-
       day: "",
-
       key: dateLabel,
-
     };
-
-  };
-
-
-
-  const yearGroups = React.useMemo(
-
-    () => {
-
-      // Build a map of year -> dateKey -> dateGroup so each year appears once
-
-      const yearMap = new Map<
-
-        string,
-
-        Map<
-
-          string,
-
-          {
-
-            key: string;
-
-            year: string;
-
-            monthShort: string;
-
-            day: string;
-
-            items: ActivityLogItem[];
-
-            sortKey: number;
-
-          }
-
-        >
-
-      >();
-
-
-
-      const getTimestamp = (it: ActivityLogItem) => {
-
-        // Try mm/dd/yyyy + time parsing similar to the page parser
-
-        try {
-
-          if (/^\d{2}\/\d{2}\/\d{4}$/.test(it.dateLabel)) {
-
-            const [mm, dd, yyyy] = it.dateLabel.split("/");
-
-            let month = Math.max(0, Math.min(11, Number(mm) - 1));
-
-            let day = Number(dd) || 1;
-
-            let year = Number(yyyy) || 0;
-
-
-
-            let hour = 0;
-
-            let minute = 0;
-
-            if (it.timeLabel) {
-
-              const m = it.timeLabel.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
-
-              if (m) {
-
-                hour = Number(m[1]);
-
-                minute = Number(m[2]);
-
-                const ampm = (m[3] || "").toUpperCase();
-
-                if (ampm === "PM" && hour < 12) hour += 12;
-
-                if (ampm === "AM" && hour === 12) hour = 0;
-
-              }
-
-            }
-
-
-
-            return new Date(year, month, day, hour, minute).getTime();
-
-          }
-
-
-
-          if (it.dateLabel === "Today") {
-
-            const d = new Date();
-
-            let hour = 0;
-
-            let minute = 0;
-
-            if (it.timeLabel) {
-
-              const m = it.timeLabel.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
-
-              if (m) {
-
-                hour = Number(m[1]);
-
-                minute = Number(m[2]);
-
-                const ampm = (m[3] || "").toUpperCase();
-
-                if (ampm === "PM" && hour < 12) hour += 12;
-
-                if (ampm === "AM" && hour === 12) hour = 0;
-
-              }
-
-            }
-
-            return new Date(d.getFullYear(), d.getMonth(), d.getDate(), hour, minute).getTime();
-
-          }
-
-
-
-          // fallback: try Date.parse on the label
-
-          const parsed = Date.parse(it.dateLabel);
-
-          if (!isNaN(parsed)) return parsed;
-
-        } catch (e) {}
-
-        return 0;
-
-      };
-
-
-
-      for (const item of items) {
-
-        const ts = getTimestamp(item);
-
-        const dateObj = ts ? new Date(ts) : null;
-
-        const year = dateObj ? String(dateObj.getFullYear()) : parseDateParts(item.dateLabel).year || "";
-
-        const monthShort = dateObj ? ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"][dateObj.getMonth()] : parseDateParts(item.dateLabel).monthShort;
-
-        const day = dateObj ? String(dateObj.getDate()).padStart(2, "0") : parseDateParts(item.dateLabel).day;
-
-        const monthIndex = dateObj ? dateObj.getMonth() : parseDateParts(item.dateLabel).monthIndex || 0;
-
-
-
-        const dateKey = dateObj ? `${year}-${monthIndex}-${dateObj.getDate()}` : parseDateParts(item.dateLabel).key;
-
-
-
-        const sortKey = ts || 0;
-
-
-
-        let datesMap = yearMap.get(year);
-
-        if (!datesMap) {
-
-          datesMap = new Map();
-
-          yearMap.set(year, datesMap);
-
+  }, []);
+
+  const getItemTimestamp = React.useCallback(
+    (item: ActivityLogItem): number => {
+      try {
+        const createdAt = String((item as any).created_at ?? "").trim();
+        if (createdAt) {
+          const ms = Date.parse(createdAt);
+          if (!Number.isNaN(ms)) return ms;
         }
-
-
-
-        let d = datesMap.get(dateKey);
-
-        if (!d) {
-
-          d = {
-
-            key: dateKey,
-
-            year,
-
-            monthShort,
-
-            day,
-
-            items: [item],
-
-            sortKey,
-
-          };
-
-          datesMap.set(dateKey, d);
-
-        } else {
-
-          d.items.push(item);
-
-          // keep the largest sortKey (most recent) for the date group
-
-          if (sortKey > d.sortKey) d.sortKey = sortKey;
-
-        }
-
+      } catch {
       }
 
+      try {
+        const d = parseDateParts(item.dateLabel);
+        const yearNum = Number(d.year);
+        if (!yearNum) return 0;
 
+        let hour = 0;
+        let minute = 0;
+        const t = (item.timeLabel || "").trim();
+        if (t) {
+          const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+          if (m) {
+            hour = Number(m[1]);
+            minute = Number(m[2]);
+            const ampm = (m[3] || "").toUpperCase();
+            if (ampm === "PM" && hour < 12) hour += 12;
+            if (ampm === "AM" && hour === 12) hour = 0;
+          }
+        }
 
-      // Convert map to array, sorting years and dates (most recent first)
+        return new Date(yearNum, d.monthIndex, Number(d.day) || 1, hour, minute).getTime();
+      } catch {
+        return 0;
+      }
+    },
+    [parseDateParts]
+  );
 
-      const yearEntries = Array.from(yearMap.entries()).sort((a, b) => {
+  const normalizedItems = React.useMemo(() => {
+    return (items ?? []).map((it) => {
+      const evt = String((it as any).event_type ?? "").trim();
+      if (evt === "created_guideline") {
+        return { ...it, variant: "created_guideline" as any };
+      }
 
-        const an = Number(a[0]) || 0;
+      if (it.variant) return it;
+      if (!evt) return it;
+      return { ...it, variant: evt as any };
+    });
+  }, [items]);
 
-        const bn = Number(b[0]) || 0;
+  const yearGroups = React.useMemo(() => {
+    const yearMap: Map<string, Map<string, {
+      key: string;
+      year: string;
+      monthShort: string;
+      day: string;
+      items: ActivityLogItem[];
+      sortKey: number;
+    }>> = new Map();
 
-        return bn - an;
+    for (const item of normalizedItems) {
+      const ts = getItemTimestamp(item);
+      const dateObj = ts ? new Date(ts) : null;
 
-      });
+      const parsed = parseDateParts(item.dateLabel);
+      const year = dateObj ? String(dateObj.getFullYear()) : parsed.year || "";
+      const monthShort = dateObj
+        ? ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"][dateObj.getMonth()]
+        : parsed.monthShort;
+      const day = dateObj ? String(dateObj.getDate()).padStart(2, "0") : parsed.day;
+      const monthIndex = dateObj ? dateObj.getMonth() : parsed.monthIndex || 0;
 
+      const dateKey = dateObj ? `${year}-${monthIndex}-${dateObj.getDate()}` : parsed.key;
+      const sortKey = ts || 0;
 
+      let datesMap = yearMap.get(year);
+      if (!datesMap) {
+        datesMap = new Map();
+        yearMap.set(year, datesMap);
+      }
 
-      const out = yearEntries.map(([year, datesMap]) => {
+      let d = datesMap.get(dateKey);
+      if (!d) {
+        d = {
+          key: dateKey,
+          year,
+          monthShort,
+          day,
+          items: [item],
+          sortKey,
+        };
+        datesMap.set(dateKey, d);
+      } else {
+        d.items.push(item);
+        if (sortKey > d.sortKey) d.sortKey = sortKey;
+      }
+    }
 
-        const dates = Array.from(datesMap.values())
+    const yearEntries = Array.from(yearMap.entries()).sort((a, b) => {
+      const an = Number(a[0]) || 0;
+      const bn = Number(b[0]) || 0;
+      return bn - an;
+    });
 
-          .sort((a, b) => b.sortKey - a.sortKey)
-
-          .map(({ sortKey, ...rest }) => rest);
-
-        return { year, dates };
-
-      });
-
-
-
-      return out;
-
-    }, [items]);
-
-
+    return yearEntries.map(([year, datesMap]) => {
+      const dates = Array.from(datesMap.values())
+        .sort((a, b) => b.sortKey - a.sortKey)
+        .map(({ sortKey, ...rest }) => rest);
+      return { year, dates };
+    });
+  }, [getItemTimestamp, normalizedItems, parseDateParts]);
 
   return (
-
     <div className={cn("space-y-6", className)}>
 
       {yearGroups.map((yearGroup) => (
@@ -4482,7 +4122,7 @@ export function ViewArchivedClearanceCard({
   iconAlt = "Archive",
   onIconClick,
   iconClassName = "ml-4",
-}: ArchivedClearanceCardProps) {
+}: ViewArchivedClearanceCardProps) {
   return (
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
         <div className="text-center text-xl font-bold text-foreground flex items-center justify-between p-6">

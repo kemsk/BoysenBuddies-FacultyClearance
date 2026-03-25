@@ -343,31 +343,6 @@ function TimelineDialogShell(props: {
                 }}
               />
 
-              {hideTermField ? null : (
-                presetTerm ? (
-                  <div>
-                    <div className="text-xs font-semibold text-foreground">Term</div>
-                    <div className="mt-2">{presetTerm}</div>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="text-xs font-semibold text-foreground">Term</div>
-                    <select
-                      className="mt-2 h-10 w-full rounded-md border border-primary bg-background px-3 text-sm text-foreground"
-                      value={term}
-                      onChange={(event) => setTerm(event.target.value)}
-                    >
-                      <option value="">Select term</option>
-                      {TERM_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )
-              )}
-
               <div className="mt-5" />
 
               <DateField

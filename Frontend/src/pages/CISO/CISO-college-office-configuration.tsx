@@ -127,6 +127,32 @@ function postOVPHEActivityLog(payload: { event_type: string; details?: string[] 
     });
 }
 
+function postCISOActivityLog(payload: { event_type: string; details?: string[] }) {
+  fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  })
+    .then(async (r) => {
+      if (r.ok) return;
+      const text = await r.text().catch(() => "");
+      // eslint-disable-next-line no-console
+      console.warn("CISO activity log POST failed", r.status, text);
+    })
+    .catch((e) => {
+      // eslint-disable-next-line no-console
+      console.warn("CISO activity log POST error", e);
+    });
+}
+
+type QueuedActivityLog = {
+  role: "CISO" | "OVPHE";
+  payload: { event_type: string; details?: string[] };
+};
+
 function AddCollegeDialog(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -622,10 +648,45 @@ export default function CISOCollegeOfficeConfiguration() {
   const [editingOfficeId, setEditingOfficeId] = React.useState<string | null>(null);
   const [editingApproverId, setEditingApproverId] = React.useState<string | null>(null);
 
-  const [confirmDelete, setConfirmDelete] = React.useState<
-    | { open: true; type: "college" | "department" | "office" | "approver"; id: string; label: string }
-    | { open: false }
-  >({ open: false });
+  const [confirmDelete, setConfirmDelete] = React.useState<{
+    open: boolean;
+    type?: "college" | "department" | "office" | "approver";
+    id?: string;
+    label?: string;
+  }>({ open: false });
+
+  const [queuedActivityLogs, setQueuedActivityLogs] = React.useState<QueuedActivityLog[]>([]);
+
+  const queueCISOActivityLog = React.useCallback(
+    (payload: { event_type: string; details?: string[] }) => {
+      setQueuedActivityLogs((prev) => [...prev, { role: "CISO", payload }]);
+    },
+    []
+  );
+
+  const queueOVPHEActivityLog = React.useCallback(
+    (payload: { event_type: string; details?: string[] }) => {
+      setQueuedActivityLogs((prev) => [...prev, { role: "OVPHE", payload }]);
+    },
+    []
+  );
+
+  const flushQueuedActivityLogs = React.useCallback(async () => {
+    if (!queuedActivityLogs.length) return;
+
+    const logsToFlush = queuedActivityLogs;
+    setQueuedActivityLogs([]);
+
+    await Promise.all(
+      logsToFlush.map(async (log) => {
+        if (log.role === "CISO") {
+          postCISOActivityLog(log.payload);
+          return;
+        }
+        postOVPHEActivityLog(log.payload);
+      })
+    );
+  }, [queuedActivityLogs]);
 
   React.useEffect(() => {
     fetch("/admin/xu-faculty-clearance/api/ovphe/org-structure")
@@ -745,7 +806,15 @@ export default function CISOCollegeOfficeConfiguration() {
               </Select>
             </div>
             <div className="mt-3">
-              <Button variant="default" className="w-full font-bold">
+              <Button
+                variant="default"
+                className="w-full font-bold"
+                onClick={() => {
+                  (async () => {
+                    await flushQueuedActivityLogs();
+                  })();
+                }}
+              >
                 Save Configuration
               </Button>
 
@@ -1041,7 +1110,7 @@ export default function CISOCollegeOfficeConfiguration() {
                 }
               );
 
-              postOVPHEActivityLog({
+              queueCISOActivityLog({
                 event_type: "created_college",
                 details: created?.name ? [`College: ${created.name}`] : [],
               });
@@ -1064,7 +1133,7 @@ export default function CISOCollegeOfficeConfiguration() {
                   )
                 );
                 for (const dept of createdDepts) {
-                  postOVPHEActivityLog({
+                  queueOVPHEActivityLog({
                     event_type: "created_department",
                     details: [
                       dept?.name ? `Department: ${dept.name}` : "",
@@ -1102,7 +1171,7 @@ export default function CISOCollegeOfficeConfiguration() {
                 }
               );
 
-              postOVPHEActivityLog({
+              queueOVPHEActivityLog({
                 event_type: "added_to_approver_flow",
                 details: [
                   payload.category ? `Category: ${payload.category}` : "",
@@ -1135,7 +1204,7 @@ export default function CISOCollegeOfficeConfiguration() {
                 }
               );
 
-              postOVPHEActivityLog({
+              queueOVPHEActivityLog({
                 event_type: "created_department",
                 details: [
                   created?.name ? `Department: ${created.name}` : "",
@@ -1162,7 +1231,7 @@ export default function CISOCollegeOfficeConfiguration() {
                 }
               );
 
-              postOVPHEActivityLog({
+              queueOVPHEActivityLog({
                 event_type: "created_office",
                 details: created?.name ? [`Office: ${created.name}`] : [],
               });
@@ -1199,17 +1268,15 @@ export default function CISOCollegeOfficeConfiguration() {
                 }
               );
 
-              postOVPHEActivityLog({
+              queueCISOActivityLog({
                 event_type: "edited_college",
                 details: [
-                  previousName ? `College: ${previousName}` : "",
-                  payload.name && payload.name !== previousName ? `New name: ${payload.name}` : "",
+                  previousName ? `Previous: ${previousName}` : "",
+                  updated.name ? `Updated: ${updated.name}` : "",
                 ].filter(Boolean),
               });
-              setColleges((prev) => prev.map((c) => (c.id === editingCollegeId ? { ...c, ...updated } : c)));
-            })().catch(() => {
-              // ignore; can be handled by UI later
-            });
+              setColleges((prev) => prev.map((c) => (c.id === editingCollegeId ? updated : c)));
+            })();
           }}
         />
 
@@ -1241,20 +1308,18 @@ export default function CISOCollegeOfficeConfiguration() {
                 }
               );
 
-              postOVPHEActivityLog({
+              queueOVPHEActivityLog({
                 event_type: "edited_department",
                 details: [
-                  prevDeptName ? `Department: ${prevDeptName}` : "",
+                  prevDeptName ? `Previous: ${prevDeptName}` : "",
                   prevCollegeName ? `College: ${prevCollegeName}` : "",
-                  payload.name && payload.name !== prevDeptName ? `New name: ${payload.name}` : "",
+                  updated.name ? `Updated: ${updated.name}` : "",
                 ].filter(Boolean),
               });
               setDepartments((prev) =>
-                prev.map((d) => (d.id === editingDepartmentId ? { ...d, ...updated } : d))
+                prev.map((d) => (d.id === editingDepartmentId ? updated : d))
               );
-            })().catch(() => {
-              // ignore; can be handled by UI later
-            });
+            })();
           }}
         />
 
@@ -1284,17 +1349,15 @@ export default function CISOCollegeOfficeConfiguration() {
                 }
               );
 
-              postOVPHEActivityLog({
+              queueOVPHEActivityLog({
                 event_type: "edited_office",
                 details: [
-                  prevOfficeName ? `Office: ${prevOfficeName}` : "",
-                  payload.name && payload.name !== prevOfficeName ? `New name: ${payload.name}` : "",
+                  prevOfficeName ? `Previous: ${prevOfficeName}` : "",
+                  updated.name ? `Updated: ${updated.name}` : "",
                 ].filter(Boolean),
               });
-              setOffices((prev) => prev.map((o) => (o.id === editingOfficeId ? { ...o, ...updated } : o)));
-            })().catch(() => {
-              // ignore; can be handled by UI later
-            });
+              setOffices((prev) => prev.map((o) => (o.id === editingOfficeId ? updated : o)));
+            })();
           }}
         />
 
@@ -1330,18 +1393,16 @@ export default function CISOCollegeOfficeConfiguration() {
                 }
               );
 
-              postOVPHEActivityLog({
+              queueOVPHEActivityLog({
                 event_type: "edited_approver_flow",
                 details: [
-                  prevCategory ? `Category: ${prevCategory}` : "",
-                  payload.category && payload.category !== prevCategory ? `New category: ${payload.category}` : "",
+                  prevCategory ? `Previous: ${prevCategory}` : "",
+                  payload.category ? `Updated: ${payload.category}` : "",
                   editedCollegeNames.length ? `Colleges: ${editedCollegeNames.join(", ")}` : "",
                 ].filter(Boolean),
               });
-              setApproverFlow((prev) => prev.map((a) => (a.id === editingApproverId ? { ...a, ...updated } : a)));
-            })().catch(() => {
-              // ignore; can be handled by UI later
-            });
+              setApproverFlow((prev) => prev.map((a) => (a.id === editingApproverId ? updated : a)));
+            })();
           }}
         />
 
@@ -1360,13 +1421,11 @@ export default function CISOCollegeOfficeConfiguration() {
                 }
               );
 
-              postOVPHEActivityLog({
+              queueOVPHEActivityLog({
                 event_type: "edited_approver_flow",
                 details: ["Updated approver flow."],
               });
-            })().catch(() => {
-              // ignore; can be handled by UI later
-            });
+            })();
           }}
         />
 
@@ -1395,48 +1454,44 @@ export default function CISOCollegeOfficeConfiguration() {
 
               <AlertDialogFooter className="mt-2 flex flex-col gap-2 px-6 pb-6 sm:flex-col sm:space-x-0">
                 <AlertDialogAction
-                  className="h-11 w-full rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={() => {
                     console.log("[DEBUG] AlertDialogAction clicked", confirmDelete);
                     if (!confirmDelete.open) return;
 
                     if (confirmDelete.type === "college") {
                       (async () => {
-                        postOVPHEActivityLog({
-                          event_type: "deleted_college",
-                          details: confirmDelete.label ? [`College: ${confirmDelete.label}`] : [],
-                        });
                         await apiJson(
                           `/admin/xu-faculty-clearance/api/ovphe/colleges/${confirmDelete.id}`,
                           { method: "DELETE" }
                         );
+                        queueCISOActivityLog({
+                          event_type: "deleted_college",
+                          details: confirmDelete.label ? [`College: ${confirmDelete.label}`] : [],
+                        });
                         setColleges((prev) => prev.filter((c) => c.id !== confirmDelete.id));
                         setDepartments((prev) => prev.filter((d) => d.collegeId !== confirmDelete.id));
                         setSelectedCollegeId((prev) => (prev === confirmDelete.id ? "" : prev));
-                      })().catch(() => {
-                        // ignore; can be handled by UI later
-                      });
+                      })();
                     }
 
                     if (confirmDelete.type === "department") {
                       (async () => {
-                        postOVPHEActivityLog({
-                          event_type: "deleted_department",
-                          details: confirmDelete.label ? [`Department: ${confirmDelete.label}`] : [],
-                        });
                         await apiJson(
                           `/admin/xu-faculty-clearance/api/ovphe/departments/${confirmDelete.id}`,
                           { method: "DELETE" }
                         );
+                        queueOVPHEActivityLog({
+                          event_type: "deleted_department",
+                          details: confirmDelete.label ? [`Department: ${confirmDelete.label}`] : [],
+                        });
                         setDepartments((prev) => prev.filter((d) => d.id !== confirmDelete.id));
-                      })().catch(() => {
-                        // ignore; can be handled by UI later
-                      });
+                      })();
                     }
 
                     if (confirmDelete.type === "office") {
                       (async () => {
-                        postOVPHEActivityLog({
+                        queueOVPHEActivityLog({
                           event_type: "deleted_office",
                           details: confirmDelete.label ? [`Office: ${confirmDelete.label}`] : [],
                         });
@@ -1445,15 +1500,13 @@ export default function CISOCollegeOfficeConfiguration() {
                           { method: "DELETE" }
                         );
                         setOffices((prev) => prev.filter((o) => o.id !== confirmDelete.id));
-                      })().catch(() => {
-                        // ignore; can be handled by UI later
-                      });
+                      })();
                     }
 
                     if (confirmDelete.type === "approver") {
                       (async () => {
-                        postOVPHEActivityLog({
-                          event_type: "removed_from_approver_flow",
+                        queueOVPHEActivityLog({
+                          event_type: "deleted_approver",
                           details: confirmDelete.label ? [`Approver: ${confirmDelete.label}`] : [],
                         });
                         await apiJson(
@@ -1461,9 +1514,7 @@ export default function CISOCollegeOfficeConfiguration() {
                           { method: "DELETE" }
                         );
                         setApproverFlow((prev) => prev.filter((a) => a.id !== confirmDelete.id));
-                      })().catch(() => {
-                        // ignore; can be handled by UI later
-                      });
+                      })();
                     }
 
                     setConfirmDelete({ open: false });

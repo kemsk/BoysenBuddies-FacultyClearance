@@ -103,6 +103,15 @@ function termCardLabel(item: StoredClearanceTimelineItem | undefined) {
   return `${item.term} ${item.academicYearStart}-${item.academicYearEnd}`;
 }
 
+function postCISOActivityLog(payload: { event_type: string; details?: string[] }) {
+  fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).catch(() => {});
+}
+
 function TimelineResultDialog(props: {
   state: ResultModalState;
   onOpenChange: (open: boolean) => void;
@@ -431,6 +440,13 @@ export default function CISOClearanceTimeline() {
     (selected: StoredClearanceTimelineItem) => {
       void deleteTimeline({ id: selected.id, action: "archive" })
         .then(() => {
+          postCISOActivityLog({
+            event_type: "archived_timeline",
+            details: [
+              `S.Y. ${selected.academicYearStart}-${selected.academicYearEnd}`,
+              `Semester: ${selected.term}`,
+            ],
+          });
           openCreateResult("success", "Timeline Archived", `${selected.term} was archived successfully.`);
         })
         .catch((error) => {
@@ -464,6 +480,13 @@ export default function CISOClearanceTimeline() {
       setAsActive: next,
     })
       .then(() => {
+        postCISOActivityLog({
+          event_type: next ? "enabled_timeline" : "disabled_timeline",
+          details: [
+            `S.Y. ${selected.academicYearStart}-${selected.academicYearEnd}`,
+            `Semester: ${selected.term}`,
+          ],
+        });
         setToggleConfirm({ open: false, item: null, next: false });
         openCreateResult(
           "success",
@@ -553,6 +576,13 @@ export default function CISOClearanceTimeline() {
           onCreate={(payload) => {
             void submitTimeline("POST", payload)
               .then(() => {
+                postCISOActivityLog({
+                  event_type: "created_timeline",
+                  details: [
+                    `S.Y. ${payload.academicYearStart}-${payload.academicYearEnd}`,
+                    `Semester: ${payload.term}`,
+                  ],
+                });
                 setCreateOpen(false);
                 setCreateTerm(null);
                 openCreateResult(
@@ -583,6 +613,13 @@ export default function CISOClearanceTimeline() {
 
             void submitTimeline("PUT", { ...payload, id: editingItemId })
               .then(() => {
+                postCISOActivityLog({
+                  event_type: "edited_timeline",
+                  details: [
+                    `S.Y. ${payload.academicYearStart}-${payload.academicYearEnd}`,
+                    `Semester: ${payload.term}`,
+                  ],
+                });
                 setEditOpen(false);
                 setEditingItemId(null);
                 openCreateResult(

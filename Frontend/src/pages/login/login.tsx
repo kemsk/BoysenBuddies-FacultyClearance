@@ -108,7 +108,7 @@ export default function Login() {
             </div>
           </Button>
 
-                    {/* Outline Google login button */}
+          {/* Outline Google login button */}
           <Button
             type="button"
             variant="white"
@@ -126,7 +126,7 @@ export default function Login() {
             </div>
           </Button>
 
-                    {/* Outline Google login button */}
+          {/* Outline Google login button */}
           <Button
             type="button"
             variant="white"
@@ -144,7 +144,7 @@ export default function Login() {
             </div>
           </Button>
 
-                    {/* Outline Google login button */}
+          {/* Outline Google login button */}
           <Button
             type="button"
             variant="white"

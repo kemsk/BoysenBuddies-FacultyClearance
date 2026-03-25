@@ -25,6 +25,15 @@ import {
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
 
+function postCISOActivityLog(payload: { event_type: string; details?: string[] }) {
+  fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).catch(() => {});
+}
+
 function GuidelinesToggle({
   checked,
   onChange,
@@ -290,6 +299,10 @@ export default function CISOAnnouncements() {
                             }
 
                             if (confirm.type === "delete") {
+                              postCISOActivityLog({
+                                event_type: "deleted_announcement",
+                                details: title ? [`Announcement: ${title}`] : [],
+                              });
                               fetch(
                                 `/admin/xu-faculty-clearance/api/ciso/announcements/${current.id}`,
                                 { method: "DELETE" }
@@ -301,6 +314,12 @@ export default function CISOAnnouncements() {
                             }
 
                             const nextEnabled = confirm.type === "enable";
+                            postCISOActivityLog({
+                              event_type: nextEnabled
+                                ? "enabled_announcement"
+                                : "disabled_announcement",
+                              details: title ? [`Announcement: ${title}`] : [],
+                            });
                             fetch(
                               `/admin/xu-faculty-clearance/api/ciso/announcements/${current.id}`,
                               {
@@ -348,6 +367,10 @@ export default function CISOAnnouncements() {
                   setEditingIndex(null);
                   return;
                 }
+                postCISOActivityLog({
+                  event_type: "edited_announcement",
+                  details: title ? [`Announcement: ${title}`] : [],
+                });
                 fetch(`/admin/xu-faculty-clearance/api/ciso/announcements/${current.id}`, {
                   method: "PUT",
                   headers: { "Content-Type": "application/json" },
@@ -359,6 +382,10 @@ export default function CISOAnnouncements() {
                 return;
               }
 
+              postCISOActivityLog({
+                event_type: "created_announcement",
+                details: title ? [`Announcement: ${title}`] : [],
+              });
               fetch("/admin/xu-faculty-clearance/api/ciso/announcements", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

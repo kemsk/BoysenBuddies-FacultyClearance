@@ -159,9 +159,7 @@ export default function ApproverClearance() {
             getItemHref={() => "/approver-individual"}
           />
         </div>
-
-        
-
+      
       </main>
 
     </div>

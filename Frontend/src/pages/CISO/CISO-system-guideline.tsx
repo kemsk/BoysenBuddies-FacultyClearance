@@ -286,6 +286,15 @@ export default function CISOSystemGuideline() {
                             }
 
                             if (confirm.type === "delete") {
+                              fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                                method: "POST",
+                                credentials: "include",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  event_type: "archived_guideline",
+                                  details: title ? [`Guideline: ${title}`] : [],
+                                }),
+                              });
                               fetch(
                                 `/admin/xu-faculty-clearance/api/ciso/system-guidelines/${current.id}`,
                                 { method: "DELETE" }
@@ -297,6 +306,35 @@ export default function CISOSystemGuideline() {
                             }
 
                             const nextEnabled = confirm.type === "enable";
+                            fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                              method: "POST",
+                              credentials: "include",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                event_type: nextEnabled ? "enabled_guideline" : "disabled_guideline",
+                                details: title ? [`Guideline: ${title}`] : [],
+                              }),
+                            });
+                            if (!nextEnabled) {
+                              fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                                method: "POST",
+                                credentials: "include",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  event_type: "delete_guideline",
+                                  details: title ? [`Guideline: ${title}`] : [],
+                                }),
+                              });
+                              fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                                method: "POST",
+                                credentials: "include",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  event_type: "archived_guideline",
+                                  details: title ? [`Guideline: ${title}`] : [],
+                                }),
+                              });
+                            }
                             fetch(
                               `/admin/xu-faculty-clearance/api/ciso/system-guidelines/${current.id}`,
                               {
@@ -345,6 +383,15 @@ export default function CISOSystemGuideline() {
                   setEditingIndex(null);
                   return;
                 }
+                fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "edited_guideline",
+                    details: title ? [`Guideline: ${title}`] : [],
+                  }),
+                });
                 fetch(`/admin/xu-faculty-clearance/api/ciso/system-guidelines/${current.id}`, {
                   method: "PUT",
                   headers: { "Content-Type": "application/json" },
@@ -356,6 +403,15 @@ export default function CISOSystemGuideline() {
                 return;
               }
 
+              fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  event_type: "created_guideline",
+                  details: title ? [`Guideline: ${title}`] : [],
+                }),
+              });
               fetch("/admin/xu-faculty-clearance/api/ciso/system-guidelines", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
