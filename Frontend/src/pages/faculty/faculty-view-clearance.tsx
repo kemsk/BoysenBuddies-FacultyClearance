@@ -18,91 +18,86 @@ import { Link, useNavigate } from "react-router-dom";
 export default function FacultyViewClearance() {
   const navigate = useNavigate();
   const [expandedStepIndex, setExpandedStepIndex] = React.useState<number | null>(1);
-
-  const [profile, setProfile] = React.useState<null | {
-    faculty: {
-      email: string;
-      universityId: string;
-      firstName: string;
-      middleName: string;
-      lastName: string;
-      college: string;
-      department: string;
-      facultyType: string;
-    };
-    timeline: { academicYear: number | null; term: string | null };
-    clearance: { status: string; approvedCount: number; totalCount: number };
-    steps?: Array<{
-      index: number;
-      title: string;
-      statusLabel?: string;
-      statusVariant?: any;
-      collapsedType?: "status" | "dropdownOnly" | "locked";
-      submittedTo?: string;
-      submittedOn?: string;
-      requirements?: Array<{ title: string; description: string; completed?: boolean }>;
-    }>;
-  }>(null);
-
-  React.useEffect(() => {
-    fetch("/admin/xu-faculty-clearance/api/faculty/dashboard")
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data) => setProfile(data))
-      .catch(() => {
-        setProfile(null);
-      });
+  const timelineId = React.useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("timelineId") || "";
   }, []);
 
-  const clearanceCurrent = profile?.clearance.approvedCount ?? 1;
-  const clearanceTotal = profile?.clearance.totalCount ?? 6;
+  const [detail, setDetail] = React.useState<null | {
+    timeline?: {
+      id: string;
+      name: string;
+      academicYear: string;
+      semester: string;
+      archivedDate: string | null;
+    };
+    clearance: {
+      status: string;
+      approvedCount: number;
+      totalCount: number;
+      missingApproval?: string;
+    };
+    requests: Array<{
+      id: number | string;
+      title: string;
+      description: string;
+      status: string;
+      approvedBy?: string | null;
+      approvedDate?: string | null;
+      submittedDate?: string | null;
+      remarks?: string | null;
+    }>;
+  }>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const params = new URLSearchParams();
+    if (timelineId) {
+      params.set("timelineId", timelineId);
+    }
+
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    setLoading(true);
+    fetch(`/admin/xu-faculty-clearance/api/faculty/view-clearance${suffix}`, {
+      credentials: "include",
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => setDetail(data))
+      .catch(() => {
+        setDetail(null);
+      })
+      .finally(() => setLoading(false));
+  }, [timelineId]);
+
+  const clearanceCurrent = detail?.clearance.approvedCount ?? 0;
+  const clearanceTotal = detail?.clearance.totalCount ?? 0;
   const clearancePercent =
     clearanceTotal > 0 ? Math.round((clearanceCurrent / clearanceTotal) * 100) : 0;
   const isClearanceApproved = clearancePercent >= 100;
 
-  const dummySteps = React.useMemo(
-    () => [
-      {
-        index: 1,
-        title: "Library",
-        statusLabel: "PENDING",
-        statusVariant: "warning" as const,
+  const stepsToRender = React.useMemo(() => {
+    return (detail?.requests ?? []).map((request, index) => {
+      const normalizedStatus = (request.status || "").toUpperCase();
+      const isApproved = normalizedStatus === "APPROVED";
+      const isPending = normalizedStatus === "PENDING";
+      return {
+        index: index + 1,
+        title: request.title,
+        statusLabel: normalizedStatus || "PENDING",
+        statusVariant: isApproved ? "success" as const : isPending ? "warning" as const : "muted" as const,
         collapsedType: "status" as const,
-        submittedTo: "Library Office",
-        submittedOn: "December 1, 2025",
+        submittedTo: request.approvedBy || "",
+        submittedOn: request.approvedDate || request.submittedDate || "",
         requirements: [
           {
-            title: "Borrowed Books Report",
-            description: "Report the status of borrowed books",
-            completed: true,
-          },
-          {
-            title: "Return All Books",
-            description: "Return all borrowed books to the library",
-            completed: false,
+            title: request.title,
+            description: request.description || request.remarks || "",
+            completed: isApproved,
           },
         ],
-      },
-      {
-        index: 2,
-        title: "Department Chair",
-        statusLabel: "LOCKED",
-        statusVariant: "muted" as const,
-        collapsedType: "locked" as const,
-        submittedTo: "Department Office",
-        submittedOn: "",
-        requirements: [
-          {
-            title: "Clearance Form",
-            description: "Submit clearance form for department approval",
-            completed: false,
-          },
-        ],
-      },
-    ],
-    []
-  );
-
-  const stepsToRender = profile?.steps?.length ? profile.steps : dummySteps;
+      };
+    });
+  }, [detail]);
 
   const [meProfile, setMeProfile] = React.useState<{
     email: string;
@@ -131,19 +126,11 @@ export default function FacultyViewClearance() {
     return parts.length ? parts.join(" ") : meProfile.email;
   }, [meProfile]);
 
-  const collegeLabel = profile?.faculty.college ?? "";
-  const departmentLabel = profile?.faculty.department ?? "";
-  const facultyTypeLabel = profile?.faculty.facultyType ?? "";
-  const statusLabel = profile?.clearance.status ?? "";
-
-  const [timeline, setTimeline] = React.useState<{ academicYear: string; semester: string } | null>(null);
-
-  React.useEffect(() => {
-    fetch("/admin/xu-faculty-clearance/api/active-clearance-timeline")
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data) => setTimeline(data))
-      .catch(() => setTimeline(null));
-  }, []);
+  const collegeLabel = "";
+  const departmentLabel = "";
+  const facultyTypeLabel = "";
+  const statusLabel = detail?.clearance.status ?? "";
+  const timeline = detail?.timeline ?? null;
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -156,7 +143,7 @@ export default function FacultyViewClearance() {
       {/* DASHBOARD CONTENT */}
       <main className="dashboard p-4 mt-2 space-y-3">
 
-        <h1 className="text-2xl text-left text-primary font-bold">2501 Faculty Clearance</h1>
+        <h1 className="text-2xl text-left text-primary font-bold">{timeline?.name || "Faculty Clearance"}</h1>
 
         <Breadcrumb className="mt-2">
           <BreadcrumbList>
@@ -167,7 +154,7 @@ export default function FacultyViewClearance() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                <BreadcrumbPage>2501 Faculty Clearance</BreadcrumbPage>
+                <BreadcrumbPage>{timeline?.name || "Faculty Clearance"}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -192,7 +179,7 @@ export default function FacultyViewClearance() {
           afterRows={
             <ClearanceStatusCard
               statusLabel={statusLabel}
-              statusVariant="warning"
+              statusVariant={statusLabel === "COMPLETED" ? "success" : "warning"}
               className="mb-6"
             />
           }
@@ -206,7 +193,9 @@ export default function FacultyViewClearance() {
           />
         </div>
 
-        {stepsToRender.length ? (
+        {loading ? (
+          <div className="mt-5 text-sm text-gray-500">Loading...</div>
+        ) : stepsToRender.length ? (
           <div className="mt-5 space-y-3">
             {stepsToRender.map((step) => (
               <ExpandableClearanceStepCard
@@ -226,7 +215,9 @@ export default function FacultyViewClearance() {
               />
             ))}
           </div>
-        ) : null}
+        ) : (
+          <div className="mt-5 text-sm text-gray-500">No archived clearance records found.</div>
+        )}
         
 
 

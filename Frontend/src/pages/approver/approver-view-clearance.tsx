@@ -25,38 +25,39 @@ import { useState } from "react";
 export default function ApproverViewClearance() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const timelineId = React.useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("timelineId") || "";
+  }, []);
 
   const [requests, setRequests] = React.useState<ClearanceRequestItem[]>([]);
 
   React.useEffect(() => {
-    fetch("/admin/xu-faculty-clearance/api/clearance-requests")
-      .then((res) => res.json())
-      .then((data) => setRequests(Array.isArray(data?.items) ? data.items : []))
+    if (!timelineId) {
+      setRequests([]);
+      return;
+    }
+
+    const params = new URLSearchParams({ timelineId });
+
+    fetch(`/admin/xu-faculty-clearance/api/approver/view-clearance?${params.toString()}`, {
+      credentials: "include",
+    })
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data: { items?: Array<Omit<ClearanceRequestItem, "status" | "requestId"> & { status?: string }> }) => {
+        const next: ClearanceRequestItem[] = Array.isArray(data?.items)
+          ? data.items.map((item) => ({
+              ...item,
+              requestId: item.employeeId || item.id,
+              status: item.status === "COMPLETED" ? "approved" as const : "pending" as const,
+            }))
+          : [];
+        setRequests(next);
+      })
       .catch(() => {
-        setRequests([
-          {
-            id: "1",
-            requestId: "REQ-2025-001",
-            employeeId: "2005123456789",
-            name: "Alexander H. Hamilton",
-            college: "College of Computer Studies",
-            department: "Information Technology",
-            facultyType: "Full-time Faculty (On Probation)",
-            status: "pending",
-          },
-          {
-            id: "2",
-            requestId: "REQ-2025-002",
-            employeeId: "2005987654321",
-            name: "Maria C. Santos",
-            college: "College of Engineering",
-            department: "Civil Engineering",
-            facultyType: "Full-time Faculty",
-            status: "approved",
-          },
-        ]);
+        setRequests([]);
       });
-  }, []);
+  }, [timelineId]);
 
   const filteredRequests = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -69,6 +70,31 @@ export default function ApproverViewClearance() {
       return hay.includes(q);
     });
   }, [query, requests]);
+
+  const handleExport = React.useCallback(() => {
+    if (!timelineId || filteredRequests.length === 0) return;
+
+    const headers = ["Employee ID", "Name", "College", "Department", "Faculty Type", "Status"];
+    const rows = filteredRequests.map((item) => [
+      item.employeeId,
+      item.name,
+      item.college,
+      item.department,
+      item.facultyType,
+      item.status,
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `approver-archived-clearance-${timelineId}-export.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  }, [filteredRequests, timelineId]);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -154,7 +180,7 @@ export default function ApproverViewClearance() {
           </div>
 
           <div className="flex justify-between gap-3 mt-4">
-            <Button variant="default" className="w-full font-bold whitespace-nowrap" > 
+            <Button variant="default" className="w-full font-bold whitespace-nowrap" onClick={handleExport} disabled={filteredRequests.length === 0}> 
               <div className="flex items-center justify-center gap-2">
                 <img src="/WhiteDownloadIcon.png" alt="export" className="w-6 h-6" />
                 <span>Export Current View</span>

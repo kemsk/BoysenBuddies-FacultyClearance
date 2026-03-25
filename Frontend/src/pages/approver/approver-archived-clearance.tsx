@@ -5,7 +5,6 @@ import { ApprovalHeader } from "../../stories/components/header";
 
 import {
   type AnnouncementItem,
-  ArchivedClearanceCard,
 } from "../../stories/components/cards";
 
 import { Button } from "../../stories/components/button";
@@ -26,60 +25,41 @@ import { Link, useNavigate } from "react-router-dom";
 import { SearchInputGroup } from "../../stories/components/input-group";
 import { useState } from "react";
 
-function postOVPHEActivityLog(payload: { event_type: string; details?: string[] }) {
-  fetch("/admin/xu-faculty-clearance/api/ovphe/activity-logs", {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  }).catch(() => {});
-}
-
-function GuidelinesToggle({
-  checked,
-  onChange,
-}: {
-  checked: boolean;
-  onChange: (next: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      className={
-        checked
-          ? "relative h-6 w-12 rounded-full bg-success"
-          : "relative h-6 w-12 rounded-full bg-muted-foreground/30"
-      }
-      onClick={() => onChange(!checked)}
-    >
-      <span
-        className={
-          checked
-            ? "absolute left-[26px] top-1 h-4 w-4 rounded-full bg-white"
-            : "absolute left-1 top-1 h-4 w-4 rounded-full bg-white"
-        }
-      />
-    </button>
-  );
-}
+type ArchivedTimelineItem = {
+  id: string;
+  name: string;
+  academicYear: string;
+  semester: string;
+  clearancePeriodStart: string;
+  clearancePeriodEnd: string;
+  lastUpdated: string;
+  archivedDate: string;
+};
 
 export default function ApproverAchivedClearance() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [selectedYear, setSelectedYear] = useState("all");
-  const [sortBy, setSortBy] = useState("name");
+  const [selectedTerm, setSelectedTerm] = useState("all");
 
   type AnnouncementApiItem = AnnouncementItem & { id: number; email?: string };
 
-  const [items, setItems] = React.useState<AnnouncementApiItem[]>([]);
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
-  const [confirm, setConfirm] = React.useState<
-    | { open: true; type: "enable" | "disable" | "delete"; index: number }
-    | { open: false }
-  >({ open: false });
+  const [, setItems] = React.useState<AnnouncementApiItem[]>([]);
+  const [timelines, setTimelines] = React.useState<ArchivedTimelineItem[]>([]);
+  const [loading, setLoading] = React.useState(false);
+
+  const loadTimelines = React.useCallback(() => {
+    setLoading(true);
+    return fetch("/admin/xu-faculty-clearance/api/approver/archived-clearance")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { items: ArchivedTimelineItem[] }) => {
+        setTimelines(data.items ?? []);
+      })
+      .catch(() => {
+        setTimelines([]);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   const refresh = React.useCallback(() => {
     return fetch("/admin/xu-faculty-clearance/api/ovphe/announcements")
@@ -94,6 +74,10 @@ export default function ApproverAchivedClearance() {
   }, []);
 
   React.useEffect(() => {
+    loadTimelines();
+  }, [loadTimelines]);
+
+  React.useEffect(() => {
     refresh()
       .catch(() => {
         const initial = loadAnnouncementsItems().map((item) => ({
@@ -103,6 +87,27 @@ export default function ApproverAchivedClearance() {
         setItems(initial as AnnouncementApiItem[]);
       });
   }, [refresh]);
+
+  const yearOptions = React.useMemo(() => {
+    return Array.from(new Set(timelines.map((timeline) => timeline.academicYear))).filter(Boolean);
+  }, [timelines]);
+
+  const termOptions = React.useMemo(() => {
+    return Array.from(new Set(timelines.map((timeline) => timeline.semester))).filter(Boolean);
+  }, [timelines]);
+
+  const filteredTimelines = React.useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return timelines.filter((timeline) => {
+      const matchesQuery =
+        !normalizedQuery ||
+        timeline.name.toLowerCase().includes(normalizedQuery) ||
+        timeline.academicYear.toLowerCase().includes(normalizedQuery);
+      const matchesYear = selectedYear === "all" || timeline.academicYear === selectedYear;
+      const matchesTerm = selectedTerm === "all" || timeline.semester === selectedTerm;
+      return matchesQuery && matchesYear && matchesTerm;
+    });
+  }, [query, selectedTerm, selectedYear, timelines]);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -151,35 +156,72 @@ export default function ApproverAchivedClearance() {
         </div>
 
         <div className="mt-3 space-y-4">
-          <div className="w-full flex flex-col sm:flex-row gap-3 justify-start mt-5" style={{ marginLeft: '0', paddingLeft: '0' }}>
-              <div className="flex gap-3">
-              <Select>
-                <SelectTrigger variant="pill" className="w-max gap-2">
-                  <SelectValue placeholder="School Year" /> 
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="2022-2023">2022-2023</SelectItem>
-                  <SelectItem value="2021-2022">2021-2022</SelectItem>
-                  <SelectItem value="2020-2021">2020-2021</SelectItem>
-                </SelectContent>
-              </Select>
-            
-              <Select>
-                <SelectTrigger variant="pill" className="w-max gap-2">
-                  <SelectValue placeholder="Term" /> 
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="name">Name</SelectItem>
-                </SelectContent>
-              </Select>
-              </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <SelectTrigger variant="pill" className="w-full sm:w-[170px] gap-2 rounded-full border-0 bg-[#7c83d6] text-white shadow-none hover:bg-[#6f76cb]">
+                <SelectValue placeholder="School Year" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">School Year</SelectItem>
+                {yearOptions.map((year) => (
+                  <SelectItem key={year} value={year}>{year}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedTerm} onValueChange={setSelectedTerm}>
+              <SelectTrigger variant="pill" className="w-full sm:w-[150px] gap-2 rounded-full border-0 bg-[#7c83d6] text-white shadow-none hover:bg-[#6f76cb]">
+                <SelectValue placeholder="Term" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Term</SelectItem>
+                {termOptions.map((term) => (
+                  <SelectItem key={term} value={term}>{term}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          
-          <div className="mt-3">
-            <ArchivedClearanceCard  
-             onIconClick={() => navigate("/approver-view-clearance")}
-             iconClassName="ml-6"
-            />
+
+          <div className="space-y-4">
+            {filteredTimelines.map((timeline) => (
+              <div
+                key={timeline.id}
+                className="overflow-hidden rounded-2xl border border-[#d9dde7] bg-white shadow-sm transition-shadow hover:shadow-md cursor-pointer"
+                onClick={() => navigate(`/approver-view-clearance?timelineId=${timeline.id}`)}
+              >
+                <div className="flex items-center justify-between border-b border-[#d9dde7] px-5 py-4">
+                  <h3 className="text-lg font-bold text-black">{timeline.name}</h3>
+                  <span className="text-3xl leading-none text-black">›</span>
+                </div>
+
+                <div className="grid gap-x-6 gap-y-2 px-5 py-4 text-sm text-black sm:grid-cols-[160px_1fr]">
+                  <span className="font-semibold">Academic Year</span>
+                  <span>{timeline.academicYear}</span>
+
+                  <span className="font-semibold">Semester</span>
+                  <span>{timeline.semester}</span>
+
+                  <span className="font-semibold">Clearance Period</span>
+                  <span>{timeline.clearancePeriodStart} - {timeline.clearancePeriodEnd}</span>
+
+                  <span className="font-semibold">Last Update</span>
+                  <span>{timeline.lastUpdated}</span>
+
+                  <span className="font-semibold">Archived</span>
+                  <span>{timeline.archivedDate}</span>
+                </div>
+              </div>
+            ))}
+            {filteredTimelines.length === 0 && !loading && (
+              <div className="text-center py-8 text-gray-500">
+                No archived timelines found.
+              </div>
+            )}
+            {loading && (
+              <div className="text-center py-8 text-gray-500">
+                Loading...
+              </div>
+            )}
           </div>
         </div>
 
