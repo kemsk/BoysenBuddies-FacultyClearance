@@ -638,12 +638,19 @@ export default function CISOCollegeOfficeConfiguration() {
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: { items: ClearanceTimeline[] }) => {
         const timelineItems = data.items ?? [];
-        // Sort timelines alphabetically by name
-        const sortedTimelines = timelineItems.sort((a, b) => a.name.localeCompare(b.name));
+        const sortedTimelines = [...timelineItems].sort((a, b) => a.name.localeCompare(b.name));
         setTimelines(sortedTimelines);
-        // Auto-select the first timeline if available
-        if (sortedTimelines.length > 0 && !selectedTimelineId) {
-          setSelectedTimelineId(sortedTimelines[0].id);
+
+        const savedTimelineId = localStorage.getItem('ciso-selected-timeline') || "";
+        const savedTimeline = sortedTimelines.find((timeline) => timeline.id === savedTimelineId);
+        const activeTimeline = sortedTimelines.find((timeline) => timeline.setAsActive);
+        const fallbackTimeline = activeTimeline ?? sortedTimelines[0];
+
+        if (savedTimeline) {
+          setSelectedTimelineId(savedTimeline.id);
+        } else if (fallbackTimeline) {
+          setSelectedTimelineId(fallbackTimeline.id);
+          localStorage.setItem('ciso-selected-timeline', fallbackTimeline.id);
         }
       })
       .catch(() => {
