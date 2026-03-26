@@ -193,33 +193,33 @@ export default function ApproverAssistantList() {
     return Array.from(set);
   }, [approverRoles]);
 
-  // If user has no approver roles, show all org structure (for testing/setup)
-  const hasApproverRoles = approverRoles.length > 0;
-
-  // Filter org structure to only include my colleges/departments/offices, or all if none assigned
+  // Filter org structure to only include my colleges/departments/offices
   const visibleColleges = React.useMemo(() => {
-    return hasApproverRoles ? orgColleges.filter(c => myColleges.includes(c)) : orgColleges;
-  }, [orgColleges, myColleges, hasApproverRoles]);
+    // If no approver roles, show all colleges for testing
+    return myColleges.length > 0 ? orgColleges.filter(c => myColleges.includes(c)) : orgColleges;
+  }, [orgColleges, myColleges]);
 
   const visibleDepartments = React.useMemo(() => {
-    return hasApproverRoles ? orgDepartments.filter(d => myDepartments.includes(d)) : orgDepartments;
-  }, [orgDepartments, myDepartments, hasApproverRoles]);
+    // If no approver roles, show all departments for testing
+    return myDepartments.length > 0 ? orgDepartments.filter(d => myDepartments.includes(d)) : orgDepartments;
+  }, [orgDepartments, myDepartments]);
 
   const visibleOffices = React.useMemo(() => {
-    return hasApproverRoles ? orgOffices.filter(o => myOffices.includes(o)) : orgOffices;
-  }, [orgOffices, myOffices, hasApproverRoles]);
+    // If no approver roles, show all offices for testing
+    return myOffices.length > 0 ? orgOffices.filter(o => myOffices.includes(o)) : orgOffices;
+  }, [orgOffices, myOffices]);
 
   const visibleCollegeDepartmentsMap = React.useMemo(() => {
-    if (hasApproverRoles) {
-      const map: Record<string, string[]> = {};
-      visibleColleges.forEach(college => {
+    const map: Record<string, string[]> = {};
+    visibleColleges.forEach(college => {
+      if (myDepartments.length > 0) {
         map[college] = (collegeDepartmentsMap[college] || []).filter(d => myDepartments.includes(d));
-      });
-      return map;
-    } else {
-      return collegeDepartmentsMap;
-    }
-  }, [visibleColleges, collegeDepartmentsMap, myDepartments, hasApproverRoles]);
+      } else {
+        map[college] = collegeDepartmentsMap[college] || [];
+      }
+    });
+    return map;
+  }, [visibleColleges, collegeDepartmentsMap, myDepartments]);
 
   // Derived list based on current mode and search query
   const filteredItems = items
