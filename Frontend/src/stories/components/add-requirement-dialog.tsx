@@ -49,6 +49,7 @@ export type AddRequirementPayload = {
   targetColleges?: number[];
   targetDepartments?: number[];
   targetOffices?: number[];
+  targetFaculty?: string[];
   physicalSubmission: boolean;
 };
 
@@ -185,8 +186,13 @@ export function AddRequirementDialog({
       case "individual":
         if (facultyIds.length === 0) return "Search Faculty";
         if (allSelected) return "All Faculty";
-        if (facultyIds.length === 1) return selectedPrimaryId;
-        return `${selectedPrimaryId} +${selectedOthersCount} others`;
+        if (facultyIds.length === 1) {
+          const faculty = facultyOptions.find(f => f.id === selectedPrimaryId);
+          return faculty?.name || selectedPrimaryId;
+        }
+        const faculty = facultyOptions.find(f => f.id === selectedPrimaryId);
+        const primaryName = faculty?.name || selectedPrimaryId;
+        return `${primaryName} +${selectedOthersCount} others`;
       default:
         return "Select Recipients";
     }
@@ -221,7 +227,9 @@ export function AddRequirementDialog({
 
                       {!allSelected && selectedPrimaryId ? (
                         <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-foreground">
-                          <span className="max-w-[140px] truncate">{selectedPrimaryId}</span>
+                          <span className="max-w-[140px] truncate">
+                            {facultyOptions.find(f => f.id === selectedPrimaryId)?.name || selectedPrimaryId}
+                          </span>
                           <button
                             type="button"
                             className="text-muted-foreground"
@@ -299,71 +307,11 @@ export function AddRequirementDialog({
                   type="button"
                   variant="ghost"
                   className="h-6 w-6 p-0 text-muted-foreground hover:bg-transparent focus-visible:ring-0"
-                  onClick={() => {
-                    if (recipientScope === "individual") {
-                      setFacultyOpen(true);
-                    }
-                  }}
+                  onClick={() => setFacultyOpen(true)}
                 >
                   <Search className="h-4 w-4" />
                 </Button>
               </div>
-
-              {/* Recipient Scope Selection */}
-              <div className="space-y-1.5">
-                <Select value={recipientScope} onValueChange={setRecipientScope}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select recipient scope" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Faculty</SelectItem>
-                    <SelectItem value="college">By College</SelectItem>
-                    <SelectItem value="department">By Department</SelectItem>
-                    <SelectItem value="individual">Individual Faculty</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* College/Department Selection */}
-              {recipientScope === "college" && (
-                <div className="space-y-1.5">
-                  <Select 
-                    value={selectedColleges.length > 0 ? selectedColleges[0].toString() : ""}
-                    onValueChange={(value) => setSelectedColleges([parseInt(value)])}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select college" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {colleges.map((college) => (
-                        <SelectItem key={college.id} value={college.id.toString()}>
-                          {college.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {recipientScope === "department" && (
-                <div className="space-y-1.5">
-                  <Select 
-                    value={selectedDepartments.length > 0 ? selectedDepartments[0].toString() : ""}
-                    onValueChange={(value) => setSelectedDepartments([parseInt(value)])}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select department" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept.id} value={dept.id.toString()}>
-                          {dept.name} ({dept.college})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
 
               <div className="space-y-1.5">
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} size="sm" placeholder="Title"/>
@@ -410,6 +358,7 @@ export function AddRequirementDialog({
                     targetColleges: selectedColleges,
                     targetDepartments: selectedDepartments,
                     targetOffices: [],
+                    targetFaculty: facultyIds,
                     physicalSubmission,
                   });
                   setOpen(false);
@@ -422,82 +371,161 @@ export function AddRequirementDialog({
         </div>
 
         {/* Faculty Search Dialog */}
-        {recipientScope === "individual" && (
-          <Dialog open={facultyOpen} onOpenChange={setFacultyOpen}>
-            <DialogContent className="w-[420px] max-w-[calc(100vw-3rem)] max-h-[calc(100vh-3rem)] overflow-y-auto overflow-x-hidden rounded-xl p-0">
-              <div className="rounded-xl bg-background">
-                <div className="px-6 pb-4 pt-6">
-                  <div className="text-center text-base font-bold text-foreground">Search Faculty</div>
+        <Dialog open={facultyOpen} onOpenChange={setFacultyOpen}>
+          <DialogContent className="w-[420px] max-w-[calc(100vw-3rem)] max-h-[calc(100vh-3rem)] overflow-y-auto overflow-x-hidden rounded-xl p-0">
+            <div className="rounded-xl bg-background">
+              <div className="px-6 pb-4 pt-6">
+                <div className="text-center text-base font-bold text-foreground">Search Faculty</div>
 
-                  <div className="mt-4">
-                    <SearchInputGroup
-                      value={facultyQuery}
-                      onChange={(e) => setFacultyQuery(e.target.value)}
-                      containerClassName="h-10"
-                      placeholder="Search Faculty"
-                    />
-                  </div>
+                {/* Recipient Scope Selection */}
+                <div className="mt-4 space-y-1.5">
+                  <Select value={recipientScope} onValueChange={setRecipientScope}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select recipient scope" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Faculty</SelectItem>
+                      <SelectItem value="college">By College</SelectItem>
+                      <SelectItem value="department">By Department</SelectItem>
+                      <SelectItem value="individual">Individual Faculty</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                  <div className="mt-4">
-                    <button
-                      type="button"
-                      className={
-                        allFilteredSelected
-                          ? "w-full rounded-md bg-muted-foreground/20 px-4 py-3 text-left"
-                          : "w-full rounded-md px-4 py-3 text-left"
-                      }
-                      onClick={() => toggleSelectAllFiltered(!allFilteredSelected)}
+                {/* College/Department Selection */}
+                {recipientScope === "college" && (
+                  <div className="mt-3 space-y-1.5">
+                    <Select 
+                      value={selectedColleges.length > 0 ? selectedColleges[0].toString() : ""}
+                      onValueChange={(value) => setSelectedColleges([parseInt(value)])}
                     >
-                      <div className="text-sm font-bold text-foreground">Select All</div>
-                      <div className="mt-1 text-xs text-muted-foreground">Select All Faculty Members</div>
-                    </button>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select college" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {colleges.map((college) => (
+                          <SelectItem key={college.id} value={college.id.toString()}>
+                            {college.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
+                )}
 
-                  <div className="mt-4 space-y-3">
-                    {filteredFaculty.map((f) => {
-                      const selected = facultyIds.includes(f.id);
-                      return (
-                        <button
-                          key={f.id}
-                          type="button"
-                          className={
-                            selected
-                              ? "w-full rounded-md bg-muted-foreground/20 px-4 py-3 text-left"
-                              : "w-full rounded-md px-4 py-3 text-left"
-                          }
-                          onClick={() => toggleFaculty(f.id)}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="text-sm font-bold text-foreground">{f.name}</div>
-                              <div className="mt-1 text-xs text-muted-foreground">{f.subtitle ?? f.id}</div>
-                              {f.college && (
-                                <div className="mt-1 text-xs text-muted-foreground">{f.college}</div>
-                              )}
+                {recipientScope === "department" && (
+                  <div className="mt-3 space-y-1.5">
+                    <Select 
+                      value={selectedDepartments.length > 0 ? selectedDepartments[0].toString() : ""}
+                      onValueChange={(value) => setSelectedDepartments([parseInt(value)])}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments.map((dept) => (
+                          <SelectItem key={dept.id} value={dept.id.toString()}>
+                            {dept.name} ({dept.college})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Faculty Search - Only show for individual scope */}
+                {recipientScope === "individual" && (
+                  <>
+                    <div className="mt-4">
+                      <SearchInputGroup
+                        value={facultyQuery}
+                        onChange={(e) => setFacultyQuery(e.target.value)}
+                        containerClassName="h-10"
+                        placeholder="Search Faculty"
+                      />
+                    </div>
+
+                    <div className="mt-4">
+                      <button
+                        type="button"
+                        className={
+                          allFilteredSelected
+                            ? "w-full rounded-md bg-muted-foreground/20 px-4 py-3 text-left"
+                            : "w-full rounded-md px-4 py-3 text-left"
+                        }
+                        onClick={() => toggleSelectAllFiltered(!allFilteredSelected)}
+                      >
+                        <div className="text-sm font-bold text-foreground">Select All</div>
+                        <div className="mt-1 text-xs text-muted-foreground">Select All Faculty Members</div>
+                      </button>
+                    </div>
+
+                    <div className="mt-4 space-y-3">
+                      {filteredFaculty.map((f) => {
+                        const selected = facultyIds.includes(f.id);
+                        return (
+                          <button
+                            key={f.id}
+                            type="button"
+                            className={
+                              selected
+                                ? "w-full rounded-md bg-muted-foreground/20 px-4 py-3 text-left"
+                                : "w-full rounded-md px-4 py-3 text-left"
+                            }
+                            onClick={() => toggleFaculty(f.id)}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="text-sm font-bold text-foreground">{f.name}</div>
+                                <div className="mt-1 text-xs text-muted-foreground">{f.subtitle ?? f.id}</div>
+                                {f.college && (
+                                  <div className="mt-1 text-xs text-muted-foreground">{f.college}</div>
+                                )}
+                              </div>
+                              {selected ? (
+                                <Check className="mt-1 h-5 w-5 shrink-0 text-foreground" />
+                              ) : null}
                             </div>
-                            {selected ? (
-                              <Check className="mt-1 h-5 w-5 shrink-0 text-foreground" />
-                            ) : null}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
 
-                <div className="border-t border-[hsl(var(--gray-border))] px-6 py-4">
-                  <Button
-                    type="button"
-                    className="h-11 w-full rounded-md"
-                    onClick={() => setFacultyOpen(false)}
-                  >
-                    Done
-                  </Button>
-                </div>
+                {/* Show confirmation for non-individual scopes */}
+                {recipientScope !== "individual" && (
+                  <div className="mt-4">
+                    <div className="rounded-md bg-muted px-4 py-3">
+                      <div className="text-sm font-medium text-foreground">
+                        {recipientScope === "all" && "All Faculty"}
+                        {recipientScope === "college" && selectedColleges.length > 0 && 
+                          colleges.find(c => c.id === selectedColleges[0])?.name}
+                        {recipientScope === "department" && selectedDepartments.length > 0 && 
+                          departments.find(d => d.id === selectedDepartments[0])?.name}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {recipientScope === "all" && "All faculty members will receive this requirement"}
+                        {recipientScope === "college" && "All faculty in this college will receive this requirement"}
+                        {recipientScope === "department" && "All faculty in this department will receive this requirement"}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </DialogContent>
-          </Dialog>
-        )}
+
+              <div className="border-t border-[hsl(var(--gray-border))] px-6 py-4">
+                <Button
+                  type="button"
+                  className="h-11 w-full rounded-md"
+                  onClick={() => setFacultyOpen(false)}
+                >
+                  Done
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );

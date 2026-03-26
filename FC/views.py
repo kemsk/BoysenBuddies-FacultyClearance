@@ -4945,6 +4945,7 @@ def approver_dashboard_api(request):
         }
     })
 
+@csrf_exempt
 def approver_requirement_list_api(request):
     user = _get_authenticated_user(request)
     if not user:
@@ -5108,14 +5109,6 @@ def _create_approver_requirement(user, request):
             elif recipient_scope == 'individual' and target_faculty:
                 requirement.target_faculty.set(target_faculty)
 
-            # Log activity
-            ActivityLog.objects.create(
-                event_type=ActivityLog.EventType.CREATED_REQUIREMENTS,
-                user=user,
-                requirement=requirement,
-                details={"title": title, "recipient_scope": recipient_scope}
-            )
-
         return JsonResponse({
             "id": requirement.id,
             "message": "Requirement created successfully"
@@ -5125,6 +5118,7 @@ def _create_approver_requirement(user, request):
         return JsonResponse({"detail": f"Failed to create requirement: {str(e)}"}, status=500)
 
 
+@csrf_exempt
 def approver_requirement_detail_api(request, requirement_id):
     """Handle individual requirement operations (GET, PUT, DELETE)"""
     user = _get_authenticated_user(request)
@@ -5201,14 +5195,6 @@ def _update_approver_requirement(user, requirement, request):
             elif recipient_scope == 'individual' and target_faculty:
                 requirement.target_faculty.set(target_faculty)
 
-            # Log activity
-            ActivityLog.objects.create(
-                event_type=ActivityLog.EventType.EDITED_REQUIREMENTS,
-                user=user,
-                requirement=requirement,
-                details={"title": title, "recipient_scope": recipient_scope}
-            )
-
         return JsonResponse({
             "id": requirement.id,
             "message": "Requirement updated successfully"
@@ -5224,14 +5210,6 @@ def _delete_approver_requirement(user, requirement, request):
         with transaction.atomic():
             requirement.is_active = False
             requirement.save()
-
-            # Log activity
-            ActivityLog.objects.create(
-                event_type=ActivityLog.EventType.DELETED_REQUIREMENTS,
-                user=user,
-                requirement=requirement,
-                details={"title": requirement.title}
-            )
 
         return JsonResponse({"message": "Requirement deleted successfully"})
 

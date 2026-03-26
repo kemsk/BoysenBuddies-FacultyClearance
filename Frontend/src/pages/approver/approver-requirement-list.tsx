@@ -81,7 +81,7 @@ export default function RequirementList() {
           targetColleges: payload.targetColleges || [],
           targetDepartments: payload.targetDepartments || [],
           targetOffices: payload.targetOffices || [],
-          targetFaculty: payload.facultyIds || [],
+          targetFaculty: payload.targetFaculty || [],
         }),
       });
 
