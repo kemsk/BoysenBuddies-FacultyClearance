@@ -10,6 +10,7 @@ import {
 
 import Login from "./pages/login/login";
 import LoginPrompt from "./pages/login/login-prompt";
+import LoginInput from "./pages/login/login-input";
 
 import Facultydashboard from "./pages/faculty/faculty-dashboard";
 import FacultyNotification from "./pages/faculty/faculty-notification";
@@ -277,7 +278,9 @@ function App() {
     <Router>
       <HeartbeatManager />
       <Routes>
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<LoginInput />} />
+        
+        <Route path="/login" element={<Login />} />
         <Route path="/login-prompt" element={<LoginPrompt />} />
 
         {
