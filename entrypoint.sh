@@ -757,18 +757,6 @@ SET @latest_timeline_id = (
     SELECT id FROM FC_clearancetimeline ORDER BY id DESC LIMIT 1
 );
 
-INSERT INTO FC_requirement (id, title, description, required_physical, clearance_timeline_id, last_updated, is_active, recipient_scope, created_by_id)
-SELECT * FROM (
-    SELECT 1 AS id, 'Grades Roster' AS title, 'Submit screenshot via this link: googleforms.com' AS description, 0 AS required_physical, @latest_timeline_id AS clearance_timeline_id, NOW() AS last_updated, 1 AS is_active, 'all' AS recipient_scope, NULL AS created_by_id
-) AS v
-ON DUPLICATE KEY UPDATE
-    title = VALUES(title),
-    description = VALUES(description),
-    required_physical = VALUES(required_physical),
-    clearance_timeline_id = VALUES(clearance_timeline_id),
-    last_updated = VALUES(last_updated),
-    is_active = VALUES(is_active),
-    recipient_scope = VALUES(recipient_scope);
 
 SET @latest_clearance_id = (
     SELECT id FROM FC_clearance WHERE faculty_id = @faculty_id ORDER BY id DESC LIMIT 1
