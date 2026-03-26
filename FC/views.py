@@ -4945,9 +4945,503 @@ def approver_dashboard_api(request):
         }
     })
 
-# Placeholder implementations for remaining endpoints
 def approver_requirement_list_api(request):
-    return JsonResponse({"items": []})
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    # Check if user has approver role
+    user_roles = user.get_active_roles().values_list('role__name', flat=True)
+    if 'Approver' not in user_roles:
+        return JsonResponse({"detail": "Forbidden - Approver role required"}, status=403)
+
+    if request.method == "GET":
+        return _get_approver_requirements(user, request)
+    elif request.method == "POST":
+        return _create_approver_requirement(user, request)
+    else:
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+
+def _get_approver_requirements(user, request):
+    """Get requirements for the approver based on their role and scope"""
+    timeline = _get_active_timeline()
+    if not timeline:
+        return JsonResponse({"items": []})
+
+    # Get approver profile to determine scope
+    try:
+        approver_profile = user.approver_profile
+    except AttributeError:
+        return JsonResponse({"items": []})
+
+    # Filter requirements based on approver's scope
+    requirements = Requirement.objects.filter(
+        clearance_timeline=timeline,
+        is_active=True
+    ).select_related(
+        'created_by', 'clearance_timeline'
+    ).prefetch_related(
+        'target_colleges', 'target_departments', 'target_offices', 'target_faculty'
+    ).order_by('-last_updated')
+
+    # Apply role-based filtering
+    filtered_requirements = []
+    for req in requirements:
+        if _can_approver_access_requirement(approver_profile, req):
+            filtered_requirements.append(_serialize_approver_requirement(req))
+
+    return JsonResponse({"items": filtered_requirements})
+
+
+def _can_approver_access_requirement(approver_profile, requirement):
+    """Check if approver can access this requirement based on their role and scope"""
+    # College approver can access requirements for their college
+    if approver_profile.approver_type == 'College' and approver_profile.college:
+        if requirement.recipient_scope in ['all', 'college']:
+            return approver_profile.college in requirement.target_colleges.all()
+        elif requirement.recipient_scope == 'department':
+            # Check if any target department is under their college
+            return requirement.target_departments.filter(
+                college=approver_profile.college
+            ).exists()
+        elif requirement.recipient_scope == 'individual':
+            # Check if any target faculty is under their college
+            return requirement.target_faculty.filter(
+                department__college=approver_profile.college
+            ).exists()
+    
+    # Department approver can access requirements for their department
+    elif approver_profile.approver_type == 'Department' and approver_profile.department:
+        if requirement.recipient_scope == 'department':
+            return approver_profile.department in requirement.target_departments.all()
+        elif requirement.recipient_scope == 'college':
+            return approver_profile.department.college in requirement.target_colleges.all()
+        elif requirement.recipient_scope == 'all':
+            return True
+        elif requirement.recipient_scope == 'individual':
+            # Check if any target faculty is in their department
+            return requirement.target_faculty.filter(
+                department=approver_profile.department
+            ).exists()
+    
+    # Office approver can access all requirements
+    elif approver_profile.approver_type == 'Office' and approver_profile.office:
+        return True
+    
+    return False
+
+
+def _serialize_approver_requirement(requirement):
+    """Serialize requirement for approver view"""
+    recipients = []
+    
+    if requirement.recipient_scope == 'all':
+        recipients = ['All Faculty']
+    elif requirement.recipient_scope == 'college':
+        recipients = [college.name for college in requirement.target_colleges.all()]
+    elif requirement.recipient_scope == 'department':
+        recipients = [department.name for department in requirement.target_departments.all()]
+    elif requirement.recipient_scope == 'office':
+        recipients = [office.name for office in requirement.target_offices.all()]
+    elif requirement.recipient_scope == 'individual':
+        recipients = [f"{faculty.user.first_name} {faculty.user.last_name}" 
+                     for faculty in requirement.target_faculty.all()]
+    
+    return {
+        "id": requirement.id,
+        "title": requirement.title or "",
+        "description": requirement.description or "",
+        "physicalSubmission": bool(requirement.required_physical),
+        "recipients": ", ".join(recipients) if recipients else "",
+        "lastUpdated": timezone.localtime(requirement.last_updated).strftime("%B %d, %Y, %I:%M %p") if requirement.last_updated else "",
+        "createdBy": f"{requirement.created_by.first_name} {requirement.created_by.last_name}" if requirement.created_by else "",
+        "clearanceTimeline": requirement.clearance_timeline.name if requirement.clearance_timeline else "",
+        "recipientScope": requirement.recipient_scope,
+        "targetColleges": [college.id for college in requirement.target_colleges.all()],
+        "targetDepartments": [dept.id for dept in requirement.target_departments.all()],
+        "targetOffices": [office.id for office in requirement.target_offices.all()],
+        "targetFaculty": [faculty.id for faculty in requirement.target_faculty.all()],
+    }
+
+
+def _create_approver_requirement(user, request):
+    """Create a new requirement"""
+    timeline = _get_active_timeline()
+    if not timeline:
+        return JsonResponse({"detail": "No active clearance timeline"}, status=400)
+
+    data, parse_err = _parse_json_body(request)
+    if parse_err:
+        return parse_err
+
+    title = data.get("title", "").strip()
+    description = data.get("description", "").strip()
+    physical_submission = data.get("physicalSubmission", False)
+    recipient_scope = data.get("recipientScope", "individual")
+    target_colleges = data.get("targetColleges", [])
+    target_departments = data.get("targetDepartments", [])
+    target_offices = data.get("targetOffices", [])
+    target_faculty = data.get("targetFaculty", [])
+
+    if not title:
+        return JsonResponse({"detail": "Title is required"}, status=400)
+
+    try:
+        with transaction.atomic():
+            requirement = Requirement.objects.create(
+                title=title,
+                description=description,
+                required_physical=physical_submission,
+                created_by=user,
+                clearance_timeline=timeline,
+                recipient_scope=recipient_scope
+            )
+
+            # Set target recipients based on scope
+            if recipient_scope == 'college' and target_colleges:
+                requirement.target_colleges.set(target_colleges)
+            elif recipient_scope == 'department' and target_departments:
+                requirement.target_departments.set(target_departments)
+            elif recipient_scope == 'office' and target_offices:
+                requirement.target_offices.set(target_offices)
+            elif recipient_scope == 'individual' and target_faculty:
+                requirement.target_faculty.set(target_faculty)
+
+            # Log activity
+            ActivityLog.objects.create(
+                event_type=ActivityLog.EventType.CREATED_REQUIREMENTS,
+                user=user,
+                requirement=requirement,
+                details={"title": title, "recipient_scope": recipient_scope}
+            )
+
+        return JsonResponse({
+            "id": requirement.id,
+            "message": "Requirement created successfully"
+        })
+
+    except Exception as e:
+        return JsonResponse({"detail": f"Failed to create requirement: {str(e)}"}, status=500)
+
+
+def approver_requirement_detail_api(request, requirement_id):
+    """Handle individual requirement operations (GET, PUT, DELETE)"""
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    # Check if user has approver role
+    user_roles = user.get_active_roles().values_list('role__name', flat=True)
+    if 'Approver' not in user_roles:
+        return JsonResponse({"detail": "Forbidden - Approver role required"}, status=403)
+
+    try:
+        requirement = Requirement.objects.get(id=requirement_id, is_active=True)
+    except Requirement.DoesNotExist:
+        return JsonResponse({"detail": "Requirement not found"}, status=404)
+
+    # Check if user can access this requirement
+    try:
+        approver_profile = user.approver_profile
+        if not _can_approver_access_requirement(approver_profile, requirement):
+            return JsonResponse({"detail": "Forbidden - Cannot access this requirement"}, status=403)
+    except AttributeError:
+        return JsonResponse({"detail": "Forbidden - Approver profile not found"}, status=403)
+
+    if request.method == "GET":
+        return JsonResponse(_serialize_approver_requirement(requirement))
+    elif request.method == "PUT":
+        return _update_approver_requirement(user, requirement, request)
+    elif request.method == "DELETE":
+        return _delete_approver_requirement(user, requirement, request)
+    else:
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+
+def _update_approver_requirement(user, requirement, request):
+    """Update an existing requirement"""
+    data, parse_err = _parse_json_body(request)
+    if parse_err:
+        return parse_err
+
+    title = data.get("title", "").strip()
+    description = data.get("description", "").strip()
+    physical_submission = data.get("physicalSubmission", False)
+    recipient_scope = data.get("recipientScope", requirement.recipient_scope)
+    target_colleges = data.get("targetColleges", [])
+    target_departments = data.get("targetDepartments", [])
+    target_offices = data.get("targetOffices", [])
+    target_faculty = data.get("targetFaculty", [])
+
+    if not title:
+        return JsonResponse({"detail": "Title is required"}, status=400)
+
+    try:
+        with transaction.atomic():
+            requirement.title = title
+            requirement.description = description
+            requirement.required_physical = physical_submission
+            requirement.recipient_scope = recipient_scope
+            requirement.save()
+
+            # Clear existing targets and set new ones
+            requirement.target_colleges.clear()
+            requirement.target_departments.clear()
+            requirement.target_offices.clear()
+            requirement.target_faculty.clear()
+
+            # Set target recipients based on scope
+            if recipient_scope == 'college' and target_colleges:
+                requirement.target_colleges.set(target_colleges)
+            elif recipient_scope == 'department' and target_departments:
+                requirement.target_departments.set(target_departments)
+            elif recipient_scope == 'office' and target_offices:
+                requirement.target_offices.set(target_offices)
+            elif recipient_scope == 'individual' and target_faculty:
+                requirement.target_faculty.set(target_faculty)
+
+            # Log activity
+            ActivityLog.objects.create(
+                event_type=ActivityLog.EventType.EDITED_REQUIREMENTS,
+                user=user,
+                requirement=requirement,
+                details={"title": title, "recipient_scope": recipient_scope}
+            )
+
+        return JsonResponse({
+            "id": requirement.id,
+            "message": "Requirement updated successfully"
+        })
+
+    except Exception as e:
+        return JsonResponse({"detail": f"Failed to update requirement: {str(e)}"}, status=500)
+
+
+def _delete_approver_requirement(user, requirement, request):
+    """Delete a requirement (soft delete by setting is_active=False)"""
+    try:
+        with transaction.atomic():
+            requirement.is_active = False
+            requirement.save()
+
+            # Log activity
+            ActivityLog.objects.create(
+                event_type=ActivityLog.EventType.DELETED_REQUIREMENTS,
+                user=user,
+                requirement=requirement,
+                details={"title": requirement.title}
+            )
+
+        return JsonResponse({"message": "Requirement deleted successfully"})
+
+    except Exception as e:
+        return JsonResponse({"detail": f"Failed to delete requirement: {str(e)}"}, status=500)
+
+
+def approver_faculty_options_api(request):
+    """Get faculty options for recipient selection based on approver's role and scope"""
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    # Check if user has approver role
+    user_roles = user.get_active_roles().values_list('role__name', flat=True)
+    if 'Approver' not in user_roles:
+        return JsonResponse({"detail": "Forbidden - Approver role required"}, status=403)
+
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    try:
+        approver_profile = user.approver_profile
+    except AttributeError:
+        return JsonResponse({"options": []})
+
+    # Get faculty based on approver's scope
+    faculty_queryset = Faculty.objects.select_related('user', 'college', 'department').order_by('user__last_name', 'user__first_name')
+
+    if approver_profile.college:
+        # College Admin - all faculty in their college
+        faculty_queryset = faculty_queryset.filter(college=approver_profile.college)
+    elif approver_profile.department:
+        # Department Chair - all faculty in their department
+        faculty_queryset = faculty_queryset.filter(department=approver_profile.department)
+    elif approver_profile.office:
+        # Office Admin - all faculty
+        pass  # No filtering needed
+    else:
+        return JsonResponse({"options": []})
+
+    # Get search query
+    query = (request.GET.get("query", "") or "").strip()
+    if query:
+        faculty_queryset = faculty_queryset.filter(
+            Q(user__first_name__icontains=query) |
+            Q(user__last_name__icontains=query) |
+            Q(employee_id__icontains=query)
+        )
+
+    # Serialize faculty options
+    options = []
+    for faculty in faculty_queryset[:50]:  # Limit to 50 results
+        name = f"{faculty.user.first_name} {faculty.user.last_name}".strip()
+        if not name:
+            name = faculty.user.email
+        
+        options.append({
+            "id": str(faculty.id),
+            "name": name,
+            "subtitle": faculty.employee_id,
+            "email": faculty.user.email,
+            "college": faculty.college.name if faculty.college else "",
+            "department": faculty.department.name if faculty.department else "",
+        })
+
+    return JsonResponse({"options": options})
+
+
+def approver_college_department_options_api(request):
+    """Get college and department options for recipient selection"""
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    # Check if user has approver role
+    user_roles = user.get_active_roles().values_list('role__name', flat=True)
+    if 'Approver' not in user_roles:
+        return JsonResponse({"detail": "Forbidden - Approver role required"}, status=403)
+
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    try:
+        approver_profile = user.approver_profile
+    except AttributeError:
+        return JsonResponse({"colleges": [], "departments": []})
+
+    colleges = []
+    departments = []
+
+    if approver_profile.college:
+        # College Admin - their college and its departments
+        colleges = [{
+            "id": approver_profile.college.id,
+            "name": approver_profile.college.name,
+            "abbreviation": approver_profile.college.abbreviation or ""
+        }]
+        departments = [
+            {
+                "id": dept.id,
+                "name": dept.name,
+                "abbreviation": dept.abbreviation or "",
+                "college": dept.college.name
+            }
+            for dept in approver_profile.college.departments.filter(is_active=True)
+        ]
+    elif approver_profile.department:
+        # Department Chair - their department and college
+        colleges = [{
+            "id": approver_profile.department.college.id,
+            "name": approver_profile.department.college.name,
+            "abbreviation": approver_profile.department.college.abbreviation or ""
+        }]
+        departments = [{
+            "id": approver_profile.department.id,
+            "name": approver_profile.department.name,
+            "abbreviation": approver_profile.department.abbreviation or "",
+            "college": approver_profile.department.college.name
+        }]
+    elif approver_profile.office:
+        # Office Admin - all colleges and departments
+        colleges = [
+            {
+                "id": college.id,
+                "name": college.name,
+                "abbreviation": college.abbreviation or ""
+            }
+            for college in College.objects.filter(is_active=True).order_by('name')
+        ]
+        departments = [
+            {
+                "id": dept.id,
+                "name": dept.name,
+                "abbreviation": dept.abbreviation or "",
+                "college": dept.college.name
+            }
+            for dept in Department.objects.filter(is_active=True).select_related('college').order_by('college__name', 'name')
+        ]
+
+    return JsonResponse({"colleges": colleges, "departments": departments})
+
+
+def faculty_requirements_api(request):
+    """Get requirements for faculty based on their department/college/office"""
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    # Check if user has faculty role
+    if not user.userrole_set.filter(role__name='Faculty', is_active=True).exists():
+        return JsonResponse({"detail": "Forbidden"}, status=403)
+
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    timeline = _get_active_timeline()
+    if not timeline:
+        return JsonResponse({"items": []})
+
+    try:
+        faculty = user.faculty_profile
+    except AttributeError:
+        return JsonResponse({"items": []})
+
+    # Get requirements that apply to this faculty
+    requirements = Requirement.objects.filter(
+        clearance_timeline=timeline,
+        is_active=True
+    ).select_related(
+        'created_by', 'clearance_timeline'
+    ).prefetch_related(
+        'target_colleges', 'target_departments', 'target_offices', 'target_faculty'
+    ).order_by('title', 'id')
+
+    # Filter requirements based on faculty's profile
+    applicable_requirements = []
+    for req in requirements:
+        if _requirement_applies_to_faculty(req, faculty):
+            applicable_requirements.append(_serialize_faculty_requirement(req))
+
+    return JsonResponse({"items": applicable_requirements})
+
+
+def _requirement_applies_to_faculty(requirement, faculty):
+    """Check if a requirement applies to a specific faculty member"""
+    if requirement.recipient_scope == 'all':
+        return True
+    elif requirement.recipient_scope == 'college':
+        return faculty.college and faculty.college in requirement.target_colleges.all()
+    elif requirement.recipient_scope == 'department':
+        return faculty.department and faculty.department in requirement.target_departments.all()
+    elif requirement.recipient_scope == 'office':
+        return faculty.office and faculty.office in requirement.target_offices.all()
+    elif requirement.recipient_scope == 'individual':
+        return faculty in requirement.target_faculty.all()
+    return False
+
+
+def _serialize_faculty_requirement(requirement):
+    """Serialize requirement for faculty view"""
+    return {
+        "id": requirement.id,
+        "title": requirement.title or "",
+        "description": requirement.description or "",
+        "physicalSubmission": bool(requirement.required_physical),
+        "createdBy": f"{requirement.created_by.first_name} {requirement.created_by.last_name}" if requirement.created_by else "",
+        "clearanceTimeline": requirement.clearance_timeline.name if requirement.clearance_timeline else "",
+        "lastUpdated": timezone.localtime(requirement.last_updated).strftime("%B %d, %Y, %I:%M %p") if requirement.last_updated else "",
+    }
 
 def approver_clearance_api(request):
     return JsonResponse({"items": []})

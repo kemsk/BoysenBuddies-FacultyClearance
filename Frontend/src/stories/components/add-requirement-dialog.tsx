@@ -11,21 +11,44 @@ import {
 import { Input } from "./input";
 import { SearchInputGroup } from "./input-group";
 import { Textarea } from "./textarea";
-
-import {DatePicker, TimePicker} from "./picker"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./select";
 
 export type FacultyOption = {
   id: string;
   name: string;
   subtitle?: string;
+  email?: string;
+  college?: string;
+  department?: string;
+};
+
+export type CollegeOption = {
+  id: number;
+  name: string;
+  abbreviation: string;
+};
+
+export type DepartmentOption = {
+  id: number;
+  name: string;
+  abbreviation: string;
+  college: string;
 };
 
 export type AddRequirementPayload = {
   title: string;
   description: string;
   facultyIds: string[];
-  date?: string;
-  time?: string;
+  recipientScope?: string;
+  targetColleges?: number[];
+  targetDepartments?: number[];
+  targetOffices?: number[];
   physicalSubmission: boolean;
 };
 
@@ -40,10 +63,6 @@ export type AddRequirementDialogProps = {
 
 export function AddRequirementDialog({
   trigger,
-  facultyOptions = [
-    { id: "20150016375", name: "Faculty 1", subtitle: "20150016375" },
-    { id: "20190016375", name: "Faculty 2", subtitle: "20190016375" },
-  ],
   initialValues,
   dialogTitle = "Add Requirement",
   saveLabel = "Save",
@@ -53,31 +72,58 @@ export function AddRequirementDialog({
 
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
+  const [physicalSubmission, setPhysicalSubmission] = React.useState(false);
 
+  // Recipient selection states
+  const [recipientScope, setRecipientScope] = React.useState<string>("individual");
   const [facultyOpen, setFacultyOpen] = React.useState(false);
   const [facultyQuery, setFacultyQuery] = React.useState("");
   const [facultyIds, setFacultyIds] = React.useState<string[]>([]);
+  const [facultyOptions, setFacultyOptions] = React.useState<FacultyOption[]>([]);
+  
+  const [colleges, setColleges] = React.useState<CollegeOption[]>([]);
+  const [departments, setDepartments] = React.useState<DepartmentOption[]>([]);
+  const [selectedColleges, setSelectedColleges] = React.useState<number[]>([]);
+  const [selectedDepartments, setSelectedDepartments] = React.useState<number[]>([]);
 
-  const [enableDate, setEnableDate] = React.useState(false);
-  const [enableTime, setEnableTime] = React.useState(false);
-  const [date, setDate] = React.useState("");
-  const [time, setTime] = React.useState("");
-
-  const [physicalSubmission, setPhysicalSubmission] = React.useState(false);
-
+  // Load options when dialog opens
   React.useEffect(() => {
     if (!open) return;
-    setFacultyOpen(false);
+    
+    // Reset form
+    setRecipientScope(initialValues?.recipientScope || "individual");
     setTitle(initialValues?.title ?? "");
     setDescription(initialValues?.description ?? "");
-    setFacultyQuery("");
-    setFacultyIds(initialValues?.facultyIds ?? []);
-    setEnableDate(Boolean(initialValues?.date));
-    setEnableTime(Boolean(initialValues?.time));
-    setDate(initialValues?.date ?? "");
-    setTime(initialValues?.time ?? "");
     setPhysicalSubmission(Boolean(initialValues?.physicalSubmission));
-  }, [open, initialValues?.date, initialValues?.description, initialValues?.physicalSubmission, initialValues?.time, initialValues?.title, initialValues?.facultyIds]);
+    setFacultyIds(initialValues?.facultyIds ?? []);
+    setSelectedColleges(initialValues?.targetColleges ?? []);
+    setSelectedDepartments(initialValues?.targetDepartments ?? []);
+    setFacultyQuery("");
+    
+    // Load options from API
+    loadOptions();
+  }, [open, initialValues]);
+
+  const loadOptions = async () => {
+    try {
+      // Load faculty options
+      const facultyResponse = await fetch("/admin/xu-faculty-clearance/api/approver/faculty-options");
+      if (facultyResponse.ok) {
+        const facultyData = await facultyResponse.json();
+        setFacultyOptions(facultyData.options || []);
+      }
+
+      // Load college/department options
+      const collegeDeptResponse = await fetch("/admin/xu-faculty-clearance/api/approver/college-department-options");
+      if (collegeDeptResponse.ok) {
+        const data = await collegeDeptResponse.json();
+        setColleges(data.colleges || []);
+        setDepartments(data.departments || []);
+      }
+    } catch (error) {
+      console.error("Failed to load options:", error);
+    }
+  };
 
   const filteredFaculty = facultyOptions.filter((f) => {
     const q = facultyQuery.trim().toLowerCase();
@@ -118,6 +164,34 @@ export function AddRequirementDialog({
   const selectedPrimaryId = facultyIds[0];
   const selectedOthersCount = Math.max(0, facultyIds.length - 1);
 
+  const getRecipientDisplayText = () => {
+    switch (recipientScope) {
+      case "all":
+        return "All Faculty";
+      case "college":
+        if (selectedColleges.length === 0) return "Select Colleges";
+        if (selectedColleges.length === 1) {
+          const college = colleges.find(c => c.id === selectedColleges[0]);
+          return college?.name || "Selected College";
+        }
+        return `${selectedColleges.length} Colleges`;
+      case "department":
+        if (selectedDepartments.length === 0) return "Select Departments";
+        if (selectedDepartments.length === 1) {
+          const dept = departments.find(d => d.id === selectedDepartments[0]);
+          return dept?.name || "Selected Department";
+        }
+        return `${selectedDepartments.length} Departments`;
+      case "individual":
+        if (facultyIds.length === 0) return "Search Faculty";
+        if (allSelected) return "All Faculty";
+        if (facultyIds.length === 1) return selectedPrimaryId;
+        return `${selectedPrimaryId} +${selectedOthersCount} others`;
+      default:
+        return "Select Recipients";
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -127,58 +201,97 @@ export function AddRequirementDialog({
             <div className="text-center text-base font-bold text-foreground">{dialogTitle}</div>
 
             <div className="mt-4 space-y-3">
+              {/* Recipient Selection */}
               <div className="flex w-full items-center gap-2 border-b border-[hsl(var(--gray-border))] pb-2">
                 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                  {allSelected ? (
-                    <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-foreground">
-                      <span className="truncate">All</span>
-                      <button
-                        type="button"
-                        className="text-muted-foreground"
-                        onClick={() => setFacultyIds([])}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </span>
-                  ) : null}
+                  {recipientScope === "individual" && facultyIds.length > 0 && (
+                    <>
+                      {allSelected ? (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-foreground">
+                          <span className="truncate">All</span>
+                          <button
+                            type="button"
+                            className="text-muted-foreground"
+                            onClick={() => setFacultyIds([])}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </span>
+                      ) : null}
 
-                  {!allSelected && selectedPrimaryId ? (
-                    <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-foreground">
-                      <span className="max-w-[140px] truncate">{selectedPrimaryId}</span>
-                      <button
-                        type="button"
-                        className="text-muted-foreground"
-                        onClick={() =>
-                          setFacultyIds((prev) => prev.filter((id) => id !== selectedPrimaryId))
-                        }
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </span>
-                  ) : null}
+                      {!allSelected && selectedPrimaryId ? (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-foreground">
+                          <span className="max-w-[140px] truncate">{selectedPrimaryId}</span>
+                          <button
+                            type="button"
+                            className="text-muted-foreground"
+                            onClick={() =>
+                              setFacultyIds((prev) => prev.filter((id) => id !== selectedPrimaryId))
+                            }
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </span>
+                      ) : null}
 
-                  {!allSelected && selectedOthersCount ? (
-                    <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-foreground">
-                      <span className="truncate">{selectedOthersCount} others...</span>
-                      <button
-                        type="button"
-                        className="text-muted-foreground"
-                        onClick={() =>
-                          setFacultyIds(() => (selectedPrimaryId ? [selectedPrimaryId] : []))
-                        }
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </span>
-                  ) : null}
+                      {!allSelected && selectedOthersCount ? (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-foreground">
+                          <span className="truncate">{selectedOthersCount} others...</span>
+                          <button
+                            type="button"
+                            className="text-muted-foreground"
+                            onClick={() =>
+                              setFacultyIds(() => (selectedPrimaryId ? [selectedPrimaryId] : []))
+                            }
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </span>
+                      ) : null}
+                    </>
+                  )}
+
+                  {recipientScope === "college" && selectedColleges.map(collegeId => {
+                    const college = colleges.find(c => c.id === collegeId);
+                    return college ? (
+                      <span key={collegeId} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-foreground">
+                        <span className="truncate">{college.name}</span>
+                        <button
+                          type="button"
+                          className="text-muted-foreground"
+                          onClick={() => setSelectedColleges(prev => prev.filter(id => id !== collegeId))}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </span>
+                    ) : null;
+                  })}
+
+                  {recipientScope === "department" && selectedDepartments.map(deptId => {
+                    const dept = departments.find(d => d.id === deptId);
+                    return dept ? (
+                      <span key={deptId} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-foreground">
+                        <span className="truncate">{dept.name}</span>
+                        <button
+                          type="button"
+                          className="text-muted-foreground"
+                          onClick={() => setSelectedDepartments(prev => prev.filter(id => id !== deptId))}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </span>
+                    ) : null;
+                  })}
 
                   <Input
-                    value={facultyQuery}
+                    value={recipientScope === "individual" ? facultyQuery : ""}
                     onChange={(e) => {
-                      setFacultyQuery(e.target.value);
-                      setFacultyOpen(true);
+                      if (recipientScope === "individual") {
+                        setFacultyQuery(e.target.value);
+                        setFacultyOpen(true);
+                      }
                     }}
-                    placeholder={facultyIds.length ? "" : "Search Faculty by name or id"}
+                    placeholder={getRecipientDisplayText()}
                     className="h-6 min-w-0 flex-1 rounded-none border-0 bg-transparent p-0 text-sm text-foreground shadow-none outline-none placeholder:text-muted-foreground focus-visible:ring-0"
                   />
                 </div>
@@ -186,14 +299,73 @@ export function AddRequirementDialog({
                   type="button"
                   variant="ghost"
                   className="h-6 w-6 p-0 text-muted-foreground hover:bg-transparent focus-visible:ring-0"
-                  onClick={() => setFacultyOpen(true)}
+                  onClick={() => {
+                    if (recipientScope === "individual") {
+                      setFacultyOpen(true);
+                    }
+                  }}
                 >
                   <Search className="h-4 w-4" />
                 </Button>
               </div>
 
+              {/* Recipient Scope Selection */}
               <div className="space-y-1.5">
-                
+                <Select value={recipientScope} onValueChange={setRecipientScope}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select recipient scope" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Faculty</SelectItem>
+                    <SelectItem value="college">By College</SelectItem>
+                    <SelectItem value="department">By Department</SelectItem>
+                    <SelectItem value="individual">Individual Faculty</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* College/Department Selection */}
+              {recipientScope === "college" && (
+                <div className="space-y-1.5">
+                  <Select 
+                    value={selectedColleges.length > 0 ? selectedColleges[0].toString() : ""}
+                    onValueChange={(value) => setSelectedColleges([parseInt(value)])}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select college" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {colleges.map((college) => (
+                        <SelectItem key={college.id} value={college.id.toString()}>
+                          {college.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {recipientScope === "department" && (
+                <div className="space-y-1.5">
+                  <Select 
+                    value={selectedDepartments.length > 0 ? selectedDepartments[0].toString() : ""}
+                    onValueChange={(value) => setSelectedDepartments([parseInt(value)])}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept.id} value={dept.id.toString()}>
+                          {dept.name} ({dept.college})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} size="sm" placeholder="Title"/>
               </div>
 
@@ -203,11 +375,6 @@ export function AddRequirementDialog({
                   onChange={(e) => setDescription(e.target.value)}
                   className="min-h-[88px]" placeholder="Description"
                 />
-              </div>
-
-              <div className="flex gap-3 flex-wrap  pb-1">
-                <DatePicker buttonClassName="h-10 w-max min-w-0 justify-between font-normal" />
-                <TimePicker buttonClassName="h-10 w-max min-w-0 justify-between font-normal" />
               </div>
 
               <label className="mt-0 flex items-center gap-2 text-xs font-semibold text-foreground">
@@ -239,8 +406,10 @@ export function AddRequirementDialog({
                     title,
                     description,
                     facultyIds,
-                    date: enableDate ? date : undefined,
-                    time: enableTime ? time : undefined,
+                    recipientScope,
+                    targetColleges: selectedColleges,
+                    targetDepartments: selectedDepartments,
+                    targetOffices: [],
                     physicalSubmission,
                   });
                   setOpen(false);
@@ -252,77 +421,83 @@ export function AddRequirementDialog({
           </div>
         </div>
 
-        <Dialog open={facultyOpen} onOpenChange={setFacultyOpen}>
-          <DialogContent className="w-[420px] max-w-[calc(100vw-3rem)] max-h-[calc(100vh-3rem)] overflow-y-auto overflow-x-hidden rounded-xl p-0">
-            <div className="rounded-xl bg-background">
-              <div className="px-6 pb-4 pt-6">
-                <div className="text-center text-base font-bold text-foreground">Search Faculty</div>
+        {/* Faculty Search Dialog */}
+        {recipientScope === "individual" && (
+          <Dialog open={facultyOpen} onOpenChange={setFacultyOpen}>
+            <DialogContent className="w-[420px] max-w-[calc(100vw-3rem)] max-h-[calc(100vh-3rem)] overflow-y-auto overflow-x-hidden rounded-xl p-0">
+              <div className="rounded-xl bg-background">
+                <div className="px-6 pb-4 pt-6">
+                  <div className="text-center text-base font-bold text-foreground">Search Faculty</div>
 
-                <div className="mt-4">
-                  <SearchInputGroup
-                    value={facultyQuery}
-                    onChange={(e) => setFacultyQuery(e.target.value)}
-                    containerClassName="h-10"
-                    placeholder="Search Faculty"
-                  />
-                </div>
+                  <div className="mt-4">
+                    <SearchInputGroup
+                      value={facultyQuery}
+                      onChange={(e) => setFacultyQuery(e.target.value)}
+                      containerClassName="h-10"
+                      placeholder="Search Faculty"
+                    />
+                  </div>
 
-                <div className="mt-4">
-                  <button
-                    type="button"
-                    className={
-                      allFilteredSelected
-                        ? "w-full rounded-md bg-muted-foreground/20 px-4 py-3 text-left"
-                        : "w-full rounded-md px-4 py-3 text-left"
-                    }
-                    onClick={() => toggleSelectAllFiltered(!allFilteredSelected)}
-                  >
-                    <div className="text-sm font-bold text-foreground">Select All</div>
-                    <div className="mt-1 text-xs text-muted-foreground">Select All Faculty Members</div>
-                  </button>
-                </div>
+                  <div className="mt-4">
+                    <button
+                      type="button"
+                      className={
+                        allFilteredSelected
+                          ? "w-full rounded-md bg-muted-foreground/20 px-4 py-3 text-left"
+                          : "w-full rounded-md px-4 py-3 text-left"
+                      }
+                      onClick={() => toggleSelectAllFiltered(!allFilteredSelected)}
+                    >
+                      <div className="text-sm font-bold text-foreground">Select All</div>
+                      <div className="mt-1 text-xs text-muted-foreground">Select All Faculty Members</div>
+                    </button>
+                  </div>
 
-                <div className="mt-4 space-y-3">
-                  {filteredFaculty.map((f) => {
-                    const selected = facultyIds.includes(f.id);
-                    return (
-                      <button
-                        key={f.id}
-                        type="button"
-                        className={
-                          selected
-                            ? "w-full rounded-md bg-muted-foreground/20 px-4 py-3 text-left"
-                            : "w-full rounded-md px-4 py-3 text-left"
-                        }
-                        onClick={() => toggleFaculty(f.id)}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="text-sm font-bold text-foreground">{f.name}</div>
-                            <div className="mt-1 text-xs text-muted-foreground">{f.subtitle ?? f.id}</div>
+                  <div className="mt-4 space-y-3">
+                    {filteredFaculty.map((f) => {
+                      const selected = facultyIds.includes(f.id);
+                      return (
+                        <button
+                          key={f.id}
+                          type="button"
+                          className={
+                            selected
+                              ? "w-full rounded-md bg-muted-foreground/20 px-4 py-3 text-left"
+                              : "w-full rounded-md px-4 py-3 text-left"
+                          }
+                          onClick={() => toggleFaculty(f.id)}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-sm font-bold text-foreground">{f.name}</div>
+                              <div className="mt-1 text-xs text-muted-foreground">{f.subtitle ?? f.id}</div>
+                              {f.college && (
+                                <div className="mt-1 text-xs text-muted-foreground">{f.college}</div>
+                              )}
+                            </div>
+                            {selected ? (
+                              <Check className="mt-1 h-5 w-5 shrink-0 text-foreground" />
+                            ) : null}
                           </div>
-                          {selected ? (
-                            <Check className="mt-1 h-5 w-5 shrink-0 text-foreground" />
-                          ) : null}
-                        </div>
-                      </button>
-                    );
-                  })}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="border-t border-[hsl(var(--gray-border))] px-6 py-4">
+                  <Button
+                    type="button"
+                    className="h-11 w-full rounded-md"
+                    onClick={() => setFacultyOpen(false)}
+                  >
+                    Done
+                  </Button>
                 </div>
               </div>
-
-              <div className="border-t border-[hsl(var(--gray-border))] px-6 py-4">
-                <Button
-                  type="button"
-                  className="h-11 w-full rounded-md"
-                  onClick={() => setFacultyOpen(false)}
-                >
-                  Done
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        )}
       </DialogContent>
     </Dialog>
   );
