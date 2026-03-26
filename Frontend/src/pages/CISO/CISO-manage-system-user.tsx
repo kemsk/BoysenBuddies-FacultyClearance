@@ -186,8 +186,9 @@ import {
     [activeUserId, users]
   );
 
-  function isSystemAdmin(user: SystemUser) {
-    return user.userRole.toLowerCase().includes("admin");
+  function isSystemLevelRole(user: SystemUser) {
+    const role = user.userRole.toLowerCase();
+    return role.includes("admin") || role === "ciso" || role === "ovphe";
   }
 
   function splitName(name: string) {
@@ -300,7 +301,7 @@ import {
               onAddAdmin={() => setAddAdminOpen(true)}
               onEditUser={(user) => {
                 setActiveUserId(user.id);
-                if (isSystemAdmin(user)) {
+                if (isSystemLevelRole(user)) {
                   setEditAdminOpen(true);
                 } else {
                   setEditApproverOpen(true);

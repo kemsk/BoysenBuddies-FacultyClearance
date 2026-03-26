@@ -301,9 +301,8 @@ def _dashboard_route_for_user(user: "User") -> str:
     if 'OVPHE' in user_roles:
         return "/OVPHE-dashboard"
     
-    # All approver roles (College Admin, Department Chair, Office Admin) go to approver dashboard
-    approver_roles = ['College Admin', 'Department Chair', 'Office Admin']
-    if any(role in user_roles for role in approver_roles):
+    # All approvers go to approver dashboard
+    if 'Approver' in user_roles:
         return "/approver-dashboard"
     
     # Student Assistant / Assistant Approver
@@ -1305,7 +1304,7 @@ def ciso_system_user_detail_api(request, user_id: int):
 
         if user_roles:
             # Get the highest priority role for display
-            role_priority = ['CISO', 'OVPHE', 'College Admin', 'Department Chair', 'Office Admin', 'Student Assistant', 'Faculty']
+            role_priority = ['CISO', 'OVPHE', 'Approver', 'Student Assistant', 'Faculty']
             
             for priority_role in role_priority:
                 user_role = user_roles.filter(role__name=priority_role).first()
@@ -1523,14 +1522,12 @@ def ciso_system_user_detail_api(request, user_id: int):
             
             # Assign appropriate role based on approver type
             from .models import Role, UserRole
-            if atype == "college":
-                role_name = "College Admin"
-            else:
-                role_name = "Office Admin"
+            # Always use "Approver" role regardless of approver type
+            role_name = "Approver"
             
             role, created = Role.objects.get_or_create(
                 name=role_name,
-                defaults={'description': f'{role_name} role'}
+                defaults={'description': 'Approver role'}
             )
             user_role, _ = UserRole.objects.get_or_create(
                 user=user,
@@ -3968,15 +3965,13 @@ def ciso_system_users_api(request):
             
             # Assign appropriate role based on approver type
             from .models import Role, UserRole
-            if atype == "college":
-                role_name = "College Admin"
-            else:
-                role_name = "Office Admin"
+            # Always use "Approver" role regardless of approver type
+            role_name = "Approver"
             
             # Create role if it doesn't exist
             role, created = Role.objects.get_or_create(
                 name=role_name,
-                defaults={'description': f'{role_name} role'}
+                defaults={'description': 'Approver role'}
             )
             UserRole.objects.get_or_create(
                 user=user,
