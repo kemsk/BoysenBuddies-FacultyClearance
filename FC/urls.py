@@ -75,6 +75,7 @@ urlpatterns = [
     path('api/assistant-approver/archived-clearance', views.assistant_approver_archived_clearance_api, name='AssistantApproverArchivedClearance'),
     path('api/assistant-approver/individual-approval', views.assistant_approver_individual_approval_api, name='AssistantApproverIndividualApproval'),
     path('api/assistant-approver/view-clearance', views.assistant_approver_view_clearance_api, name='AssistantApproverViewClearance'),
+    path('api/assistant-approver/archived-individual', views.assistant_approver_archived_individual_api, name='AssistantApproverArchivedIndividual'),
     # Additional OVPHE endpoints
     path('api/ovphe/tools', views.ovphe_tools_api, name='OVPHETools'),
     path('api/ovphe/archived-clearance', views.ovphe_archived_clearance_api, name='OVPHEArchivedClearance'),

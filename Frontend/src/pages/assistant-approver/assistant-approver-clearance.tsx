@@ -25,51 +25,15 @@ export default function AssistantApproverClearance() {
 
   const [requests, setRequests] = React.useState<ClearanceRequestItem[]>([]);
 
-  const dummyRequests = React.useMemo<ClearanceRequestItem[]>(
-    () => [
-      {
-        id: "dummy-1",
-        name: "Juan Dela Cruz",
-        requestId: "CR-2501-0001",
-        employeeId: "EMP-2025-001",
-        college: "College of Computer Studies",
-        department: "Computer Science",
-        facultyType: "Full-time",
-        status: "pending",
-      },
-      {
-        id: "dummy-2",
-        name: "Maria Clara",
-        requestId: "CR-2501-0002",
-        employeeId: "EMP-2025-002",
-        college: "College of Nursing",
-        department: "Nursing",
-        facultyType: "Part-time",
-        status: "approved",
-      },
-      {
-        id: "dummy-3",
-        name: "Jose Rizal",
-        requestId: "CR-2501-0003",
-        employeeId: "EMP-2025-003",
-        college: "College of Arts and Sciences",
-        department: "History",
-        facultyType: "Adjunct",
-        status: "rejected",
-      },
-    ],
-    []
-  );
-
   React.useEffect(() => {
-    fetch("/admin/xu-faculty-clearance/api/clearance-requests")
-      .then((res) => res.json())
+    fetch("/admin/xu-faculty-clearance/api/assistant-approver/clearance")
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then((data) => {
         const items = Array.isArray(data?.items) ? (data.items as ClearanceRequestItem[]) : [];
-        setRequests(items.length ? items : dummyRequests);
+        setRequests(items);
       })
-      .catch(() => setRequests(dummyRequests));
-  }, [dummyRequests]);
+      .catch(() => setRequests([]));
+  }, []);
 
   const filteredRequests = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -139,7 +103,7 @@ export default function AssistantApproverClearance() {
         <div className="mt-6">
           <ClearanceRequestsCard
             items={filteredRequests}
-            getItemHref={() => "/assistant-approver-individual-clearance"}
+            getItemHref={(item) => `/assistant-approver-individual-clearance?requestId=${encodeURIComponent(item.requestId)}`}
           />
         </div>
 

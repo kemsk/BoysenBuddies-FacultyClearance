@@ -1,18 +1,11 @@
+import * as React from "react";
 import "../../index.css"; 
 import { AssistantApproverHeader } from "../../stories/components/header";
 
 import {
-  AnnouncementsCard,
-  type AnnouncementItem,
-  WelcomeAcademicCard,
-  ApproverWelcomeMetrics,
-  RequirementsListCard,
-  type RequirementListItem,
-  RequirementEditCard,
   RequirementListCard,
+  type RequirementListItem,
 } from "../../stories/components/cards";
-
-import { AddRequirementDialog } from "../../stories/components/add-requirement-dialog";
 
 import {
   Breadcrumb,
@@ -28,6 +21,14 @@ import { Button } from "../../stories/components/button";
 
 export default function AssistantApproverRequirementList() {
   const navigate = useNavigate();
+  const [items, setItems] = React.useState<RequirementListItem[]>([]);
+
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/assistant-approver/requirement-list")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { items?: RequirementListItem[] }) => setItems(data.items ?? []))
+      .catch(() => setItems([]));
+  }, []);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -65,21 +66,11 @@ export default function AssistantApproverRequirementList() {
         </div>
        
        <div className="mt-2 space-y-3">
-
         <RequirementListCard
-            title="Reporting of Borrowed Books"
-            description="All faculty members who borrowed books are expected to report the status on said books"
-            physicalSubmission 
-            submissionDeadline="December 3, 2025, 9:30 AM"
-            onEdit={() => {}}
-            onDelete={() => {}}
-        />
-
-        <RequirementListCard
-            title="Reporting of Borrowed Books"
-            description="All faculty members who borrowed books are expected to report the status on said books"
-            physicalSubmission={false}
-            submissionDeadline="December 3, 2025, 9:30 AM"
+          items={items}
+          headerActionHref="/assistant-approver-requirement-list"
+          headerActionImgSrc="/BlackChevronIcon.png"
+          headerActionImgAlt="View requirement"
         />
        </div>
 

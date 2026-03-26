@@ -27,15 +27,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { SearchInputGroup } from "../../stories/components/input-group";
 import { useState } from "react";
 
-function postOVPHEActivityLog(payload: { event_type: string; details?: string[] }) {
-  fetch("/admin/xu-faculty-clearance/api/ovphe/activity-logs", {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  }).catch(() => {});
-}
-
 
 export default function AssistantApproverViewClearance() {
   const navigate = useNavigate();
@@ -249,7 +240,7 @@ export default function AssistantApproverViewClearance() {
             <div className="mt-6">
               <ClearanceRequestsCard
                 items={filteredRequests}
-                getItemHref={() => "/assistant-approver-archived-individual"}
+                getItemHref={(item) => `/assistant-approver-archived-individual?timelineId=${encodeURIComponent(timelineId)}&archivedId=${encodeURIComponent(item.id)}`}
               />
             </div>
           </div>

@@ -8,13 +8,12 @@ import {
   WelcomeAcademicCard,
   ApproverWelcomeMetrics,
   RequirementsListCard,
+  type ClearanceRequestItem,
   type RequirementListItem,
 } from "../../stories/components/cards";
 
 export default function AssistantApproverDashboard() {
   const [timeline, setTimeline] = React.useState<{ academicYear: string; semester: string } | null>(null);
-  const pendingClearance = 0;
-  const totalClearanceRequests = 1;
   const approverOffice = "College of Computer Studies";
 
   const [profile, setProfile] = React.useState<{
@@ -52,16 +51,8 @@ export default function AssistantApproverDashboard() {
   }, []);
    type AnnouncementsResponse = { items: AnnouncementItem[] };
 
-  const requirementItems: RequirementListItem[] = [
-    {
-      title: "Reporting of Borrowed Books",
-      description:
-        "All faculty members who borrowed books are expected to report the status on said books",
-      lastUpdated: "Last updated: November 8, 2024, 4:38 PM",
-      physicalSubmission: true,
-      submissionDeadline: "December 3, 2025, 9:30 AM",
-    },
-  ];
+  const [requirementItems, setRequirementItems] = React.useState<RequirementListItem[]>([]);
+  const [clearanceItems, setClearanceItems] = React.useState<ClearanceRequestItem[]>([]);
 
   const [announcementItems, setAnnouncementItems] = React.useState<AnnouncementItem[]>([]);
 
@@ -74,6 +65,26 @@ export default function AssistantApproverDashboard() {
       })
       .catch(() => setAnnouncementItems([]));
   }, []);
+
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/assistant-approver/requirement-list")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { items?: RequirementListItem[] }) => setRequirementItems(data.items ?? []))
+      .catch(() => setRequirementItems([]));
+  }, []);
+
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/assistant-approver/clearance")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { items?: ClearanceRequestItem[] }) => setClearanceItems(data.items ?? []))
+      .catch(() => setClearanceItems([]));
+  }, []);
+
+  const pendingClearance = React.useMemo(
+    () => clearanceItems.filter((item) => item.status === "pending").length,
+    [clearanceItems]
+  );
+  const totalClearanceRequests = clearanceItems.length;
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
