@@ -66,6 +66,17 @@ export default function RequirementList() {
     fetchRequirements();
   }, [fetchRequirements]);
 
+  // Auto-open edit dialog when editingRequirement is set
+  React.useEffect(() => {
+    if (editingRequirement) {
+      // Find and click the hidden trigger button
+      const triggerButton = document.querySelector('[data-edit-trigger="true"]') as HTMLButtonElement;
+      if (triggerButton) {
+        setTimeout(() => triggerButton.click(), 0);
+      }
+    }
+  }, [editingRequirement]);
+
   const handleAddRequirement = async (payload: any) => {
     try {
       const response = await fetch("/admin/xu-faculty-clearance/api/approver/requirement-list", {
@@ -87,7 +98,6 @@ export default function RequirementList() {
 
       if (response.ok) {
         fetchRequirements();
-        setShowSuccess(true);
       } else {
         const error = await response.json();
         alert(`Failed to create requirement: ${error.detail || "Unknown error"}`);
@@ -121,8 +131,6 @@ export default function RequirementList() {
 
       if (response.ok) {
         fetchRequirements();
-        setEditingRequirement(null);
-        setShowSuccess(true);
       } else {
         const error = await response.json();
         alert(`Failed to update requirement: ${error.detail || "Unknown error"}`);
@@ -243,6 +251,7 @@ export default function RequirementList() {
               onContinue={() => {
                 setShowSuccess(false);
                 setShowTrueAgreement(true);
+                window.location.reload();
               }}
             />
           </div>
@@ -255,7 +264,13 @@ export default function RequirementList() {
       {/* Edit Requirement Dialog */}
       {editingRequirement && (
         <AddRequirementDialog
-          trigger={<div />}
+          key={editingRequirement.id}
+          trigger={
+            <button 
+              data-edit-trigger="true"
+              style={{ display: 'none' }}
+            />
+          }
           dialogTitle="Edit Requirement"
           saveLabel="Update"
           initialValues={{
@@ -268,7 +283,10 @@ export default function RequirementList() {
             targetDepartments: editingRequirement.targetDepartments,
             targetOffices: editingRequirement.targetOffices,
           }}
-          onSave={handleEditRequirement}
+          onSave={(payload) => {
+            handleEditRequirement(payload);
+            setEditingRequirement(null);
+          }}
         />
       )}
     </div>

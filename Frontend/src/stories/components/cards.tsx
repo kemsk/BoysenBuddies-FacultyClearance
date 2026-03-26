@@ -99,8 +99,6 @@ import { Checkbox } from "./checkbox";
 
 import { ApproveConfirmDialog, RejectAlertDialog } from "./clearance-action-dialogs";
 
-import { AddRequirementDialog, type AddRequirementPayload } from "./add-requirement-dialog";
-
 import { Divider } from "./divider";
 
 import { DeactivateAlert, ActivateAlert, DeleteAlert } from "./alert";
@@ -446,7 +444,7 @@ export type RequirementEditCardProps = {
   LastUpdated?: string;
   CreatedBy?: string;
   ClearanceTimeline?: string;
-  onEdit?: (payload?: AddRequirementPayload) => void;
+  onEdit?: () => void;
   onDelete?: () => void;
 };
 
@@ -518,27 +516,16 @@ export function RequirementEditCard({
       <Divider className="bg-foreground w-full" />
 
       <div className="mt-4 pt-2 pb-5 flex items-center justify-center gap-3">
-        <AddRequirementDialog
-          trigger={
-            <Button variant="default" className="h-max w-max rounded-xl px-7 text-base font-semibold p-3">
-              <div className="flex items-center gap-2">
-                <Pencil className="h-4 w-4" />
-                Edit
-              </div>
-            </Button>
-          }
-          dialogTitle="Edit Requirement"
-          saveLabel="Save"
-          initialValues={{
-            title,
-            description,
-            facultyIds: [],
-            physicalSubmission,
-          }}
-          onSave={(payload) => {
-            onEdit?.(payload);
-          }}
-        />
+        <Button 
+          variant="default" 
+          className="h-max w-max rounded-xl px-7 text-base font-semibold p-3"
+          onClick={() => onEdit?.()}
+        >
+          <div className="flex items-center gap-2">
+            <Pencil className="h-4 w-4" />
+            Edit
+          </div>
+        </Button>
 
         <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
           <AlertDialogTrigger asChild>
@@ -579,7 +566,7 @@ export type RequirementListCardProps = {
   className?: string;
   LastUpdated?: string;
   CreatedBy?: string;
-  onEdit?: (payload?: AddRequirementPayload) => void;
+  onEdit?: () => void;
   ClearanceTimeline?: string;
   onDelete?: () => void;
 };
