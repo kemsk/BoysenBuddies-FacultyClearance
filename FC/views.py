@@ -4325,19 +4325,43 @@ def faculty_dashboard_api(request):
                 
                 # Find requests for this step
                 step_requests = clearance_requests.filter(
-                    requirement__title__icontains=flow_step.category
+                    requirement__approver_flow_step=flow_step
                 )
                 
-                if step_requests.exists():
-                    # Determine step status based on requests
-                    approved_count = step_requests.filter(status=ClearanceRequest.Status.APPROVED).count()
-                    total_count = step_requests.count()
+                # Find all requirements for this step (even if no request exists)
+                step_requirements = Requirement.objects.filter(
+                    approver_flow_step=flow_step,
+                    clearance_timeline=timeline,
+                    is_active=True
+                )
+                
+                # Filter requirements that apply to this faculty
+                applicable_requirements = []
+                for req in step_requirements:
+                    if _requirement_applies_to_faculty(req, faculty):
+                        # Check if faculty already submitted a request for this requirement
+                        existing_request = step_requests.filter(requirement=req).first()
+                        applicable_requirements.append({
+                            "id": req.id,
+                            "title": req.title,
+                            "description": req.description or "",
+                            "completed": existing_request and existing_request.status == ClearanceRequest.Status.APPROVED,
+                            "submitted": existing_request is not None,
+                            "requestId": existing_request.request_id if existing_request else None,
+                            "status": existing_request.status if existing_request else None
+                        })
+                
+                if applicable_requirements:
+                    # Calculate status based on applicable requirements
+                    submitted_count = len([req for req in applicable_requirements if req["submitted"]])
+                    approved_count = len([req for req in applicable_requirements if req["completed"]])
+                    total_count = len(applicable_requirements)
                     
                     if approved_count == total_count and total_count > 0:
                         status_label = "APPROVED"
                         status_variant = "success"
                         collapsed_type = "status"
-                    elif approved_count > 0:
+                    elif submitted_count > 0:
                         status_label = "IN_PROGRESS"
                         status_variant = "warning"
                         collapsed_type = "status"
@@ -4345,15 +4369,6 @@ def faculty_dashboard_api(request):
                         status_label = "PENDING"
                         status_variant = "warning"
                         collapsed_type = "status"
-                    
-                    # Get requirements for this step
-                    requirements = []
-                    for req in step_requests:
-                        requirements.append({
-                            "title": req.requirement.title,
-                            "description": req.requirement.description or "",
-                            "completed": req.status == ClearanceRequest.Status.APPROVED
-                        })
                     
                     steps.append({
                         "index": display_index,
@@ -4363,7 +4378,7 @@ def faculty_dashboard_api(request):
                         "collapsedType": collapsed_type,
                         "submittedTo": f"{step_title}",
                         "submittedOn": clearance.submitted_date.strftime("%B %d, %Y") if clearance and clearance.submitted_date else "",
-                        "requirements": requirements
+                        "requirements": applicable_requirements
                     })
                     display_index += 1
                 else:
@@ -5063,7 +5078,63 @@ def _serialize_approver_requirement(requirement):
         "targetDepartments": [dept.id for dept in requirement.target_departments.all()],
         "targetOffices": [office.id for office in requirement.target_offices.all()],
         "targetFaculty": [faculty.id for faculty in requirement.target_faculty.all()],
+        "approverFlowStepId": requirement.approver_flow_step.id if requirement.approver_flow_step else None,
+        "approverFlowStepCategory": requirement.approver_flow_step.category if requirement.approver_flow_step else None,
     }
+
+
+def _get_approver_flow_step_for_user(user):
+    """Automatically determine the approver flow step for a user based on their role"""
+    timeline = _get_active_timeline()
+    if not timeline:
+        return None
+    
+    # Get approver flow config for the active timeline
+    config = timeline.approver_flow_configs.first()
+    if not config:
+        return None
+    
+    # Get user's approver profile
+    try:
+        approver_profile = user.approver_profile
+    except AttributeError:
+        return None
+    
+    # Find the matching flow step based on approver's role and scope
+    flow_steps = config.steps.order_by('order').prefetch_related('colleges')
+    
+    for step in flow_steps:
+        step_category = step.category.lower()
+        
+        # Department Chair matching (has College and Department)
+        if 'department chair' in step_category and approver_profile.department and approver_profile.college:
+            return step
+        
+        # College Dean matching (has Dean title in their Department)
+        # Note: College Dean should have both college and department, but we check for 'dean' in step category
+        elif 'college dean' in step_category and approver_profile.college:
+            return step
+        elif 'dean' in step_category and approver_profile.college:
+            return step
+        
+        # Office Approver matching (has Office only)
+        elif step.office and approver_profile.office and not approver_profile.department and not approver_profile.college:
+            if step.office == approver_profile.office:
+                return step
+        
+        # University-wide offices (fallback for specific office names)
+        elif approver_profile.office and not approver_profile.department and not approver_profile.college:
+            office_name = approver_profile.office.name.lower()
+            if 'registrar' in step_category and 'registrar' in office_name:
+                return step
+            elif 'library' in step_category and 'library' in office_name:
+                return step
+            elif 'human resources' in step_category and ('human resources' in office_name or 'hr' in office_name):
+                return step
+            elif 'vice president' in step_category and ('vice president' in office_name or 'ovphe' in office_name):
+                return step
+    
+    return None
 
 
 def _create_approver_requirement(user, request):
@@ -5087,6 +5158,11 @@ def _create_approver_requirement(user, request):
 
     if not title:
         return JsonResponse({"detail": "Title is required"}, status=400)
+    
+    # Automatically detect approver flow step based on user's role
+    approver_flow_step = _get_approver_flow_step_for_user(user)
+    if not approver_flow_step:
+        return JsonResponse({"detail": "Could not determine approver flow step for your role. Please ensure you have an approver profile assigned."}, status=400)
 
     try:
         with transaction.atomic():
@@ -5096,7 +5172,8 @@ def _create_approver_requirement(user, request):
                 required_physical=physical_submission,
                 created_by=user,
                 clearance_timeline=timeline,
-                recipient_scope=recipient_scope
+                recipient_scope=recipient_scope,
+                approver_flow_step=approver_flow_step
             )
 
             # Set target recipients based on scope
@@ -5419,6 +5496,7 @@ def _serialize_faculty_requirement(requirement):
         "createdBy": f"{requirement.created_by.first_name} {requirement.created_by.last_name}" if requirement.created_by else "",
         "clearanceTimeline": requirement.clearance_timeline.name if requirement.clearance_timeline else "",
         "lastUpdated": timezone.localtime(requirement.last_updated).strftime("%B %d, %Y, %I:%M %p") if requirement.last_updated else "",
+        "approverFlowStepCategory": requirement.approver_flow_step.category if requirement.approver_flow_step else None,
     }
 
 def approver_clearance_api(request):
