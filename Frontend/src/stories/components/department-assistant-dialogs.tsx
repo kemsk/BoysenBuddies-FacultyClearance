@@ -197,11 +197,25 @@ export function AddDepartmentAssistantDialog({
 
               {mode === "admin" && (
                 <div className="flex items-start space-x-2 pt-2">
-                  <Checkbox id="terms" checked={termsAccepted} onCheckedChange={(checked) => setTermsAccepted(!!checked)} />
-                  <div className="flex-1">
-                    <label htmlFor="terms" className="text-xs font-normal text-foreground">
-                      I agree to the terms and agreements for creating an admin assistant. This action grants administrative privileges within the specified scope.
+                  <Checkbox
+                    id="terms"
+                    checked={termsAccepted}
+                    onCheckedChange={(checked) => setTermsAccepted(!!checked)}
+                  />
+                  <div className="flex-1 text-xs text-foreground">
+                    <label htmlFor="terms" className="block">
+                      <span className="font-semibold">I understand</span>{" "}
+                      <span>
+                        that creating this user means they have access to the following features:
+                      </span>
                     </label>
+                    <ul className="mt-1 list-disc pl-5 space-y-0.5 text-[11px]">
+                      <li>Set Requirements</li>
+                      <li>Approve and Reject Clearance Requests</li>
+                      <li>Create Departmental Requirements</li>
+                      <li>Create Approver Assistant</li>
+                      <li>See Activity Logs</li>
+                    </ul>
                   </div>
                 </div>
               )}
