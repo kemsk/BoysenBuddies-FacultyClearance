@@ -147,14 +147,37 @@ export default function ApproverAssistantList() {
     try {
       const r = await fetch("/admin/xu-faculty-clearance/api/me", { method: "GET", credentials: "include" });
       if (!r.ok) throw new Error("Failed to load profile");
-      const data = (await r.json()) as { email?: string; roles?: Array<{ role_name: string; college?: string; department?: string; office?: string }> };
+      const data = (await r.json()) as { email?: string; roles?: Array<{ role_name: string; college: string; department: string; office: string }> };
       if (data.email) {
         setApproverEmail(data.email);
       }
       if (Array.isArray(data.roles)) {
+        console.log('DEBUG roles from /api/me:', data.roles);
         setApproverRoles(data.roles);
       }
-    } catch {
+
+      // Fetch approver profile to get college/department assignments
+      const approverR = await fetch("/admin/xu-faculty-clearance/api/approver-profile", { method: "GET", credentials: "include" });
+      if (approverR.ok) {
+        const approverData = await approverR.json() as { approver_profile?: { approver_type: string; college: string; department: string } };
+        console.log('DEBUG approver profile:', approverData);
+        
+        // Merge approver profile college/department into the Approver role
+        if (approverData.approver_profile) {
+          setApproverRoles(prev => prev.map(role => {
+            if (role.role_name === "Approver") {
+              return {
+                ...role,
+                college: approverData.approver_profile!.college || role.college,
+                department: approverData.approver_profile!.department || role.department,
+              };
+            }
+            return role;
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
       setApproverEmail("");
       setApproverRoles([]);
     }
@@ -174,7 +197,7 @@ export default function ApproverAssistantList() {
 
   const activeAssistant = items.find((i) => i.id === activeAssistantId) ?? null;
 
-  // Helper to get unique colleges/departments from approverRoles
+  // Helper to get unique colleges/departments/offices from approverRoles
   const myColleges = React.useMemo(() => {
     const set = new Set<string>();
     approverRoles.forEach(r => r.college && set.add(r.college));
@@ -193,33 +216,99 @@ export default function ApproverAssistantList() {
     return Array.from(set);
   }, [approverRoles]);
 
-  // Filter org structure to only include my colleges/departments/offices
+  // DEBUG: Log approver roles to understand structure
+  React.useEffect(() => {
+    console.log('DEBUG approverRoles:', approverRoles);
+    console.log('DEBUG myColleges:', myColleges);
+    console.log('DEBUG myDepartments:', myDepartments);
+    console.log('DEBUG myOffices:', myOffices);
+  }, [approverRoles, myColleges, myDepartments, myOffices]);
+
+  // Determine approver level
+  const approverLevel = React.useMemo(() => {
+    if (approverRoles.some(r => r.role_name?.includes("Dean"))) {
+      return "dean";
+    }
+    if (myOffices.length > 0) {
+      return "office";
+    }
+    // Default to chair if we have departments but not dean/office
+    return "chair";
+  }, [approverRoles, myOffices]);
+
+  // Filter org structure based on approver level
   const visibleColleges = React.useMemo(() => {
-    // If no approver roles, show all colleges for testing
-    return myColleges.length > 0 ? orgColleges.filter(c => myColleges.includes(c)) : orgColleges;
-  }, [orgColleges, myColleges]);
+  // If no approver roles at all, show all colleges for testing
+  return approverRoles.length > 0 ? orgColleges.filter(c => myColleges.includes(c)) : orgColleges;
+}, [orgColleges, myColleges, approverRoles.length]);
 
   const visibleDepartments = React.useMemo(() => {
-    // If no approver roles, show all departments for testing
-    return myDepartments.length > 0 ? orgDepartments.filter(d => myDepartments.includes(d)) : orgDepartments;
-  }, [orgDepartments, myDepartments]);
+  if (approverRoles.length === 0) {
+    // No approver roles at all: fallback to all for testing
+    return orgDepartments;
+  }
+  if (myDepartments.length > 0) {
+    if (approverLevel === "dean") {
+      // Dean: show all departments in their colleges
+      return orgDepartments.filter(d => {
+        const college = Object.entries(collegeDepartmentsMap).find(([, depts]) => depts.includes(d))?.[0];
+        return college && myColleges.includes(college);
+      });
+    } else {
+      // Chair/Office: show only their departments
+      return orgDepartments.filter(d => myDepartments.includes(d));
+    }
+  }
+  // Has approver roles but no departments (e.g., office-only approver): show none
+  return [];
+}, [orgDepartments, myDepartments, approverLevel, collegeDepartmentsMap, myColleges, approverRoles.length]);
 
   const visibleOffices = React.useMemo(() => {
-    // If no approver roles, show all offices for testing
-    return myOffices.length > 0 ? orgOffices.filter(o => myOffices.includes(o)) : orgOffices;
-  }, [orgOffices, myOffices]);
+  if (approverRoles.length === 0) {
+    // No approver roles at all: fallback to all for testing
+    return orgOffices;
+  }
+  if (myOffices.length > 0) {
+    if (approverLevel === "dean") {
+      // Dean: show all offices in their colleges (if offices are linked to colleges)
+      // For now, show all offices since we don't have college-office mapping
+      return orgOffices;
+    } else {
+      // Office/Chair: show only their offices
+      return orgOffices.filter(o => myOffices.includes(o));
+    }
+  }
+  // Has approver roles but no offices (e.g., department-only approver): show none
+  return [];
+}, [orgOffices, myOffices, approverLevel, approverRoles.length]);
 
   const visibleCollegeDepartmentsMap = React.useMemo(() => {
     const map: Record<string, string[]> = {};
     visibleColleges.forEach(college => {
-      if (myDepartments.length > 0) {
+      if (approverLevel === "dean") {
+        // Dean: show all departments for their colleges
+        map[college] = (collegeDepartmentsMap[college] || []).filter(d => {
+          return orgDepartments.includes(d); // ensure department exists
+        });
+      } else if (myDepartments.length > 0) {
+        // Chair/Office: show only their departments
         map[college] = (collegeDepartmentsMap[college] || []).filter(d => myDepartments.includes(d));
       } else {
+        // fallback: show all
         map[college] = collegeDepartmentsMap[college] || [];
       }
     });
     return map;
-  }, [visibleColleges, collegeDepartmentsMap, myDepartments]);
+  }, [visibleColleges, collegeDepartmentsMap, myDepartments, approverLevel, orgDepartments]);
+
+  // Prepare filtered options for admin mode based on approver level
+  const adminDepartments = React.useMemo(() => {
+    return visibleDepartments;
+  }, [visibleDepartments]);
+
+  const adminOffices = React.useMemo(() => {
+    return visibleOffices;
+  }, [visibleOffices]);
 
   // Derived list based on current mode and search query
   const filteredItems = items
@@ -400,7 +489,8 @@ export default function ApproverAssistantList() {
           departments={visibleDepartments}
           offices={visibleOffices}
           collegeDepartmentsMap={visibleCollegeDepartmentsMap}
-          approverRoles={approverRoles}
+          adminDepartments={adminDepartments}
+          adminOffices={adminOffices}
           emailHelpText="Only @xu.edu.ph email addresses are allowed"
           onCreate={(payload: DepartmentAssistantPayload) => {
             (async () => {
@@ -411,7 +501,7 @@ export default function ApproverAssistantList() {
               }
               // Derive assistantType based on selected department/office
               const selected = payload.department;
-              const isOffice = visibleOffices.includes(selected || "");
+              const isOffice = adminOffices.includes(selected || "");
               let assistantType: "college_admin" | "dept_chair" | "office_admin" | "admin_secondment" | "admin_representative" = "college_admin";
               if (isOffice) {
                 assistantType = "office_admin";

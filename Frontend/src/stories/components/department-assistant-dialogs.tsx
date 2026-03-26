@@ -35,7 +35,9 @@ export type AddDepartmentAssistantDialogProps = {
   // NEW: mode and admin‑specific props
   mode?: "assistant" | "admin";
   offices?: string[];
-  approverRoles?: Array<{ role_name: string; college?: string; department?: string; office?: string }>;
+  // For admin mode: pre-filtered departments and offices based on approver level
+  adminDepartments?: string[];
+  adminOffices?: string[];
 };
 
 export function AddDepartmentAssistantDialog({
@@ -49,7 +51,8 @@ export function AddDepartmentAssistantDialog({
   emailHelpText = "Only @xu.edu.ph email address are allowed",
   mode = "assistant",
   offices = [],
-  approverRoles = [],
+  adminDepartments = [],
+  adminOffices = [],
 }: AddDepartmentAssistantDialogProps) {
   const [internalOpen, setInternalOpen] = React.useState(false);
   const isControlled = typeof open === "boolean";
@@ -143,22 +146,16 @@ export function AddDepartmentAssistantDialog({
                       <SelectValue placeholder="Choose from dropdown" />
                     </SelectTrigger>
                     <SelectContent>
-                      {approverRoles
-                        .map(r => r.department)
-                        .filter((d): d is string => Boolean(d))
-                        .map(d => (
-                          <SelectItem key={d} value={d}>
-                            {d}
-                          </SelectItem>
-                        ))}
-                      {approverRoles
-                        .map(r => r.office)
-                        .filter((o): o is string => Boolean(o))
-                        .map(o => (
-                          <SelectItem key={o} value={o}>
-                            {o}
-                          </SelectItem>
-                        ))}
+                      {adminDepartments.map((d) => (
+                        <SelectItem key={d} value={d}>
+                          {d}
+                        </SelectItem>
+                      ))}
+                      {adminOffices.map((o) => (
+                        <SelectItem key={o} value={o}>
+                          {o}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -233,7 +230,7 @@ export function AddDepartmentAssistantDialog({
                   if (mode === "admin") {
                     // For admin mode, derive assistantType and set department/office appropriately
                     const selected = departmentOrOffice;
-                    const isOffice = approverRoles.some(r => r.office === selected);
+                    const isOffice = adminOffices.includes(selected);
                     onCreate?.({
                       firstName,
                       middleName: middleName.trim() ? middleName : undefined,

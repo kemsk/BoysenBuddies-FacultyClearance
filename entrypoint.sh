@@ -184,22 +184,21 @@ WHERE u.email = '20220024573@my.xu.edu.ph' AND r.name = 'Approver'
 ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
 
--- REMOVE: Seed UserRole for Approver for main user (20220025546@my.xu.edu.ph)
--- Commented out so the user starts without Approver role for testing
--- INSERT INTO FC_userrole (user_id, role_id, college_id, department_id, assigned_by_id, assigned_date, is_active)
--- SELECT 
---     u.id AS user_id, 
---     r.id AS role_id,
---     @ccs_id AS college_id,
---     @cs_id AS department_id,
---     @ciso_user_id AS assigned_by_id,
---     NOW() AS assigned_date,
---     1 AS is_active
--- FROM FC_user u
--- CROSS JOIN FC_role r
--- WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'Approver'
--- ON DUPLICATE KEY UPDATE
---     is_active = VALUES(is_active);
+-- Seed UserRole for Approver for main user (20220025546@my.xu.edu.ph)
+INSERT INTO FC_userrole (user_id, role_id, college_id, department_id, assigned_by_id, assigned_date, is_active)
+SELECT 
+    u.id AS user_id, 
+    r.id AS role_id,
+    @ccs_id AS college_id,
+    @cs_id AS department_id,
+    @ciso_user_id AS assigned_by_id,
+    NOW() AS assigned_date,
+    1 AS is_active
+FROM FC_user u
+CROSS JOIN FC_role r
+WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'Approver'
+ON DUPLICATE KEY UPDATE
+    is_active = VALUES(is_active);
 
 INSERT INTO FC_userrole (user_id, role_id, college_id, department_id, assigned_by_id, assigned_date, is_active)
 SELECT 
@@ -316,7 +315,7 @@ SET @som_id = (SELECT id FROM FC_college WHERE abbreviation = 'SOM' LIMIT 1);
 -- Seed Departments for College of Agriculture (COA)
 INSERT INTO FC_department (college_id, name, abbreviation, is_active)
 SELECT * FROM (
-    SELECT @coa_id AS college_id, 'College Dean' AS name, 'COA_DEAN' AS abbreviation, 1 AS is_active
+    SELECT @coa_id AS college_id, 'College of Agriculture Dean' AS name, 'COA_DEAN' AS abbreviation, 1 AS is_active
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
@@ -357,7 +356,7 @@ WHERE NOT EXISTS (
 -- Seed Departments for College of Arts and Sciences (CAS)
 INSERT INTO FC_department (college_id, name, abbreviation, is_active)
 SELECT * FROM (
-    SELECT @cas_id AS college_id, 'College Dean' AS name, 'CAS_DEAN' AS abbreviation, 1 AS is_active
+    SELECT @cas_id AS college_id, 'College of Arts and Sciences Dean' AS name, 'CAS_DEAN' AS abbreviation, 1 AS is_active
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
@@ -470,7 +469,7 @@ WHERE NOT EXISTS (
 -- Seed Departments for College of Computer Studies (CCS)
 INSERT INTO FC_department (college_id, name, abbreviation, is_active)
 SELECT * FROM (
-    SELECT @ccs_id AS college_id, 'College Dean' AS name, 'CCS_DEAN' AS abbreviation, 1 AS is_active
+    SELECT @ccs_id AS college_id, 'College of Computer Studies Dean' AS name, 'CCS_DEAN' AS abbreviation, 1 AS is_active
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
@@ -511,7 +510,7 @@ WHERE NOT EXISTS (
 -- Seed Departments for College of Engineering (COE)
 INSERT INTO FC_department (college_id, name, abbreviation, is_active)
 SELECT * FROM (
-    SELECT @coe_id AS college_id, 'College Dean' AS name, 'COE_DEAN' AS abbreviation, 1 AS is_active
+    SELECT @coe_id AS college_id, 'College of Engineering Dean' AS name, 'COE_DEAN' AS abbreviation, 1 AS is_active
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
@@ -568,7 +567,7 @@ WHERE NOT EXISTS (
 -- Seed Departments for College of Nursing (CON)
 INSERT INTO FC_department (college_id, name, abbreviation, is_active)
 SELECT * FROM (
-    SELECT @con_id AS college_id, 'College Dean' AS name, 'CON_DEAN' AS abbreviation, 1 AS is_active
+    SELECT @con_id AS college_id, 'College of Nursing Dean' AS name, 'CON_DEAN' AS abbreviation, 1 AS is_active
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
@@ -577,7 +576,7 @@ WHERE NOT EXISTS (
 -- Seed Departments for School of Business and Management (SBM)
 INSERT INTO FC_department (college_id, name, abbreviation, is_active)
 SELECT * FROM (
-    SELECT @sbm_id AS college_id, 'School Dean' AS name, 'SBM_DEAN' AS abbreviation, 1 AS is_active
+    SELECT @sbm_id AS college_id, 'School of Business and Management Dean' AS name, 'SBM_DEAN' AS abbreviation, 1 AS is_active
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
@@ -610,7 +609,7 @@ WHERE NOT EXISTS (
 -- Seed Departments for School of Education (SOE)
 INSERT INTO FC_department (college_id, name, abbreviation, is_active)
 SELECT * FROM (
-    SELECT @soe_id AS college_id, 'School Dean' AS name, 'SOE_DEAN' AS abbreviation, 1 AS is_active
+    SELECT @soe_id AS college_id, 'School of Education Dean' AS name, 'SOE_DEAN' AS abbreviation, 1 AS is_active
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
@@ -619,7 +618,7 @@ WHERE NOT EXISTS (
 -- Seed Departments for School of Law (SOL)
 INSERT INTO FC_department (college_id, name, abbreviation, is_active)
 SELECT * FROM (
-    SELECT @sol_id AS college_id, 'School Dean' AS name, 'SOL_DEAN' AS abbreviation, 1 AS is_active
+    SELECT @sol_id AS college_id, 'School of Law Dean' AS name, 'SOL_DEAN' AS abbreviation, 1 AS is_active
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
@@ -628,7 +627,7 @@ WHERE NOT EXISTS (
 -- Seed Departments for School of Medicine (SOM)
 INSERT INTO FC_department (college_id, name, abbreviation, is_active)
 SELECT * FROM (
-    SELECT @som_id AS college_id, 'School Dean' AS name, 'SOM_DEAN' AS abbreviation, 1 AS is_active
+    SELECT @som_id AS college_id, 'School of Medicine Dean' AS name, 'SOM_DEAN' AS abbreviation, 1 AS is_active
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
@@ -690,15 +689,14 @@ SET @ciso_user_id = (SELECT id FROM FC_user WHERE email = '20220025546@my.xu.edu
 SET @ovphe_user_id = (SELECT id FROM FC_user WHERE email = '20190016375@my.xu.edu.ph' LIMIT 1);
 
 
--- REMOVE: Seed Approver for main user (20220025546@my.xu.edu.ph)
--- Commented out so the user starts without Approver role for testing
--- INSERT INTO FC_approver (user_id, approver_type, college_id, department_id)
--- VALUES 
--- (@approver_user_id, 'College', @ccs_id, @cs_id)
--- ON DUPLICATE KEY UPDATE
---     approver_type = VALUES(approver_type),
---     college_id = VALUES(college_id),
---     department_id = VALUES(department_id);
+-- Seed Approver for main user (20220025546@my.xu.edu.ph) as Department Chair
+INSERT INTO FC_approver (user_id, approver_type, college_id, department_id)
+VALUES 
+(@ciso_user_id, 'Department', @ccs_id, @cs_id)
+ON DUPLICATE KEY UPDATE
+    approver_type = VALUES(approver_type),
+    college_id = VALUES(college_id),
+    department_id = VALUES(department_id);
 
 -- Seed StudentAssistant
 INSERT INTO FC_studentassistant (user_id, college_id, department_id)

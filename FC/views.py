@@ -675,6 +675,41 @@ def me_api(request):
 
 
 @csrf_exempt
+def approver_profile_api(request):
+    """
+    API endpoint to get the current user's approver profile with college/department assignments.
+    """
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    # Get approver profile if it exists
+    try:
+        approver = Approver.objects.get(user=user)
+        profile = {
+            "approver_type": approver.approver_type,
+            "college": approver.college.name if approver.college else None,
+            "department": approver.department.name if approver.department else None,
+            "college_id": approver.college.id if approver.college else None,
+            "department_id": approver.department.id if approver.department else None,
+        }
+    except Approver.DoesNotExist:
+        profile = None
+
+    return JsonResponse({
+        "email": user.email,
+        "university_id": user.university_id,
+        "first_name": user.first_name,
+        "middle_name": user.middle_name,
+        "last_name": user.last_name,
+        "approver_profile": profile,
+    })
+
+
+@csrf_exempt
 def idle_check_api(request):
     """
     API endpoint that forces Django middleware to run and check idle timeout.
