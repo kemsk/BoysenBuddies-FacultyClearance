@@ -18,7 +18,7 @@ export type DepartmentAssistantPayload = {
   lastName: string;
   universityId: string;
   college: string;
-  department: string;
+  department?: string;
   email: string;
   isActive: boolean;
 };
@@ -31,6 +31,11 @@ export type AddDepartmentAssistantDialogProps = {
   colleges?: string[];
   departments?: string[];
   collegeDepartmentsMap?: Record<string, string[]>;
+  emailHelpText?: string;
+  // NEW: mode and admin‑specific props
+  mode?: "assistant" | "admin";
+  offices?: string[];
+  approverRoles?: Array<{ role_name: string; college?: string; department?: string; office?: string }>;
 };
 
 export function AddDepartmentAssistantDialog({
@@ -41,6 +46,10 @@ export function AddDepartmentAssistantDialog({
   colleges = [],
   departments = [],
   collegeDepartmentsMap = {},
+  emailHelpText = "Only @xu.edu.ph email address are allowed",
+  mode = "assistant",
+  offices = [],
+  approverRoles = [],
 }: AddDepartmentAssistantDialogProps) {
   const [internalOpen, setInternalOpen] = React.useState(false);
   const isControlled = typeof open === "boolean";
@@ -58,6 +67,9 @@ export function AddDepartmentAssistantDialog({
   const [department, setDepartment] = React.useState<string>("");
   const [email, setEmail] = React.useState("");
   const [isActive, setIsActive] = React.useState(true);
+  // Admin mode state
+  const [departmentOrOffice, setDepartmentOrOffice] = React.useState("");
+  const [termsAccepted, setTermsAccepted] = React.useState(false);
 
   React.useEffect(() => {
     if (!effectiveOpen) return;
@@ -69,6 +81,8 @@ export function AddDepartmentAssistantDialog({
     setDepartment("");
     setEmail("");
     setIsActive(true);
+    setDepartmentOrOffice("");
+    setTermsAccepted(false);
   }, [effectiveOpen]);
 
   React.useEffect(() => {
@@ -88,7 +102,7 @@ export function AddDepartmentAssistantDialog({
       <DialogContent className="left-6 right-6 w-auto max-w-[420px] translate-x-0 rounded-xl p-0 sm:left-[50%] sm:right-auto sm:w-full sm:max-w-lg sm:translate-x-[-50%]">
         <div className="rounded-xl bg-background">
           <div className="px-6 pb-4 pt-6">
-            <div className="text-center text-base font-bold text-foreground">Add Assistant</div>
+            <div className="text-center text-base font-bold text-foreground">{mode === "admin" ? "Add Admin" : "Add Assistant"}</div>
 
             <div className="mt-5 space-y-3">
               <div className="space-y-1.5">
@@ -118,40 +132,82 @@ export function AddDepartmentAssistantDialog({
               <div className="space-y-1.5">
                 <div className="text-xs font-semibold text-foreground">Email (@XU.EDU.PH)</div>
                 <Input value={email} onChange={(e) => setEmail(e.target.value)} size="sm" />
-                <div className="text-muted-foreground text-sm">Only @xu.edu.ph email address are allowed</div>
+                <div className="text-muted-foreground text-sm">{emailHelpText}</div>
               </div>
 
-              <div className="space-y-1.5">
-                <div className="text-xs font-semibold text-foreground">College</div>
-                <Select value={college} onValueChange={setCollege}>
-                  <SelectTrigger className="h-10 w-full">
-                    <SelectValue placeholder="Choose from dropdown" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {colleges.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {mode === "admin" ? (
+                <div className="space-y-1.5">
+                  <div className="text-xs font-semibold text-foreground">Department or Office</div>
+                  <Select value={departmentOrOffice} onValueChange={setDepartmentOrOffice}>
+                    <SelectTrigger className="h-10 w-full">
+                      <SelectValue placeholder="Choose from dropdown" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {approverRoles
+                        .map(r => r.department)
+                        .filter((d): d is string => Boolean(d))
+                        .map(d => (
+                          <SelectItem key={d} value={d}>
+                            {d}
+                          </SelectItem>
+                        ))}
+                      {approverRoles
+                        .map(r => r.office)
+                        .filter((o): o is string => Boolean(o))
+                        .map(o => (
+                          <SelectItem key={o} value={o}>
+                            {o}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-semibold text-foreground">College</div>
+                    <Select value={college} onValueChange={setCollege}>
+                      <SelectTrigger className="h-10 w-full">
+                        <SelectValue placeholder="Choose from dropdown" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {colleges.map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {c}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div className="space-y-1.5">
-                <div className="text-xs font-semibold text-foreground">Department</div>
-                <Select value={department} onValueChange={setDepartment}>
-                  <SelectTrigger className="h-10 w-full">
-                    <SelectValue placeholder="Choose from dropdown" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredDepartments.map((d) => (
-                      <SelectItem key={d} value={d}>
-                        {d}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-semibold text-foreground">Department</div>
+                    <Select value={department} onValueChange={setDepartment}>
+                      <SelectTrigger className="h-10 w-full">
+                        <SelectValue placeholder="Choose from dropdown" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredDepartments.map((d) => (
+                          <SelectItem key={d} value={d}>
+                            {d}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+
+              {mode === "admin" && (
+                <div className="flex items-start space-x-2 pt-2">
+                  <Checkbox id="terms" checked={termsAccepted} onCheckedChange={(checked) => setTermsAccepted(!!checked)} />
+                  <div className="flex-1">
+                    <label htmlFor="terms" className="text-xs font-normal text-foreground">
+                      I agree to the terms and agreements for creating an admin assistant. This action grants administrative privileges within the specified scope.
+                    </label>
+                  </div>
+                </div>
+              )}
 
             </div>
           </div>
@@ -170,20 +226,40 @@ export function AddDepartmentAssistantDialog({
                 type="button"
                 className="h-11 w-full rounded-md"
                 onClick={() => {
-                  onCreate?.({
-                    firstName,
-                    middleName: middleName.trim() ? middleName : undefined,
-                    lastName,
-                    universityId,
-                    college,
-                    department,
-                    email,
-                    isActive,
-                  });
+                  if (mode === "admin" && !termsAccepted) {
+                    alert("You must accept the terms and agreements to continue.");
+                    return;
+                  }
+                  if (mode === "admin") {
+                    // For admin mode, derive assistantType and set department/office appropriately
+                    const selected = departmentOrOffice;
+                    const isOffice = approverRoles.some(r => r.office === selected);
+                    onCreate?.({
+                      firstName,
+                      middleName: middleName.trim() ? middleName : undefined,
+                      lastName,
+                      universityId,
+                      college,
+                      department: isOffice ? undefined : (selected ?? undefined),
+                      email,
+                      isActive,
+                    });
+                  } else {
+                    onCreate?.({
+                      firstName,
+                      middleName: middleName.trim() ? middleName : undefined,
+                      lastName,
+                      universityId,
+                      college,
+                      department,
+                      email,
+                      isActive,
+                    });
+                  }
                   setOpen(false);
                 }}
               >
-                Create
+                {mode === "admin" ? "Create" : "Add"}
               </Button>
             </div>
           </div>
@@ -202,6 +278,8 @@ export type EditDepartmentAssistantDialogProps = {
   colleges?: string[];
   departments?: string[];
   collegeDepartmentsMap?: Record<string, string[]>;
+  emailDisabled?: boolean;
+  emailHelpText?: string;
 };
 
 export function EditDepartmentAssistantDialog({
@@ -213,6 +291,8 @@ export function EditDepartmentAssistantDialog({
   colleges = [],
   departments = [],
   collegeDepartmentsMap = {},
+  emailDisabled = false,
+  emailHelpText = "Only @xu.edu.ph email address is allowed",
 }: EditDepartmentAssistantDialogProps) {
   const [internalOpen, setInternalOpen] = React.useState(false);
   const isControlled = typeof open === "boolean";
@@ -294,8 +374,14 @@ export function EditDepartmentAssistantDialog({
 
               <div className="space-y-1.5">
                 <div className="text-xs font-semibold text-foreground">Email (@XU.EDU.PH)</div>
-                <Input value={email} onChange={(e) => setEmail(e.target.value)} size="sm" placeholder="username@xu.edu.ph" />
-                <div className="text-[10px] text-muted-foreground">Only @xu.edu.ph email address is allowed</div>
+                <Input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  size="sm"
+                  placeholder="username@xu.edu.ph"
+                  disabled={emailDisabled}
+                />
+                <div className="text-[10px] text-muted-foreground">{emailHelpText}</div>
               </div>
 
               <div className="space-y-1.5">

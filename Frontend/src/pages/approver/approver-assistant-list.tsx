@@ -15,8 +15,8 @@ import {
 } from "../../stories/components/cards";
 import {
   AddDepartmentAssistantDialog,
-  EditDepartmentAssistantDialog,
   type DepartmentAssistantPayload,
+  EditDepartmentAssistantDialog,
 } from "../../stories/components/department-assistant-dialogs";
 import { RemoveSystemUserDialog } from "../../stories/components/manage-system-user-dialogs";
 import {
@@ -38,13 +38,16 @@ export default function ApproverAssistantList() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<StudentAssistantItem[]>([]);
+  const [mode, setMode] = useState<"assistants" | "admins">("assistants");
   const [orgColleges, setOrgColleges] = useState<string[]>([]);
   const [orgDepartments, setOrgDepartments] = useState<string[]>([]);
+  const [orgOffices, setOrgOffices] = useState<string[]>([]);
   const [collegeDepartmentsMap, setCollegeDepartmentsMap] = useState<Record<string, string[]>>({});
+  const [approverRoles, setApproverRoles] = useState<Array<{ role_name: string; college?: string; department?: string; office?: string }>>([]);
   const [approverEmail, setApproverEmail] = useState<string>("");
 
   const apiBase = "/admin/xu-faculty-clearance/api/approver/assistant-approvers";
-  const orgStructureApi = "/admin/xu-faculty-clearance/api/ovphe/org-structure";
+  const orgStructureApi = "/admin/xu-faculty-clearance/api/ciso/org-structure";
 
   function isXuEmail(email: string) {
     const e = (email || "").trim().toLowerCase();
@@ -97,6 +100,9 @@ export default function ApproverAssistantList() {
       const departments = (data.departments || [])
         .map((d) => (d?.name || "").trim())
         .filter(Boolean);
+      const offices = (data.offices || [])
+        .map((o) => (o?.name || "").trim())
+        .filter(Boolean);
 
       // Build college-departments map: college name -> array of department names
       const collegeMap: Record<string, string[]> = {};
@@ -127,10 +133,12 @@ export default function ApproverAssistantList() {
 
       setOrgColleges(colleges);
       setOrgDepartments(departments);
+      setOrgOffices(offices);
       setCollegeDepartmentsMap(collegeMap);
     } catch {
       setOrgColleges([]);
       setOrgDepartments([]);
+      setOrgOffices([]);
       setCollegeDepartmentsMap({});
     }
   }, [orgStructureApi]);
@@ -139,12 +147,16 @@ export default function ApproverAssistantList() {
     try {
       const r = await fetch("/admin/xu-faculty-clearance/api/me", { method: "GET", credentials: "include" });
       if (!r.ok) throw new Error("Failed to load profile");
-      const data = (await r.json()) as { email?: string };
+      const data = (await r.json()) as { email?: string; roles?: Array<{ role_name: string; college?: string; department?: string; office?: string }> };
       if (data.email) {
         setApproverEmail(data.email);
       }
+      if (Array.isArray(data.roles)) {
+        setApproverRoles(data.roles);
+      }
     } catch {
       setApproverEmail("");
+      setApproverRoles([]);
     }
   }, []);
 
@@ -154,80 +166,85 @@ export default function ApproverAssistantList() {
     fetchApproverEmail();
   }, [fetchUsers, fetchOrgStructure, fetchApproverEmail]);
 
-  // Add dummy data for frontend testing
-  useEffect(() => {
-    // Dummy student assistants
-    const dummyItems: StudentAssistantItem[] = [
-      {
-        id: "SA001",
-        name: "Juan Dela Cruz",
-        college: "College of Engineering",
-        department: "Computer Engineering",
-        email: "juan.delacruz@xu.edu.ph",
-        isActive: true
-      },
-      {
-        id: "SA002", 
-        name: "Maria Santos",
-        college: "College of Arts and Sciences",
-        department: "Mathematics",
-        email: "maria.santos@xu.edu.ph",
-        isActive: false
-      },
-      {
-        id: "SA003",
-        name: "John Reyes",
-        college: "College of Business",
-        department: "Accountancy",
-        email: "john.reyes@xu.edu.ph",
-        isActive: true
-      }
-    ];
-
-    // Dummy colleges and departments
-    const dummyColleges = [
-      "College of Engineering",
-      "College of Arts and Sciences", 
-      "College of Business",
-      "College of Education",
-      "College of Nursing"
-    ];
-
-    const dummyDepartments = [
-      "Computer Engineering",
-      "Mathematics",
-      "Accountancy",
-      "Physics",
-      "Chemistry",
-      "Management",
-      "Marketing"
-    ];
-
-    const dummyCollegeMap: Record<string, string[]> = {
-      "College of Engineering": ["Computer Engineering", "Electrical Engineering", "Civil Engineering"],
-      "College of Arts and Sciences": ["Mathematics", "Physics", "Chemistry", "Biology"],
-      "College of Business": ["Accountancy", "Management", "Marketing"],
-      "College of Education": ["Elementary Education", "Secondary Education"],
-      "College of Nursing": ["Nursing"]
-    };
-
-    // Set dummy data if API calls return empty
-    setTimeout(() => {
-      if (items.length === 0) {
-        setItems(dummyItems);
-        setOrgColleges(dummyColleges);
-        setOrgDepartments(dummyDepartments);
-        setCollegeDepartmentsMap(dummyCollegeMap);
-      }
-    }, 1000);
-  }, [items.length]);
-
   const [addOpen, setAddOpen] = useState(false);
+  const [addAdminOpen, setAddAdminOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState(false);
   const [activeAssistantId, setActiveAssistantId] = useState<string | null>(null);
 
   const activeAssistant = items.find((i) => i.id === activeAssistantId) ?? null;
+
+  // Helper to get unique colleges/departments from approverRoles
+  const myColleges = React.useMemo(() => {
+    const set = new Set<string>();
+    approverRoles.forEach(r => r.college && set.add(r.college));
+    return Array.from(set);
+  }, [approverRoles]);
+
+  const myDepartments = React.useMemo(() => {
+    const set = new Set<string>();
+    approverRoles.forEach(r => r.department && set.add(r.department));
+    return Array.from(set);
+  }, [approverRoles]);
+
+  const myOffices = React.useMemo(() => {
+    const set = new Set<string>();
+    approverRoles.forEach(r => r.office && set.add(r.office));
+    return Array.from(set);
+  }, [approverRoles]);
+
+  // If user has no approver roles, show all org structure (for testing/setup)
+  const hasApproverRoles = approverRoles.length > 0;
+
+  // Filter org structure to only include my colleges/departments/offices, or all if none assigned
+  const visibleColleges = React.useMemo(() => {
+    return hasApproverRoles ? orgColleges.filter(c => myColleges.includes(c)) : orgColleges;
+  }, [orgColleges, myColleges, hasApproverRoles]);
+
+  const visibleDepartments = React.useMemo(() => {
+    return hasApproverRoles ? orgDepartments.filter(d => myDepartments.includes(d)) : orgDepartments;
+  }, [orgDepartments, myDepartments, hasApproverRoles]);
+
+  const visibleOffices = React.useMemo(() => {
+    return hasApproverRoles ? orgOffices.filter(o => myOffices.includes(o)) : orgOffices;
+  }, [orgOffices, myOffices, hasApproverRoles]);
+
+  const visibleCollegeDepartmentsMap = React.useMemo(() => {
+    if (hasApproverRoles) {
+      const map: Record<string, string[]> = {};
+      visibleColleges.forEach(college => {
+        map[college] = (collegeDepartmentsMap[college] || []).filter(d => myDepartments.includes(d));
+      });
+      return map;
+    } else {
+      return collegeDepartmentsMap;
+    }
+  }, [visibleColleges, collegeDepartmentsMap, myDepartments, hasApproverRoles]);
+
+  // Derived list based on current mode and search query
+  const filteredItems = items
+    .filter((item) => {
+      const assistantType = item.assistantType || "student_assistant";
+      if (mode === "assistants") {
+        return assistantType === "student_assistant";
+      }
+      // Admins mode: anything that is not a plain student assistant
+      return assistantType !== "student_assistant";
+    })
+    .filter((item) => {
+      const q = query.trim().toLowerCase();
+      if (!q) return true;
+      const haystack = [
+        item.name,
+        item.email,
+        item.college,
+        item.department,
+        item.id,
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
 
   function splitName(name: string) {
     const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
@@ -309,13 +326,21 @@ export default function ApproverAssistantList() {
 
         <div className="mt-7">
           <StudentAssistantsCard
-            items={items}
-            onAddUser={() => setAddOpen(true)}
-            onEditUser={(item) => {
+            items={filteredItems}
+            mode={mode}
+            onModeChange={(m) => setMode(m)}
+            onAddUser={() => {
+              if (mode === "assistants") {
+                setAddOpen(true);
+              } else {
+                setAddAdminOpen(true);
+              }
+            }}
+            onEditUser={(item: StudentAssistantItem) => {
               setActiveAssistantId(item.id);
               setEditOpen(true);
             }}
-            onRemove={(id) => {
+            onRemove={(id: string) => {
               setActiveAssistantId(id);
               setRemoveOpen(true);
             }}
@@ -325,15 +350,19 @@ export default function ApproverAssistantList() {
         <AddDepartmentAssistantDialog
           open={addOpen}
           onOpenChange={setAddOpen}
-          colleges={orgColleges}
-          departments={orgDepartments}
-          collegeDepartmentsMap={collegeDepartmentsMap}
+          mode="assistant"
+          colleges={visibleColleges}
+          departments={visibleDepartments}
+          collegeDepartmentsMap={visibleCollegeDepartmentsMap}
+          emailHelpText="Only @my.xu.edu.ph email addresses are allowed"
           onCreate={(payload: DepartmentAssistantPayload) => {
             (async () => {
-              if (!isXuEmail(payload.email)) {
-                window.alert("Email must be an XU email (@xu.edu.ph or @my.xu.edu.ph)");
+              // Assistants must use student email domain
+              if (!payload.email.endsWith("@my.xu.edu.ph")) {
+                window.alert("Email must be a student XU email (@my.xu.edu.ph)");
                 return;
               }
+
               const r = await fetch(apiBase, {
                 method: "POST",
                 credentials: "include",
@@ -347,6 +376,7 @@ export default function ApproverAssistantList() {
                   isActive: payload.isActive,
                   college: payload.college,
                   department: payload.department,
+                  assistantType: "student_assistant",
                 }),
               });
 
@@ -362,36 +392,34 @@ export default function ApproverAssistantList() {
           }}
         />
 
-        <EditDepartmentAssistantDialog
-          open={editOpen}
-          onOpenChange={(o) => {
-            setEditOpen(o);
-            if (!o) setActiveAssistantId(null);
-          }}
-          colleges={orgColleges}
-          departments={orgDepartments}
-          collegeDepartmentsMap={collegeDepartmentsMap}
-          initialValues={
-            activeAssistant
-              ? {
-                  ...splitName(activeAssistant.name),
-                  universityId: activeAssistant.id,
-                  college: activeAssistant.college,
-                  department: activeAssistant.department,
-                  email: activeAssistant.email,
-                  isActive: activeAssistant.isActive,
-                }
-              : undefined
-          }
-          onSave={(payload: DepartmentAssistantPayload) => {
-            if (!activeAssistant) return;
+        <AddDepartmentAssistantDialog
+          open={addAdminOpen}
+          onOpenChange={setAddAdminOpen}
+          mode="admin"
+          colleges={visibleColleges}
+          departments={visibleDepartments}
+          offices={visibleOffices}
+          collegeDepartmentsMap={visibleCollegeDepartmentsMap}
+          approverRoles={approverRoles}
+          emailHelpText="Only @xu.edu.ph email addresses are allowed"
+          onCreate={(payload: DepartmentAssistantPayload) => {
             (async () => {
-              if (!isXuEmail(payload.email)) {
-                window.alert("Email must be an XU email (@xu.edu.ph or @my.xu.edu.ph)");
+              // Admins must use @xu.edu.ph domain
+              if (!payload.email.endsWith("@xu.edu.ph")) {
+                window.alert("Email must be an XU email (@xu.edu.ph)");
                 return;
               }
-              const r = await fetch(`${apiBase}/${activeAssistant.id}`, {
-                method: "PUT",
+              // Derive assistantType based on selected department/office
+              const selected = payload.department;
+              const isOffice = visibleOffices.includes(selected || "");
+              let assistantType: "college_admin" | "dept_chair" | "office_admin" | "admin_secondment" | "admin_representative" = "college_admin";
+              if (isOffice) {
+                assistantType = "office_admin";
+              } else {
+                assistantType = "dept_chair";
+              }
+              const r = await fetch(apiBase, {
+                method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -402,7 +430,68 @@ export default function ApproverAssistantList() {
                   email: payload.email,
                   isActive: payload.isActive,
                   college: payload.college,
+                  department: isOffice ? undefined : selected,
+                  assistantType,
+                }),
+              });
+
+              if (!r.ok) {
+                window.alert(await readErrorDetail(r));
+                return;
+              }
+
+              setAddAdminOpen(false);
+              await fetchUsers();
+              window.alert("Admin created successfully!");
+            })();
+          }}
+        />
+
+        <EditDepartmentAssistantDialog
+          open={editOpen}
+          onOpenChange={(o) => {
+            setEditOpen(o);
+            if (!o) setActiveAssistantId(null);
+          }}
+          colleges={visibleColleges}
+          departments={visibleDepartments}
+          collegeDepartmentsMap={visibleCollegeDepartmentsMap}
+          initialValues={
+            activeAssistant
+              ? {
+                  ...splitName(activeAssistant.name),
+                  universityId: activeAssistant.universityId ?? "",
+                  college: activeAssistant.college,
+                  department: activeAssistant.department,
+                  email: activeAssistant.email,
+                  isActive: activeAssistant.isActive,
+                }
+              : undefined
+          }
+          emailHelpText={
+            activeAssistant?.assistantType === "student_assistant"
+              ? "Only @my.xu.edu.ph email addresses are allowed"
+              : "Only @xu.edu.ph email addresses are allowed"
+          }
+          emailDisabled={true}
+          onSave={(payload: DepartmentAssistantPayload) => {
+            if (!activeAssistant) return;
+            (async () => {
+              // Email is immutable after creation; always send the stored email
+              const r = await fetch(`${apiBase}/${activeAssistant.id}`, {
+                method: "PUT",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  firstName: payload.firstName,
+                  middleName: payload.middleName,
+                  lastName: payload.lastName,
+                  universityId: payload.universityId,
+                  email: activeAssistant.email,
+                  isActive: payload.isActive,
+                  college: payload.college,
                   department: payload.department,
+                  assistantType: activeAssistant.assistantType,
                 }),
               });
 

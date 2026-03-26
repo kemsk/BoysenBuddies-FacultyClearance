@@ -184,20 +184,22 @@ WHERE u.email = '20220024573@my.xu.edu.ph' AND r.name = 'Approver'
 ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
 
-INSERT INTO FC_userrole (user_id, role_id, college_id, department_id, assigned_by_id, assigned_date, is_active)
-SELECT 
-    u.id AS user_id, 
-    r.id AS role_id,
-    @ccs_id AS college_id,
-    @cs_id AS department_id,
-    @ciso_user_id AS assigned_by_id,
-    NOW() AS assigned_date,
-    1 AS is_active
-FROM FC_user u
-CROSS JOIN FC_role r
-WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'Approver'
-ON DUPLICATE KEY UPDATE
-    is_active = VALUES(is_active);
+-- REMOVE: Seed UserRole for Approver for main user (20220025546@my.xu.edu.ph)
+-- Commented out so the user starts without Approver role for testing
+-- INSERT INTO FC_userrole (user_id, role_id, college_id, department_id, assigned_by_id, assigned_date, is_active)
+-- SELECT 
+--     u.id AS user_id, 
+--     r.id AS role_id,
+--     @ccs_id AS college_id,
+--     @cs_id AS department_id,
+--     @ciso_user_id AS assigned_by_id,
+--     NOW() AS assigned_date,
+--     1 AS is_active
+-- FROM FC_user u
+-- CROSS JOIN FC_role r
+-- WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'Approver'
+-- ON DUPLICATE KEY UPDATE
+--     is_active = VALUES(is_active);
 
 INSERT INTO FC_userrole (user_id, role_id, college_id, department_id, assigned_by_id, assigned_date, is_active)
 SELECT 
@@ -688,24 +690,15 @@ SET @ciso_user_id = (SELECT id FROM FC_user WHERE email = '20220025546@my.xu.edu
 SET @ovphe_user_id = (SELECT id FROM FC_user WHERE email = '20190016375@my.xu.edu.ph' LIMIT 1);
 
 
-
--- Seed Approver
-INSERT INTO FC_approver (user_id, approver_type, college_id, department_id)
-VALUES 
-(@approver_user_id, 'College', @ccs_id, @cs_id)
-ON DUPLICATE KEY UPDATE
-    approver_type = VALUES(approver_type),
-    college_id = VALUES(college_id),
-    department_id = VALUES(department_id);
-
--- Seed Approver for main user
-INSERT INTO FC_approver (user_id, approver_type, college_id, department_id)
-VALUES 
-(@ciso_user_id, 'College', @ccs_id, @cs_id)
-ON DUPLICATE KEY UPDATE
-    approver_type = VALUES(approver_type),
-    college_id = VALUES(college_id),
-    department_id = VALUES(department_id);
+-- REMOVE: Seed Approver for main user (20220025546@my.xu.edu.ph)
+-- Commented out so the user starts without Approver role for testing
+-- INSERT INTO FC_approver (user_id, approver_type, college_id, department_id)
+-- VALUES 
+-- (@approver_user_id, 'College', @ccs_id, @cs_id)
+-- ON DUPLICATE KEY UPDATE
+--     approver_type = VALUES(approver_type),
+--     college_id = VALUES(college_id),
+--     department_id = VALUES(department_id);
 
 -- Seed StudentAssistant
 INSERT INTO FC_studentassistant (user_id, college_id, department_id)
