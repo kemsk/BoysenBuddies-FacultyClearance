@@ -44,19 +44,19 @@ export default function Approverdashboard() {
     return parts.length ? parts.join(" ") : profile.email;
   }, [profile]);
    type AnnouncementsResponse = { items: AnnouncementItem[] };
+   type RequirementsResponse = { items: RequirementListItem[] };
 
-  const requirementItems: RequirementListItem[] = [
-    {
-      title: "Reporting of Borrowed Books",
-      description:
-        "All faculty members who borrowed books are expected to report the status on said books",
-      lastUpdated: "Last updated: November 8, 2024, 4:38 PM",
-      physicalSubmission: true,
-      submissionDeadline: "December 3, 2025, 9:30 AM",
-    },
-  ];
-
+  const [requirementItems, setRequirementItems] = React.useState<RequirementListItem[]>([]);
   const [announcementItems, setAnnouncementItems] = React.useState<AnnouncementItem[]>([]);
+
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/approver/requirement-list")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: RequirementsResponse) => {
+        setRequirementItems(data.items || []);
+      })
+      .catch(() => setRequirementItems([]));
+  }, []);
 
   React.useEffect(() => {
     fetch("/admin/xu-faculty-clearance/api/ovphe/announcements")
