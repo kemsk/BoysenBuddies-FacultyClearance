@@ -213,25 +213,25 @@ export default function ApproverIndividualApproval() {
           
           <div className="mt-5">
             <div className="bg-white rounded-lg p-6 border">
-              <h2 className="text-xl font-semibold mb-4">Individual Approval</h2>
+              <h2 className="text-xl font-semibold mb-4 text-gray-900">Individual Approval</h2>
               
               {/* Requirement Information */}
               <div className="mb-6">
-                <h3 className="text-lg font-medium mb-3">Requirement Details</h3>
+                <h3 className="text-lg font-medium mb-3 text-gray-900">Requirement Details</h3>
                 <div className="bg-gray-50 p-4 rounded">
                   <div className="mb-2">
-                    <label className="block text-sm font-medium text-foreground">Requirement Name</label>
-                    <p className="mt-1 text-sm text-foreground">{item.requirementName}</p>
+                    <label className="block text-sm font-medium text-gray-900">Requirement Name</label>
+                    <p className="mt-1 text-sm text-gray-900">{item.requirementName}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-foreground">Submission Notes</label>
-                    <div className="mt-1 p-3 bg-white border rounded text-sm text-foreground">
+                    <label className="block text-sm font-medium text-gray-900">Submission Notes</label>
+                    <div className="mt-1 p-3 bg-white border rounded text-sm text-gray-900">
                       {item.submissionNotes || "No notes provided"}
                     </div>
                   </div>
                   {item.submissionLink && (
                     <div className="mt-2">
-                      <label className="block text-sm font-medium text-foreground">Submission Link</label>
+                      <label className="block text-sm font-medium text-gray-900">Submission Link</label>
                       <a 
                         href={item.submissionLink} 
                         target="_blank" 
@@ -247,7 +247,7 @@ export default function ApproverIndividualApproval() {
 
               {/* Status Selection */}
               <div className="mb-6">
-                <h3 className="text-lg font-medium mb-3">Status</h3>
+                <h3 className="text-lg font-medium mb-3 text-gray-900">Status</h3>
                 <div className="flex gap-4">
                   <label className="flex items-center">
                     <input
@@ -259,7 +259,7 @@ export default function ApproverIndividualApproval() {
                       disabled={isDisabled}
                       className="mr-2"
                     />
-                    <span className="text-foreground">Approved</span>
+                    <span className="text-gray-900">Approved</span>
                   </label>
                   <label className="flex items-center">
                     <input
@@ -271,7 +271,7 @@ export default function ApproverIndividualApproval() {
                       disabled={isDisabled}
                       className="mr-2"
                     />
-                    <span className="text-foreground">Rejected</span>
+                    <span className="text-gray-900">Rejected</span>
                   </label>
                 </div>
                 {isProcessed && (
@@ -283,15 +283,14 @@ export default function ApproverIndividualApproval() {
 
               {/* Remarks */}
               <div className="mb-6">
-                <h3 className="text-lg font-medium mb-3">
+                <h3 className="text-lg font-medium mb-3 text-gray-900">
                   Remarks 
                   {status === "rejected" && <span className="text-red-500 ml-1">*</span>}
                 </h3>
                 <Textarea
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
-                  placeholder={status === "rejected" ? "Remarks are required when rejecting..." : "Input your remarks here"}
-                  className="min-h-[100px]"
+                  className="min-h-[100px] text-gray-900 border-gray-900 placeholder:text-gray-400"
                   disabled={isDisabled}
                 />
                 {status === "rejected" && !remarks.trim() && (
@@ -300,7 +299,7 @@ export default function ApproverIndividualApproval() {
                   </div>
                 )}
                 {isProcessed && (
-                  <div className="mt-2 text-sm text-foreground">
+                  <div className="mt-2 text-sm text-gray-900">
                     Remarks cannot be modified for processed requests.
                   </div>
                 )}
@@ -315,7 +314,7 @@ export default function ApproverIndividualApproval() {
 
               {/* Action Buttons */}
               <div className="flex gap-3 justify-end">
-                <Button variant="outline" onClick={handleCancel}>
+                <Button variant="outline" className="text-gray-900 border-gray-900 hover:bg-gray-50" onClick={handleCancel}>
                   Cancel
                 </Button>
                 <Button onClick={handleSave} disabled={saving || isDisabled}>

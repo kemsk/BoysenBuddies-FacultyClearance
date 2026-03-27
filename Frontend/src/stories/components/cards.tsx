@@ -385,16 +385,16 @@ export function StudentAssistantsCard({
                       </div>
 
                       <div className="flex items-center justify-between w-full pt-4">
-                        <span className="text-2xl font-bold text-foreground">{item.name}</span>
+                        <span className="text-2xl font-bold text-gray-900">{item.name}</span>
                       </div>
 
                       <div className="mt-4 grid grid-cols-[95px_1fr] gap-x-5 gap-y-1 text-sm">
-                        <div className="font-bold text-foreground">College</div>
-                        <div className="text-foreground">{item.college}</div>
-                        <div className="font-bold text-foreground">Department</div>
-                        <div className="text-foreground">{item.department}</div>
-                        <div className="font-bold text-foreground">Email</div>
-                        <div className="text-foreground">{item.email}</div>
+                        <div className="font-bold text-gray-900">College</div>
+                        <div className="text-gray-900">{item.college}</div>
+                        <div className="font-bold text-gray-900">Department</div>
+                        <div className="text-gray-900">{item.department}</div>
+                        <div className="font-bold text-gray-900">Email</div>
+                        <div className="text-gray-900">{item.email}</div>
                       </div>
 
                       <div className="flex items-center gap-2 mt-4 w-full">
@@ -487,28 +487,28 @@ export function RequirementEditCard({
       <div className="pt-6 pb-4 pl-6 pr-6">
         <div>
           <div className="grid grid-cols-2 gap-2">
-            <div className="text-md font-bold text-foreground">Recipients</div>
-            <div className="text-sm text-black text-left break-words">{Recipients}</div>
+            <div className="text-md font-bold text-gray-900">Recipients</div>
+            <div className="text-sm text-gray-900 text-left break-words">{Recipients}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1">
-            <div className="text-md font-bold text-foreground pt-1">Description</div>
-            <div className="text-sm text-black text-left break-words">{description}</div>
+            <div className="text-md font-bold text-gray-900 pt-1">Description</div>
+            <div className="text-sm text-gray-900 text-left break-words">{description}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1">
-            <div className="text-md font-bold text-foreground">Last Updated</div>
-            <div className="text-sm text-black text-left break-words">{LastUpdated}</div>
+            <div className="text-md font-bold text-gray-900">Last Updated</div>
+            <div className="text-sm text-gray-900 text-left break-words">{LastUpdated}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1">
-            <div className="text-md font-bold text-foreground">Created By</div>
-            <div className="text-sm text-black text-left break-words">{CreatedBy}</div>
+            <div className="text-md font-bold text-gray-900">Created By</div>
+            <div className="text-sm text-gray-900 text-left break-words">{CreatedBy}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1 pb-3">
-            <div className="text-md font-bold text-foreground">Clearance Timeline</div>
-            <div className="text-sm text-black text-left break-words">{ClearanceTimeline}</div>
+            <div className="text-md font-bold text-gray-900">Clearance Timeline</div>
+            <div className="text-sm text-gray-900 text-left break-words">{ClearanceTimeline}</div>
           </div>
         </div>
       </div>
@@ -610,28 +610,28 @@ export function RequirementListCard({
       <div className="pt-6 pb-4 pl-6 pr-6">
         <div>
           <div className="grid grid-cols-2 gap-2">
-            <div className="text-md font-bold text-foreground">Recipients</div>
-            <div className="text-sm text-black text-left break-words">{Recipients}</div>
+            <div className="text-md font-bold text-gray-900">Recipients</div>
+            <div className="text-sm text-gray-900 text-left break-words">{Recipients}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1">
-            <div className="text-md font-bold text-foreground pt-1">Description</div>
-            <div className="text-sm text-black text-left break-words">{description}</div>
+            <div className="text-md font-bold text-gray-900 pt-1">Description</div>
+            <div className="text-sm text-gray-900 text-left break-words">{description}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1">
-            <div className="text-md font-bold text-foreground">Last Updated</div>
-            <div className="text-sm text-black text-left break-words">{LastUpdated}</div>
+            <div className="text-md font-bold text-gray-900">Last Updated</div>
+            <div className="text-sm text-gray-900 text-left break-words">{LastUpdated}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1">
-            <div className="text-md font-bold text-foreground">Created By</div>
-            <div className="text-sm text-black text-left break-words">{CreatedBy}</div>
+            <div className="text-md font-bold text-gray-900">Created By</div>
+            <div className="text-sm text-gray-900 text-left break-words">{CreatedBy}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1 pb-3">
-            <div className="text-md font-bold text-foreground">Clearance Timeline</div>
-            <div className="text-sm text-black text-left break-words">{ClearanceTimeline}</div>
+            <div className="text-md font-bold text-gray-900">Clearance Timeline</div>
+            <div className="text-sm text-gray-900 text-left break-words">{ClearanceTimeline}</div>
           </div>
         </div>
       </div>
@@ -873,19 +873,19 @@ export function ClearanceRequestsCard({
                       </div>
 
                       <div className="mt-3 grid grid-cols-[88px_1fr] gap-x-3 gap-y-1 text-sm">
-                        <div className="font-bold text-black">Request ID</div>
-                        <div className="text-black">{item.requestId}</div>
-                        <div className="font-bold text-black">Employee ID</div>
-                        <div className="text-black">{item.employeeId}</div>
+                        <div className="font-bold text-gray-900">Request ID</div>
+                        <div className="text-gray-900">{item.requestId}</div>
+                        <div className="font-bold text-gray-900">Employee ID</div>
+                        <div className="text-gray-900">{item.employeeId}</div>
 
-                        <div className="font-bold text-black">College</div>
-                        <div className="text-black">{item.college}</div>
+                        <div className="font-bold text-gray-900">College</div>
+                        <div className="text-gray-900">{item.college}</div>
 
-                        <div className="font-bold text-black">Department</div>
-                        <div className="text-black">{item.department}</div>
+                        <div className="font-bold text-gray-900">Department</div>
+                        <div className="text-gray-900">{item.department}</div>
 
-                        <div className="font-bold text-black">Faculty Type</div>
-                        <div className="text-black">{item.facultyType}</div>
+                        <div className="font-bold text-gray-900">Faculty Type</div>
+                        <div className="text-gray-900">{item.facultyType}</div>
                       </div>
                     </div>
                   </div>
@@ -960,23 +960,23 @@ export function RequestCard({
             </div>
 
             <div className=" grid grid-cols-[100px_1fr] gap-x-3 gap-y-2 text-sm p-6">
-              <div className="font-bold text-foreground">School ID</div>
-              <div className="text-foreground">{SchoolID}</div>
+              <div className="font-bold text-gray-900">School ID</div>
+              <div className="text-gray-900">{SchoolID}</div>
               
-              <div className="font-bold text-foreground">Full Name</div>
-              <div className="text-foreground">{FullName}</div>
+              <div className="font-bold text-gray-900">Full Name</div>
+              <div className="text-gray-900">{FullName}</div>
               
-              <div className="font-bold text-foreground">College</div>
-              <div className="text-foreground">{college}</div>
+              <div className="font-bold text-gray-900">College</div>
+              <div className="text-gray-900">{college}</div>
               
-              <div className="font-bold text-foreground">Department</div>
-              <div className="text-foreground">{department}</div>
+              <div className="font-bold text-gray-900">Department</div>
+              <div className="text-gray-900">{department}</div>
               
-              <div className="font-bold text-foreground">Faculty Type</div>
-              <div className="text-foreground">{facultyType}</div>
+              <div className="font-bold text-gray-900">Faculty Type</div>
+              <div className="text-gray-900">{facultyType}</div>
               
-              <div className="font-bold text-foreground">School Email</div>
-              <div className="text-foreground">{SchoolEmail}</div>
+              <div className="font-bold text-gray-900">School Email</div>
+              <div className="text-gray-900">{SchoolEmail}</div>
             </div>
           </div>
           <Divider orientation="vertical" className="h-auto self-stretch" />
@@ -1001,20 +1001,20 @@ export function RequirementApprovalCard({
   onReject,
 }: RequirementApprovalCardProps) {
   return (
-    <div className="rounded-xl border bg-card text-card-foreground shadow border-muted-foreground/20">
+    <div className="rounded-xl border bg-card text-card-foreground border-muted-foreground/20">
         <div className="space-y-4 p-6">
           <div>
-            <div className="text-xl text-center text-foreground font-bold mt-1">{requirementName}</div>
+            <div className="text-xl text-center text-gray-900 font-bold mt-1">{requirementName}</div>
           </div>
           
           <div>
-            <div className="text-md font-bold text-foreground">Submission Notes</div>
-            <div className="text-sm text-foreground mt-3 p-3 border border-foreground rounded-md pb-">{submissionNotes}</div>
+            <div className="text-md font-bold text-gray-900">Submission Notes</div>
+            <div className="text-sm text-gray-900 mt-3 p-3 border border-foreground rounded-md pb-">{submissionNotes}</div>
           </div>
           
           <div>
-            <div className="text-md font-bold text-foreground"></div>
-            <div className="text-sm text-foreground mt-1"></div>
+            <div className="text-md font-bold text-gray-900"></div>
+            <div className="text-sm text-gray-900 mt-1"></div>
           </div>
         </div>
 
@@ -1022,16 +1022,16 @@ export function RequirementApprovalCard({
 
         <div className="p-6 ">
           <div className="flex items-center gap-3">
-            <div className="text-md font-bold text-foreground">Status</div>
+            <div className="text-md font-bold text-gray-900">Status</div>
 
             <div className="ml-auto">
               <div className="flex items-center gap-2">
                 
                 <input type="radio" name="status" value="approved" id="approved" className="h-4 w-4 text-blue-600" />
-                <label htmlFor="approved" className="text-sm text-foreground">Approved</label>
+                <label htmlFor="approved" className="text-sm text-gray-900">Approved</label>
                 
                 <input type="radio" name="status" value="rejected" id="rejected" className="h-4 w-4 text-blsck bg-black" />
-                <label htmlFor="rejected" className="text-sm text-foreground">Rejected</label>
+                <label htmlFor="rejected" className="text-sm text-gray-900">Rejected</label>
               </div>
             </div>
           </div>
@@ -1181,40 +1181,40 @@ export function ExportArchiveClearanceCard({
                       </div>
 
                       <div className="mt-3 grid grid-cols-[110px_1fr] gap-x-3 gap-y-1 text-sm">
-                        <div className="font-bold text-black">
+                        <div className="font-bold text-gray-900">
                           Request ID
                         </div>
-                        <div className="text-black">
+                        <div className="text-gray-900">
                           {item.requestId}
                         </div>
-                        <div className="font-bold text-black">
+                        <div className="font-bold text-gray-900">
                           University ID
                         </div>
-                        <div className="text-black">
+                        <div className="text-gray-900">
                           {item.universityId}
                         </div>
-                        <div className="font-bold text-black">
+                        <div className="font-bold text-gray-900">
                           College
                         </div>
-                        <div className="text-black">
+                        <div className="text-gray-900">
                           {item.college}
                         </div>
-                        <div className="font-bold text-black">
+                        <div className="font-bold text-gray-900">
                           Department
                         </div>
-                        <div className="text-black">
+                        <div className="text-gray-900">
                           {item.department}
                         </div>
-                        <div className="font-bold text-black">
+                        <div className="font-bold text-gray-900">
                           Faculty Type
                         </div>
-                        <div className="text-black">
+                        <div className="text-gray-900">
                           {item.facultyType}
                         </div>
-                        <div className="font-bold text-black">
+                        <div className="font-bold text-gray-900">
                           Missing Signatures
                         </div>
-                        <div className="text-black">
+                        <div className="text-gray-900">
                           {item.missingSignatures}
                         </div>
                       </div>
@@ -1316,7 +1316,7 @@ export function RequirementsListCard({
               >
                 <div className="w-full">
                   <div className="flex items-center justify-between gap-3  p-4">
-                    <div className="text-lg font-bold text-foreground mt-2">{item.title}</div>
+                    <div className="text-lg font-bold text-gray-900 mt-2">{item.title}</div>
                     <Button
                       type="button"
                       variant="icon"
@@ -1336,7 +1336,7 @@ export function RequirementsListCard({
                           <Badge variant="warning">PHYSICAL SUBMISSION</Badge>
                         </div>
                       ) : null}
-                      <div className="mt-4 text-md text-black">{item.description}</div>
+                      <div className="mt-4 text-md text-gray-900">{item.description}</div>
                       <div className="mt-7 text-sm text-muted-foreground italic">{item.lastUpdated}</div>
                     </div>
                   
@@ -1422,7 +1422,7 @@ export function AnnouncementsCard({
 
       <CardHeader className="bg-[hsl(var(--yellow))] py-3 shadow-sm">
 
-        <CardTitle className="relative flex items-center justify-center text-base font-bold text-foreground">
+        <CardTitle className="relative flex items-center justify-center text-base font-bold text-gray-900">
 
           <div className="text-center font-bold">Announcements</div>
 
@@ -1482,7 +1482,7 @@ export function AnnouncementsCard({
 
             <div className="absolute right-1 top-1/2 -translate-y-1/2">
 
-              <ChevronRight className="h-5 w-5 text-foreground" />
+              <ChevronRight className="h-5 w-5 text-gray-900" />
 
             </div>
 
@@ -1506,7 +1506,7 @@ export function AnnouncementsCard({
 
                 {item.pinned ? (
 
-                  <img src="/BlackBookmarkIcon.png" alt="Pin" className="mt-0.5 h-4 w-4 text-foreground" />
+                  <img src="/BlackBookmarkIcon.png" alt="Pin" className="mt-0.5 h-4 w-4 text-gray-900" />
 
                 ) : null}
 
@@ -1532,7 +1532,7 @@ export function AnnouncementsCard({
 
                   ) : null}
 
-                  <div className="text-sm font-bold text-foreground mt-2">{item.title}</div>
+                  <div className="text-sm font-bold text-gray-900 mt-2">{item.title}</div>
 
                   <div className="mt-1 text-sm text-muted-foreground">{item.description}</div>
 
@@ -1716,9 +1716,9 @@ export function NotificationsCard({
 
                 <div className="min-w-0">
 
-                  <div className="text-base font-bold text-black">{item.title}</div>
+                  <div className="text-base font-bold text-gray-900">{item.title}</div>
 
-                  <div className="mt-1 text-sm text-black">
+                  <div className="mt-1 text-sm text-gray-900">
 
                     {item.description?.trim()
 
@@ -1756,7 +1756,7 @@ export function NotificationsCard({
 
               {item.details.length ? (
 
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-black">
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-gray-900">
 
                   {item.details.map((d) => (
 
@@ -1792,7 +1792,7 @@ export function NotificationsCard({
 
               type="button"
 
-              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-background text-foreground disabled:opacity-50"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-background text-gray-900 disabled:opacity-50"
 
               onClick={() => setPage((p) => Math.max(1, p - 1))}
 
@@ -1808,7 +1808,7 @@ export function NotificationsCard({
 
             <select
 
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground"
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm text-gray-900"
 
               value={safePage}
 
@@ -1834,7 +1834,7 @@ export function NotificationsCard({
 
               type="button"
 
-              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-background text-foreground disabled:opacity-50"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-background text-gray-900 disabled:opacity-50"
 
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
 
@@ -3124,7 +3124,7 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
 
               <div className="h-2 w-2 rounded-full bg-red-500" />
 
-              <div className="text-xl font-bold tracking-wide text-black">
+              <div className="text-xl font-bold tracking-wide text-gray-900">
 
                 YEAR {yearGroup.year}
 
@@ -3218,7 +3218,7 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
 
                             <div 
 
-                              className="mt-2 text-md text-foreground text-justify"
+                              className="mt-2 text-md text-gray-900 text-justify"
 
                               dangerouslySetInnerHTML={{ __html: description }}
 
@@ -3314,13 +3314,13 @@ export function ApprovedCard({
 
 
 
-        <div className="mt-4 text-lg font-bold text-foreground">{title}</div>
+        <div className="mt-4 text-lg font-bold text-gray-900">{title}</div>
 
         <div className="mt-2 text-sm text-muted-foreground">{description}</div>
 
 
 
-        <div className="mt-6 text-xs font-semibold text-foreground">{note}</div>
+        <div className="mt-6 text-xs font-semibold text-gray-900">{note}</div>
 
       </CardContent>
 
@@ -3587,7 +3587,7 @@ export function ClearanceStatusCard({
     <Card className={cn("bg-foregroundLight", className)}>
       <CardContent className="py-4">
         <div className="flex items-center justify-between">
-          <div className="text-sm font-bold text-foreground">Clearance Status</div>
+          <div className="text-sm font-bold text-gray-900">Clearance Status</div>
           <Badge variant={getBadgeVariant(statusVariant)}>{statusLabel}</Badge>
         </div>
       </CardContent>
@@ -3631,7 +3631,7 @@ export function ClearanceProgressCard({
     <Card className={className}>
       <CardContent className="py-5">
         <div className="flex items-center justify-between">
-          <div className="text-base font-bold text-foreground">{label}</div>
+          <div className="text-base font-bold text-gray-900">{label}</div>
           {typeof current === "number" && typeof total === "number" ? (
             <div className="text-sm font-semibold text-muted-foreground">
               {current}/{total}
@@ -3826,17 +3826,17 @@ export function ExpandableClearanceStepCard({
         <CardContent className="p-6 pt-4">
           <div className="space-y-5">
             <div>
-              <div className="text-sm font-bold text-foreground">Status</div>
+              <div className="text-sm font-bold text-gray-900">Status</div>
               {submittedTo ? (
-                <div className="mt-2 text-sm text-foreground">Submitted to: {submittedTo}</div>
+                <div className="mt-2 text-sm text-gray-900">Submitted to: {submittedTo}</div>
               ) : null}
               {submittedOn ? (
-                <div className="mt-1 text-sm text-foreground">Submitted on: {submittedOn}</div>
+                <div className="mt-1 text-sm text-gray-900">Submitted on: {submittedOn}</div>
               ) : null}
             </div>
 
             <div>
-              <div className="text-sm font-bold text-foreground">Requirements Checklist</div>
+              <div className="text-sm font-bold text-gray-900">Requirements Checklist</div>
               <div className="mt-3 space-y-3">
                 {requirements.map((req) => (
                   (() => {
@@ -3875,7 +3875,7 @@ export function ExpandableClearanceStepCard({
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <div className="text-sm font-bold text-foreground">{req.title}</div>
+                        <div className="text-sm font-bold text-gray-900">{req.title}</div>
                         {req.required_physical && (
                           <Badge variant="secondary" className="text-xs">
                             Physical Submission
@@ -3887,7 +3887,7 @@ export function ExpandableClearanceStepCard({
                           </Badge>
                         )}
                       </div>
-                      <div className="mt-1 text-sm text-foreground whitespace-pre-line">{req.description}</div>
+                      <div className="mt-1 text-sm text-gray-900 whitespace-pre-line">{req.description}</div>
                       {hasSavedComment && !req.rejected ? (
                         <div className="bg-white p-4 border border-black rounded-md mt-3">
                           {savedComment}
@@ -4365,7 +4365,7 @@ export function FacultyDataDumpCard({
 
       <CardContent className="p-6">
 
-        <div className="text-center text-base font-bold text-foreground">{title}</div>
+        <div className="text-center text-base font-bold text-gray-900">{title}</div>
 
         <div className="mt-4">
 
@@ -4569,7 +4569,7 @@ export function ArchivedClearanceCard({
 }: ArchivedClearanceCardProps) {
   return (
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
-        <div className="text-center text-xl font-bold text-foreground flex items-center justify-between p-6">
+        <div className="text-center text-xl font-bold text-gray-900 flex items-center justify-between p-6">
           <div>{title}</div>
           <Button variant="icon" className={iconClassName} size="icon" onClick={onIconClick}>
             <img src={iconSrc} alt={iconAlt} className="h-6 w-6" />
@@ -4580,28 +4580,28 @@ export function ArchivedClearanceCard({
         
         <div className=" p-6">
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Academic Year</div>
-          <div className="text-sm text-black text-left break-words">{AcademicYear}</div>
+          <div className="text-md font-bold text-gray-900">Academic Year</div>
+          <div className="text-sm text-gray-900 text-left break-words">{AcademicYear}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Clearance Period</div>
-          <div className="text-sm text-black text-left break-words">{ClearancePeriod}</div>
+          <div className="text-md font-bold text-gray-900">Clearance Period</div>
+          <div className="text-sm text-gray-900 text-left break-words">{ClearancePeriod}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Semester</div>
-          <div className="text-sm text-black text-left break-words">{Semester}</div>
+          <div className="text-md font-bold text-gray-900">Semester</div>
+          <div className="text-sm text-gray-900 text-left break-words">{Semester}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Last Update</div>
-          <div className="text-sm text-black text-left break-words">{LastUpdate}</div>
+          <div className="text-md font-bold text-gray-900">Last Update</div>
+          <div className="text-sm text-gray-900 text-left break-words">{LastUpdate}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Archived</div>
-          <div className="text-sm text-black text-left break-words">{Archived}</div>
+          <div className="text-md font-bold text-gray-900">Archived</div>
+          <div className="text-sm text-gray-900 text-left break-words">{Archived}</div>
         </div>
       </div>
       </Card>
@@ -4649,7 +4649,7 @@ export function ViewArchivedClearanceWithStatusCard({
   return (
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
       
-        <div className="text-xl font-bold text-foreground justify-between p-6">
+        <div className="text-xl font-bold text-gray-900 justify-between p-6">
           <div className="items-right pb-3">
             <Badge variant={status === "complete" ? "success" : "warning"}>
               {status === "complete" ? "COMPLETE" : "INCOMPLETE"}
@@ -4667,38 +4667,38 @@ export function ViewArchivedClearanceWithStatusCard({
         
         <div className=" p-6">
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Academic Year</div>
-          <div className="text-sm text-black text-left break-words">{AcademicYear}</div>
+          <div className="text-md font-bold text-gray-900">Academic Year</div>
+          <div className="text-sm text-gray-900 text-left break-words">{AcademicYear}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Semester</div>
-          <div className="text-sm text-black text-left break-words">{Semester}</div>
+          <div className="text-md font-bold text-gray-900">Semester</div>
+          <div className="text-sm text-gray-900 text-left break-words">{Semester}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Clearance Period</div>
-          <div className="text-sm text-black text-left break-words">{ClearancePeriod}</div>
+          <div className="text-md font-bold text-gray-900">Clearance Period</div>
+          <div className="text-sm text-gray-900 text-left break-words">{ClearancePeriod}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Last Update</div>
-          <div className="text-sm text-black text-left break-words">{LastUpdate}</div>
+          <div className="text-md font-bold text-gray-900">Last Update</div>
+          <div className="text-sm text-gray-900 text-left break-words">{LastUpdate}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Archived</div>
-          <div className="text-sm text-black text-left break-words">{Archived}</div>
+          <div className="text-md font-bold text-gray-900">Archived</div>
+          <div className="text-sm text-gray-900 text-left break-words">{Archived}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Faculty CSV Dump</div>
-          <div className="text-sm text-black text-left break-words">{FacultyCSVDump}</div>
+          <div className="text-md font-bold text-gray-900">Faculty CSV Dump</div>
+          <div className="text-sm text-gray-900 text-left break-words">{FacultyCSVDump}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground"></div>
-          <div className="text-sm text-black text-left break-words">{Size}</div>
+          <div className="text-md font-bold text-gray-900"></div>
+          <div className="text-sm text-gray-900 text-left break-words">{Size}</div>
         </div>
       </div>
       </Card>
@@ -4742,7 +4742,7 @@ export function ViewArchivedClearanceCard({
 }: ViewArchivedClearanceCardProps) {
   return (
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
-        <div className="text-center text-xl font-bold text-foreground flex items-center justify-between p-6">
+        <div className="text-center text-xl font-bold text-gray-900 flex items-center justify-between p-6">
           <div>{title}</div>
           <Button variant="icon" className={iconClassName} size="icon">
             <img src="/PrimaryDownloadIcon.png" alt={iconAlt} className="h-6 w-6" />
@@ -4753,43 +4753,43 @@ export function ViewArchivedClearanceCard({
         
         <div className=" p-6">
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Academic Year</div>
-          <div className="text-sm text-black text-left break-words">{AcademicYear}</div>
+          <div className="text-md font-bold text-gray-900">Academic Year</div>
+          <div className="text-sm text-gray-900 text-left break-words">{AcademicYear}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Semester</div>
-          <div className="text-sm text-black text-left break-words">{Semester}</div>
+          <div className="text-md font-bold text-gray-900">Semester</div>
+          <div className="text-sm text-gray-900 text-left break-words">{Semester}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Clearance Period</div>
-          <div className="text-sm text-black text-left break-words">{ClearancePeriod}</div>
+          <div className="text-md font-bold text-gray-900">Clearance Period</div>
+          <div className="text-sm text-gray-900 text-left break-words">{ClearancePeriod}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Last Update</div>
-          <div className="text-sm text-black text-left break-words">{LastUpdate}</div>
+          <div className="text-md font-bold text-gray-900">Last Update</div>
+          <div className="text-sm text-gray-900 text-left break-words">{LastUpdate}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Archived</div>
-          <div className="text-sm text-black text-left break-words">{Archived}</div>
+          <div className="text-md font-bold text-gray-900">Archived</div>
+          <div className="text-sm text-gray-900 text-left break-words">{Archived}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Faculty CSV Dump</div>
-          <div className="text-sm text-black text-left break-words">{FacultyCSVDump}</div>
+          <div className="text-md font-bold text-gray-900">Faculty CSV Dump</div>
+          <div className="text-sm text-gray-900 text-left break-words">{FacultyCSVDump}</div>
         </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="text-md font-bold text-foreground">Total Faculty</div>
-            <div className="text-sm text-black text-left break-words">{totalFaculty}</div>
+            <div className="text-md font-bold text-gray-900">Total Faculty</div>
+            <div className="text-sm text-gray-900 text-left break-words">{totalFaculty}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="text-md font-bold text-foreground">Completed Clearances</div>
-            <div className="text-sm text-black text-left break-words">{completedClearances}</div>
+            <div className="text-md font-bold text-gray-900">Completed Clearances</div>
+            <div className="text-sm text-gray-900 text-left break-words">{completedClearances}</div>
           </div>
         </div>
       </Card>
@@ -4832,7 +4832,7 @@ export function ViewArchivedFacultyCard({
   const displayTitle = yearCode && termCode ? `${yearCode}${termCode} Archived Faculty` : "Archived Faculty";
   return (
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
-      <div className="text-center text-xl font-bold text-foreground flex items-center justify-between p-6">
+      <div className="text-center text-xl font-bold text-gray-900 flex items-center justify-between p-6">
         <div>{displayTitle}</div>
         <Button
           variant="icon"
@@ -4849,38 +4849,38 @@ export function ViewArchivedFacultyCard({
 
       <div className="p-6">
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Academic Year</div>
-          <div className="text-sm text-black text-left break-words">{academicYear}</div>
+          <div className="text-md font-bold text-gray-900">Academic Year</div>
+          <div className="text-sm text-gray-900 text-left break-words">{academicYear}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Semester</div>
-          <div className="text-sm text-black text-left break-words">{semester}</div>
+          <div className="text-md font-bold text-gray-900">Semester</div>
+          <div className="text-sm text-gray-900 text-left break-words">{semester}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Clearance Period</div>
-          <div className="text-sm text-black text-left break-words">{clearancePeriod}</div>
+          <div className="text-md font-bold text-gray-900">Clearance Period</div>
+          <div className="text-sm text-gray-900 text-left break-words">{clearancePeriod}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Last Update</div>
-          <div className="text-sm text-black text-left break-words">{archivedDate}</div>
+          <div className="text-md font-bold text-gray-900">Last Update</div>
+          <div className="text-sm text-gray-900 text-left break-words">{archivedDate}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Archived</div>
-          <div className="text-sm text-black text-left break-words">{archivedDate}</div>
+          <div className="text-md font-bold text-gray-900">Archived</div>
+          <div className="text-sm text-gray-900 text-left break-words">{archivedDate}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Faculty CSV Dump</div>
-          <div className="text-sm text-black text-left break-words">{csvFileName}</div>
+          <div className="text-md font-bold text-gray-900">Faculty CSV Dump</div>
+          <div className="text-sm text-gray-900 text-left break-words">{csvFileName}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Size</div>
-          <div className="text-sm text-black text-left break-words">{csvFileSize}</div>
+          <div className="text-md font-bold text-gray-900">Size</div>
+          <div className="text-sm text-gray-900 text-left break-words">{csvFileSize}</div>
         </div>
       </div>
     </Card>
@@ -4992,7 +4992,7 @@ export function SystemUsersCard({
 
                       <div className="flex w-full items-center justify-between gap-3">
 
-                        <span className="text-xl font-bold text-foreground">{user.name}</span>
+                        <span className="text-xl font-bold text-gray-900">{user.name}</span>
 
 
 
@@ -5040,37 +5040,37 @@ export function SystemUsersCard({
 
                       <div className="mt-4 grid grid-cols-[110px_1fr] gap-x-3 gap-y-1 text-md">
 
-                        <div className="font-semibold text-md text-foreground">System ID</div>
+                        <div className="font-semibold text-md text-gray-900">System ID</div>
 
                         <div className="text-muted-foreground">{user.systemId}</div>
 
 
 
-                        <div className="font-semibold text-md text-foreground">User Role</div>
+                        <div className="font-semibold text-md text-gray-900">User Role</div>
 
                         <div className="text-muted-foreground">{user.userRole}</div>
 
 
 
-                        <div className="font-semibold text-md text-foreground">University ID</div>
+                        <div className="font-semibold text-md text-gray-900">University ID</div>
 
                         <div className="text-muted-foreground">{user.universityId}</div>
 
 
 
-                        <div className="font-semibold text-foreground">College</div>
+                        <div className="font-semibold text-gray-900">College</div>
 
                         <div className="text-muted-foreground">{user.college}</div>
 
 
 
-                        <div className="font-semibold text-foreground">Department</div>
+                        <div className="font-semibold text-gray-900">Department</div>
 
                         <div className="text-muted-foreground">{user.department}</div>
 
 
 
-                        <div className="font-semibold text-foreground">Email</div>
+                        <div className="font-semibold text-gray-900">Email</div>
 
                         <div className="break-all text-muted-foreground">{user.email}</div>
 
@@ -5168,11 +5168,11 @@ export function SystemGuidlinesCard({
 
                 <div>
 
-                  <div className="mt-2 text-lg font-bold text-black">{item.title}</div>
+                  <div className="mt-2 text-lg font-bold text-gray-900">{item.title}</div>
 
 
 
-                  <div className="mt-3 text-md text-black">
+                  <div className="mt-3 text-md text-gray-900">
 
                     {Array.isArray(item.description) ? (
 
@@ -5348,7 +5348,7 @@ export function ClearanceTimelineCard({
 
                 <div className="min-w-0 flex-1">
 
-                  <div className="text-lg font-bold text-black">{item.term}</div>
+                  <div className="text-lg font-bold text-gray-900">{item.term}</div>
 
                 </div>
 
@@ -5393,22 +5393,22 @@ export function ClearanceTimelineCard({
                 <div className="space-y-0 bg-foregroundLight rounded-md border border-gray-200 p-4">
 
                   <div className="flex items-center gap-3">
-                      <div className="text-md font-bold text-black w-32">Name:</div>
-                      <div className="mt-1 text-sm font-semibold text-black">{item.Name || 'unset'}</div>
+                      <div className="text-md font-bold text-gray-900 w-32">Name:</div>
+                      <div className="mt-1 text-sm font-semibold text-gray-900">{item.Name || 'unset'}</div>
                     </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="text-md font-bold text-black w-32">School Year:</div>
-                    <div className="mt-1 text-sm font-semibold text-black">{item.schoolYear || 'unset'}</div>
+                    <div className="text-md font-bold text-gray-900 w-32">School Year:</div>
+                    <div className="mt-1 text-sm font-semibold text-gray-900">{item.schoolYear || 'unset'}</div>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="text-md font-bold text-black w-32">Timeline:</div>
-                    <div className="mt-1 text-sm font-semibold text-black">{item.Timeline || 'unset'}</div>
+                    <div className="text-md font-bold text-gray-900 w-32">Timeline:</div>
+                    <div className="mt-1 text-sm font-semibold text-gray-900">{item.Timeline || 'unset'}</div>
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <div className="text-sm text-foreground  italic">Last Update: {item.Date} {item.Time}</div>
+                    <div className="text-sm text-gray-900  italic">Last Update: {item.Date} {item.Time}</div>
                   </div>
 
                 </div>
@@ -5608,7 +5608,7 @@ export function DepartmentCompletionRateCard({
 
             <div key={section.title}>
 
-              <div className="text-sm font-bold text-foreground">{section.title}</div>
+              <div className="text-sm font-bold text-gray-900">{section.title}</div>
 
 
 
@@ -5632,7 +5632,7 @@ export function DepartmentCompletionRateCard({
 
                       <div className="flex items-center justify-between gap-3">
 
-                        <div className="text-sm font-semibold text-foreground">{item.label} </div>
+                        <div className="text-sm font-semibold text-gray-900">{item.label} </div>
 
                         <div className="text-xs font-semibold text-muted-foreground">
 
@@ -5896,19 +5896,19 @@ export function NoLinkClearanceRequestsCard({
                       </div>
 
                       <div className="mt-3 grid grid-cols-[88px_1fr] gap-x-3 gap-y-1 text-sm">
-                        <div className="font-bold text-black">Request ID</div>
-                        <div className="text-black">{item.requestId}</div>
-                        <div className="font-bold text-black">Employee ID</div>
-                        <div className="text-black">{item.employeeId}</div>
+                        <div className="font-bold text-gray-900">Request ID</div>
+                        <div className="text-gray-900">{item.requestId}</div>
+                        <div className="font-bold text-gray-900">Employee ID</div>
+                        <div className="text-gray-900">{item.employeeId}</div>
 
-                        <div className="font-bold text-black">College</div>
-                        <div className="text-black">{item.college}</div>
+                        <div className="font-bold text-gray-900">College</div>
+                        <div className="text-gray-900">{item.college}</div>
 
-                        <div className="font-bold text-black">Department</div>
-                        <div className="text-black">{item.department}</div>
+                        <div className="font-bold text-gray-900">Department</div>
+                        <div className="text-gray-900">{item.department}</div>
 
-                        <div className="font-bold text-black">Faculty Type</div>
-                        <div className="text-black">{item.facultyType}</div>
+                        <div className="font-bold text-gray-900">Faculty Type</div>
+                        <div className="text-gray-900">{item.facultyType}</div>
                       </div>
                     </div>
                   </div>
