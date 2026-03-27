@@ -17,6 +17,7 @@ export interface AuthStatusResponse {
     role_name: string;
     first_name: string;
     last_name: string;
+    roles?: number[]; // Array of role values for multi-role users
   };
 }
 
@@ -174,6 +175,7 @@ class AuthService {
           role_name: userData.role_name,
           first_name: userData.first_name,
           last_name: userData.last_name,
+          roles: userData.roles || [userData.role_value] // Support multiple roles
         }
       };
     } catch (error) {
@@ -219,19 +221,28 @@ class AuthService {
   }
 
   // Parse JWT token (simple implementation)
-  private parseJWT(token: string): any {
+  private parseJWT(token: string): { email?: string; roles?: string[] } | null {
     try {
       const base64Url = token.split('.')[1];
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
       const jsonPayload = decodeURIComponent(
         atob(base64)
           .split('')
-          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+          })
           .join('')
       );
-      return JSON.parse(jsonPayload);
+
+      const payload = JSON.parse(jsonPayload);
+      console.log('AUTH_SERVICE: Parsed JWT payload:', payload);
+      
+      return {
+        email: payload.email,
+        roles: payload.roles || []
+      };
     } catch (error) {
-      console.error('AUTH_SERVICE: Error parsing JWT:', error);
+      console.error('AUTH_SERVICE: Error parsing JWT token:', error);
       return null;
     }
   }

@@ -5,6 +5,9 @@ import { authService } from "../../services/authService";
 
 export default function LoginPrompt() {
   const [progress, setProgress] = useState(0);
+  const [selectedRole, setSelectedRole] = useState<any>(null);
+  const [userInfo, setUserInfo] = useState<any>(null);
+  const [error, setError] = useState<string>("");
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -18,38 +21,90 @@ export default function LoginPrompt() {
     if (progress < 100) return;
 
     const resolveAndRedirect = async () => {
-      // Handle OAuth callback with JWT token
-      authService.handleOAuthCallback();
-      
-      // Get user info using JWT token
       try {
+        // Handle OAuth callback if this is the initial authentication
+        authService.handleOAuthCallback();
+        
+        // Check if we have a selected role from session storage
+        const selectedRoleStr = sessionStorage.getItem('selected_role');
+        if (!selectedRoleStr) {
+          console.log('LOGIN_PROMPT: No selected role found, this is initial OAuth callback');
+          
+          // Wait a moment for the session to be established
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Try to get auth status, but if it fails, still redirect to role selection
+          try {
+            const authStatus = await authService.getAuthStatus();
+            console.log('LOGIN_PROMPT: Auth status after OAuth callback:', authStatus);
+            
+            if (!authStatus.authenticated || !authStatus.user_info) {
+              console.log('LOGIN_PROMPT: Auth status not ready, but proceeding to role selection');
+            }
+          } catch (error) {
+            console.log('LOGIN_PROMPT: Auth status check failed, but proceeding to role selection:', error);
+          }
+          
+          // This is the initial OAuth callback, redirect to role selection
+          console.log('LOGIN_PROMPT: Redirecting to role selection page');
+          window.location.replace('http://localhost:8001/login');
+          return;
+        }
+
+        // If we have a selected role, show authentication verification
+        const role = JSON.parse(selectedRoleStr);
+        setSelectedRole(role);
+        console.log('LOGIN_PROMPT: Selected role for verification:', role);
+
+        // Get user authentication status
         const authStatus = await authService.getAuthStatus();
         console.log('LOGIN_PROMPT: Auth status:', authStatus);
         
-        if (authStatus.authenticated && authStatus.user_info) {
-          const roleValue = authStatus.user_info.role_value;
-          console.log('LOGIN_PROMPT: User role value:', roleValue);
-          
-          // Role-based dashboard mapping
-          const roleDashboardMap: Record<number, string> = {
-            1: '/CISO-dashboard',
-            2: '/OVPHE-dashboard', 
-            3: '/approver-dashboard',
-            4: '/assistant-approver-dashboard',
-            5: '/faculty-dashboard',
-          };
-
-          const target = roleDashboardMap[roleValue] || '/faculty-dashboard';
-          console.log('LOGIN_PROMPT: Redirecting to:', target);
-          
-          window.location.replace(target);
-        } else {
-          console.log('LOGIN_PROMPT: No valid authentication, redirecting to login');
-          window.location.replace('/');
+        if (!authStatus.authenticated || !authStatus.user_info) {
+          console.log('LOGIN_PROMPT: User not authenticated, redirecting to login');
+          window.location.replace('http://localhost:8001/?error=authentication_failed');
+          return;
         }
+
+        setUserInfo(authStatus.user_info);
+
+        // Verify user has the selected role
+        const userRoleValue = authStatus.user_info.role_value;
+        if (userRoleValue !== role.value) {
+          console.log('LOGIN_PROMPT: Role mismatch, user role:', userRoleValue, 'selected role:', role.value);
+          sessionStorage.removeItem('selected_role');
+          window.location.replace('http://localhost:8001/login?error=role_mismatch');
+          return;
+        }
+
+        // Wait a moment to show the verification screen
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Role-based dashboard mapping
+        const roleDashboardMap: Record<number, string> = {
+          1: '/CISO-dashboard',
+          2: '/OVPHE-dashboard', 
+          3: '/approver-dashboard',
+          4: '/assistant-approver-dashboard',
+          5: '/faculty-dashboard',
+        };
+
+        const target = roleDashboardMap[role.value] || '/faculty-dashboard';
+        console.log('LOGIN_PROMPT: Redirecting to dashboard:', target);
+        
+        // Clear selected role from session storage
+        sessionStorage.removeItem('selected_role');
+        
+        // Redirect to the appropriate dashboard
+        window.location.replace(target);
+        
       } catch (error) {
         console.error('LOGIN_PROMPT: Error during authentication:', error);
-        window.location.replace('/');
+        if (error instanceof Error && error.message.includes('401')) {
+          window.location.replace('http://localhost:8001/?error=unauthorized');
+        } else {
+          window.location.replace('http://localhost:8001/?error=authentication_failed');
+        }
       }
     };
 
@@ -58,32 +113,57 @@ export default function LoginPrompt() {
 
   return (
     <div className="login-container bg-primary text-primary-foreground min-h-screen flex justify-center items-center p-0">
-
-      {/* LOGIN PANEL */}
-      <div className="w-full bg-primary p-8 flex flex-col items-center px-3">
-
-        {/* Logos */}
-        <div className="w-full max-w-screen-sm px-3 flex flex-col items-center gap-8">
-
-          <img src="/RemoveBG_Logomark.png" className="w-full max-w-[40%] h-auto -mt-12" />
-
-          {/* App Logo + Progress */}
-          <div className="flex flex-col items-center gap-5 w-full">
-
-            <img src="/Pen Swish White_FacultyClearTrack.png" className="w-full max-w-[70%] h-auto mb-2" />
-
-            <div className="w-full flex flex-col items-center gap-11">
-
-              <h1 className="text-center font-bold leading-[1.05] max-w-[20rem] text-[clamp(1.75rem,7vw,2.75rem)]">
-                Signing you in..
-              </h1>
-
-              {/* Animated Progress Bar */}
-              <Progress value={progress} className="w-full max-w-[70%] h-2 rounded" />
-            </div>
-          </div>
+      <div className="text-center space-y-6">
+        <div className="mb-8">
+          <img 
+            src="/public/XU-Logo.png" 
+            alt="Xavier University" 
+            className="mx-auto w-24 h-24"
+          />
         </div>
-
+        
+        {/* Show different content based on whether we have a selected role */}
+        {selectedRole && userInfo ? (
+          // Authentication verification screen
+          <>
+            <h1 className="text-3xl font-bold text-white mb-4">Verifying Authentication</h1>
+            
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 space-y-4">
+              <div className="text-white">
+                <p className="text-lg">Welcome, {userInfo.first_name} {userInfo.last_name}</p>
+                <p className="text-sm opacity-75">{userInfo.email}</p>
+              </div>
+              
+              <div className="border-t border-white/20 pt-4">
+                <p className="text-white text-sm mb-2">Selected Role:</p>
+                <p className="text-xl font-semibold text-white">{selectedRole.display_name}</p>
+              </div>
+              
+              <div className="text-white text-sm opacity-75">
+                <p>Redirecting to your dashboard...</p>
+              </div>
+            </div>
+            
+            <div className="w-full max-w-md">
+              <div className="bg-white/20 rounded-full h-2 overflow-hidden">
+                <div 
+                  className="bg-white h-full transition-all duration-300 ease-out"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <p className="text-white text-sm mt-2">{progress}% Complete</p>
+            </div>
+          </>
+        ) : (
+          // Initial authentication screen
+          <>
+            <h1 className="text-3xl font-bold text-white mb-4">Authenticating...</h1>
+            <div className="w-full max-w-md">
+              <Progress value={progress} className="w-full" />
+              <p className="text-white text-sm mt-2">{progress}% Complete</p>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

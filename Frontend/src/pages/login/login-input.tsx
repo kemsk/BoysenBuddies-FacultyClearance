@@ -1,40 +1,57 @@
 import { useState, useEffect } from "react";
 import "../../index.css"; // ensure index.css is accessible from src
 import { Button } from "../../stories/components/button";
+import { authService } from "../../services/authService";
 
 export default function LoginInput() {
-  // Check for error parameters in URL during initial render
-  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
-  const errorParam = urlParams.get('error');
-  
-  const getInitialError = () => {
-    if (errorParam === 'role_mismatch') {
-      return "You don't have the required permissions for this login type. Please select the correct account type.";
-    } else if (errorParam === 'no_role_selected') {
-      return "Please select your account type from the login page to continue.";
-    } else if (errorParam === 'invalid_role') {
-      return "Invalid login type detected. Please select your account type from the options below.";
-    }
-    return "";
-  };
+  const [error, setError] = useState<string>(() => {
+    // Check for error parameters in URL during initial render
+    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+    const errorParam = urlParams.get('error');
+    
+    const getErrorMessage = () => {
+      switch (errorParam) {
+        case 'authentication_failed':
+          return "Authentication failed. Please try signing in again.";
+        case 'unauthorized':
+          return "You are not authorized to access this system. Please contact your administrator.";
+        case 'role_mismatch':
+          return "Role mismatch detected. Please select the correct account type.";
+        case 'no_role_selected':
+          return "Please select your account type to continue.";
+        case 'invalid_role':
+          return "Invalid login type detected. Please select your account type from the options below.";
+        case 'email_not_registered':
+          return "This email is not registered in the system. Please use your registered XU email or contact the administrator.";
+        default:
+          return "";
+      }
+    };
 
-  const [error, setError] = useState<string>(getInitialError());
-
-  useEffect(() => {
-    // Clear the error parameter from URL after initial render
+    // Clear the error parameter from URL if it exists
     if (errorParam) {
       window.history.replaceState({}, document.title, window.location.pathname);
+      return getErrorMessage();
     }
-  }, [errorParam]);
+    
+    return "";
+  });
+  
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleLogin = (role: string) => {
+  useEffect(() => {
+    // Don't automatically redirect - let user choose to sign in
+    // This allows users to see the initial login page
+    console.log('Login page loaded - waiting for user action');
+  }, []);
+
+  const handleGoogleLogin = () => {
     setError("");
+    setIsLoading(true);
     
-    // Store the intended role in session storage for validation after OAuth
-    sessionStorage.setItem('intended_role', role);
-    
-    // Redirect to Google OAuth with role parameter
-    window.location.assign(`/accounts/login/google/?role=${role}`);
+    // Redirect to Google OAuth without role parameter
+    // Role selection will happen after authentication
+    window.location.assign(`/accounts/login/google/`);
   };
 
   return (
@@ -79,7 +96,8 @@ export default function LoginInput() {
             type="button"
             variant="white"
             className="w-full border border-gray-300 bg-white px-4 text-black"
-            onClick={() => handleLogin('faculty')}
+            onClick={handleGoogleLogin}
+            disabled={isLoading}
           >
             <span className="flex w-full items-center">
               <img
@@ -87,9 +105,15 @@ export default function LoginInput() {
                 alt="Google"
                 className="h-4 w-4 flex-shrink-0 object-contain"
               />
-              <span className="flex-1 text-center text-sm font-medium">Sign in with Google</span>
+              <span className="flex-1 text-center text-sm font-medium">
+                {isLoading ? 'Signing in...' : 'Sign in with Google'}
+              </span>
             </span>
           </Button>
+
+          {error && (
+            <div className="text-sm text-red-200 text-center">{error}</div>
+          )}
 
         </div>
         

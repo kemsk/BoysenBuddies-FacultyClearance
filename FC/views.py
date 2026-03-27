@@ -473,7 +473,10 @@ def google_oauth_callback(request):
     email = verified["email"]
     user = User.objects.filter(email__iexact=email).first()
     if not user:
-        return _json_error("Email is not registered in the system", status=403)
+        print(f"GOOGLE OAUTH: Email not registered: {email}")
+        error_url = "/?error=email_not_registered"
+        print(f"GOOGLE OAUTH: Redirecting to login with error: {error_url}")
+        return HttpResponseRedirect(error_url)
 
     print(f"GOOGLE OAUTH: User found: {user.email} (ID: {user.id})")
     print(f"GOOGLE OAUTH: About to call login...")
@@ -485,11 +488,23 @@ def google_oauth_callback(request):
     print(f"GOOGLE OAUTH: User roles: {user_roles_list}")
     print(f"GOOGLE OAUTH: Intended role: '{intended_role}'")
     
-    # If no intended role, redirect back to login with error
+    # If no intended role, redirect to login page for role selection
     if not intended_role:
-        error_url = "/?error=no_role_selected"
-        print(f"GOOGLE OAUTH: No role selected, redirecting to: {error_url}")
-        return HttpResponseRedirect(error_url)
+        # Generate JWT token for the user
+        try:
+            jwt_token = generate_jwt_token(user)
+            print(f"GOOGLE OAUTH: JWT Token generated for role selection: {user.email}")
+        except Exception as e:
+            print(f"GOOGLE OAUTH: Error generating JWT token: {str(e)}")
+            return HttpResponseRedirect("/?error=authentication_failed")
+        
+        # Create session for the user
+        _login(request, user)
+        
+        # Redirect to login page with JWT token for role selection
+        login_url = f"http://localhost:8001/login?token={jwt_token}"
+        print(f"GOOGLE OAUTH: No role selected, redirecting to role selection: {login_url}")
+        return HttpResponseRedirect(login_url)
     
     # Validate that the intended role is one of the supported roles
     valid_roles = ['faculty', 'approver', 'assistant', 'ciso', 'ovphe']
