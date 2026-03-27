@@ -1267,7 +1267,7 @@ def clearance_requests_api(request):
         items.append(
             {
                 "id": str(r.id),
-                "requestId": str(r.id),
+                "requestId": r.request_id,
                 "employeeId": employee_id,
                 "name": full_name,
                 "college": college,
@@ -1642,7 +1642,7 @@ def clearance_requests_api(request):
         items.append(
             {
                 "id": str(r.id),
-                "requestId": str(r.id),
+                "requestId": r.request_id,
                 "employeeId": employee_id,
                 "name": full_name,
                 "college": college,
@@ -4528,8 +4528,8 @@ def faculty_submit_requirement_api(request):
         # Get department code from faculty's department (not approver's)
         dept_code = "GEN"  # Default generic code
         if faculty.department:
-            # Convert department name to code (first 3 letters, uppercase)
-            dept_code = faculty.department.name[:3].upper()
+            # Use department abbreviation if available, otherwise use name
+            dept_code = faculty.department.abbreviation if faculty.department.abbreviation else faculty.department.name[:3].upper()
         
         # Get term from timeline
         term_code = "00"  # Default
