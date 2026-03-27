@@ -4559,7 +4559,22 @@ def faculty_submit_requirement_api(request):
     ).first()
     
     if existing_request:
-        return JsonResponse({"detail": "Requirement already submitted"}, status=400)
+        # Allow resubmission if the existing request was rejected
+        if existing_request.status == ClearanceRequest.Status.REJECTED:
+            # Update the existing rejected request instead of creating a new one
+            existing_request.status = ClearanceRequest.Status.PENDING
+            existing_request.submission_notes = comment
+            existing_request.remarks = ""  # Clear previous rejection remarks
+            existing_request.approved_by = None  # Clear previous approver
+            existing_request.approved_date = None  # Clear previous approval date
+            existing_request.save()
+            
+            return JsonResponse({
+                "detail": "Requirement resubmitted successfully",
+                "requestId": existing_request.request_id
+            })
+        else:
+            return JsonResponse({"detail": "Requirement already submitted"}, status=400)
 
     # Create the clearance request
     try:
@@ -5973,7 +5988,7 @@ def approver_individual_approval_api(request):
         
         try:
             clearance_request = ClearanceRequest.objects.get(
-                id=request_id,
+                request_id=request_id,
                 clearance_timeline=_get_active_timeline()
             )
         except ClearanceRequest.DoesNotExist:
@@ -6001,7 +6016,7 @@ def approver_individual_approval_api(request):
         
         try:
             clearance_request = ClearanceRequest.objects.get(
-                id=request_id,
+                request_id=request_id,
                 clearance_timeline=_get_active_timeline()
             )
         except ClearanceRequest.DoesNotExist:

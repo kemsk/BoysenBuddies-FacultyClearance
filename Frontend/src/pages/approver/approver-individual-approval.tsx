@@ -274,7 +274,7 @@ export default function ApproverIndividualApproval() {
                       disabled={isDisabled}
                       className="mr-2"
                     />
-                    <span className={isProcessed ? "text-gray-500" : ""}>Approved</span>
+                    <span className="text-foreground">Approved</span>
                   </label>
                   <label className="flex items-center">
                     <input
@@ -286,7 +286,7 @@ export default function ApproverIndividualApproval() {
                       disabled={isDisabled}
                       className="mr-2"
                     />
-                    <span className={isProcessed ? "text-gray-500" : ""}>Rejected</span>
+                    <span className="text-foreground">Rejected</span>
                   </label>
                 </div>
                 {isProcessed && (

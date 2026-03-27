@@ -3841,12 +3841,12 @@ export function ExpandableClearanceStepCard({
                     key={req.title}
                     className={cn(
                       "flex gap-4 rounded-md px-4 py-4",
-                      req.rejected ? "bg-red-50 border border-red-200" : "bg-foregroundLight"
+                      req.completed ? "bg-green-50 border border-green-200" : "bg-foregroundLight"
                     )}
                   >
                     <div className="mt-1">
                       <Checkbox 
-                        variant={req.rejected ? "outline" : "success"} 
+                        variant="success" 
                         checked={checkboxStates[req.title] || req.completed || false}
                         onCheckedChange={(checked) => {
                           const isSubmitted = req.submitted || req.completed;
@@ -3874,19 +3874,13 @@ export function ExpandableClearanceStepCard({
                             Physical Submission
                           </Badge>
                         )}
-                        {req.rejected && (
-                          <Badge variant="destructive" className="text-xs">
-                            REJECTED - Resubmit Required
+                        {req.completed && (
+                          <Badge variant="success" className="text-xs">
+                            APPROVED
                           </Badge>
                         )}
                       </div>
                       <div className="mt-1 text-sm text-foreground whitespace-pre-line">{req.description}</div>
-                      {req.rejected && req.remarks && (
-                        <div className="mt-2 p-3 bg-red-100 border border-red-300 rounded text-sm text-red-800">
-                          <div className="font-bold text-red-900 mb-1">Rejection Reason:</div>
-                          {req.remarks}
-                        </div>
-                      )}
                       {hasSavedComment && !req.rejected ? (
                         <div className="bg-white p-4 border border-black rounded-md mt-3">
                           {savedComment}
