@@ -3580,6 +3580,10 @@ export type ClearanceRequirementItem = {
   title: string;
   description: string;
   completed?: boolean;
+  submitted?: boolean;
+  requestId?: string;
+  status?: string;
+  submissionNotes?: string;
   required_physical?: boolean;
 };
 
@@ -3618,6 +3622,28 @@ export function ExpandableClearanceStepCard({
   className,
 
 }: ExpandableClearanceStepCardProps) {
+
+  // Initialize state with existing submitted requirements
+  React.useEffect(() => {
+    const initialComments: Record<string, string> = {};
+    const initialCheckboxes: Record<string, boolean> = {};
+    
+    requirements.forEach((req) => {
+      if (req.submitted && req.requestId) {
+        // This requirement was already submitted
+        initialCheckboxes[req.title] = true;
+        // Use the actual submission notes from the API
+        initialComments[req.title] = req.submissionNotes || "Submitted via clearance system";
+      } else if (req.completed) {
+        // This requirement was approved
+        initialCheckboxes[req.title] = true;
+        initialComments[req.title] = req.submissionNotes || "Approved";
+      }
+    });
+    
+    setSavedComments(initialComments);
+    setCheckboxStates(initialCheckboxes);
+  }, [requirements]);
 
   const [savedComments, setSavedComments] = React.useState<Record<string, string>>({});
   const [checkboxStates, setCheckboxStates] = React.useState<Record<string, boolean>>({});
@@ -3796,45 +3822,48 @@ export function ExpandableClearanceStepCard({
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
-                onClick={() => {
-                  // Save the comment and check the checkbox
-                  setSavedComments(prev => ({ ...prev, [showConfirmDialog]: pendingComment }));
-                  setCheckboxStates(prev => ({ ...prev, [showConfirmDialog]: true }));
-                  setShowConfirmDialog(null);
-                  
-                  // Make API call to submit ClearanceRequest
-                  const submitClearanceRequest = async () => {
-                    try {
-                      const response = await fetch('/admin/xu-faculty-clearance/api/faculty/submit-requirement', {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.getAttribute('value') || ''
-                        },
-                        body: JSON.stringify({
-                          requirementTitle: showConfirmDialog,
-                          comment: pendingComment
-                        })
-                      });
-                      
-                      if (!response.ok) {
-                        const errorData = await response.json();
-                        console.error('Failed to submit requirement:', errorData.detail || 'Unknown error');
-                        alert(`Failed to submit: ${errorData.detail || 'Unknown error'}`);
-                      } else {
-                        const result = await response.json();
-                        console.log('Requirement submitted successfully:', result);
-                        // Optionally refresh the page or update state
-                        window.location.reload();
-                      }
-                    } catch (error) {
-                      console.error('Error submitting requirement:', error);
-                      alert('Error submitting requirement. Please try again.');
+                onClick={async () => {
+                  // Make API call to submit ClearanceRequest first
+                  try {
+                    const response = await fetch('/admin/xu-faculty-clearance/api/faculty/submit-requirement', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.getAttribute('value') || ''
+                      },
+                      body: JSON.stringify({
+                        requirementTitle: showConfirmDialog,
+                        comment: pendingComment
+                      })
+                    });
+                    
+                    if (!response.ok) {
+                      const errorData = await response.json();
+                      console.error('Failed to submit requirement:', errorData.detail || 'Unknown error');
+                      alert(`Failed to submit: ${errorData.detail || 'Unknown error'}`);
+                      // Don't update state if submission failed
+                      setShowConfirmDialog(null);
+                      setPendingComment("");
+                    } else {
+                      const result = await response.json();
+                      console.log('Requirement submitted successfully:', result);
+                      // Only update state after successful submission
+                      setSavedComments(prev => ({ ...prev, [showConfirmDialog]: pendingComment }));
+                      setCheckboxStates(prev => ({ ...prev, [showConfirmDialog]: true }));
+                      setShowConfirmDialog(null);
+                      setPendingComment("");
+                      // Show success message with request ID
+                      alert(`Requirement submitted successfully!\nRequest ID: ${result.requestId}`);
+                      // Optionally refresh the page to get updated state
+                      window.location.reload();
                     }
-                  };
-                  
-                  submitClearanceRequest();
-                  setPendingComment("");
+                  } catch (error) {
+                    console.error('Error submitting requirement:', error);
+                    alert('Error submitting requirement. Please try again.');
+                    // Don't update state if submission failed
+                    setShowConfirmDialog(null);
+                    setPendingComment("");
+                  }
                 }}
               >
                 Submit

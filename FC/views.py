@@ -4349,6 +4349,7 @@ def faculty_dashboard_api(request):
                             "submitted": existing_request is not None,
                             "requestId": existing_request.request_id if existing_request else None,
                             "status": existing_request.status if existing_request else None,
+                            "submissionNotes": existing_request.submission_notes if existing_request else None,
                             "required_physical": req.required_physical
                         })
                 
@@ -4524,23 +4525,75 @@ def faculty_submit_requirement_api(request):
 
     # Create the clearance request
     try:
+        # Get department code from faculty's department (not approver's)
+        dept_code = "GEN"  # Default generic code
+        if faculty.department:
+            # Convert department name to code (first 3 letters, uppercase)
+            dept_code = faculty.department.name[:3].upper()
+        
+        # Get term from timeline
+        term_code = "00"  # Default
+        if timeline.term:
+            # Handle different term formats
+            term_lower = timeline.term.lower()
+            if "first" in term_lower:
+                term_code = "01"
+            elif "second" in term_lower:
+                term_code = "02"
+            elif "summer" in term_lower:
+                term_code = "03"
+            elif "intersession" in term_lower:
+                term_code = "03"
+            else:
+                # For terms like "1st Semester", "2nd Semester", etc.
+                if "1st" in term_lower or "1" in term_lower:
+                    term_code = "01"
+                elif "2nd" in term_lower or "2" in term_lower:
+                    term_code = "02"
+                elif "3rd" in term_lower or "3" in term_lower:
+                    term_code = "03"
+                else:
+                    # Fallback to first 2 characters if no pattern matches
+                    term_code = timeline.term[:2].upper()
+        
+        # Get academic year (last 2 digits)
+        year_code = "00"
+        if timeline.academic_year_start:
+            year_code = str(timeline.academic_year_start)[-2:]
+        
+        # Get university ID
+        uni_id = faculty.user.university_id or str(faculty.user.id)
+        
+        # Count existing requests for this faculty to determine the requirement number
+        existing_count = ClearanceRequest.objects.filter(
+            faculty=faculty,
+            clearance_timeline=timeline
+        ).count()
+        
+        # Generate request number with padding (001, 002, etc.)
+        request_number = str(existing_count + 1).zfill(3)
+        
+        # Build the request ID
+        request_id = f"{year_code}{term_code}-{uni_id}-{dept_code}-{request_number}"
+        
         clearance_request = ClearanceRequest.objects.create(
+            request_id=request_id,
             faculty=faculty,
             clearance_timeline=timeline,
             requirement=requirement,
             status=ClearanceRequest.Status.PENDING,
-            submission_notes=comment,
-            submitted_date=timezone.now()
+            submission_notes=comment
         )
         
-        print(f"Created clearance request: {clearance_request.id}")
+        print(f"Created clearance request: {clearance_request.id} with request_id: {request_id}")
         
     except Exception as e:
         print(f"Error creating clearance request: {e}")
-        return JsonResponse({"detail": "Error creating clearance request"}, status=500)
+        return JsonResponse({"detail": f"Error creating clearance request: {str(e)}"}, status=500)
 
     return JsonResponse({
         "id": str(clearance_request.id),
+        "requestId": clearance_request.request_id,
         "requirementTitle": requirement_title,
         "comment": comment,
         "status": "pending",
