@@ -3576,10 +3576,11 @@ export type ClearanceStepCardProps = {
 
 
 export type ClearanceRequirementItem = {
+  id: string;
   title: string;
   description: string;
   completed?: boolean;
-
+  required_physical?: boolean;
 };
 
 
@@ -3739,7 +3740,14 @@ export function ExpandableClearanceStepCard({
                       />
                     </div>
                     <div>
-                      <div className="text-sm font-bold text-foreground">{req.title}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-bold text-foreground">{req.title}</div>
+                        {req.required_physical && (
+                          <Badge variant="secondary" className="text-xs">
+                            Physical Submission
+                          </Badge>
+                        )}
+                      </div>
                       <div className="mt-1 text-sm text-foreground whitespace-pre-line">{req.description}</div>
                       {hasSavedComment ? (
                         <div className="bg-white p-4 border border-black rounded-md mt-3">
@@ -3762,7 +3770,7 @@ export function ExpandableClearanceStepCard({
         <CommentDialog
           open={true}
           onOpenChange={(open) => !open && setShowCommentDialog(null)}
-          title="Submission Message"
+          title={showCommentDialog}
           placeholder="Enter your submission message for this requirement..."
           initialValue=""
           onSubmit={(comment) => {

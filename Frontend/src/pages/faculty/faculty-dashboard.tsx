@@ -34,7 +34,7 @@ export default function Facultydashboard() {
       collapsedType?: "status" | "dropdownOnly" | "locked";
       submittedTo?: string;
       submittedOn?: string;
-      requirements?: Array<{ title: string; description: string; completed?: boolean }>;
+      requirements?: Array<{ id: string; title: string; description: string; completed?: boolean; required_physical?: boolean }>;
     }>;
   }>(null);
 

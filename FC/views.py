@@ -4348,7 +4348,8 @@ def faculty_dashboard_api(request):
                             "completed": existing_request and existing_request.status == ClearanceRequest.Status.APPROVED,
                             "submitted": existing_request is not None,
                             "requestId": existing_request.request_id if existing_request else None,
-                            "status": existing_request.status if existing_request else None
+                            "status": existing_request.status if existing_request else None,
+                            "required_physical": req.required_physical
                         })
                 
                 if applicable_requirements:
@@ -4498,11 +4499,18 @@ def faculty_submit_requirement_api(request):
     if not timeline:
         return JsonResponse({"detail": "No active clearance timeline"}, status=400)
 
-    # Find the requirement by title
+    # Find the requirement by title (case-insensitive search)
     try:
-        requirement = Requirement.objects.get(title=requirement_title)
-    except Requirement.DoesNotExist:
-        return JsonResponse({"detail": "Requirement not found"}, status=404)
+        requirement = Requirement.objects.filter(title__iexact=requirement_title).first()
+        if not requirement:
+            # Log all available requirements for debugging
+            all_requirements = Requirement.objects.all().values_list('title', flat=True)
+            print(f"Available requirements: {list(all_requirements)}")
+            print(f"Looking for: '{requirement_title}'")
+            return JsonResponse({"detail": f"Requirement '{requirement_title}' not found"}, status=404)
+    except Exception as e:
+        print(f"Error finding requirement: {e}")
+        return JsonResponse({"detail": "Error finding requirement"}, status=500)
 
     # Check if a request already exists for this requirement
     existing_request = ClearanceRequest.objects.filter(
@@ -4515,14 +4523,21 @@ def faculty_submit_requirement_api(request):
         return JsonResponse({"detail": "Requirement already submitted"}, status=400)
 
     # Create the clearance request
-    clearance_request = ClearanceRequest.objects.create(
-        faculty=faculty,
-        clearance_timeline=timeline,
-        requirement=requirement,
-        status=ClearanceRequest.Status.PENDING,
-        submission_notes=comment,
-        submitted_date=timezone.now()
-    )
+    try:
+        clearance_request = ClearanceRequest.objects.create(
+            faculty=faculty,
+            clearance_timeline=timeline,
+            requirement=requirement,
+            status=ClearanceRequest.Status.PENDING,
+            submission_notes=comment,
+            submitted_date=timezone.now()
+        )
+        
+        print(f"Created clearance request: {clearance_request.id}")
+        
+    except Exception as e:
+        print(f"Error creating clearance request: {e}")
+        return JsonResponse({"detail": "Error creating clearance request"}, status=500)
 
     return JsonResponse({
         "id": str(clearance_request.id),

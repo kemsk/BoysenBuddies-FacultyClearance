@@ -156,7 +156,7 @@ export function CommentDialog({
       <DialogContent className="w-[420px] max-w-[calc(100vw-3rem)] rounded-xl p-0">
         <div className="rounded-xl bg-background">
           <div className="px-6 pb-4 pt-6">
-            <div className="text-center text-xl font-bold text-foreground mt-4">Borrowed Books Report</div>
+            <div className="text-center text-xl font-bold text-foreground mt-4">{title}</div>
 
             <div className="text-center mt-4">Input your Submission Message for this Requirement</div>
             <div className="mt-4">
