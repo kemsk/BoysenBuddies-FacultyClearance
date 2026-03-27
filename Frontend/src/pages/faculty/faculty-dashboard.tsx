@@ -47,15 +47,14 @@ export default function Facultydashboard() {
       });
   }, []);
 
-  const clearanceCurrent = profile?.clearance.approvedCount ?? 1;
-  const clearanceTotal = profile?.clearance.totalCount ?? 6;
+  const stepsToRender = profile?.steps || [];
+  const clearanceCurrent = profile?.clearance.approvedCount ?? 0;
+  const clearanceTotal = stepsToRender.length > 0 ? stepsToRender.length : 6;
   const clearancePercent =
     clearanceTotal > 0
       ? Math.round((clearanceCurrent / clearanceTotal) * 100)
       : 0;
   const isClearanceApproved = clearancePercent >= 100;
-
-  const stepsToRender = profile?.steps || [];
 
   const [meProfile, setMeProfile] = React.useState<{
     email: string;

@@ -4464,6 +4464,76 @@ def faculty_notifications_api(request):
 
 
 @csrf_exempt
+@faculty_required
+def faculty_submit_requirement_api(request):
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    # Get the authenticated user
+    authenticated_user = _get_authenticated_user(request)
+    if not authenticated_user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    data, parse_err = _parse_json_body(request)
+    if parse_err:
+        return parse_err
+    if not isinstance(data, dict):
+        return JsonResponse({"detail": "Invalid payload"}, status=400)
+
+    requirement_title = (data.get("requirementTitle") or "").strip()
+    comment = (data.get("comment") or "").strip()
+
+    if not requirement_title:
+        return JsonResponse({"detail": "Requirement title is required"}, status=400)
+    if not comment:
+        return JsonResponse({"detail": "Comment is required"}, status=400)
+
+    # Get the faculty member
+    faculty = Faculty.objects.filter(user=authenticated_user).first()
+    if not faculty:
+        return JsonResponse({"detail": "Faculty not found"}, status=404)
+
+    # Get active clearance timeline
+    timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year_start", "-id").first()
+    if not timeline:
+        return JsonResponse({"detail": "No active clearance timeline"}, status=400)
+
+    # Find the requirement by title
+    try:
+        requirement = Requirement.objects.get(title=requirement_title)
+    except Requirement.DoesNotExist:
+        return JsonResponse({"detail": "Requirement not found"}, status=404)
+
+    # Check if a request already exists for this requirement
+    existing_request = ClearanceRequest.objects.filter(
+        faculty=faculty,
+        clearance_timeline=timeline,
+        requirement=requirement
+    ).first()
+    
+    if existing_request:
+        return JsonResponse({"detail": "Requirement already submitted"}, status=400)
+
+    # Create the clearance request
+    clearance_request = ClearanceRequest.objects.create(
+        faculty=faculty,
+        clearance_timeline=timeline,
+        requirement=requirement,
+        status=ClearanceRequest.Status.PENDING,
+        submission_notes=comment,
+        submitted_date=timezone.now()
+    )
+
+    return JsonResponse({
+        "id": str(clearance_request.id),
+        "requirementTitle": requirement_title,
+        "comment": comment,
+        "status": "pending",
+        "submittedDate": clearance_request.submitted_date.isoformat()
+    })
+
+
+@csrf_exempt
 def approver_assistant_approvers_api(request):
     user, err = _require_approver_user(request)
     if err:

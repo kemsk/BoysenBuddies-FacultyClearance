@@ -3619,6 +3619,10 @@ export function ExpandableClearanceStepCard({
 }: ExpandableClearanceStepCardProps) {
 
   const [savedComments, setSavedComments] = React.useState<Record<string, string>>({});
+  const [checkboxStates, setCheckboxStates] = React.useState<Record<string, boolean>>({});
+  const [showCommentDialog, setShowCommentDialog] = React.useState<string | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = React.useState<string | null>(null);
+  const [pendingComment, setPendingComment] = React.useState<string>("");
 
   const isLocked = collapsedType === "locked";
   const effectiveExpanded = expanded && !isLocked;
@@ -3720,32 +3724,27 @@ export function ExpandableClearanceStepCard({
                     className="flex gap-4 rounded-md bg-foregroundLight px-4 py-4"
                   >
                     <div className="mt-1">
-                      <Checkbox variant="success" defaultChecked={req.completed ?? false} />
+                      <Checkbox 
+                        variant="success" 
+                        checked={checkboxStates[req.title] || req.completed || false}
+                        onCheckedChange={(checked) => {
+                          if (checked && !savedComments[req.title]) {
+                            // Show comment dialog for new submissions
+                            setShowCommentDialog(req.title);
+                          } else if (!checked) {
+                            // Allow unchecking
+                            setCheckboxStates(prev => ({ ...prev, [req.title]: false }));
+                          }
+                        }}
+                      />
                     </div>
                     <div>
                       <div className="text-sm font-bold text-foreground">{req.title}</div>
                       <div className="mt-1 text-sm text-foreground whitespace-pre-line">{req.description}</div>
-                      <div className="mb-3 mt-2 flex items-center justify-end">
-                        {!hasSavedComment ? (
-                          <CommentDialog
-                            title="Add Comment"
-                            trigger={
-                              <Button size="sm">
-                                <div className="flex items-center gap-2">
-                                  <img src="WhitePlusIcon.png" /> Add Comment
-                                </div>
-                              </Button>
-                            }
-                            onSubmit={(comment) => {
-                              const trimmed = comment.trim();
-                              if (!trimmed) return;
-                              setSavedComments((prev) => ({ ...prev, [req.title]: trimmed }));
-                            }}
-                          />
-                        ) : null}
-                      </div>
                       {hasSavedComment ? (
-                        <div className="bg-white p-4 border border-black rounded-md">{savedComment}</div>
+                        <div className="bg-white p-4 border border-black rounded-md mt-3">
+                          {savedComment}
+                        </div>
                       ) : null}
                     </div>
                   </div>
@@ -3757,10 +3756,88 @@ export function ExpandableClearanceStepCard({
           </div>
         </CardContent>
       ) : null}
+
+      {/* Comment Dialog for checkbox submission */}
+      {showCommentDialog && (
+        <CommentDialog
+          open={true}
+          onOpenChange={(open) => !open && setShowCommentDialog(null)}
+          title="Submission Message"
+          placeholder="Enter your submission message for this requirement..."
+          initialValue=""
+          onSubmit={(comment) => {
+            setPendingComment(comment.trim());
+            setShowCommentDialog(null);
+            setShowConfirmDialog(showCommentDialog);
+          }}
+        />
+      )}
+      
+      {/* Confirmation Dialog */}
+      {showConfirmDialog && (
+        <AlertDialog open={true} onOpenChange={(open) => !open && setShowConfirmDialog(null)}>
+          <AlertDialogContent className="max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Submission</AlertDialogTitle>
+              <AlertDialogDescription>
+                You are about to SUBMIT '{showConfirmDialog}'. Do you wish to continue?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setShowConfirmDialog(null)}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  // Save the comment and check the checkbox
+                  setSavedComments(prev => ({ ...prev, [showConfirmDialog]: pendingComment }));
+                  setCheckboxStates(prev => ({ ...prev, [showConfirmDialog]: true }));
+                  setShowConfirmDialog(null);
+                  
+                  // Make API call to submit ClearanceRequest
+                  const submitClearanceRequest = async () => {
+                    try {
+                      const response = await fetch('/admin/xu-faculty-clearance/api/faculty/submit-requirement', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.getAttribute('value') || ''
+                        },
+                        body: JSON.stringify({
+                          requirementTitle: showConfirmDialog,
+                          comment: pendingComment
+                        })
+                      });
+                      
+                      if (!response.ok) {
+                        const errorData = await response.json();
+                        console.error('Failed to submit requirement:', errorData.detail || 'Unknown error');
+                        alert(`Failed to submit: ${errorData.detail || 'Unknown error'}`);
+                      } else {
+                        const result = await response.json();
+                        console.log('Requirement submitted successfully:', result);
+                        // Optionally refresh the page or update state
+                        window.location.reload();
+                      }
+                    } catch (error) {
+                      console.error('Error submitting requirement:', error);
+                      alert('Error submitting requirement. Please try again.');
+                    }
+                  };
+                  
+                  submitClearanceRequest();
+                  setPendingComment("");
+                }}
+              >
+                Submit
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </Card>
   );
 }
-
 
 
 export function ClearanceStepCard({

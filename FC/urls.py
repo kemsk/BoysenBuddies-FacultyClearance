@@ -54,6 +54,7 @@ urlpatterns = [
     path('api/ovphe/activity-logs', views.ovphe_activity_logs_api, name='OVPHEActivityLogs'),
     path('api/faculty/dashboard', views.faculty_dashboard_api, name='FacultyDashboard'),
     path('api/faculty/requirements', views.faculty_requirements_api, name='FacultyRequirements'),
+    path('api/faculty/submit-requirement', views.faculty_submit_requirement_api, name='FacultySubmitRequirement'),
     path('api/faculty/notifications', views.faculty_notifications_api, name='FacultyNotifications'),
     path('api/faculty/archived-clearance', views.faculty_archived_clearance_api, name='FacultyArchivedClearance'),
     path('api/faculty/view-clearance', views.faculty_view_clearance_api, name='FacultyViewClearance'),
