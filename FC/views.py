@@ -1604,6 +1604,36 @@ def _to_request_status(value: str | None):
     return "pending"
 
 
+def _can_approver_access_request(user: User, clearance_request: ClearanceRequest) -> bool:
+    """Check if approver has permission to access a specific clearance request"""
+    # Get user's approver profile
+    try:
+        approver_profile = user.approver_profile
+    except AttributeError:
+        return False
+    
+    faculty = clearance_request.faculty
+    requirement = clearance_request.requirement
+    
+    # Check if approver has scope based on their assignment
+    if approver_profile.office and requirement.approver_flow_step.office == approver_profile.office:
+        return True
+    
+    if approver_profile.college:
+        # Check if college matches faculty college or requirement target college
+        if (approver_profile.college == faculty.college or 
+            requirement.target_colleges.filter(id=approver_profile.college.id).exists()):
+            return True
+    
+    if approver_profile.department:
+        # Check if department matches faculty department or requirement target department
+        if (approver_profile.department == faculty.department or 
+            requirement.target_departments.filter(id=approver_profile.department.id).exists()):
+            return True
+    
+    return False
+
+
 def clearance_requests_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
@@ -4341,16 +4371,24 @@ def faculty_dashboard_api(request):
                     if _requirement_applies_to_faculty(req, faculty):
                         # Check if faculty already submitted a request for this requirement
                         existing_request = step_requests.filter(requirement=req).first()
+                        
+                        # Determine the status and whether it needs resubmission
+                        is_approved = existing_request and existing_request.status == ClearanceRequest.Status.APPROVED
+                        is_rejected = existing_request and existing_request.status == ClearanceRequest.Status.REJECTED
+                        is_submitted = existing_request is not None and not is_rejected
+                        
                         applicable_requirements.append({
                             "id": req.id,
                             "title": req.title,
                             "description": req.description or "",
-                            "completed": existing_request and existing_request.status == ClearanceRequest.Status.APPROVED,
-                            "submitted": existing_request is not None,
+                            "completed": is_approved,
+                            "submitted": is_submitted,
                             "requestId": existing_request.request_id if existing_request else None,
                             "status": existing_request.status if existing_request else None,
-                            "submissionNotes": existing_request.submission_notes if existing_request else None,
-                            "required_physical": req.required_physical
+                            "submissionNotes": existing_request.submission_notes if existing_request and not is_rejected else None,
+                            "required_physical": req.required_physical,
+                            "rejected": is_rejected,
+                            "remarks": existing_request.remarks if existing_request and is_rejected else None
                         })
                 
                 if applicable_requirements:
@@ -5640,8 +5678,103 @@ def _serialize_faculty_requirement(requirement):
 def approver_clearance_api(request):
     return JsonResponse({"items": []})
 
+@csrf_exempt
+@approver_required
 def approver_action_api(request):
-    return JsonResponse({"success": True, "message": "Action completed"})
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    try:
+        data = json.loads(request.body.decode("utf-8") or "{}")
+    except Exception:
+        return JsonResponse({"detail": "Invalid JSON"}, status=400)
+
+    request_ids = data.get("request_ids", [])
+    action = data.get("action")  # "approve" or "reject"
+    remarks = data.get("remarks", "")
+
+    if not request_ids or action not in ["approve", "reject"]:
+        return JsonResponse({"detail": "Invalid request data"}, status=400)
+
+    if action == "reject" and not remarks.strip():
+        return JsonResponse({"detail": "Remarks are required for rejection"}, status=400)
+
+    active_timeline = _get_active_timeline()
+    if not active_timeline:
+        return JsonResponse({"detail": "No active clearance timeline"}, status=400)
+
+    # Get all clearance requests
+    clearance_requests = ClearanceRequest.objects.filter(
+        id__in=request_ids,
+        clearance_timeline=active_timeline
+    )
+
+    if len(clearance_requests) != len(request_ids):
+        return JsonResponse({"detail": "Some clearance requests not found"}, status=404)
+
+    # Check if any requests are already processed
+    processed_requests = []
+    for cr in clearance_requests:
+        if cr.status in [ClearanceRequest.Status.APPROVED, ClearanceRequest.Status.REJECTED]:
+            processed_requests.append({
+                "id": str(cr.id),
+                "requestId": cr.request_id,
+                "status": _to_request_status(cr.status),
+                "message": "Request already processed"
+            })
+
+    if processed_requests:
+        return JsonResponse({
+            "detail": f"{len(processed_requests)} request(s) already processed and cannot be modified",
+            "processed_requests": processed_requests
+        }, status=400)
+
+    # Validate permissions for all requests
+    for cr in clearance_requests:
+        if not _can_approver_access_request(user, cr):
+            return JsonResponse({"detail": f"Permission denied for request {cr.request_id}"}, status=403)
+
+    # Process all requests in a transaction
+    with transaction.atomic():
+        updated_requests = []
+        for clearance_request in clearance_requests:
+            old_status = clearance_request.status
+            clearance_request.status = (
+                ClearanceRequest.Status.APPROVED if action == "approve"
+                else ClearanceRequest.Status.REJECTED
+            )
+            clearance_request.approved_by = user
+            clearance_request.approved_date = timezone.now()
+            clearance_request.remarks = remarks
+            clearance_request.save()
+
+            # Log the activity
+            ActivityLog.objects.create(
+                event_type=(
+                    ActivityLog.EventType.APPROVED_CLEARANCE if action == "approve"
+                    else ActivityLog.EventType.REJECTED_CLEARANCE
+                ),
+                user=user,
+                faculty=clearance_request.faculty,
+                requirement=clearance_request.requirement
+            )
+
+            updated_requests.append({
+                "id": str(clearance_request.id),
+                "requestId": clearance_request.request_id,
+                "status": _to_request_status(clearance_request.status),
+                "oldStatus": _to_request_status(old_status)
+            })
+
+    return JsonResponse({
+        "success": True,
+        "message": f"Successfully {action}d {len(updated_requests)} clearance request(s)",
+        "updated_requests": updated_requests
+    })
 
 def approver_assistant_list_api(request):
     return JsonResponse({"items": []})
@@ -5825,8 +5958,96 @@ def assistant_approver_archived_individual_api(request):
         },
     })
 
+@csrf_exempt
+@approver_required
 def approver_individual_approval_api(request):
-    return JsonResponse({"items": []})
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    if request.method == "GET":
+        # Get individual clearance request details
+        request_id = request.GET.get("request_id")
+        if not request_id:
+            return JsonResponse({"detail": "Request ID required"}, status=400)
+        
+        try:
+            clearance_request = ClearanceRequest.objects.get(
+                id=request_id,
+                clearance_timeline=_get_active_timeline()
+            )
+        except ClearanceRequest.DoesNotExist:
+            return JsonResponse({"detail": "Clearance request not found"}, status=404)
+        
+        # Validate approver has permission to view this request
+        if not _can_approver_access_request(user, clearance_request):
+            return JsonResponse({"detail": "Permission denied"}, status=403)
+        
+        return JsonResponse(_serialize_assistant_individual_request(clearance_request))
+    
+    elif request.method == "POST":
+        # Update clearance request status (approve/reject)
+        try:
+            data = json.loads(request.body.decode("utf-8") or "{}")
+        except Exception:
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
+        
+        request_id = data.get("request_id")
+        action = data.get("action")  # "approve" or "reject"
+        remarks = data.get("remarks", "")
+        
+        if not request_id or action not in ["approve", "reject"]:
+            return JsonResponse({"detail": "Invalid request data"}, status=400)
+        
+        try:
+            clearance_request = ClearanceRequest.objects.get(
+                id=request_id,
+                clearance_timeline=_get_active_timeline()
+            )
+        except ClearanceRequest.DoesNotExist:
+            return JsonResponse({"detail": "Clearance request not found"}, status=404)
+        
+        # Validate approver has permission to approve this request
+        if not _can_approver_access_request(user, clearance_request):
+            return JsonResponse({"detail": "Permission denied"}, status=403)
+        
+        # Check if request is already processed
+        if clearance_request.status in [ClearanceRequest.Status.APPROVED, ClearanceRequest.Status.REJECTED]:
+            return JsonResponse({
+                "detail": "This request has already been processed and cannot be modified",
+                "current_status": _to_request_status(clearance_request.status)
+            }, status=400)
+        
+        # Update the clearance request
+        with transaction.atomic():
+            clearance_request.status = (
+                ClearanceRequest.Status.APPROVED if action == "approve" 
+                else ClearanceRequest.Status.REJECTED
+            )
+            clearance_request.approved_by = user
+            clearance_request.approved_date = timezone.now()
+            clearance_request.remarks = remarks
+            clearance_request.save()
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                event_type=(
+                    ActivityLog.EventType.APPROVED_CLEARANCE if action == "approve"
+                    else ActivityLog.EventType.REJECTED_CLEARANCE
+                ),
+                user=user,
+                faculty=clearance_request.faculty,
+                requirement=clearance_request.requirement
+            )
+        
+        return JsonResponse({
+            "success": True,
+            "message": f"Clearance request {action}d successfully",
+            "status": _to_request_status(clearance_request.status)
+        })
+    
+    else:
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
 
 # Assistant Approver endpoints
 @assistant_required

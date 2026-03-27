@@ -354,6 +354,16 @@ function App() {
         }
         {
           <Route
+            path="/approver-individual-approval"
+            element={
+              <ProtectedRoute allowedRoles={[3]}>
+                <ApproverIndividualApproval />
+              </ProtectedRoute>
+            }
+          />
+        }
+        {
+          <Route
             path="/approver-clearance"
             element={
               <ProtectedRoute allowedRoles={[3]}>

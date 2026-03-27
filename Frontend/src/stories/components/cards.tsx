@@ -671,6 +671,93 @@ export function ClearanceRequestsCard({
   getItemHref,
 }: ClearanceRequestsCardProps) {
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set());
+  const [loading, setLoading] = React.useState(false);
+
+  const handleBulkApprove = async () => {
+    if (selectedIds.size === 0) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch("/admin/xu-faculty-clearance/api/approver/action", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken") || "",
+        },
+        body: JSON.stringify({
+          request_ids: Array.from(selectedIds),
+          action: "approve",
+          remarks: "",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to approve: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log("Bulk approve successful:", result);
+      
+      // Refresh the page to show updated status
+      window.location.reload();
+    } catch (err) {
+      console.error("Error approving:", err);
+      alert(err instanceof Error ? err.message : "Failed to approve requests");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkReject = async (reason: string) => {
+    if (selectedIds.size === 0) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch("/admin/xu-faculty-clearance/api/approver/action", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken") || "",
+        },
+        body: JSON.stringify({
+          request_ids: Array.from(selectedIds),
+          action: "reject",
+          remarks: reason,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to reject: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log("Bulk reject successful:", result);
+      
+      // Refresh the page to show updated status
+      window.location.reload();
+    } catch (err) {
+      console.error("Error rejecting:", err);
+      alert(err instanceof Error ? err.message : "Failed to reject requests");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper function to get CSRF token
+  function getCookie(name: string): string {
+    let cookieValue = "";
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + "=")) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
 
   return (
     <Card className={cn("overflow-hidden", className)}>
@@ -701,13 +788,12 @@ export function ClearanceRequestsCard({
                         type="button"
                         variant="destructive"
                         className="h-7 rounded-md px-3 text-sm font-semibold"
+                        disabled={loading}
                       >
                         Reject
                       </Button>
                     }
-                    onReject={() => {
-                      // intentionally left blank; user can wire API/state later
-                    }}
+                    onReject={handleBulkReject}
                   />
                   <ApproveConfirmDialog
                     count={selectedIds.size}
@@ -715,15 +801,14 @@ export function ClearanceRequestsCard({
                       <Button
                         type="button"
                         className="h-7 rounded-l bg-[hsl(var(--success))] px-2 text-sm font-semibold text-white hover:bg-[hsl(var(--success))]/90"
+                        disabled={loading}
                       >
                         <div className="flex items-center gap-2">
                           <Check className="h-4 w-4" /> Approve
                         </div>
                       </Button>
                     }
-                    onApprove={() => {
-                      // intentionally left blank; user can wire API/state later
-                    }}
+                    onApprove={handleBulkApprove}
                   />
                 </div>
               ) : null}
@@ -3585,6 +3670,8 @@ export type ClearanceRequirementItem = {
   status?: string;
   submissionNotes?: string;
   required_physical?: boolean;
+  rejected?: boolean;
+  remarks?: string;
 };
 
 
@@ -3629,8 +3716,8 @@ export function ExpandableClearanceStepCard({
     const initialCheckboxes: Record<string, boolean> = {};
     
     requirements.forEach((req) => {
-      if (req.submitted && req.requestId) {
-        // This requirement was already submitted
+      if (req.submitted && req.requestId && !req.rejected) {
+        // This requirement was already submitted and not rejected
         initialCheckboxes[req.title] = true;
         // Use the actual submission notes from the API
         initialComments[req.title] = req.submissionNotes || "Submitted via clearance system";
@@ -3638,6 +3725,10 @@ export function ExpandableClearanceStepCard({
         // This requirement was approved
         initialCheckboxes[req.title] = true;
         initialComments[req.title] = req.submissionNotes || "Approved";
+      } else if (req.rejected) {
+        // This requirement was rejected - allow resubmission
+        initialCheckboxes[req.title] = false;
+        initialComments[req.title] = ""; // Clear previous submission notes
       }
     });
     
@@ -3748,24 +3839,34 @@ export function ExpandableClearanceStepCard({
                     return (
                   <div
                     key={req.title}
-                    className="flex gap-4 rounded-md bg-foregroundLight px-4 py-4"
+                    className={cn(
+                      "flex gap-4 rounded-md px-4 py-4",
+                      req.rejected ? "bg-red-50 border border-red-200" : "bg-foregroundLight"
+                    )}
                   >
                     <div className="mt-1">
                       <Checkbox 
-                        variant="success" 
+                        variant={req.rejected ? "outline" : "success"} 
                         checked={checkboxStates[req.title] || req.completed || false}
                         onCheckedChange={(checked) => {
+                          const isSubmitted = req.submitted || req.completed;
+                          
+                          // Prevent unchecking if already submitted or approved
+                          if (!checked && isSubmitted) {
+                            return;
+                          }
+                          
                           if (checked && !savedComments[req.title]) {
                             // Show comment dialog for new submissions
                             setShowCommentDialog(req.title);
                           } else if (!checked) {
-                            // Allow unchecking
+                            // Allow unchecking only if not submitted
                             setCheckboxStates(prev => ({ ...prev, [req.title]: false }));
                           }
                         }}
                       />
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <div className="text-sm font-bold text-foreground">{req.title}</div>
                         {req.required_physical && (
@@ -3773,9 +3874,20 @@ export function ExpandableClearanceStepCard({
                             Physical Submission
                           </Badge>
                         )}
+                        {req.rejected && (
+                          <Badge variant="destructive" className="text-xs">
+                            REJECTED - Resubmit Required
+                          </Badge>
+                        )}
                       </div>
                       <div className="mt-1 text-sm text-foreground whitespace-pre-line">{req.description}</div>
-                      {hasSavedComment ? (
+                      {req.rejected && req.remarks && (
+                        <div className="mt-2 p-3 bg-red-100 border border-red-300 rounded text-sm text-red-800">
+                          <div className="font-bold text-red-900 mb-1">Rejection Reason:</div>
+                          {req.remarks}
+                        </div>
+                      )}
+                      {hasSavedComment && !req.rejected ? (
                         <div className="bg-white p-4 border border-black rounded-md mt-3">
                           {savedComment}
                         </div>
