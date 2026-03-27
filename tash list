@@ -1,0 +1,119 @@
+[33m183854c2[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mFeatures/Notification[m[33m, [m[1;31morigin/Features/Notification[m[33m)[m HEAD@{0}: checkout: moving from 5b8886c1c0797547c28f73785c749c1e64bcb78e to Features/Notification
+[33m5b8886c1[m HEAD@{1}: checkout: moving from Patch/login to 5b8886c1
+[33m515202d9[m[33m ([m[1;31morigin/Patch/login[m[33m, [m[1;32mPatch/login[m[33m)[m HEAD@{2}: reset: moving to HEAD
+[33m515202d9[m[33m ([m[1;31morigin/Patch/login[m[33m, [m[1;32mPatch/login[m[33m)[m HEAD@{3}: commit: feat(login): add new login landing page UI
+[33m15f8fee4[m[33m ([m[1;31morigin/Develop[m[33m, [m[1;31morigin/Assistant/View+ApproveorReject[m[33m, [m[1;32mDevelop[m[33m)[m HEAD@{4}: checkout: moving from 15f8fee4f19ccccb7c7ef12a4ca8710ef76c9309 to Patch/login
+[33m15f8fee4[m[33m ([m[1;31morigin/Develop[m[33m, [m[1;31morigin/Assistant/View+ApproveorReject[m[33m, [m[1;32mDevelop[m[33m)[m HEAD@{5}: checkout: moving from Develop to 15f8fee4f19ccccb7c7ef12a4ca8710ef76c9309
+[33m15f8fee4[m[33m ([m[1;31morigin/Develop[m[33m, [m[1;31morigin/Assistant/View+ApproveorReject[m[33m, [m[1;32mDevelop[m[33m)[m HEAD@{6}: pull: Fast-forward
+[33m183854c2[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mFeatures/Notification[m[33m, [m[1;31morigin/Features/Notification[m[33m)[m HEAD@{7}: checkout: moving from Features/Notification to Develop
+[33m183854c2[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mFeatures/Notification[m[33m, [m[1;31morigin/Features/Notification[m[33m)[m HEAD@{8}: checkout: moving from Develop to Features/Notification
+[33m183854c2[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mFeatures/Notification[m[33m, [m[1;31morigin/Features/Notification[m[33m)[m HEAD@{9}: reset: moving to HEAD
+[33m183854c2[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mFeatures/Notification[m[33m, [m[1;31morigin/Features/Notification[m[33m)[m HEAD@{10}: pull: Fast-forward
+[33m19c04f30[m HEAD@{11}: checkout: moving from Feature/activitylogs to Develop
+[33mf595fbce[m[33m ([m[1;31morigin/Feature/activitylogs[m[33m, [m[1;32mFeature/activitylogs[m[33m)[m HEAD@{12}: commit: Update static frontend index asset paths
+[33mf36a2cad[m HEAD@{13}: commit: Changes made
+[33ma0fb6dac[m HEAD@{14}: commit: fixed database column of activity logs
+[33m5477398f[m HEAD@{15}: commit: fix(docker): ensure frontend build has vite during image build
+[33mbf07db3e[m HEAD@{16}: commit: feat(activitylog): add is_superadmin, is_staff, user_role fields
+[33ma764a1ff[m HEAD@{17}: checkout: moving from a764a1ffebfd1fbb5b800fcc96fe68cc14e5a38d to Feature/activitylogs
+[33ma764a1ff[m HEAD@{18}: checkout: moving from Develop to a764a1ffebfd1fbb5b800fcc96fe68cc14e5a38d
+[33m19c04f30[m HEAD@{19}: reset: moving to HEAD
+[33m19c04f30[m HEAD@{20}: reset: moving to 19c04f30ff5386e7ea64e9db958b59ca4341cbf6
+[33mf159104c[m HEAD@{21}: commit: chore: ignore frontend node_modules and vite cache
+[33m0c78ed8f[m[33m ([m[1;31morigin/Feature/Oauth[m[33m)[m HEAD@{22}: checkout: moving from Feature/SessionV2 to Develop
+[33m15322737[m[33m ([m[1;31morigin/Feature/SessionV2[m[33m, [m[1;32mFeature/SessionV2[m[33m)[m HEAD@{23}: checkout: moving from Develop to Feature/SessionV2
+[33m0c78ed8f[m[33m ([m[1;31morigin/Feature/Oauth[m[33m)[m HEAD@{24}: checkout: moving from develop to Develop
+[33m0c78ed8f[m[33m ([m[1;31morigin/Feature/Oauth[m[33m)[m HEAD@{25}: checkout: moving from Feature/SessionV2 to develop
+[33m15322737[m[33m ([m[1;31morigin/Feature/SessionV2[m[33m, [m[1;32mFeature/SessionV2[m[33m)[m HEAD@{26}: commit: feat(session): restore 15-min idle timeout and update related routes
+[33m0c78ed8f[m[33m ([m[1;31morigin/Feature/Oauth[m[33m)[m HEAD@{27}: reset: moving to HEAD
+[33m0c78ed8f[m[33m ([m[1;31morigin/Feature/Oauth[m[33m)[m HEAD@{28}: checkout: moving from Develop to Feature/SessionV2
+[33m0c78ed8f[m[33m ([m[1;31morigin/Feature/Oauth[m[33m)[m HEAD@{29}: reset: moving to HEAD
+[33m0c78ed8f[m[33m ([m[1;31morigin/Feature/Oauth[m[33m)[m HEAD@{30}: pull: Fast-forward
+[33m45ab180b[m HEAD@{31}: checkout: moving from alignment to Develop
+[33m80e146ee[m[33m ([m[1;32malignment[m[33m)[m HEAD@{32}: commit (initial): before switch
+[33m410dee9f[m HEAD@{33}: commit: PATCH: fixed frontend changes - archive clearance routing to all roles
+[33m1cf9525b[m HEAD@{34}: checkout: moving from Patch/Frontendv2 to alignment
+[33md9450ff3[m[33m ([m[1;31morigin/Patch/Frontendv2[m[33m, [m[1;32mPatch/Frontendv2[m[33m)[m HEAD@{35}: commit: fixed buttons for success modal
+[33m02183d95[m HEAD@{36}: commit: PATCH:frontend fixed
+[33m165ac628[m HEAD@{37}: commit: PATCH: Update frontend with flexible back buttons and Django integration
+[33mbf57165f[m HEAD@{38}: commit: PATCH: Login page button fixes - hover effects and styling
+[33m45ab180b[m HEAD@{39}: checkout: moving from develop to Patch/Frontendv2
+[33m45ab180b[m HEAD@{40}: reset: moving to HEAD
+[33m45ab180b[m HEAD@{41}: pull origin Develop: Fast-forward
+[33m845c06bd[m[33m ([m[1;33mtag: [m[1;33mv0.8.0[m[33m)[m HEAD@{42}: checkout: moving from OVPHE/activitylogs to develop
+[33mb9cd7948[m[33m ([m[1;31morigin/OVPHE/activitylogs[m[33m, [m[1;32mOVPHE/activitylogs[m[33m)[m HEAD@{43}: commit: Fix activity logs display for user login events
+[33mde343712[m HEAD@{44}: commit: Fix activity logs display for user login events
+[33m8608b494[m HEAD@{45}: commit: Fix activity logs display - add proper variant mappings and formatting for all event types
+[33m103eb14d[m HEAD@{46}: checkout: moving from Feature/Session to OVPHE/activitylogs
+[33m67be7f0e[m[33m ([m[1;32mFeature/Session[m[33m)[m HEAD@{47}: checkout: moving from Feature/Session to Feature/Session
+[33m67be7f0e[m[33m ([m[1;32mFeature/Session[m[33m)[m HEAD@{48}: checkout: moving from OVPHE/Activitylogs to Feature/Session
+[33m103eb14d[m HEAD@{49}: reset: moving to HEAD
+[33m103eb14d[m HEAD@{50}: checkout: moving from Feature/Session to OVPHE/Activitylogs
+[33m67be7f0e[m[33m ([m[1;32mFeature/Session[m[33m)[m HEAD@{51}: reset: moving to HEAD
+[33m67be7f0e[m[33m ([m[1;32mFeature/Session[m[33m)[m HEAD@{52}: checkout: moving from OVPHE/Activitylogs to Feature/Session
+[33m103eb14d[m HEAD@{53}: reset: moving to HEAD
+[33m103eb14d[m HEAD@{54}: checkout: moving from OVPHE/Activitylogs to OVPHE/Activitylogs
+[33m103eb14d[m HEAD@{55}: checkout: moving from Feature/Session to OVPHE/Activitylogs
+[33m67be7f0e[m[33m ([m[1;32mFeature/Session[m[33m)[m HEAD@{56}: commit: feat: Implement Django idle timeout with React heartbeat integration
+[33m770d882f[m HEAD@{57}: commit: Fix images in header and dashboard - working configuration
+[33m2c74f64a[m HEAD@{58}: reset: moving to HEAD
+[33m2c74f64a[m HEAD@{59}: commit: feat: Implement React ProtectedRoute with Django session authentication
+[33m8ff251e6[m HEAD@{60}: commit: PATCH: - session on both login working
+[33ma55f7b3c[m HEAD@{61}: reset: moving to HEAD
+[33ma55f7b3c[m HEAD@{62}: reset: moving to HEAD
+[33ma55f7b3c[m HEAD@{63}: checkout: moving from Develop to Feature/Session
+[33m845c06bd[m[33m ([m[1;33mtag: [m[1;33mv0.8.0[m[33m)[m HEAD@{64}: reset: moving to HEAD
+[33m845c06bd[m[33m ([m[1;33mtag: [m[1;33mv0.8.0[m[33m)[m HEAD@{65}: reset: moving to origin/Develop
+[33m845c06bd[m[33m ([m[1;33mtag: [m[1;33mv0.8.0[m[33m)[m HEAD@{66}: reset: moving to HEAD
+[33m845c06bd[m[33m ([m[1;33mtag: [m[1;33mv0.8.0[m[33m)[m HEAD@{67}: reset: moving to HEAD
+[33m845c06bd[m[33m ([m[1;33mtag: [m[1;33mv0.8.0[m[33m)[m HEAD@{68}: pull: Fast-forward
+[33m3273ed33[m[33m ([m[1;33mtag: [m[1;33mv0.6.0[m[33m)[m HEAD@{69}: checkout: moving from OVPHE/Activitylogs to Develop
+[33m103eb14d[m HEAD@{70}: commit (initial): feat: complete OVPHE activity logs implementation with all working features
+[33m0c5f9b76[m HEAD@{71}: commit: feat: complete OVPHE activity logs implementation
+[33m2b88cb59[m HEAD@{72}: checkout: moving from OPVHE/Activitylogs to OVPHE/Activitylogs
+[33m2b88cb59[m HEAD@{73}: checkout: moving from ovphe/activitylogs to OPVHE/Activitylogs
+[33m2b88cb59[m HEAD@{74}: commit: feat: complete OVPHE activity logs implementation with working frontend display and Docker deployment
+[33m8a63b8d7[m HEAD@{75}: reset: moving to HEAD~1
+[33mda2094dc[m HEAD@{76}: commit: feat: complete OVPHE activity logs implementation
+[33m8a63b8d7[m HEAD@{77}: checkout: moving from develop to ovphe/activitylogs
+[33m3273ed33[m[33m ([m[1;33mtag: [m[1;33mv0.6.0[m[33m)[m HEAD@{78}: checkout: moving from ovphe/activitylogs to develop
+[33m8a63b8d7[m HEAD@{79}: reset: moving to HEAD
+[33m8a63b8d7[m HEAD@{80}: commit: feat: update activity logs display for OVPHE guideline events
+[33mc8174e59[m HEAD@{81}: commit: feat: complete activity logging system for OVPHE operations
+[33m1d2e150e[m HEAD@{82}: checkout: moving from Feature/session to ovphe/activitylogs
+[33ma55f7b3c[m HEAD@{83}: checkout: moving from ovphe/activitylogs to Feature/session
+[33m1d2e150e[m HEAD@{84}: checkout: moving from Feature/session to ovphe/activitylogs
+[33ma55f7b3c[m HEAD@{85}: checkout: moving from OVPHE/Activitylogs to Feature/session
+[33m1d2e150e[m HEAD@{86}: commit: database table activity logs
+[33ma55f7b3c[m HEAD@{87}: checkout: moving from Feature/Session to OVPHE/Activitylogs
+[33ma55f7b3c[m HEAD@{88}: reset: moving to HEAD
+[33ma55f7b3c[m HEAD@{89}: reset: moving to HEAD
+[33ma55f7b3c[m HEAD@{90}: reset: moving to a55f7b3c888b22f164b8e1c1c79c4fd83c686239
+[33ma55f7b3c[m HEAD@{91}: checkout: moving from OVPHE/Activitylogs to Feature/Session
+[33ma55f7b3c[m HEAD@{92}: checkout: moving from Feature/Session to OVPHE/Activitylogs
+[33ma55f7b3c[m HEAD@{93}: checkout: moving from OVPHE/Activitylogs to Feature/Session
+[33ma55f7b3c[m HEAD@{94}: commit: PATCH: Fix Google OAuth session management and logout functionality
+[33m51a281f4[m HEAD@{95}: checkout: moving from Develop to OVPHE/Activitylogs
+[33m3273ed33[m[33m ([m[1;33mtag: [m[1;33mv0.6.0[m[33m)[m HEAD@{96}: checkout: moving from OVPHE/Activitylogs to Develop
+[33m51a281f4[m HEAD@{97}: commit: feat: add OVPHE activity logs tracking
+[33m3273ed33[m[33m ([m[1;33mtag: [m[1;33mv0.6.0[m[33m)[m HEAD@{98}: checkout: moving from Develop to OVPHE/Activitylogs
+[33m3273ed33[m[33m ([m[1;33mtag: [m[1;33mv0.6.0[m[33m)[m HEAD@{99}: reset: moving to origin/Develop
+[33m3273ed33[m[33m ([m[1;33mtag: [m[1;33mv0.6.0[m[33m)[m HEAD@{100}: checkout: moving from Develop to Develop
+[33m3273ed33[m[33m ([m[1;33mtag: [m[1;33mv0.6.0[m[33m)[m HEAD@{101}: reset: moving to origin/Develop
+[33m3273ed33[m[33m ([m[1;33mtag: [m[1;33mv0.6.0[m[33m)[m HEAD@{102}: checkout: moving from Develop to Develop
+[33m3273ed33[m[33m ([m[1;33mtag: [m[1;33mv0.6.0[m[33m)[m HEAD@{103}: reset: moving to origin/Develop
+[33m3273ed33[m[33m ([m[1;33mtag: [m[1;33mv0.6.0[m[33m)[m HEAD@{104}: checkout: moving from Develop to Develop
+[33m3273ed33[m[33m ([m[1;33mtag: [m[1;33mv0.6.0[m[33m)[m HEAD@{105}: checkout: moving from Develop to Develop
+[33m3273ed33[m[33m ([m[1;33mtag: [m[1;33mv0.6.0[m[33m)[m HEAD@{106}: checkout: moving from 8f2a6cc09ed66bcab117029d32b7cff2e481567d to Develop
+[33m8f2a6cc0[m HEAD@{107}: checkout: moving from OVPHE/Feature/Login to origin/Patch/database
+[33m0eb01ca6[m[33m ([m[1;32mOVPHE/Feature/Login[m[33m)[m HEAD@{108}: reset: moving to HEAD
+[33m0eb01ca6[m[33m ([m[1;32mOVPHE/Feature/Login[m[33m)[m HEAD@{109}: pull origin OVPHE/Feature/Login: Fast-forward
+[33m85073834[m HEAD@{110}: reset: moving to HEAD
+[33m85073834[m HEAD@{111}: checkout: moving from Patch/database to OVPHE/Feature/Login
+[33m6098c93e[m[33m ([m[1;32mPatch/database[m[33m)[m HEAD@{112}: commit: chore: dockerize app (compose + nginx + multi-stage build)
+[33m4c99ab09[m HEAD@{113}: commit: PATCH: Add OVPHE/CISO pages and fix role navigation
+[33m86a3ce36[m HEAD@{114}: checkout: moving from Patch/FrontEnd to Patch/database
+[33m42e3e5e8[m[33m ([m[1;32mremote[m[33m, [m[1;32mPatch/FrontEnd[m[33m)[m HEAD@{115}: commit: frontend initial deployment
+[33ma07fe549[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/Staging[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{116}: checkout: moving from Patch/FrontEnd to Patch/FrontEnd
+[33ma07fe549[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/Staging[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{117}: checkout: moving from main to Patch/FrontEnd
+[33ma07fe549[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/Staging[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{118}: clone: from https://github.com/kemsk/BoysenBuddies-FacultyClearance.git

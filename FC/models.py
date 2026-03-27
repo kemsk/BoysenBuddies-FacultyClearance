@@ -536,10 +536,11 @@ class Notification(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="notifications")
     title = models.CharField(max_length=200, null=True, blank=True)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.SUBMITTED)
+    status = models.CharField(max_length=20, choices=Status.choices, null=True, blank=True, default=None)
     body = models.TextField(null=True, blank=True)
     details = models.JSONField(default=list, blank=True)
     is_read = models.BooleanField(default=False)
+    user_role = models.CharField(max_length=100, blank=True, default="") # Store list of role names this notification targets
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

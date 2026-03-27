@@ -913,10 +913,21 @@ def _announcements_api(request, role: str):
         is_active=bool(enabled) if enabled is not None else True,
     )
     try:
-        ActivityLog.objects.create(
-            event_type=ActivityLog.EventType.CREATED_ANNOUNCEMENT,
-            user=admin.user if admin else None,
-            details=[f"Announcement: {title}"] if title else [],
+        notification_body = f"{title}. Check announcements section for more details."
+        notification_details = [f'Announcement title = "{title}"']
+        Notification.objects.bulk_create(
+            [
+                Notification(
+                    user=None,
+                    user_role=target_role,
+                    title="New Announcement",
+                    status=None,
+                    body=notification_body,
+                    details=notification_details,
+                    is_read=False,
+                )
+                for target_role in ["Approver", "CISO", "OVPHE", "Assistant"]
+            ]
         )
     except Exception:
         pass
@@ -3150,7 +3161,9 @@ def ovphe_notifications_api(request):
     if not admin:
         return JsonResponse({"detail": "OVPHE user not found"}, status=404)
 
-    qs = Notification.objects.filter(user=admin.user).order_by("-created_at", "-id")
+    qs = Notification.objects.filter(
+        models.Q(user=admin.user) | models.Q(user_role__istartswith="CISO")
+    ).order_by("-created_at", "-id")
     items = []
     for n in qs:
         items.append(
@@ -3968,7 +3981,9 @@ def faculty_notifications_api(request):
     if not user:
         return JsonResponse({"detail": "Faculty user not found"}, status=404)
 
-    notifications = Notification.objects.filter(user=user).order_by("-created_at", "-id")
+    notifications = Notification.objects.filter(
+        models.Q(user=user) | models.Q(user_role__istartswith="Assistant")
+    ).order_by("-created_at", "-id")
     items = []
     for n in notifications:
         items.append(
@@ -5415,4 +5430,4 @@ def ciso_archived_faculty_download_api(request, archived_id: int):
             return response
             
     except Exception as e:
-        return JsonResponse({"detail": f"Error serving file: {str(e)}"}, status=500)
+        return JsonResponse({"detail": "Error serving file: {str(e)}"}, status=500)
