@@ -124,7 +124,7 @@ export default function ApproverClearance() {
         <div className="mt-6">
           <ClearanceRequestsCard
             items={filteredRequests}
-            getItemHref={(item) => `/approver-individual-approval?request_id=${item.id}`}
+            getItemHref={(item) => `/approver-individual-approval?request_id=${item.requestId}`}
           />
         </div>
 

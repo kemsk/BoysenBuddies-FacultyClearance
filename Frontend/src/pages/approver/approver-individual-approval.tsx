@@ -83,6 +83,12 @@ export default function ApproverIndividualApproval() {
       return;
     }
 
+    // Validate remarks for rejected status
+    if (status === "rejected" && !remarks.trim()) {
+      setError("Remarks are required when rejecting a clearance request");
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
@@ -94,8 +100,8 @@ export default function ApproverIndividualApproval() {
           "X-CSRFToken": getCookie("csrftoken"),
         },
         body: JSON.stringify({
-          request_id: request.item.id,
-          action: status,
+          request_id: request.item.requestId,
+          action: status === "approved" ? "approve" : "reject",
           remarks: remarks,
         }),
       });
@@ -108,7 +114,7 @@ export default function ApproverIndividualApproval() {
       console.log("Save successful:", result);
       
       // Navigate back to clearance list
-      navigate("/approver-action");
+      navigate("/approver-clearance");
     } catch (err) {
       console.error("Error saving:", err);
       setError(err instanceof Error ? err.message : "Failed to save");
@@ -118,7 +124,7 @@ export default function ApproverIndividualApproval() {
   };
 
   const handleCancel = () => {
-    navigate("/approver-action");
+    navigate("/approver-clearance");
   };
 
   // Helper function to get CSRF token
@@ -191,7 +197,14 @@ export default function ApproverIndividualApproval() {
         <div className="mt-2 gap-3">
           <RequestCard
             requestId={item.requestId}
-            name={item.name}
+            employeeId={item.employeeId}
+            SchoolID={item.schoolId}
+            FullName={item.name}
+            name={`Request No. ${item.requestId}`}
+            college={item.college}
+            department={item.department}
+            facultyType={item.facultyType}
+            SchoolEmail={item.schoolEmail}
             status={status}
             onApprove={() => console.log("Approved")}
             onReject={() => console.log("Rejected")}
@@ -199,54 +212,26 @@ export default function ApproverIndividualApproval() {
             />
           
           <div className="mt-5">
-            <div className="bg-white rounded-lg p-6 shadow-sm border">
+            <div className="bg-white rounded-lg p-6 border">
               <h2 className="text-xl font-semibold mb-4">Individual Approval</h2>
               
-              {/* Faculty Information */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Name</label>
-                  <p className="mt-1 text-sm text-gray-900">{item.fullName}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">School ID</label>
-                  <p className="mt-1 text-sm text-gray-900">{item.schoolId}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">XU Email</label>
-                  <p className="mt-1 text-sm text-gray-900">{item.schoolEmail}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Faculty Type</label>
-                  <p className="mt-1 text-sm text-gray-900">{item.facultyType}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">College</label>
-                  <p className="mt-1 text-sm text-gray-900">{item.college}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Department</label>
-                  <p className="mt-1 text-sm text-gray-900">{item.department}</p>
-                </div>
-              </div>
-
               {/* Requirement Information */}
               <div className="mb-6">
                 <h3 className="text-lg font-medium mb-3">Requirement Details</h3>
                 <div className="bg-gray-50 p-4 rounded">
                   <div className="mb-2">
-                    <label className="block text-sm font-medium text-gray-700">Requirement Name</label>
-                    <p className="mt-1 text-sm text-gray-900">{item.requirementName}</p>
+                    <label className="block text-sm font-medium text-foreground">Requirement Name</label>
+                    <p className="mt-1 text-sm text-foreground">{item.requirementName}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Submission Notes</label>
-                    <div className="mt-1 p-3 bg-white border rounded text-sm text-gray-900">
+                    <label className="block text-sm font-medium text-foreground">Submission Notes</label>
+                    <div className="mt-1 p-3 bg-white border rounded text-sm text-foreground">
                       {item.submissionNotes || "No notes provided"}
                     </div>
                   </div>
                   {item.submissionLink && (
                     <div className="mt-2">
-                      <label className="block text-sm font-medium text-gray-700">Submission Link</label>
+                      <label className="block text-sm font-medium text-foreground">Submission Link</label>
                       <a 
                         href={item.submissionLink} 
                         target="_blank" 
@@ -298,16 +283,24 @@ export default function ApproverIndividualApproval() {
 
               {/* Remarks */}
               <div className="mb-6">
-                <h3 className="text-lg font-medium mb-3">Remarks</h3>
+                <h3 className="text-lg font-medium mb-3">
+                  Remarks 
+                  {status === "rejected" && <span className="text-red-500 ml-1">*</span>}
+                </h3>
                 <Textarea
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
-                  placeholder="Input your remarks here"
+                  placeholder={status === "rejected" ? "Remarks are required when rejecting..." : "Input your remarks here"}
                   className="min-h-[100px]"
                   disabled={isDisabled}
                 />
+                {status === "rejected" && !remarks.trim() && (
+                  <div className="mt-2 text-sm text-red-600">
+                    Remarks are required when rejecting a clearance request
+                  </div>
+                )}
                 {isProcessed && (
-                  <div className="mt-2 text-sm text-gray-500">
+                  <div className="mt-2 text-sm text-foreground">
                     Remarks cannot be modified for processed requests.
                   </div>
                 )}

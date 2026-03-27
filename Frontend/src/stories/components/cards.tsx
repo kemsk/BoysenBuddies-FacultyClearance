@@ -692,7 +692,9 @@ export function ClearanceRequestsCard({
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to approve: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.detail || errorData.message || `Failed to approve: ${response.statusText}`;
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
@@ -727,7 +729,15 @@ export function ClearanceRequestsCard({
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to reject: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.detail || errorData.message || `Failed to reject: ${response.statusText}`;
+        if (errorData.detail) {
+          throw new Error(`Failed to reject: ${errorData.detail}`);
+        } else if (errorData.message) {
+          throw new Error(`Failed to reject: ${errorData.message}`);
+        } else {
+          throw new Error(`Failed to reject: ${response.statusText}`);
+        }
       }
 
       const result = await response.json();
@@ -913,15 +923,15 @@ export type RequestCardProps = {
 };
 
 export function RequestCard({
-  requestId = "REQ-2025-001",
-  employeeId = "2005123456789",
-  SchoolID = "2005123456789",
-  FullName = "Alexander H. Hamilton",
-  name = "Request No. 2526-001",
-  college = "College of Computer Studies",
-  department = "Information Technology",
-  facultyType = "Full-time Faculty (On Probation)",
-  SchoolEmail = "ahamilton@xu.edu.ph",
+  requestId,
+  employeeId,
+  SchoolID,
+  FullName,
+  name,
+  college,
+  department,
+  facultyType,
+  SchoolEmail,
   className,
   onApprove,
   onReject,
@@ -945,32 +955,29 @@ export function RequestCard({
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3 px-4 py-6 bg-primary">
               <div className="min-w-0 flex-1 text-white font-bold text-center text-2xl">
-                  {name}
+                {name}
               </div>
             </div>
 
             <div className=" grid grid-cols-[100px_1fr] gap-x-3 gap-y-2 text-sm p-6">
-              <div className="font-bold text-black">School ID</div>
-              <div className="text-black">{SchoolID}</div>
+              <div className="font-bold text-foreground">School ID</div>
+              <div className="text-foreground">{SchoolID}</div>
               
-              <div className="font-bold text-black">Full Name</div>
-              <div className="text-black">{FullName}</div>
+              <div className="font-bold text-foreground">Full Name</div>
+              <div className="text-foreground">{FullName}</div>
               
-              <div className="font-bold text-black">College</div>
-              <div className="text-black">{college}</div>
+              <div className="font-bold text-foreground">College</div>
+              <div className="text-foreground">{college}</div>
               
-              <div className="font-bold text-black">Department</div>
-              <div className="text-black">{department}</div>
+              <div className="font-bold text-foreground">Department</div>
+              <div className="text-foreground">{department}</div>
               
-              <div className="font-bold text-black">Faculty Type</div>
-              <div className="text-black">{facultyType}</div>
+              <div className="font-bold text-foreground">Faculty Type</div>
+              <div className="text-foreground">{facultyType}</div>
               
-              <div className="font-bold text-black">SchoolEmail</div>
-              <div className="text-black">{SchoolEmail}</div>
-              
+              <div className="font-bold text-foreground">School Email</div>
+              <div className="text-foreground">{SchoolEmail}</div>
             </div>
-
-
           </div>
           <Divider orientation="vertical" className="h-auto self-stretch" />
         </div>
@@ -997,17 +1004,17 @@ export function RequirementApprovalCard({
     <div className="rounded-xl border bg-card text-card-foreground shadow border-muted-foreground/20">
         <div className="space-y-4 p-6">
           <div>
-            <div className="text-xl text-center text-black font-bold mt-1">{requirementName}</div>
+            <div className="text-xl text-center text-foreground font-bold mt-1">{requirementName}</div>
           </div>
           
           <div>
             <div className="text-md font-bold text-foreground">Submission Notes</div>
-            <div className="text-sm text-black mt-3 p-3 border border-foreground rounded-md pb-">{submissionNotes}</div>
+            <div className="text-sm text-foreground mt-3 p-3 border border-foreground rounded-md pb-">{submissionNotes}</div>
           </div>
           
           <div>
             <div className="text-md font-bold text-foreground"></div>
-            <div className="text-sm text-black mt-1"></div>
+            <div className="text-sm text-foreground mt-1"></div>
           </div>
         </div>
 
@@ -1021,10 +1028,10 @@ export function RequirementApprovalCard({
               <div className="flex items-center gap-2">
                 
                 <input type="radio" name="status" value="approved" id="approved" className="h-4 w-4 text-blue-600" />
-                <label htmlFor="approved" className="text-sm">Approved</label>
+                <label htmlFor="approved" className="text-sm text-foreground">Approved</label>
                 
                 <input type="radio" name="status" value="rejected" id="rejected" className="h-4 w-4 text-blsck bg-black" />
-                <label htmlFor="rejected" className="text-sm">Rejected</label>
+                <label htmlFor="rejected" className="text-sm text-foreground">Rejected</label>
               </div>
             </div>
           </div>
