@@ -46,6 +46,7 @@ export default function RequirementList() {
   const [requirements, setRequirements] = React.useState<Requirement[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [editingRequirement, setEditingRequirement] = React.useState<Requirement | null>(null);
+  const [pendingChanges, setPendingChanges] = React.useState<any[]>([]);
 
   // Fetch requirements from API
   const fetchRequirements = React.useCallback(async () => {
@@ -64,7 +65,18 @@ export default function RequirementList() {
 
   React.useEffect(() => {
     fetchRequirements();
+    // Don't load pending changes on refresh - only keep them in local storage
+    // This ensures page shows saved state, not pending state
   }, [fetchRequirements]);
+
+  // Update local storage when pending changes change
+  React.useEffect(() => {
+    if (pendingChanges.length > 0) {
+      localStorage.setItem('pendingRequirementChanges', JSON.stringify(pendingChanges));
+    } else {
+      localStorage.removeItem('pendingRequirementChanges');
+    }
+  }, [pendingChanges]);
 
   // Auto-open edit dialog when editingRequirement is set
   React.useEffect(() => {
@@ -78,89 +90,105 @@ export default function RequirementList() {
   }, [editingRequirement]);
 
   const handleAddRequirement = async (payload: any) => {
-    try {
-      const response = await fetch("/admin/xu-faculty-clearance/api/approver/requirement-list", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: payload.title,
-          description: payload.description,
-          physicalSubmission: payload.physicalSubmission,
-          recipientScope: payload.recipientScope || "individual",
-          targetColleges: payload.targetColleges || [],
-          targetDepartments: payload.targetDepartments || [],
-          targetOffices: payload.targetOffices || [],
-          targetFaculty: payload.targetFaculty || [],
-        }),
-      });
+    // Create temporary requirement for immediate display
+    const tempId = Date.now(); // Use number directly for consistency
+    const tempRequirement: Requirement = {
+      id: tempId,
+      title: payload.title,
+      description: payload.description,
+      physicalSubmission: payload.physicalSubmission,
+      recipients: payload.recipientScope === "individual" ? "Individual Faculty" : `${payload.targetColleges?.length || 0} colleges, ${payload.targetDepartments?.length || 0} departments`,
+      lastUpdated: new Date().toISOString(),
+      createdBy: "Current User",
+      clearanceTimeline: "Pending",
+      recipientScope: payload.recipientScope || "individual",
+      targetColleges: payload.targetColleges || [],
+      targetDepartments: payload.targetDepartments || [],
+      targetOffices: payload.targetOffices || [],
+      targetFaculty: payload.targetFaculty || [],
+    };
 
-      if (response.ok) {
-        fetchRequirements();
-      } else {
-        const error = await response.json();
-        alert(`Failed to create requirement: ${error.detail || "Unknown error"}`);
-      }
-    } catch (error) {
-      console.error("Failed to create requirement:", error);
-      alert("Failed to create requirement. Please try again.");
-    }
+    // Store in local storage as pending change
+    const pendingChange = {
+      type: 'create',
+      id: tempId,
+      data: tempRequirement,
+      timestamp: new Date().toISOString()
+    };
+    setPendingChanges(prev => [...prev, pendingChange]);
   };
 
   const handleEditRequirement = async (payload: any) => {
     if (!editingRequirement) return;
 
-    try {
-      const response = await fetch(`/admin/xu-faculty-clearance/api/approver/requirement-list/${editingRequirement.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: payload.title,
-          description: payload.description,
-          physicalSubmission: payload.physicalSubmission,
-          recipientScope: payload.recipientScope || editingRequirement.recipientScope,
-          targetColleges: payload.targetColleges || editingRequirement.targetColleges,
-          targetDepartments: payload.targetDepartments || editingRequirement.targetDepartments,
-          targetOffices: payload.targetOffices || editingRequirement.targetOffices,
-          targetFaculty: payload.facultyIds || editingRequirement.targetFaculty,
-        }),
-      });
-
-      if (response.ok) {
-        fetchRequirements();
-      } else {
-        const error = await response.json();
-        alert(`Failed to update requirement: ${error.detail || "Unknown error"}`);
-      }
-    } catch (error) {
-      console.error("Failed to update requirement:", error);
-      alert("Failed to update requirement. Please try again.");
-    }
+    // Store in local storage as pending change
+    const pendingChange = {
+      type: 'update',
+      id: editingRequirement.id,
+      data: {
+        title: payload.title,
+        description: payload.description,
+        physicalSubmission: payload.physicalSubmission,
+        recipientScope: payload.recipientScope || editingRequirement.recipientScope,
+        targetColleges: payload.targetColleges || editingRequirement.targetColleges,
+        targetDepartments: payload.targetDepartments || editingRequirement.targetDepartments,
+        targetOffices: payload.targetOffices || editingRequirement.targetOffices,
+        targetFaculty: payload.facultyIds || editingRequirement.targetFaculty,
+      },
+      timestamp: new Date().toISOString()
+    };
+    setPendingChanges(prev => [...prev, pendingChange]);
   };
 
   const handleDeleteRequirement = async (requirement: Requirement) => {
-    if (!window.confirm(`Are you sure you want to delete "${requirement.title}"?`)) {
-      return;
-    }
+    // Store in local storage as pending change
+    const pendingChange = {
+      type: 'delete',
+      id: requirement.id,
+      data: requirement,
+      timestamp: new Date().toISOString()
+    };
+    setPendingChanges(prev => [...prev, pendingChange]);
+  };
+
+  // Function to commit all pending changes
+  const commitPendingChanges = async () => {
+    if (pendingChanges.length === 0) return;
 
     try {
-      const response = await fetch(`/admin/xu-faculty-clearance/api/approver/requirement-list/${requirement.id}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        fetchRequirements();
-        alert("Requirement deleted successfully");
-      } else {
-        const error = await response.json();
-        alert(`Failed to delete requirement: ${error.detail || "Unknown error"}`);
+      // Process each pending change
+      for (const change of pendingChanges) {
+        if (change.type === 'create') {
+          await fetch("/admin/xu-faculty-clearance/api/approver/requirement-list", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(change.data),
+          });
+        } else if (change.type === 'update') {
+          await fetch(`/admin/xu-faculty-clearance/api/approver/requirement-list/${change.id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(change.data),
+          });
+        } else if (change.type === 'delete') {
+          await fetch(`/admin/xu-faculty-clearance/api/approver/requirement-list/${change.id}`, {
+            method: "DELETE",
+          });
+        }
       }
+
+      // Clear pending changes
+      setPendingChanges([]);
+      
+      // Refresh requirements
+      fetchRequirements();
     } catch (error) {
-      console.error("Failed to delete requirement:", error);
-      alert("Failed to delete requirement. Please try again.");
+      console.error("Failed to commit pending changes:", error);
+      // Error handling without JavaScript alert
     }
   };
 
@@ -191,7 +219,14 @@ export default function RequirementList() {
           </BreadcrumbList>
         </Breadcrumb>
 
-        <div className="mb-3 mt-2 flex items-center justify-end">
+        <div className="mb-3 mt-2 flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            {pendingChanges.length > 0 && (
+              <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-semibold">
+                {pendingChanges.length} pending change{pendingChanges.length > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
           <Button variant="back" size="back" onClick={() => navigate("/approver-action")}> 
             <div className="flex items-center gap-2">
               <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
@@ -215,26 +250,83 @@ export default function RequirementList() {
           <div className="text-center py-8">
             <div className="text-muted-foreground">Loading requirements...</div>
           </div>
-        ) : requirements.length === 0 ? (
+        ) : requirements.length === 0 && pendingChanges.filter(change => change.type === 'create').length === 0 ? (
           <div className="text-center py-8">
             <div className="text-muted-foreground">No requirements found. Create your first requirement above.</div>
           </div>
         ) : (
-          requirements.map((requirement) => (
-            <RequirementEditCard
-              key={requirement.id}
-              title={requirement.title}
-              description={requirement.description}
-              submissionDeadline=""
-              Recipients={requirement.recipients}
-              LastUpdated={requirement.lastUpdated}
-              CreatedBy={requirement.createdBy}
-              ClearanceTimeline={requirement.clearanceTimeline}
-              physicalSubmission={requirement.physicalSubmission}
-              onEdit={() => setEditingRequirement(requirement)}
-              onDelete={() => handleDeleteRequirement(requirement)}
-            />
-          ))
+          (() => {
+            // Combine existing requirements with pending creates
+            const displayRequirements = [...requirements];
+            
+            // Add pending creates
+            const pendingCreates = pendingChanges
+              .filter(change => change.type === 'create')
+              .map(change => change.data as Requirement);
+            
+            const allRequirements = [...displayRequirements, ...pendingCreates];
+            
+            return allRequirements.map((requirement) => {
+              const pendingChange = pendingChanges.find(change => 
+                (change.type === 'update' && change.id === requirement.id) ||
+                (change.type === 'delete' && change.id === requirement.id) ||
+                (change.type === 'create' && change.id === requirement.id)
+              );
+              
+              const isPendingDelete = pendingChange?.type === 'delete';
+              const isPendingUpdate = pendingChange?.type === 'update';
+              const isPendingCreate = pendingChange?.type === 'create';
+              
+              // Show items marked for deletion with special styling
+              if (isPendingDelete) {
+                return (
+                  <div key={requirement.id} className="opacity-40">
+                    <RequirementEditCard
+                      title={requirement.title}
+                      description={requirement.description}
+                      submissionDeadline=""
+                      Recipients={requirement.recipients}
+                      LastUpdated={requirement.lastUpdated}
+                      CreatedBy={requirement.createdBy}
+                      ClearanceTimeline={requirement.clearanceTimeline}
+                      physicalSubmission={requirement.physicalSubmission}
+                      onEdit={() => {}} // Disable edit for pending deletions
+                      onDelete={() => {}} // Disable delete for pending deletions
+                    />
+                    <div className="mt-2 text-center">
+                      <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-semibold">
+                        Pending Delete
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+              
+              return (
+                <div key={requirement.id} className={(isPendingUpdate || isPendingCreate) ? 'opacity-60' : ''}>
+                  <RequirementEditCard
+                    title={isPendingUpdate ? pendingChange.data.title : requirement.title}
+                    description={isPendingUpdate ? pendingChange.data.description : requirement.description}
+                    submissionDeadline=""
+                    Recipients={isPendingUpdate ? pendingChange.data.recipients : requirement.recipients}
+                    LastUpdated={isPendingUpdate ? pendingChange.data.lastUpdated : requirement.lastUpdated}
+                    CreatedBy={isPendingUpdate ? pendingChange.data.createdBy : requirement.createdBy}
+                    ClearanceTimeline={isPendingUpdate ? pendingChange.data.clearanceTimeline : requirement.clearanceTimeline}
+                    physicalSubmission={isPendingUpdate ? pendingChange.data.physicalSubmission : requirement.physicalSubmission}
+                    onEdit={() => setEditingRequirement(requirement)}
+                    onDelete={() => handleDeleteRequirement(requirement)}
+                  />
+                  {(isPendingUpdate || isPendingCreate) && (
+                    <div className="mt-2 text-center">
+                      <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-semibold">
+                        Pending {isPendingCreate ? 'Create' : 'Update'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            });
+          })()
         )}
 
         {showTrueAgreement ? (
@@ -247,7 +339,7 @@ export default function RequirementList() {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <SuccessMessageCard
               className="max-w"
-              message="Agreement confirmed."
+              message="Agreement confirmed and changes saved."
               onContinue={() => {
                 setShowSuccess(false);
                 setShowTrueAgreement(true);
@@ -256,7 +348,23 @@ export default function RequirementList() {
             />
           </div>
         ) : (
-          <AgreementCard onConfirm={() => setShowSuccess(true)} />
+          <>
+            {pendingChanges.length > 0 && (
+              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                <p className="text-sm text-yellow-800">
+                  <span className="font-semibold">{pendingChanges.length} pending change{pendingChanges.length > 1 ? 's' : ''}:</span> Check all terms below to save your changes.
+                </p>
+              </div>
+            )}
+            <AgreementCard 
+              onConfirm={() => {
+                if (pendingChanges.length > 0) {
+                  commitPendingChanges();
+                }
+                setShowSuccess(true);
+              }} 
+            />
+          </>
         )}
        </div>
       </main>
