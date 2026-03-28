@@ -5134,19 +5134,32 @@ def faculty_view_clearance_api(request):
     })
 
 # Approver endpoints
-@approver_required
 def approver_dashboard_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
-    
-    user = getattr(request, "user", None)
-    if not user or not getattr(user, "is_authenticated", False):
+
+    user = _get_authenticated_user(request)
+    if not user:
         return JsonResponse({"detail": "Authentication required"}, status=401)
-    
-    # Check if user is an approver
-    if not user.is_approver():
+
+    # Check if user has Approver role
+    if not user.userrole_set.filter(role__name='Approver', is_active=True).exists():
         return JsonResponse({"detail": "Access denied"}, status=403)
-    
+
+    # Get approver profile information
+    from .models import Approver
+    approver_info = None
+    try:
+        approver = Approver.objects.get(user=user)
+        approver_info = {
+            "approver_type": approver.approver_type,
+            "college": approver.college.name if approver.college else None,
+            "department": approver.department.name if approver.department else None,
+            "office": approver.office.name if approver.office else None,
+        }
+    except Approver.DoesNotExist:
+        approver_info = None
+
     # Get active timeline
     timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year_start", "-id").first()
     
@@ -5159,25 +5172,14 @@ def approver_dashboard_api(request):
             is_active=True
         )
         
-        # Get approver profile
-        from .models import Approver
-        try:
-            approver = Approver.objects.get(user=user)
-            approver_info = {
-                "approver_type": approver.approver_type,
-                "college": approver.college.name if approver.college else None,
-                "department": approver.department.name if approver.department else None,
-                "office": approver.office.name if approver.office else None,
-            }
-            # Filter based on approver's scope
+        # Filter based on approver's scope
+        if approver and approver_info:
             if approver.college:
                 requirements = requirements.filter(target_colleges=approver.college)
             elif approver.department:
                 requirements = requirements.filter(target_departments=approver.department)
             elif approver.office:
                 requirements = requirements.filter(target_offices=approver.office)
-        except Approver.DoesNotExist:
-            approver_info = None
         
         clearance_requests = ClearanceRequest.objects.filter(
             clearance_timeline=timeline,
@@ -5195,14 +5197,22 @@ def approver_dashboard_api(request):
                 "submittedDate": req.submitted_date.strftime("%Y-%m-%d") if req.submitted_date else None,
             })
     
+    timeline_data = None
+    if timeline:
+        academic_year = ""
+        if timeline.academic_year_start is not None and timeline.academic_year_end is not None:
+            academic_year = f"{timeline.academic_year_start}-{timeline.academic_year_end}"
+        
+        timeline_data = {
+            "academicYear": academic_year,
+            "semester": ""
+        }
+    
     return JsonResponse({
         "pendingRequests": pending_requests,
         "pendingCount": len(pending_requests),
         "approverInfo": approver_info,
-        "timeline": {
-            "academicYear": timeline.academic_year_start if timeline else None,
-            "term": timeline.term if timeline else None,
-        }
+        "timeline": timeline_data
     })
 
 # Placeholder implementations for remaining endpoints

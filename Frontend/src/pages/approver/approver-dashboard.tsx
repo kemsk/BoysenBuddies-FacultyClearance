@@ -46,7 +46,7 @@ export default function Approverdashboard() {
         if (data.timeline) {
           setTimeline({
             academicYear: data.timeline.academicYear?.toString() || "",
-            semester: data.timeline.term || "",
+            semester: data.timeline.semester || "",
           });
         }
         if (data.approverInfo) {
