@@ -175,7 +175,7 @@ class AuthService {
           role_name: userData.role_name,
           first_name: userData.first_name,
           last_name: userData.last_name,
-          roles: userData.roles || [userData.role_value] // Support multiple roles
+          roles: userData.roles || [userData.role_value] // Use roles from API response
         }
       };
     } catch (error) {
@@ -403,6 +403,30 @@ class AuthService {
   }
 
   // Get current user's dashboard URL
+  // Update selected role in session
+  async updateSelectedRole(roleValue: number): Promise<{ success: boolean; role_value: number }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/xu-faculty-clearance/api/auth/update-role`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        credentials: 'include',
+        body: JSON.stringify({ role_value: roleValue }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to update role');
+      }
+
+      const result = await response.json();
+      console.log('AUTH_SERVICE: Updated selected role:', result);
+      return result;
+    } catch (error) {
+      console.error('AUTH_SERVICE: Error updating selected role:', error);
+      throw error;
+    }
+  }
+
   async getCurrentUserDashboardUrl(): Promise<string> {
     try {
       const authStatus = await this.getAuthStatus();

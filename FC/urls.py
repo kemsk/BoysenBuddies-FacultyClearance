@@ -8,6 +8,7 @@ urlpatterns = [
     path('api/auth/google', views.google_sign_in_api, name='GoogleSignIn'),
     path('api/auth/heartbeat', views.heartbeat_api, name='Heartbeat'),
     path('api/auth/logout', views.logout_api, name='Logout'),
+    path('api/auth/update-role', views.update_selected_role_api, name='UpdateSelectedRole'),
     path('dashboard', views.dashboard_view, name='Dashboard'),
     path('api/heartbeat', views.heartbeat_api, name='Heartbeat'),
     path('api/idle-check', views.idle_check_api, name='IdleCheck'),

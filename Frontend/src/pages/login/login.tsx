@@ -75,57 +75,39 @@ export default function Login() {
         console.log('LOGIN: Complete auth status:', authStatus);
         console.log('LOGIN: User info from auth status:', authStatus.user_info);
         
-        // Use JWT roles instead of API roles since JWT contains all roles
-        const token = localStorage.getItem('jwt_token');
+        // Use roles from API response instead of JWT token
         let userRoles: (string | number)[] = [authStatus.user_info.role_value]; // fallback
         
-        if (token) {
-          try {
-            const parts = token.split('.');
-            const payload = JSON.parse(atob(parts[1]));
-            console.log('LOGIN: JWT payload from token:', payload);
-            console.log('LOGIN: Roles from JWT payload:', payload.roles);
-            
-            // Use roles from JWT (all roles) instead of API (only primary role)
-            userRoles = payload.roles || [authStatus.user_info.role_value];
-          } catch (e) {
-            console.error('LOGIN: Error parsing JWT:', e);
-          }
+        if (authStatus.user_info.roles && authStatus.user_info.roles.length > 0) {
+          // Use roles from API response (already converted to role values)
+          userRoles = authStatus.user_info.roles;
+          console.log('LOGIN: Using roles from API response:', userRoles);
+        } else {
+          console.log('LOGIN: No roles in API response, using fallback role_value');
         }
         
         console.log('LOGIN: Final user roles to process:', userRoles);
         console.log('LOGIN: Type of userRoles:', typeof userRoles, Array.isArray(userRoles));
         
-        // Convert role names to role values if needed
-        const roleMapping: Record<string, number> = {
-          'CISO': 1,
-          'OVPHE': 2,
-          'APPROVER': 3,
-          'ASSISTANT_APPROVER': 4,
-          'Student Assistant': 4,
-          'STUDENT_ASSISTANT': 4,
-          'Faculty': 5,
-          'FACULTY': 5
-        };
-        
-        // Convert role names to role values
+        // Since API returns role values directly, no conversion needed
         const roleValues = userRoles.map((role: string | number) => {
           console.log('LOGIN: Processing role:', role, 'type:', typeof role);
           if (typeof role === 'string') {
-            const mapped = roleMapping[role] || roleMapping[role.toUpperCase()] || 5;
-            console.log('LOGIN: Mapped string role:', role, '->', mapped);
-            return mapped;
+            const converted = parseInt(role, 10);
+            console.log('LOGIN: Converted string role:', role, '->', converted);
+            return converted;
           }
           console.log('LOGIN: Kept number role:', role);
           return role;
         });
         
-        console.log('LOGIN: Converted role values:', roleValues);
+        console.log('LOGIN: Final role values:', roleValues);
         
         // Find all role objects that match user's roles
         const matchedRoles = allRoles.filter(role => roleValues.includes(role.value));
         console.log('LOGIN: All available roles:', allRoles);
         console.log('LOGIN: Matched roles:', matchedRoles);
+        console.log('LOGIN: Role values includes 3 (APPROVER):', roleValues.includes(3));
         
         if (matchedRoles.length > 0) {
           setUserRoles(matchedRoles);
@@ -144,26 +126,36 @@ export default function Login() {
     loadUserRoles();
   }, [allRoles]);
 
-  const handleRoleSelection = (role: UserRole) => {
+  const handleRoleSelection = async (role: UserRole) => {
     setError("");
     
-    // Store the selected role for the login prompt authentication
-    sessionStorage.setItem('selected_role', JSON.stringify(role));
-    
-    // Redirect directly to dashboard based on selected role
-    const roleDashboardMap: Record<number, string> = {
-      1: '/CISO-dashboard',
-      2: '/OVPHE-dashboard', 
-      3: '/approver-dashboard',
-      4: '/assistant-approver-dashboard',
-      5: '/faculty-dashboard',
-    };
+    try {
+      // Update the selected role in the session first
+      console.log('LOGIN: Updating selected role in session:', role.value);
+      await authService.updateSelectedRole(role.value);
+      
+      // Store the selected role for potential future use
+      sessionStorage.setItem('selected_role', JSON.stringify(role));
+      
+      // Redirect directly to dashboard based on selected role
+      const roleDashboardMap: Record<number, string> = {
+        1: '/CISO-dashboard',
+        2: '/OVPHE-dashboard', 
+        3: '/approver-dashboard',
+        4: '/assistant-approver-dashboard',
+        5: '/faculty-dashboard',
+      };
 
-    const target = roleDashboardMap[role.value] || '/faculty-dashboard';
-    console.log('LOGIN: Redirecting to dashboard:', target);
-    
-    // Redirect to the appropriate dashboard
-    window.location.replace(`http://localhost:8001${target}`);
+      const target = roleDashboardMap[role.value] || '/faculty-dashboard';
+      console.log('LOGIN: Redirecting to dashboard:', target);
+      
+      // Redirect to the appropriate dashboard
+      window.location.replace(`http://localhost:8001${target}`);
+      
+    } catch (error) {
+      console.error('LOGIN: Error updating selected role:', error);
+      setError('Failed to select role. Please try again.');
+    }
   };
 
   return (

@@ -649,6 +649,63 @@ def heartbeat_api(request):
     return JsonResponse(payload)
 
 
+@csrf_exempt
+def update_selected_role_api(request):
+    """API endpoint to update the selected role in session"""
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+    
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+    
+    try:
+        data = json.loads(request.body.decode("utf-8") or "{}")
+        selected_role_value = data.get("role_value")
+        
+        if selected_role_value is None:
+            return JsonResponse({"detail": "Missing role_value"}, status=400)
+        
+        # Verify user has this role
+        user_roles = list(user.get_active_roles().values_list('role__name', flat=True))
+        role_mapping = {
+            'CISO': 1,
+            'OVPHE': 2,
+            'APPROVER': 3,
+            'Approver': 3,
+            'College Admin': 3,
+            'Department Chair': 3,
+            'Office Admin': 3,
+            'ASSISTANT_APPROVER': 4,
+            'Student Assistant': 4,
+            'FACULTY': 5,
+            'Faculty': 5
+        }
+        
+        user_role_values = []
+        for role_name in user_roles:
+            mapped_value = role_mapping.get(role_name)
+            if mapped_value:
+                user_role_values.append(mapped_value)
+        
+        user_role_values = sorted(list(set(user_role_values)))
+        
+        if selected_role_value not in user_role_values:
+            return JsonResponse({"detail": "User does not have this role"}, status=403)
+        
+        # Update session with selected role
+        request.session['user_role_value'] = selected_role_value
+        request.session.modified = True
+        
+        print(f"UPDATE_ROLE: Updated session role_value to {selected_role_value} for user {user.email}")
+        
+        return JsonResponse({"success": True, "role_value": selected_role_value})
+        
+    except Exception as e:
+        print(f"UPDATE_ROLE: Error: {str(e)}")
+        return JsonResponse({"detail": "Internal server error"}, status=500)
+
+
 def me_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
@@ -661,6 +718,35 @@ def me_api(request):
     role_value = get_role_value_for_user(user)
     role_name = get_role_name_for_value(role_value)
 
+    # Get all user roles for role selection functionality
+    user_roles = list(user.get_active_roles().values_list('role__name', flat=True))
+    print(f"DEBUG: User {user.email} has roles: {user_roles}")
+    
+    # Convert role names to role values for frontend compatibility
+    role_mapping = {
+        'CISO': 1,
+        'OVPHE': 2,
+        'APPROVER': 3,
+        'Approver': 3,  # Add this line to match database role name
+        'College Admin': 3,
+        'Department Chair': 3,
+        'Office Admin': 3,
+        'ASSISTANT_APPROVER': 4,
+        'Student Assistant': 4,
+        'FACULTY': 5,
+        'Faculty': 5
+    }
+    
+    user_role_values = []
+    for role_name in user_roles:
+        mapped_value = role_mapping.get(role_name)
+        print(f"DEBUG: Mapping role '{role_name}' to value {mapped_value}")
+        if mapped_value:
+            user_role_values.append(mapped_value)
+    
+    # Remove duplicates and sort
+    user_role_values = sorted(list(set(user_role_values)))
+
     return JsonResponse(
         {
             "email": user.email,
@@ -669,6 +755,7 @@ def me_api(request):
             "middle_name": user.middle_name,
             "last_name": user.last_name,
             "role_value": request.session.get("user_role_value"),
+            "roles": user_role_values,  # Add all role values for frontend
         }
     )
 
