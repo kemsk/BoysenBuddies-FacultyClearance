@@ -4622,6 +4622,83 @@ def approver_assistant_approvers_api(request):
             office_name = (data.get("office") or "").strip()
             assistant_type = (data.get("assistantType") or "student_assistant").strip() or "student_assistant"
             
+            # Get current approver's profile to determine scope
+            from .models import Approver
+            current_approver = None
+            try:
+                current_approver = Approver.objects.get(user=user)
+            except Approver.DoesNotExist:
+                return JsonResponse({"detail": "Approver profile not found"}, status=400)
+            
+            # Check if this is a College Dean (department with "Dean" in title)
+            is_college_dean = False
+            if current_approver.department and "dean" in current_approver.department.name.lower():
+                is_college_dean = True
+                # For College Dean, get the college from their department
+                college = current_approver.department.college
+            
+            # Validation logic based on approver type
+            if is_college_dean:
+                # College Dean logic
+                if not current_approver.department or not current_approver.department.college:
+                    return JsonResponse({"detail": "College Dean must have an assigned department and college"}, status=400)
+                
+                # For College Dean, the college is fixed to their department's college
+                if college_name and college_name.lower() != college.name.lower():
+                    return JsonResponse({"detail": f"College must be {college.name}"}, status=400)
+                
+                # Set college to Dean's college
+                college_name = college.name
+                
+                if assistant_type == "student_assistant":
+                    # Student Assistant: can add anyone from department EXCEPT Dean
+                    if not dept_name:
+                        return JsonResponse({"detail": "Department is required"}, status=400)
+                    
+                    # Validate department belongs to Dean's college
+                    department = Department.objects.filter(
+                        name__iexact=dept_name,
+                        college=college,
+                        is_active=True
+                    ).first()
+                    if not department:
+                        return JsonResponse({"detail": "Department not found in your college"}, status=400)
+                    
+                    # Check if the person being added is a Dean
+                    # We'll validate this after user creation by checking their roles
+                    
+                else:  # admin assistant
+                    # Admin: can add anyone from the department
+                    if not dept_name and not office_name:
+                        return JsonResponse({"detail": "Department or Office is required for Admin assistants"}, status=400)
+                    
+                    if dept_name:
+                        department = Department.objects.filter(
+                            name__iexact=dept_name,
+                            college=college,
+                            is_active=True
+                        ).first()
+                        if not department:
+                            return JsonResponse({"detail": "Department not found in your college"}, status=400)
+                    
+                    if office_name:
+                        office = Office.objects.filter(
+                            name__iexact=office_name,
+                            is_active=True
+                        ).first()
+                        if not office:
+                            return JsonResponse({"detail": "Office not found"}, status=400)
+                            
+            elif current_approver.approver_type == "Department":
+                # Department Chair logic (existing logic should work)
+                pass
+            elif current_approver.approver_type == "Office":
+                # Office Admin logic (existing logic should work)  
+                pass
+            else:
+                return JsonResponse({"detail": "Invalid approver type"}, status=400)
+            
+            # Original validation logic for non-College Dean types
             if assistant_type == "student_assistant":
                 # Student assistant: need both college and department
                 if not college_name:
@@ -4633,41 +4710,43 @@ def approver_assistant_approvers_api(request):
                 if not dept_name and not office_name:
                     return JsonResponse({"detail": "Department or Office is required for Admin assistants"}, status=400)
 
-            # Only look up college if it's provided (for student assistants)
-            college = None
-            if college_name:
-                college = College.objects.filter(name__iexact=college_name, is_active=True).first()
-                if not college:
-                    return JsonResponse({"detail": "College not found"}, status=400)
+            # Skip redundant lookups for College Dean (already done above)
+            if not is_college_dean:
+                # Only look up college if it's provided (for student assistants)
+                college = None
+                if college_name:
+                    college = College.objects.filter(name__iexact=college_name, is_active=True).first()
+                    if not college:
+                        return JsonResponse({"detail": "College not found"}, status=400)
 
-            # Look up department if provided
-            department = None
-            if dept_name:
-                if college:  # Student assistant case
-                    department = Department.objects.filter(
-                        name__iexact=dept_name,
-                        college=college,
+                # Look up department if provided
+                department = None
+                if dept_name:
+                    if college:  # Student assistant case
+                        department = Department.objects.filter(
+                            name__iexact=dept_name,
+                            college=college,
+                            is_active=True,
+                        ).first()
+                        if not department:
+                            return JsonResponse({"detail": "Department not found"}, status=400)
+                    else:  # Admin assistant case - find department by name only
+                        department = Department.objects.filter(
+                            name__iexact=dept_name,
+                            is_active=True,
+                        ).first()
+                        if not department:
+                            return JsonResponse({"detail": "Department not found"}, status=400)
+
+                # Look up office if provided (for admin assistants)
+                office = None
+                if office_name:
+                    office = Office.objects.filter(
+                        name__iexact=office_name,
                         is_active=True,
                     ).first()
-                    if not department:
-                        return JsonResponse({"detail": "Department not found"}, status=400)
-                else:  # Admin assistant case - find department by name only
-                    department = Department.objects.filter(
-                        name__iexact=dept_name,
-                        is_active=True,
-                    ).first()
-                    if not department:
-                        return JsonResponse({"detail": "Department not found"}, status=400)
-
-            # Look up office if provided (for admin assistants)
-            office = None
-            if office_name:
-                office = Office.objects.filter(
-                    name__iexact=office_name,
-                    is_active=True,
-                ).first()
-                if not office:
-                    return JsonResponse({"detail": "Office not found"}, status=400)
+                    if not office:
+                        return JsonResponse({"detail": "Office not found"}, status=400)
 
             with transaction.atomic():
                 if User.objects.filter(email__iexact=email).exists():
@@ -4682,6 +4761,19 @@ def approver_assistant_approvers_api(request):
                     middle_name=middle_name,
                     last_name=last_name,
                 )
+
+                # Additional validation for College Dean: Check if person being added is a Dean
+                if is_college_dean and assistant_type == "student_assistant":
+                    # Check if the user being created already has a Dean role for this college
+                    from .models import Role, UserRole
+                    dean_roles = UserRole.objects.filter(
+                        user=user_obj,
+                        role__name__in=['College Dean', 'College Admin'],
+                        college=college,
+                        is_active=True
+                    )
+                    if dean_roles.exists():
+                        return JsonResponse({"detail": "Cannot add a Dean as a Student Assistant"}, status=400)
 
                 # Student assistants are represented via StudentAssistant + Student Assistant role
                 if assistant_type == "student_assistant":

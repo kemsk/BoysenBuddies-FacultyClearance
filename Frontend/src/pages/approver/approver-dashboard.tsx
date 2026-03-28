@@ -50,9 +50,9 @@ export default function Approverdashboard() {
           });
         }
         if (data.approverInfo) {
-          const office = data.approverInfo.office || 
+          const office = data.approverInfo.department || 
+                        data.approverInfo.office || 
                         data.approverInfo.college || 
-                        data.approverInfo.department || 
                         "Not Assigned";
           setApproverOffice(office);
         } else {

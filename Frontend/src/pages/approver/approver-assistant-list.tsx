@@ -226,7 +226,8 @@ export default function ApproverAssistantList() {
 
   // Determine approver level
   const approverLevel = React.useMemo(() => {
-    if (approverRoles.some(r => r.role_name?.includes("Dean"))) {
+    // Check if any role has a department with "Dean" in the name
+    if (approverRoles.some(r => r.department?.toLowerCase().includes("dean"))) {
       return "dean";
     }
     if (myOffices.length > 0) {
@@ -303,8 +304,13 @@ export default function ApproverAssistantList() {
 
   // Prepare filtered options for admin mode based on approver level
   const adminDepartments = React.useMemo(() => {
-    return visibleDepartments;
-  }, [visibleDepartments]);
+    let filtered = visibleDepartments;
+    // For College Dean, exclude the Dean department itself
+    if (approverLevel === "dean") {
+      filtered = filtered.filter(dept => !dept.toLowerCase().includes("dean"));
+    }
+    return filtered;
+  }, [visibleDepartments, approverLevel]);
 
   const adminOffices = React.useMemo(() => {
     return visibleOffices;
