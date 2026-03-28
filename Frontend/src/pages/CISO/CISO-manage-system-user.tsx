@@ -322,7 +322,7 @@ import {
           submitLabel="Create"
           colleges={orgColleges}
           departments={orgDepartments}
-          offices={orgOffices}
+          offices={orgOffices.filter(office => office !== "Office of the Vice President for Higher Education")}
           collegeDepartmentsMap={collegeDepartmentsMap}
           onSubmit={(payload: ManageSystemApproverPayload) => {
             (async () => {
@@ -371,7 +371,7 @@ import {
           submitLabel="Create"
           colleges={orgColleges}
           departments={orgDepartments}
-          offices={orgOffices}
+          offices={orgOffices.filter(office => office !== "Office of the Vice President for Higher Education")}
           collegeDepartmentsMap={collegeDepartmentsMap}
           initialValues={
             activeUser

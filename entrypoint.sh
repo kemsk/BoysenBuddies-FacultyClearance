@@ -698,6 +698,29 @@ ON DUPLICATE KEY UPDATE
     college_id = VALUES(college_id),
     department_id = VALUES(department_id);
 
+-- Seed Approver for OVPHE user (20190016375@my.xu.edu.ph) as Office approver
+INSERT INTO FC_approver (user_id, approver_type, office_id)
+VALUES 
+(@ovphe_user_id, 'Office', (SELECT id FROM FC_office WHERE abbreviation = 'OVPHE' LIMIT 1))
+ON DUPLICATE KEY UPDATE
+    approver_type = VALUES(approver_type),
+    office_id = VALUES(office_id);
+
+-- Seed UserRole for OVPHE user (20190016375@my.xu.edu.ph) as Approver with office context
+INSERT INTO FC_userrole (user_id, role_id, office_id, assigned_by_id, assigned_date, is_active)
+SELECT 
+    u.id AS user_id, 
+    r.id AS role_id,
+    (SELECT id FROM FC_office WHERE abbreviation = 'OVPHE' LIMIT 1) AS office_id,
+    @ovphe_user_id AS assigned_by_id,
+    NOW() AS assigned_date,
+    1 AS is_active
+FROM FC_user u
+CROSS JOIN FC_role r
+WHERE u.email = '20190016375@my.xu.edu.ph' AND r.name = 'Approver'
+ON DUPLICATE KEY UPDATE
+    is_active = VALUES(is_active);
+
 -- Seed StudentAssistant
 INSERT INTO FC_studentassistant (user_id, college_id, department_id)
 VALUES 

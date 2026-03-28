@@ -3900,13 +3900,16 @@ def ciso_system_users_api(request):
         )
 
     def _role_rank(item: dict) -> int:
-        role = (item.get("userRole") or "").strip().lower()
-        if "admin" in role:
+        role = (item.get("userRole") or "").strip()
+        # Prioritize CISO and OVPHE as system admin roles
+        if role == "CISO" or role == "OVPHE":
             return 3
-        if "assistant" in role:
+        if "admin" in role.lower():
             return 2
-        if "approver" in role:
+        if "assistant" in role.lower():
             return 1
+        if "approver" in role.lower():
+            return 0
         return 0
 
     deduped: dict[str, dict] = {}
@@ -3982,6 +3985,28 @@ def ciso_system_users_api(request):
                 role=role,
                 defaults={'is_active': True}
             )
+
+            # Auto-create approver profile for OVPHE users
+            if office_norm == "OVPHE":
+                ovphe_office = Office.objects.filter(name__iexact="Office of the Vice President for Higher Education", is_active=True).first()
+                if ovphe_office:
+                    Approver.objects.get_or_create(
+                        user=user,
+                        defaults={
+                            'approver_type': 'Office',
+                            'office': ovphe_office
+                        }
+                    )
+                    # Also assign Approver role
+                    approver_role, created = Role.objects.get_or_create(
+                        name="Approver",
+                        defaults={'description': 'Approver role'}
+                    )
+                    UserRole.objects.get_or_create(
+                        user=user,
+                        role=approver_role,
+                        defaults={'is_active': True}
+                    )
 
         if approver_type:
             atype = approver_type.strip().lower()
@@ -5135,8 +5160,15 @@ def approver_dashboard_api(request):
         )
         
         # Get approver profile
-        approver = getattr(user, "approver_profile", None)
-        if approver:
+        from .models import Approver
+        try:
+            approver = Approver.objects.get(user=user)
+            approver_info = {
+                "approver_type": approver.approver_type,
+                "college": approver.college.name if approver.college else None,
+                "department": approver.department.name if approver.department else None,
+                "office": approver.office.name if approver.office else None,
+            }
             # Filter based on approver's scope
             if approver.college:
                 requirements = requirements.filter(target_colleges=approver.college)
@@ -5144,6 +5176,8 @@ def approver_dashboard_api(request):
                 requirements = requirements.filter(target_departments=approver.department)
             elif approver.office:
                 requirements = requirements.filter(target_offices=approver.office)
+        except Approver.DoesNotExist:
+            approver_info = None
         
         clearance_requests = ClearanceRequest.objects.filter(
             clearance_timeline=timeline,
@@ -5164,6 +5198,7 @@ def approver_dashboard_api(request):
     return JsonResponse({
         "pendingRequests": pending_requests,
         "pendingCount": len(pending_requests),
+        "approverInfo": approver_info,
         "timeline": {
             "academicYear": timeline.academic_year_start if timeline else None,
             "term": timeline.term if timeline else None,
