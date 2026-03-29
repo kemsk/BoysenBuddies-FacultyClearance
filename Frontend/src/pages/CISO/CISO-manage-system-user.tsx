@@ -307,6 +307,7 @@ import {
               users={pagedUsers}
               onAddApprover={() => setAddApproverOpen(true)}
               onAddAdmin={() => setAddAdminOpen(true)}
+              currentUserEmail={adminEmail}
               onEditUser={(user) => {
                 setActiveUserId(user.id);
                 if (isSystemLevelRole(user)) {

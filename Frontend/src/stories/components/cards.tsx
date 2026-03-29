@@ -4747,6 +4747,8 @@ export type SystemUsersCardProps = {
 
   onRemoveUser?: (user: SystemUser) => void;
 
+  currentUserEmail?: string;
+
   pageLabel?: string;
 
   pageCountLabel?: string;
@@ -4772,6 +4774,8 @@ export function SystemUsersCard({
   onEditUser,
 
   onRemoveUser,
+
+  currentUserEmail,
 
 }: SystemUsersCardProps) {
 
@@ -4834,6 +4838,8 @@ export function SystemUsersCard({
 
                             onClick={() => onEditUser?.(user)}
 
+                            disabled={user.email === currentUserEmail}
+
                           >
 
                             EDIT
@@ -4851,6 +4857,8 @@ export function SystemUsersCard({
                             className="h-7 rounded-md px-3 text-xs font-bold"
 
                             onClick={() => onRemoveUser?.(user)}
+
+                            disabled={user.email === currentUserEmail}
 
                           >
 
