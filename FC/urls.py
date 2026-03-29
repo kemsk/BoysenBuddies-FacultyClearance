@@ -58,8 +58,8 @@ urlpatterns = [
     path('api/faculty/notifications', views.faculty_notifications_api, name='FacultyNotifications'),
     path('api/faculty/archived-clearance', views.faculty_archived_clearance_api, name='FacultyArchivedClearance'),
     path('api/faculty/view-clearance', views.faculty_view_clearance_api, name='FacultyViewClearance'),
-    # Approver endpoints
     path('api/approver/dashboard', views.approver_dashboard_api, name='ApproverDashboard'),
+    path('api/approver-profile', views.approver_profile_api, name='ApproverProfile'),
     path('api/approver/requirement-list', views.approver_requirement_list_api, name='ApproverRequirementList'),
     path('api/approver/requirement-list/<int:requirement_id>', views.approver_requirement_detail_api, name='ApproverRequirementDetail'),
     path('api/approver/faculty-options', views.approver_faculty_options_api, name='ApproverFacultyOptions'),

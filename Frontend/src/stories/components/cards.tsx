@@ -297,6 +297,19 @@ export type StudentAssistantItem = {
 
   isActive?: boolean;
 
+  /**
+   * Optional university ID used in edit dialogs.
+   * The Approver Assistants page prefers this over the internal id.
+   */
+  universityId?: string;
+
+  /**
+   * Optional assistant type used to distinguish student assistants
+   * from admin-type assistants in the Approver Assistants page.
+   * Examples: "student_assistant", "college_admin", "dept_chair".
+   */
+  assistantType?: string;
+
 };
 
 
@@ -331,6 +344,14 @@ export type StudentAssistantsCardProps = {
 
   onRemove?: (id: string) => void;
 
+  /**
+   * Optional controlled mode for the header dropdown.
+   * If not provided, the card manages its own internal mode state.
+   */
+  mode?: "assistants" | "admins";
+
+  onModeChange?: (mode: "assistants" | "admins") => void;
+
 };
 
 export function StudentAssistantsCard({
@@ -339,8 +360,21 @@ export function StudentAssistantsCard({
   onAddUser,
   onEditUser,
   onRemove,
+  mode,
+  onModeChange,
 }: StudentAssistantsCardProps) {
-  const [selectedValue, setSelectedValue] = React.useState<string>("");
+  const [internalMode, setInternalMode] = React.useState<"assistants" | "admins">("assistants");
+
+  const effectiveMode = mode ?? internalMode;
+
+  const setMode = (next: "assistants" | "admins") => {
+    if (!mode) {
+      setInternalMode(next);
+    }
+    onModeChange?.(next);
+  };
+
+  const addLabel = effectiveMode === "admins" ? "Add Admin" : "Add Assistant";
 
   return (
     <Card className={cn("overflow-hidden", className)}>
@@ -350,23 +384,29 @@ export function StudentAssistantsCard({
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-3 border-b px-5 py-5">
-              <Select value={selectedValue} onValueChange={setSelectedValue}>
+              <Select
+                value={effectiveMode}
+                onValueChange={(v) => setMode(v as "assistants" | "admins")}
+              >
                 <SelectTrigger variant="primaryoutline" className="w-max">
                   <div className="flex items-center gap-2">
-                    <img src="/PrimaryWaveHandIcon.png" alt="assistants" className="h-4 w-4" />
+                    <img 
+                      src={effectiveMode === "admins" ? "/PrimaryAdminIcon.png" : "/PrimaryWaveHandIcon.png"} 
+                      alt={effectiveMode === "admins" ? "admins" : "assistants"} 
+                      className="h-4 w-4" 
+                    />
                     <SelectValue placeholder="Assistants" />
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="option1">Option 1</SelectItem>
-                  <SelectItem value="option2">Option 2</SelectItem>
-                  <SelectItem value="option3">Option 3</SelectItem>
+                  <SelectItem value="assistants">Assistants</SelectItem>
+                  <SelectItem value="admins">Admins</SelectItem>
                 </SelectContent>
               </Select>
 
               <Button type="button" className="h-8 rounded-md px-3 text-sm font-bold" onClick={onAddUser}>
                 <div className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />Add Admin
+                  <Plus className="h-4 w-4" />{addLabel}
                 </div>
               </Button>
             </div>
@@ -4921,6 +4961,8 @@ export type SystemUsersCardProps = {
 
   onRemoveUser?: (user: SystemUser) => void;
 
+  currentUserEmail?: string;
+
   pageLabel?: string;
 
   pageCountLabel?: string;
@@ -4946,6 +4988,8 @@ export function SystemUsersCard({
   onEditUser,
 
   onRemoveUser,
+
+  currentUserEmail,
 
 }: SystemUsersCardProps) {
 
@@ -5008,6 +5052,8 @@ export function SystemUsersCard({
 
                             onClick={() => onEditUser?.(user)}
 
+                            disabled={user.email === currentUserEmail}
+
                           >
 
                             EDIT
@@ -5025,6 +5071,8 @@ export function SystemUsersCard({
                             className="h-7 rounded-md px-3 text-xs font-bold"
 
                             onClick={() => onRemoveUser?.(user)}
+
+                            disabled={user.email === currentUserEmail}
 
                           >
 
