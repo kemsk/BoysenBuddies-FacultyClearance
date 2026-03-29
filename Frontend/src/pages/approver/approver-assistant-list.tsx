@@ -152,17 +152,15 @@ export default function ApproverAssistantList() {
         setApproverEmail(data.email);
       }
       if (Array.isArray(data.roles)) {
-        console.log('DEBUG roles from /api/me:', data.roles);
         setApproverRoles(data.roles);
       }
 
-      // Fetch approver profile to get college/department assignments
+      // Fetch approver profile to get college/department/office assignments
       const approverR = await fetch("/admin/xu-faculty-clearance/api/approver-profile", { method: "GET", credentials: "include" });
       if (approverR.ok) {
-        const approverData = await approverR.json() as { approver_profile?: { approver_type: string; college: string; department: string } };
-        console.log('DEBUG approver profile:', approverData);
+        const approverData = await approverR.json() as { approver_profile?: { approver_type: string; college: string; department: string; office: string } };
         
-        // Merge approver profile college/department into the Approver role
+        // Merge approver profile college/department/office into the Approver role
         if (approverData.approver_profile) {
           setApproverRoles(prev => prev.map(role => {
             if (role.role_name === "Approver") {
@@ -170,6 +168,7 @@ export default function ApproverAssistantList() {
                 ...role,
                 college: approverData.approver_profile!.college || role.college,
                 department: approverData.approver_profile!.department || role.department,
+                office: approverData.approver_profile!.office || role.office,
               };
             }
             return role;
@@ -216,14 +215,7 @@ export default function ApproverAssistantList() {
     return Array.from(set);
   }, [approverRoles]);
 
-  // DEBUG: Log approver roles to understand structure
-  React.useEffect(() => {
-    console.log('DEBUG approverRoles:', approverRoles);
-    console.log('DEBUG myColleges:', myColleges);
-    console.log('DEBUG myDepartments:', myDepartments);
-    console.log('DEBUG myOffices:', myOffices);
-  }, [approverRoles, myColleges, myDepartments, myOffices]);
-
+  
   // Determine approver level
   const approverLevel = React.useMemo(() => {
     // Check if any role has a department with "Dean" in the name
@@ -237,16 +229,42 @@ export default function ApproverAssistantList() {
     return "chair";
   }, [approverRoles, myOffices]);
 
+  // Get current approver's user ID for supervisor linking
+  const supervisorApproverId = approverEmail;
+
+  // Determine approver type restrictions
+  const allowedApproverType = React.useMemo(() => {
+    if (approverLevel === "office") {
+      // Pure office approver
+      return "Office" as const;
+    } else {
+      // College/department approver
+      return "College" as const;
+    }
+  }, [approverLevel]);
+
   // Filter org structure based on approver level
   const visibleColleges = React.useMemo(() => {
   // If no approver roles at all, show all colleges for testing
-  return approverRoles.length > 0 ? orgColleges.filter(c => myColleges.includes(c)) : orgColleges;
-}, [orgColleges, myColleges, approverRoles.length]);
+  if (approverRoles.length === 0) {
+    return orgColleges;
+  }
+  if (approverLevel === "office") {
+    // Office approvers: show all colleges for optional assignment
+    return orgColleges;
+  }
+  // College/department approvers: show only their colleges
+  return orgColleges.filter(c => myColleges.includes(c));
+}, [orgColleges, myColleges, approverRoles.length, approverLevel]);
 
   const visibleDepartments = React.useMemo(() => {
   if (approverRoles.length === 0) {
     // No approver roles at all: fallback to all for testing
     return orgDepartments;
+  }
+  if (approverLevel === "office") {
+    // Office approvers: show all departments except Dean departments for optional assignment
+    return orgDepartments.filter(dept => !dept.toLowerCase().includes("dean"));
   }
   if (myDepartments.length > 0) {
     if (approverLevel === "dean") {
@@ -256,11 +274,11 @@ export default function ApproverAssistantList() {
         return college && myColleges.includes(college);
       });
     } else {
-      // Chair/Office: show only their departments
+      // Chair: show only their departments
       return orgDepartments.filter(d => myDepartments.includes(d));
     }
   }
-  // Has approver roles but no departments (e.g., office-only approver): show none
+  // Has approver roles but no departments (e.g., college-only approver without specific department): show none
   return [];
 }, [orgDepartments, myDepartments, approverLevel, collegeDepartmentsMap, myColleges, approverRoles.length]);
 
@@ -291,8 +309,13 @@ export default function ApproverAssistantList() {
         map[college] = (collegeDepartmentsMap[college] || []).filter(d => {
           return orgDepartments.includes(d); // ensure department exists
         });
+      } else if (approverLevel === "office") {
+        // Office approvers: show all departments except Dean departments for optional assignment
+        map[college] = (collegeDepartmentsMap[college] || []).filter(d => {
+          return orgDepartments.includes(d) && !d.toLowerCase().includes("dean"); // ensure department exists and is not Dean
+        });
       } else if (myDepartments.length > 0) {
-        // Chair/Office: show only their departments
+        // Chair: show only their departments
         map[college] = (collegeDepartmentsMap[college] || []).filter(d => myDepartments.includes(d));
       } else {
         // fallback: show all
@@ -304,13 +327,8 @@ export default function ApproverAssistantList() {
 
   // Prepare filtered options for admin mode based on approver level
   const adminDepartments = React.useMemo(() => {
-    let filtered = visibleDepartments;
-    // For College Dean, exclude the Dean department itself
-    if (approverLevel === "dean") {
-      filtered = filtered.filter(dept => !dept.toLowerCase().includes("dean"));
-    }
-    return filtered;
-  }, [visibleDepartments, approverLevel]);
+    return visibleDepartments;
+  }, [visibleDepartments]);
 
   const adminOffices = React.useMemo(() => {
     return visibleOffices;
@@ -448,8 +466,12 @@ export default function ApproverAssistantList() {
           mode="assistant"
           colleges={visibleColleges}
           departments={visibleDepartments}
+          offices={visibleOffices}
           collegeDepartmentsMap={visibleCollegeDepartmentsMap}
           emailHelpText="Only @my.xu.edu.ph email addresses are allowed"
+          allowedApproverType={allowedApproverType}
+          approverEmail={supervisorApproverId}
+          approverLevel={approverLevel}
           onCreate={(payload: DepartmentAssistantPayload) => {
             (async () => {
               // Assistants must use student email domain
@@ -471,7 +493,9 @@ export default function ApproverAssistantList() {
                   isActive: payload.isActive,
                   college: payload.college,
                   department: payload.department,
+                  office: payload.office,
                   assistantType: "student_assistant",
+                  supervisorApproverId: payload.supervisorApproverId,
                 }),
               });
 
@@ -498,6 +522,7 @@ export default function ApproverAssistantList() {
           adminDepartments={adminDepartments}
           adminOffices={adminOffices}
           emailHelpText="Only @xu.edu.ph email addresses are allowed"
+          approverLevel={approverLevel}
           onCreate={(payload: DepartmentAssistantPayload) => {
             (async () => {
               // Admins must use @xu.edu.ph domain

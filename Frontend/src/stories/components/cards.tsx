@@ -392,7 +392,11 @@ export function StudentAssistantsCard({
               >
                 <SelectTrigger variant="primaryoutline" className="w-max">
                   <div className="flex items-center gap-2">
-                    <img src="/PrimaryWaveHandIcon.png" alt="assistants" className="h-4 w-4" />
+                    <img 
+                      src={effectiveMode === "admins" ? "/PrimaryAdminIcon.png" : "/PrimaryWaveHandIcon.png"} 
+                      alt={effectiveMode === "admins" ? "admins" : "assistants"} 
+                      className="h-4 w-4" 
+                    />
                     <SelectValue placeholder="Assistants" />
                   </div>
                 </SelectTrigger>

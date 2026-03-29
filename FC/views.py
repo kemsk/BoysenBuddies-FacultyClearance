@@ -693,8 +693,10 @@ def approver_profile_api(request):
             "approver_type": approver.approver_type,
             "college": approver.college.name if approver.college else None,
             "department": approver.department.name if approver.department else None,
+            "office": approver.office.name if approver.office else None,
             "college_id": approver.college.id if approver.college else None,
             "department_id": approver.department.id if approver.department else None,
+            "office_id": approver.office.id if approver.office else None,
         }
     except Approver.DoesNotExist:
         profile = None
