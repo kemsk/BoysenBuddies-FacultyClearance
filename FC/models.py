@@ -211,6 +211,16 @@ class Requirement(models.Model):
     last_updated = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
     
+    # Link to approver flow step - replaces title-based matching
+    approver_flow_step = models.ForeignKey(
+        'ApproverFlowStep',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="requirements",
+        help_text="Select which approver flow step this requirement belongs to"
+    )
+    
     recipient_scope = models.CharField(
         max_length=20,
         choices=[
@@ -229,7 +239,16 @@ class Requirement(models.Model):
     target_faculty = models.ManyToManyField('Faculty', blank=True)
 
     def __str__(self):
-        return self.title
+        return f"{self.title} ({self.approver_flow_step.category if self.approver_flow_step else 'No Step'})"
+    
+    @property
+    def step_category(self):
+        """Get the category of the associated approver flow step"""
+        return self.approver_flow_step.category if self.approver_flow_step else None
+    
+    def get_step_title(self):
+        """Get the display title of the associated approver flow step"""
+        return self.approver_flow_step.category if self.approver_flow_step else "Unassigned"
 
 
 class ClearanceRequest(models.Model):

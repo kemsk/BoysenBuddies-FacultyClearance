@@ -41,6 +41,7 @@ import {
   const pageSize = 2;
 
   const [users, setUsers] = React.useState<SystemUser[]>([]);
+  const [filteredUsers, setFilteredUsers] = React.useState<SystemUser[]>([]);
   const [orgColleges, setOrgColleges] = React.useState<string[]>([]);
   const [orgDepartments, setOrgDepartments] = React.useState<string[]>([]);
   const [orgOffices, setOrgOffices] = React.useState<string[]>([]);
@@ -83,6 +84,15 @@ import {
       setUsers([]);
     }
   }, [apiBase]);
+
+  // Filter out Assistant Approvers from the displayed users
+  React.useEffect(() => {
+    const filtered = users.filter(user => {
+      const userRole = user.userRole.toLowerCase();
+      return userRole !== "assistant approver";
+    });
+    setFilteredUsers(filtered);
+  }, [users]);
 
   const fetchOrgStructure = React.useCallback(async () => {
     try {
@@ -186,8 +196,9 @@ import {
     [activeUserId, users]
   );
 
-  function isSystemAdmin(user: SystemUser) {
-    return user.userRole.toLowerCase().includes("admin");
+  function isSystemLevelRole(user: SystemUser) {
+    const role = user.userRole.toLowerCase();
+    return role.includes("admin") || role === "ciso" || role === "ovphe";
   }
 
   function splitName(name: string) {
@@ -202,9 +213,9 @@ import {
     };
   }
 
-  const pageCount = Math.max(1, Math.ceil(users.length / pageSize));
+  const pageCount = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
   const safePage = Math.min(pageCount, Math.max(1, page));
-  const pagedUsers = users.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const pagedUsers = filteredUsers.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const onPrevPage = () => setPage((p) => Math.max(1, p - 1));
   const onNextPage = () => setPage((p) => Math.min(pageCount, p + 1));
@@ -261,7 +272,6 @@ import {
                 <SelectContent>
                     <SelectItem value="SystemAdmin">System Admin</SelectItem>
                     <SelectItem value="Approver">Approver</SelectItem>
-                    <SelectItem value="AssistantApprover">Assistant Approver</SelectItem>
                 </SelectContent>
             </Select>
 
@@ -273,7 +283,6 @@ import {
                 <SelectContent>
                     <SelectItem value="SystemAdmin">System Admin</SelectItem>
                     <SelectItem value="Approver">Approver</SelectItem>
-                    <SelectItem value="AssistantApprover">Assistant Approver</SelectItem>
                 </SelectContent>
             </Select>
 
@@ -298,9 +307,10 @@ import {
               users={pagedUsers}
               onAddApprover={() => setAddApproverOpen(true)}
               onAddAdmin={() => setAddAdminOpen(true)}
+              currentUserEmail={adminEmail}
               onEditUser={(user) => {
                 setActiveUserId(user.id);
-                if (isSystemAdmin(user)) {
+                if (isSystemLevelRole(user)) {
                   setEditAdminOpen(true);
                 } else {
                   setEditApproverOpen(true);
@@ -321,7 +331,7 @@ import {
           submitLabel="Create"
           colleges={orgColleges}
           departments={orgDepartments}
-          offices={orgOffices}
+          offices={orgOffices.filter(office => office !== "Office of the Vice President for Higher Education")}
           collegeDepartmentsMap={collegeDepartmentsMap}
           onSubmit={(payload: ManageSystemApproverPayload) => {
             (async () => {
@@ -370,7 +380,7 @@ import {
           submitLabel="Create"
           colleges={orgColleges}
           departments={orgDepartments}
-          offices={orgOffices}
+          offices={orgOffices.filter(office => office !== "Office of the Vice President for Higher Education")}
           collegeDepartmentsMap={collegeDepartmentsMap}
           initialValues={
             activeUser

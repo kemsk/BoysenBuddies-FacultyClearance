@@ -17,72 +17,27 @@ import {
 
 import { SearchInputGroup } from "../../stories/components/input-group";
 
-
-
-
 export default function ApproverClearance() {
   const [query, setQuery] = React.useState("");
-
   const [requests, setRequests] = React.useState<ClearanceRequestItem[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     fetch("/admin/xu-faculty-clearance/api/clearance-requests")
-      .then((res) => res.json())
-      .then((data) => setRequests(Array.isArray(data?.items) ? data.items : []))
-      .catch(() => {
-        // Set dummy data when API fails
-        setRequests([
-          {
-            id: "1",
-            requestId: "REQ-2025-001",
-            employeeId: "2005123456789",
-            name: "Alexander H. Hamilton",
-            college: "College of Computer Studies",
-            department: "Information Technology",
-            facultyType: "Full-time Faculty (On Probation)",
-            status: "pending"
-          },
-          {
-            id: "2", 
-            requestId: "REQ-2025-002",
-            employeeId: "2005987654321",
-            name: "Maria C. Santos",
-            college: "College of Engineering",
-            department: "Civil Engineering",
-            facultyType: "Full-time Faculty",
-            status: "approved"
-          },
-          {
-            id: "3",
-            requestId: "REQ-2025-003", 
-            employeeId: "2005456789012",
-            name: "Juan D. Reyes",
-            college: "College of Business Administration",
-            department: "Accountancy",
-            facultyType: "Part-time Faculty",
-            status: "rejected"
-          },
-          {
-            id: "4",
-            requestId: "REQ-2025-004",
-            employeeId: "2005234567890", 
-            name: "Patricia L. Garcia",
-            college: "College of Education",
-            department: "Elementary Education",
-            facultyType: "Full-time Faculty (Tenured)",
-            status: "pending"
-          },
-          {
-            id: "5",
-            requestId: "REQ-2025-005",
-            employeeId: "2005789012345",
-            name: "Roberto K. Tan",
-            college: "College of Computer Studies", 
-            department: "Computer Science",
-            facultyType: "Full-time Faculty (On Probation)",
-            status: "approved"
-          }
-        ]);
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`Failed to load requests: ${res.statusText}`);
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setRequests(Array.isArray(data?.items) ? data.items : []);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error loading requests:", err);
+        setLoading(false);
+        setRequests([]);
       });
   }, []);
 
@@ -97,6 +52,21 @@ export default function ApproverClearance() {
       return hay.includes(q);
     });
   }, [query, requests]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-primary-foreground text-primary-foreground">
+        <div className="header mb-3">
+          <ApprovalHeader />
+        </div>
+        <main className="dashboard p-4">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-lg">Loading...</div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -151,16 +121,12 @@ export default function ApproverClearance() {
           </div>
         </div>
 
-        
-
         <div className="mt-6">
           <ClearanceRequestsCard
             items={filteredRequests}
-            getItemHref={() => "/approver-individual"}
+            getItemHref={(item) => `/approver-individual-approval?request_id=${item.requestId}`}
           />
         </div>
-
-        
 
       </main>
 

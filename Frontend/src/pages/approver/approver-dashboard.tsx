@@ -13,9 +13,9 @@ import {
 
 export default function Approverdashboard() {
   const [timeline, setTimeline] = React.useState<{ academicYear: string; semester: string } | null>(null);
+  const [approverOffice, setApproverOffice] = React.useState<string>("");
   const pendingClearance = 0;
   const totalClearanceRequests = 1;
-  const approverOffice = "College of Computer Studies";
 
   const [profile, setProfile] = React.useState<{
     email: string;
@@ -36,6 +36,35 @@ export default function Approverdashboard() {
       .catch(() => setProfile(null));
   }, []);
 
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/approver/dashboard")
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load dashboard data");
+        return res.json();
+      })
+      .then((data) => {
+        if (data.timeline) {
+          setTimeline({
+            academicYear: data.timeline.academicYear?.toString() || "",
+            semester: data.timeline.semester || "",
+          });
+        }
+        if (data.approverInfo) {
+          const office = data.approverInfo.department || 
+                        data.approverInfo.office || 
+                        data.approverInfo.college || 
+                        "Not Assigned";
+          setApproverOffice(office);
+        } else {
+          setApproverOffice("Not Assigned");
+        }
+      })
+      .catch(() => {
+        setTimeline(null);
+        setApproverOffice("Not Assigned");
+      });
+  }, []);
+
   const displayName = React.useMemo(() => {
     if (!profile) return "";
     const parts = [profile.first_name, profile.middle_name, profile.last_name]
@@ -44,19 +73,19 @@ export default function Approverdashboard() {
     return parts.length ? parts.join(" ") : profile.email;
   }, [profile]);
    type AnnouncementsResponse = { items: AnnouncementItem[] };
+   type RequirementsResponse = { items: RequirementListItem[] };
 
-  const requirementItems: RequirementListItem[] = [
-    {
-      title: "Reporting of Borrowed Books",
-      description:
-        "All faculty members who borrowed books are expected to report the status on said books",
-      lastUpdated: "Last updated: November 8, 2024, 4:38 PM",
-      physicalSubmission: true,
-      submissionDeadline: "December 3, 2025, 9:30 AM",
-    },
-  ];
-
+  const [requirementItems, setRequirementItems] = React.useState<RequirementListItem[]>([]);
   const [announcementItems, setAnnouncementItems] = React.useState<AnnouncementItem[]>([]);
+
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/approver/requirement-list")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: RequirementsResponse) => {
+        setRequirementItems(data.items || []);
+      })
+      .catch(() => setRequirementItems([]));
+  }, []);
 
   React.useEffect(() => {
     fetch("/admin/xu-faculty-clearance/api/ovphe/announcements")

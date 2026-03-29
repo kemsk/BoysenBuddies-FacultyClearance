@@ -99,8 +99,6 @@ import { Checkbox } from "./checkbox";
 
 import { ApproveConfirmDialog, RejectAlertDialog } from "./clearance-action-dialogs";
 
-import { AddRequirementDialog, type AddRequirementPayload } from "./add-requirement-dialog";
-
 import { Divider } from "./divider";
 
 import { DeactivateAlert, ActivateAlert, DeleteAlert } from "./alert";
@@ -299,6 +297,19 @@ export type StudentAssistantItem = {
 
   isActive?: boolean;
 
+  /**
+   * Optional university ID used in edit dialogs.
+   * The Approver Assistants page prefers this over the internal id.
+   */
+  universityId?: string;
+
+  /**
+   * Optional assistant type used to distinguish student assistants
+   * from admin-type assistants in the Approver Assistants page.
+   * Examples: "student_assistant", "college_admin", "dept_chair".
+   */
+  assistantType?: string;
+
 };
 
 
@@ -333,6 +344,14 @@ export type StudentAssistantsCardProps = {
 
   onRemove?: (id: string) => void;
 
+  /**
+   * Optional controlled mode for the header dropdown.
+   * If not provided, the card manages its own internal mode state.
+   */
+  mode?: "assistants" | "admins";
+
+  onModeChange?: (mode: "assistants" | "admins") => void;
+
 };
 
 export function StudentAssistantsCard({
@@ -341,8 +360,21 @@ export function StudentAssistantsCard({
   onAddUser,
   onEditUser,
   onRemove,
+  mode,
+  onModeChange,
 }: StudentAssistantsCardProps) {
-  const [selectedValue, setSelectedValue] = React.useState<string>("");
+  const [internalMode, setInternalMode] = React.useState<"assistants" | "admins">("assistants");
+
+  const effectiveMode = mode ?? internalMode;
+
+  const setMode = (next: "assistants" | "admins") => {
+    if (!mode) {
+      setInternalMode(next);
+    }
+    onModeChange?.(next);
+  };
+
+  const addLabel = effectiveMode === "admins" ? "Add Admin" : "Add Assistant";
 
   return (
     <Card className={cn("overflow-hidden", className)}>
@@ -352,23 +384,29 @@ export function StudentAssistantsCard({
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-3 border-b px-5 py-5">
-              <Select value={selectedValue} onValueChange={setSelectedValue}>
+              <Select
+                value={effectiveMode}
+                onValueChange={(v) => setMode(v as "assistants" | "admins")}
+              >
                 <SelectTrigger variant="primaryoutline" className="w-max">
                   <div className="flex items-center gap-2">
-                    <img src="/PrimaryWaveHandIcon.png" alt="assistants" className="h-4 w-4" />
+                    <img 
+                      src={effectiveMode === "admins" ? "/PrimaryAdminIcon.png" : "/PrimaryWaveHandIcon.png"} 
+                      alt={effectiveMode === "admins" ? "admins" : "assistants"} 
+                      className="h-4 w-4" 
+                    />
                     <SelectValue placeholder="Assistants" />
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="option1">Option 1</SelectItem>
-                  <SelectItem value="option2">Option 2</SelectItem>
-                  <SelectItem value="option3">Option 3</SelectItem>
+                  <SelectItem value="assistants">Assistants</SelectItem>
+                  <SelectItem value="admins">Admins</SelectItem>
                 </SelectContent>
               </Select>
 
               <Button type="button" className="h-8 rounded-md px-3 text-sm font-bold" onClick={onAddUser}>
                 <div className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />Add Admin
+                  <Plus className="h-4 w-4" />{addLabel}
                 </div>
               </Button>
             </div>
@@ -387,16 +425,16 @@ export function StudentAssistantsCard({
                       </div>
 
                       <div className="flex items-center justify-between w-full pt-4">
-                        <span className="text-2xl font-bold text-foreground">{item.name}</span>
+                        <span className="text-2xl font-bold text-gray-900">{item.name}</span>
                       </div>
 
                       <div className="mt-4 grid grid-cols-[95px_1fr] gap-x-5 gap-y-1 text-sm">
-                        <div className="font-bold text-foreground">College</div>
-                        <div className="text-foreground">{item.college}</div>
-                        <div className="font-bold text-foreground">Department</div>
-                        <div className="text-foreground">{item.department}</div>
-                        <div className="font-bold text-foreground">Email</div>
-                        <div className="text-foreground">{item.email}</div>
+                        <div className="font-bold text-gray-900">College</div>
+                        <div className="text-gray-900">{item.college}</div>
+                        <div className="font-bold text-gray-900">Department</div>
+                        <div className="text-gray-900">{item.department}</div>
+                        <div className="font-bold text-gray-900">Email</div>
+                        <div className="text-gray-900">{item.email}</div>
                       </div>
 
                       <div className="flex items-center gap-2 mt-4 w-full">
@@ -446,7 +484,7 @@ export type RequirementEditCardProps = {
   LastUpdated?: string;
   CreatedBy?: string;
   ClearanceTimeline?: string;
-  onEdit?: (payload?: AddRequirementPayload) => void;
+  onEdit?: () => void;
   onDelete?: () => void;
 };
 
@@ -489,28 +527,28 @@ export function RequirementEditCard({
       <div className="pt-6 pb-4 pl-6 pr-6">
         <div>
           <div className="grid grid-cols-2 gap-2">
-            <div className="text-md font-bold text-foreground">Recipients</div>
-            <div className="text-sm text-black text-left break-words">{Recipients}</div>
+            <div className="text-md font-bold text-gray-900">Recipients</div>
+            <div className="text-sm text-gray-900 text-left break-words">{Recipients}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1">
-            <div className="text-md font-bold text-foreground pt-1">Description</div>
-            <div className="text-sm text-black text-left break-words">{description}</div>
+            <div className="text-md font-bold text-gray-900 pt-1">Description</div>
+            <div className="text-sm text-gray-900 text-left break-words">{description}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1">
-            <div className="text-md font-bold text-foreground">Last Updated</div>
-            <div className="text-sm text-black text-left break-words">{LastUpdated}</div>
+            <div className="text-md font-bold text-gray-900">Last Updated</div>
+            <div className="text-sm text-gray-900 text-left break-words">{LastUpdated}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1">
-            <div className="text-md font-bold text-foreground">Created By</div>
-            <div className="text-sm text-black text-left break-words">{CreatedBy}</div>
+            <div className="text-md font-bold text-gray-900">Created By</div>
+            <div className="text-sm text-gray-900 text-left break-words">{CreatedBy}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1 pb-3">
-            <div className="text-md font-bold text-foreground">Clearance Timeline</div>
-            <div className="text-sm text-black text-left break-words">{ClearanceTimeline}</div>
+            <div className="text-md font-bold text-gray-900">Clearance Timeline</div>
+            <div className="text-sm text-gray-900 text-left break-words">{ClearanceTimeline}</div>
           </div>
         </div>
       </div>
@@ -518,27 +556,16 @@ export function RequirementEditCard({
       <Divider className="bg-foreground w-full" />
 
       <div className="mt-4 pt-2 pb-5 flex items-center justify-center gap-3">
-        <AddRequirementDialog
-          trigger={
-            <Button variant="default" className="h-max w-max rounded-xl px-7 text-base font-semibold p-3">
-              <div className="flex items-center gap-2">
-                <Pencil className="h-4 w-4" />
-                Edit
-              </div>
-            </Button>
-          }
-          dialogTitle="Edit Requirement"
-          saveLabel="Save"
-          initialValues={{
-            title,
-            description,
-            facultyIds: [],
-            physicalSubmission,
-          }}
-          onSave={(payload) => {
-            onEdit?.(payload);
-          }}
-        />
+        <Button 
+          variant="default" 
+          className="h-max w-max rounded-xl px-7 text-base font-semibold p-3"
+          onClick={() => onEdit?.()}
+        >
+          <div className="flex items-center gap-2">
+            <Pencil className="h-4 w-4" />
+            Edit
+          </div>
+        </Button>
 
         <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
           <AlertDialogTrigger asChild>
@@ -579,7 +606,7 @@ export type RequirementListCardProps = {
   className?: string;
   LastUpdated?: string;
   CreatedBy?: string;
-  onEdit?: (payload?: AddRequirementPayload) => void;
+  onEdit?: () => void;
   ClearanceTimeline?: string;
   onDelete?: () => void;
 };
@@ -623,28 +650,28 @@ export function RequirementListCard({
       <div className="pt-6 pb-4 pl-6 pr-6">
         <div>
           <div className="grid grid-cols-2 gap-2">
-            <div className="text-md font-bold text-foreground">Recipients</div>
-            <div className="text-sm text-black text-left break-words">{Recipients}</div>
+            <div className="text-md font-bold text-gray-900">Recipients</div>
+            <div className="text-sm text-gray-900 text-left break-words">{Recipients}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1">
-            <div className="text-md font-bold text-foreground pt-1">Description</div>
-            <div className="text-sm text-black text-left break-words">{description}</div>
+            <div className="text-md font-bold text-gray-900 pt-1">Description</div>
+            <div className="text-sm text-gray-900 text-left break-words">{description}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1">
-            <div className="text-md font-bold text-foreground">Last Updated</div>
-            <div className="text-sm text-black text-left break-words">{LastUpdated}</div>
+            <div className="text-md font-bold text-gray-900">Last Updated</div>
+            <div className="text-sm text-gray-900 text-left break-words">{LastUpdated}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1">
-            <div className="text-md font-bold text-foreground">Created By</div>
-            <div className="text-sm text-black text-left break-words">{CreatedBy}</div>
+            <div className="text-md font-bold text-gray-900">Created By</div>
+            <div className="text-sm text-gray-900 text-left break-words">{CreatedBy}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1 pb-3">
-            <div className="text-md font-bold text-foreground">Clearance Timeline</div>
-            <div className="text-sm text-black text-left break-words">{ClearanceTimeline}</div>
+            <div className="text-md font-bold text-gray-900">Clearance Timeline</div>
+            <div className="text-sm text-gray-900 text-left break-words">{ClearanceTimeline}</div>
           </div>
         </div>
       </div>
@@ -684,6 +711,103 @@ export function ClearanceRequestsCard({
   getItemHref,
 }: ClearanceRequestsCardProps) {
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set());
+  const [loading, setLoading] = React.useState(false);
+
+  const handleBulkApprove = async () => {
+    if (selectedIds.size === 0) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch("/admin/xu-faculty-clearance/api/approver/action", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken") || "",
+        },
+        body: JSON.stringify({
+          request_ids: Array.from(selectedIds),
+          action: "approve",
+          remarks: "",
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.detail || errorData.message || `Failed to approve: ${response.statusText}`;
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      console.log("Bulk approve successful:", result);
+      
+      // Refresh the page to show updated status
+      window.location.reload();
+    } catch (err) {
+      console.error("Error approving:", err);
+      alert(err instanceof Error ? err.message : "Failed to approve requests");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkReject = async (reason: string) => {
+    if (selectedIds.size === 0) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch("/admin/xu-faculty-clearance/api/approver/action", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken") || "",
+        },
+        body: JSON.stringify({
+          request_ids: Array.from(selectedIds),
+          action: "reject",
+          remarks: reason,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.detail || errorData.message || `Failed to reject: ${response.statusText}`;
+        if (errorData.detail) {
+          throw new Error(`Failed to reject: ${errorData.detail}`);
+        } else if (errorData.message) {
+          throw new Error(`Failed to reject: ${errorData.message}`);
+        } else {
+          throw new Error(`Failed to reject: ${response.statusText}`);
+        }
+      }
+
+      const result = await response.json();
+      console.log("Bulk reject successful:", result);
+      
+      // Refresh the page to show updated status
+      window.location.reload();
+    } catch (err) {
+      console.error("Error rejecting:", err);
+      alert(err instanceof Error ? err.message : "Failed to reject requests");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper function to get CSRF token
+  function getCookie(name: string): string {
+    let cookieValue = "";
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + "=")) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
 
   return (
     <Card className={cn("overflow-hidden", className)}>
@@ -714,13 +838,12 @@ export function ClearanceRequestsCard({
                         type="button"
                         variant="destructive"
                         className="h-7 rounded-md px-3 text-sm font-semibold"
+                        disabled={loading}
                       >
                         Reject
                       </Button>
                     }
-                    onReject={() => {
-                      // intentionally left blank; user can wire API/state later
-                    }}
+                    onReject={handleBulkReject}
                   />
                   <ApproveConfirmDialog
                     count={selectedIds.size}
@@ -728,15 +851,14 @@ export function ClearanceRequestsCard({
                       <Button
                         type="button"
                         className="h-7 rounded-l bg-[hsl(var(--success))] px-2 text-sm font-semibold text-white hover:bg-[hsl(var(--success))]/90"
+                        disabled={loading}
                       >
                         <div className="flex items-center gap-2">
                           <Check className="h-4 w-4" /> Approve
                         </div>
                       </Button>
                     }
-                    onApprove={() => {
-                      // intentionally left blank; user can wire API/state later
-                    }}
+                    onApprove={handleBulkApprove}
                   />
                 </div>
               ) : null}
@@ -791,19 +913,19 @@ export function ClearanceRequestsCard({
                       </div>
 
                       <div className="mt-3 grid grid-cols-[88px_1fr] gap-x-3 gap-y-1 text-sm">
-                        <div className="font-bold text-black">Request ID</div>
-                        <div className="text-black">{item.requestId}</div>
-                        <div className="font-bold text-black">Employee ID</div>
-                        <div className="text-black">{item.employeeId}</div>
+                        <div className="font-bold text-gray-900">Request ID</div>
+                        <div className="text-gray-900">{item.requestId}</div>
+                        <div className="font-bold text-gray-900">Employee ID</div>
+                        <div className="text-gray-900">{item.employeeId}</div>
 
-                        <div className="font-bold text-black">College</div>
-                        <div className="text-black">{item.college}</div>
+                        <div className="font-bold text-gray-900">College</div>
+                        <div className="text-gray-900">{item.college}</div>
 
-                        <div className="font-bold text-black">Department</div>
-                        <div className="text-black">{item.department}</div>
+                        <div className="font-bold text-gray-900">Department</div>
+                        <div className="text-gray-900">{item.department}</div>
 
-                        <div className="font-bold text-black">Faculty Type</div>
-                        <div className="text-black">{item.facultyType}</div>
+                        <div className="font-bold text-gray-900">Faculty Type</div>
+                        <div className="text-gray-900">{item.facultyType}</div>
                       </div>
                     </div>
                   </div>
@@ -841,15 +963,15 @@ export type RequestCardProps = {
 };
 
 export function RequestCard({
-  requestId = "REQ-2025-001",
-  employeeId = "2005123456789",
-  SchoolID = "2005123456789",
-  FullName = "Alexander H. Hamilton",
-  name = "Request No. 2526-001",
-  college = "College of Computer Studies",
-  department = "Information Technology",
-  facultyType = "Full-time Faculty (On Probation)",
-  SchoolEmail = "ahamilton@xu.edu.ph",
+  requestId,
+  employeeId,
+  SchoolID,
+  FullName,
+  name,
+  college,
+  department,
+  facultyType,
+  SchoolEmail,
   className,
   onApprove,
   onReject,
@@ -873,32 +995,29 @@ export function RequestCard({
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3 px-4 py-6 bg-primary">
               <div className="min-w-0 flex-1 text-white font-bold text-center text-2xl">
-                  {name}
+                {name}
               </div>
             </div>
 
             <div className=" grid grid-cols-[100px_1fr] gap-x-3 gap-y-2 text-sm p-6">
-              <div className="font-bold text-black">School ID</div>
-              <div className="text-black">{SchoolID}</div>
+              <div className="font-bold text-gray-900">School ID</div>
+              <div className="text-gray-900">{SchoolID}</div>
               
-              <div className="font-bold text-black">Full Name</div>
-              <div className="text-black">{FullName}</div>
+              <div className="font-bold text-gray-900">Full Name</div>
+              <div className="text-gray-900">{FullName}</div>
               
-              <div className="font-bold text-black">College</div>
-              <div className="text-black">{college}</div>
+              <div className="font-bold text-gray-900">College</div>
+              <div className="text-gray-900">{college}</div>
               
-              <div className="font-bold text-black">Department</div>
-              <div className="text-black">{department}</div>
+              <div className="font-bold text-gray-900">Department</div>
+              <div className="text-gray-900">{department}</div>
               
-              <div className="font-bold text-black">Faculty Type</div>
-              <div className="text-black">{facultyType}</div>
+              <div className="font-bold text-gray-900">Faculty Type</div>
+              <div className="text-gray-900">{facultyType}</div>
               
-              <div className="font-bold text-black">SchoolEmail</div>
-              <div className="text-black">{SchoolEmail}</div>
-              
+              <div className="font-bold text-gray-900">School Email</div>
+              <div className="text-gray-900">{SchoolEmail}</div>
             </div>
-
-
           </div>
           <Divider orientation="vertical" className="h-auto self-stretch" />
         </div>
@@ -922,20 +1041,20 @@ export function RequirementApprovalCard({
   onReject,
 }: RequirementApprovalCardProps) {
   return (
-    <div className="rounded-xl border bg-card text-card-foreground shadow border-muted-foreground/20">
+    <div className="rounded-xl border bg-card text-card-foreground border-muted-foreground/20">
         <div className="space-y-4 p-6">
           <div>
-            <div className="text-xl text-center text-black font-bold mt-1">{requirementName}</div>
+            <div className="text-xl text-center text-gray-900 font-bold mt-1">{requirementName}</div>
           </div>
           
           <div>
-            <div className="text-md font-bold text-foreground">Submission Notes</div>
-            <div className="text-sm text-black mt-3 p-3 border border-foreground rounded-md pb-">{submissionNotes}</div>
+            <div className="text-md font-bold text-gray-900">Submission Notes</div>
+            <div className="text-sm text-gray-900 mt-3 p-3 border border-foreground rounded-md pb-">{submissionNotes}</div>
           </div>
           
           <div>
-            <div className="text-md font-bold text-foreground"></div>
-            <div className="text-sm text-black mt-1"></div>
+            <div className="text-md font-bold text-gray-900"></div>
+            <div className="text-sm text-gray-900 mt-1"></div>
           </div>
         </div>
 
@@ -943,16 +1062,16 @@ export function RequirementApprovalCard({
 
         <div className="p-6 ">
           <div className="flex items-center gap-3">
-            <div className="text-md font-bold text-foreground">Status</div>
+            <div className="text-md font-bold text-gray-900">Status</div>
 
             <div className="ml-auto">
               <div className="flex items-center gap-2">
                 
                 <input type="radio" name="status" value="approved" id="approved" className="h-4 w-4 text-blue-600" />
-                <label htmlFor="approved" className="text-sm">Approved</label>
+                <label htmlFor="approved" className="text-sm text-gray-900">Approved</label>
                 
                 <input type="radio" name="status" value="rejected" id="rejected" className="h-4 w-4 text-blsck bg-black" />
-                <label htmlFor="rejected" className="text-sm">Rejected</label>
+                <label htmlFor="rejected" className="text-sm text-gray-900">Rejected</label>
               </div>
             </div>
           </div>
@@ -1102,40 +1221,40 @@ export function ExportArchiveClearanceCard({
                       </div>
 
                       <div className="mt-3 grid grid-cols-[110px_1fr] gap-x-3 gap-y-1 text-sm">
-                        <div className="font-bold text-black">
+                        <div className="font-bold text-gray-900">
                           Request ID
                         </div>
-                        <div className="text-black">
+                        <div className="text-gray-900">
                           {item.requestId}
                         </div>
-                        <div className="font-bold text-black">
+                        <div className="font-bold text-gray-900">
                           University ID
                         </div>
-                        <div className="text-black">
+                        <div className="text-gray-900">
                           {item.universityId}
                         </div>
-                        <div className="font-bold text-black">
+                        <div className="font-bold text-gray-900">
                           College
                         </div>
-                        <div className="text-black">
+                        <div className="text-gray-900">
                           {item.college}
                         </div>
-                        <div className="font-bold text-black">
+                        <div className="font-bold text-gray-900">
                           Department
                         </div>
-                        <div className="text-black">
+                        <div className="text-gray-900">
                           {item.department}
                         </div>
-                        <div className="font-bold text-black">
+                        <div className="font-bold text-gray-900">
                           Faculty Type
                         </div>
-                        <div className="text-black">
+                        <div className="text-gray-900">
                           {item.facultyType}
                         </div>
-                        <div className="font-bold text-black">
+                        <div className="font-bold text-gray-900">
                           Missing Signatures
                         </div>
-                        <div className="text-black">
+                        <div className="text-gray-900">
                           {item.missingSignatures}
                         </div>
                       </div>
@@ -1237,7 +1356,7 @@ export function RequirementsListCard({
               >
                 <div className="w-full">
                   <div className="flex items-center justify-between gap-3  p-4">
-                    <div className="text-lg font-bold text-foreground mt-2">{item.title}</div>
+                    <div className="text-lg font-bold text-gray-900 mt-2">{item.title}</div>
                     <Button
                       type="button"
                       variant="icon"
@@ -1257,7 +1376,7 @@ export function RequirementsListCard({
                           <Badge variant="warning">PHYSICAL SUBMISSION</Badge>
                         </div>
                       ) : null}
-                      <div className="mt-4 text-md text-black">{item.description}</div>
+                      <div className="mt-4 text-md text-gray-900">{item.description}</div>
                       <div className="mt-7 text-sm text-muted-foreground italic">{item.lastUpdated}</div>
                     </div>
                   
@@ -1343,7 +1462,7 @@ export function AnnouncementsCard({
 
       <CardHeader className="bg-[hsl(var(--yellow))] py-3 shadow-sm">
 
-        <CardTitle className="relative flex items-center justify-center text-base font-bold text-foreground">
+        <CardTitle className="relative flex items-center justify-center text-base font-bold text-gray-900">
 
           <div className="text-center font-bold">Announcements</div>
 
@@ -1403,7 +1522,7 @@ export function AnnouncementsCard({
 
             <div className="absolute right-1 top-1/2 -translate-y-1/2">
 
-              <ChevronRight className="h-5 w-5 text-foreground" />
+              <ChevronRight className="h-5 w-5 text-gray-900" />
 
             </div>
 
@@ -1427,7 +1546,7 @@ export function AnnouncementsCard({
 
                 {item.pinned ? (
 
-                  <img src="/BlackBookmarkIcon.png" alt="Pin" className="mt-0.5 h-4 w-4 text-foreground" />
+                  <img src="/BlackBookmarkIcon.png" alt="Pin" className="mt-0.5 h-4 w-4 text-gray-900" />
 
                 ) : null}
 
@@ -1453,7 +1572,7 @@ export function AnnouncementsCard({
 
                   ) : null}
 
-                  <div className="text-sm font-bold text-foreground mt-2">{item.title}</div>
+                  <div className="text-sm font-bold text-gray-900 mt-2">{item.title}</div>
 
                   <div className="mt-1 text-sm text-muted-foreground">{item.description}</div>
 
@@ -1637,9 +1756,9 @@ export function NotificationsCard({
 
                 <div className="min-w-0">
 
-                  <div className="text-base font-bold text-black">{item.title}</div>
+                  <div className="text-base font-bold text-gray-900">{item.title}</div>
 
-                  <div className="mt-1 text-sm text-black">
+                  <div className="mt-1 text-sm text-gray-900">
 
                     {item.description?.trim()
 
@@ -1677,7 +1796,7 @@ export function NotificationsCard({
 
               {item.details.length ? (
 
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-black">
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-gray-900">
 
                   {item.details.map((d) => (
 
@@ -1713,7 +1832,7 @@ export function NotificationsCard({
 
               type="button"
 
-              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-background text-foreground disabled:opacity-50"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-background text-gray-900 disabled:opacity-50"
 
               onClick={() => setPage((p) => Math.max(1, p - 1))}
 
@@ -1729,7 +1848,7 @@ export function NotificationsCard({
 
             <select
 
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground"
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm text-gray-900"
 
               value={safePage}
 
@@ -1755,7 +1874,7 @@ export function NotificationsCard({
 
               type="button"
 
-              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-background text-foreground disabled:opacity-50"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-background text-gray-900 disabled:opacity-50"
 
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
 
@@ -3045,7 +3164,7 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
 
               <div className="h-2 w-2 rounded-full bg-red-500" />
 
-              <div className="text-xl font-bold tracking-wide text-black">
+              <div className="text-xl font-bold tracking-wide text-gray-900">
 
                 YEAR {yearGroup.year}
 
@@ -3139,7 +3258,7 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
 
                             <div 
 
-                              className="mt-2 text-md text-foreground text-justify"
+                              className="mt-2 text-md text-gray-900 text-justify"
 
                               dangerouslySetInnerHTML={{ __html: description }}
 
@@ -3235,13 +3354,13 @@ export function ApprovedCard({
 
 
 
-        <div className="mt-4 text-lg font-bold text-foreground">{title}</div>
+        <div className="mt-4 text-lg font-bold text-gray-900">{title}</div>
 
         <div className="mt-2 text-sm text-muted-foreground">{description}</div>
 
 
 
-        <div className="mt-6 text-xs font-semibold text-foreground">{note}</div>
+        <div className="mt-6 text-xs font-semibold text-gray-900">{note}</div>
 
       </CardContent>
 
@@ -3508,7 +3627,7 @@ export function ClearanceStatusCard({
     <Card className={cn("bg-foregroundLight", className)}>
       <CardContent className="py-4">
         <div className="flex items-center justify-between">
-          <div className="text-sm font-bold text-foreground">Clearance Status</div>
+          <div className="text-sm font-bold text-gray-900">Clearance Status</div>
           <Badge variant={getBadgeVariant(statusVariant)}>{statusLabel}</Badge>
         </div>
       </CardContent>
@@ -3552,7 +3671,7 @@ export function ClearanceProgressCard({
     <Card className={className}>
       <CardContent className="py-5">
         <div className="flex items-center justify-between">
-          <div className="text-base font-bold text-foreground">{label}</div>
+          <div className="text-base font-bold text-gray-900">{label}</div>
           {typeof current === "number" && typeof total === "number" ? (
             <div className="text-sm font-semibold text-muted-foreground">
               {current}/{total}
@@ -3589,10 +3708,17 @@ export type ClearanceStepCardProps = {
 
 
 export type ClearanceRequirementItem = {
+  id: string;
   title: string;
   description: string;
   completed?: boolean;
-
+  submitted?: boolean;
+  requestId?: string;
+  status?: string;
+  submissionNotes?: string;
+  required_physical?: boolean;
+  rejected?: boolean;
+  remarks?: string;
 };
 
 
@@ -3631,7 +3757,37 @@ export function ExpandableClearanceStepCard({
 
 }: ExpandableClearanceStepCardProps) {
 
+  // Initialize state with existing submitted requirements
+  React.useEffect(() => {
+    const initialComments: Record<string, string> = {};
+    const initialCheckboxes: Record<string, boolean> = {};
+    
+    requirements.forEach((req) => {
+      if (req.submitted && req.requestId && !req.rejected) {
+        // This requirement was already submitted and not rejected
+        initialCheckboxes[req.title] = true;
+        // Use the actual submission notes from the API
+        initialComments[req.title] = req.submissionNotes || "Submitted via clearance system";
+      } else if (req.completed) {
+        // This requirement was approved
+        initialCheckboxes[req.title] = true;
+        initialComments[req.title] = req.submissionNotes || "Approved";
+      } else if (req.rejected) {
+        // This requirement was rejected - allow resubmission
+        initialCheckboxes[req.title] = false;
+        initialComments[req.title] = ""; // Clear previous submission notes
+      }
+    });
+    
+    setSavedComments(initialComments);
+    setCheckboxStates(initialCheckboxes);
+  }, [requirements]);
+
   const [savedComments, setSavedComments] = React.useState<Record<string, string>>({});
+  const [checkboxStates, setCheckboxStates] = React.useState<Record<string, boolean>>({});
+  const [showCommentDialog, setShowCommentDialog] = React.useState<string | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = React.useState<string | null>(null);
+  const [pendingComment, setPendingComment] = React.useState<string>("");
 
   const isLocked = collapsedType === "locked";
   const effectiveExpanded = expanded && !isLocked;
@@ -3710,17 +3866,17 @@ export function ExpandableClearanceStepCard({
         <CardContent className="p-6 pt-4">
           <div className="space-y-5">
             <div>
-              <div className="text-sm font-bold text-foreground">Status</div>
+              <div className="text-sm font-bold text-gray-900">Status</div>
               {submittedTo ? (
-                <div className="mt-2 text-sm text-foreground">Submitted to: {submittedTo}</div>
+                <div className="mt-2 text-sm text-gray-900">Submitted to: {submittedTo}</div>
               ) : null}
               {submittedOn ? (
-                <div className="mt-1 text-sm text-foreground">Submitted on: {submittedOn}</div>
+                <div className="mt-1 text-sm text-gray-900">Submitted on: {submittedOn}</div>
               ) : null}
             </div>
 
             <div>
-              <div className="text-sm font-bold text-foreground">Requirements Checklist</div>
+              <div className="text-sm font-bold text-gray-900">Requirements Checklist</div>
               <div className="mt-3 space-y-3">
                 {requirements.map((req) => (
                   (() => {
@@ -3730,35 +3886,52 @@ export function ExpandableClearanceStepCard({
                     return (
                   <div
                     key={req.title}
-                    className="flex gap-4 rounded-md bg-foregroundLight px-4 py-4"
+                    className={cn(
+                      "flex gap-4 rounded-md px-4 py-4",
+                      req.completed ? "bg-green-50 border border-green-200" : "bg-foregroundLight"
+                    )}
                   >
                     <div className="mt-1">
-                      <Checkbox variant="success" defaultChecked={req.completed ?? false} />
+                      <Checkbox 
+                        variant="success" 
+                        checked={checkboxStates[req.title] || req.completed || false}
+                        onCheckedChange={(checked) => {
+                          const isSubmitted = req.submitted || req.completed;
+                          
+                          // Prevent unchecking if already submitted or approved
+                          if (!checked && isSubmitted) {
+                            return;
+                          }
+                          
+                          if (checked && !savedComments[req.title]) {
+                            // Show comment dialog for new submissions
+                            setShowCommentDialog(req.title);
+                          } else if (!checked) {
+                            // Allow unchecking only if not submitted
+                            setCheckboxStates(prev => ({ ...prev, [req.title]: false }));
+                          }
+                        }}
+                      />
                     </div>
-                    <div>
-                      <div className="text-sm font-bold text-foreground">{req.title}</div>
-                      <div className="mt-1 text-sm text-foreground whitespace-pre-line">{req.description}</div>
-                      <div className="mb-3 mt-2 flex items-center justify-end">
-                        {!hasSavedComment ? (
-                          <CommentDialog
-                            title="Add Comment"
-                            trigger={
-                              <Button size="sm">
-                                <div className="flex items-center gap-2">
-                                  <img src="WhitePlusIcon.png" /> Add Comment
-                                </div>
-                              </Button>
-                            }
-                            onSubmit={(comment) => {
-                              const trimmed = comment.trim();
-                              if (!trimmed) return;
-                              setSavedComments((prev) => ({ ...prev, [req.title]: trimmed }));
-                            }}
-                          />
-                        ) : null}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-bold text-gray-900">{req.title}</div>
+                        {req.required_physical && (
+                          <Badge variant="secondary" className="text-xs">
+                            Physical Submission
+                          </Badge>
+                        )}
+                        {req.completed && (
+                          <Badge variant="success" className="text-xs">
+                            APPROVED
+                          </Badge>
+                        )}
                       </div>
-                      {hasSavedComment ? (
-                        <div className="bg-white p-4 border border-black rounded-md">{savedComment}</div>
+                      <div className="mt-1 text-sm text-gray-900 whitespace-pre-line">{req.description}</div>
+                      {hasSavedComment && !req.rejected ? (
+                        <div className="bg-white p-4 border border-black rounded-md mt-3">
+                          {savedComment}
+                        </div>
                       ) : null}
                     </div>
                   </div>
@@ -3770,10 +3943,91 @@ export function ExpandableClearanceStepCard({
           </div>
         </CardContent>
       ) : null}
+
+      {/* Comment Dialog for checkbox submission */}
+      {showCommentDialog && (
+        <CommentDialog
+          open={true}
+          onOpenChange={(open) => !open && setShowCommentDialog(null)}
+          title={showCommentDialog}
+          placeholder="Enter your submission message for this requirement..."
+          initialValue=""
+          onSubmit={(comment) => {
+            setPendingComment(comment.trim());
+            setShowCommentDialog(null);
+            setShowConfirmDialog(showCommentDialog);
+          }}
+        />
+      )}
+      
+      {/* Confirmation Dialog */}
+      {showConfirmDialog && (
+        <AlertDialog open={true} onOpenChange={(open) => !open && setShowConfirmDialog(null)}>
+          <AlertDialogContent className="max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Submission</AlertDialogTitle>
+              <AlertDialogDescription>
+                You are about to SUBMIT '{showConfirmDialog}'. Do you wish to continue?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setShowConfirmDialog(null)}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  // Make API call to submit ClearanceRequest first
+                  try {
+                    const response = await fetch('/admin/xu-faculty-clearance/api/faculty/submit-requirement', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.getAttribute('value') || ''
+                      },
+                      body: JSON.stringify({
+                        requirementTitle: showConfirmDialog,
+                        comment: pendingComment
+                      })
+                    });
+                    
+                    if (!response.ok) {
+                      const errorData = await response.json();
+                      console.error('Failed to submit requirement:', errorData.detail || 'Unknown error');
+                      alert(`Failed to submit: ${errorData.detail || 'Unknown error'}`);
+                      // Don't update state if submission failed
+                      setShowConfirmDialog(null);
+                      setPendingComment("");
+                    } else {
+                      const result = await response.json();
+                      console.log('Requirement submitted successfully:', result);
+                      // Only update state after successful submission
+                      setSavedComments(prev => ({ ...prev, [showConfirmDialog]: pendingComment }));
+                      setCheckboxStates(prev => ({ ...prev, [showConfirmDialog]: true }));
+                      setShowConfirmDialog(null);
+                      setPendingComment("");
+                      // Show success message with request ID
+                      alert(`Requirement submitted successfully!\nRequest ID: ${result.requestId}`);
+                      // Optionally refresh the page to get updated state
+                      window.location.reload();
+                    }
+                  } catch (error) {
+                    console.error('Error submitting requirement:', error);
+                    alert('Error submitting requirement. Please try again.');
+                    // Don't update state if submission failed
+                    setShowConfirmDialog(null);
+                    setPendingComment("");
+                  }
+                }}
+              >
+                Submit
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </Card>
   );
 }
-
 
 
 export function ClearanceStepCard({
@@ -4151,7 +4405,7 @@ export function FacultyDataDumpCard({
 
       <CardContent className="p-6">
 
-        <div className="text-center text-base font-bold text-foreground">{title}</div>
+        <div className="text-center text-base font-bold text-gray-900">{title}</div>
 
         <div className="mt-4">
 
@@ -4355,7 +4609,7 @@ export function ArchivedClearanceCard({
 }: ArchivedClearanceCardProps) {
   return (
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
-        <div className="text-center text-xl font-bold text-foreground flex items-center justify-between p-6">
+        <div className="text-center text-xl font-bold text-gray-900 flex items-center justify-between p-6">
           <div>{title}</div>
           <Button variant="icon" className={iconClassName} size="icon" onClick={onIconClick}>
             <img src={iconSrc} alt={iconAlt} className="h-6 w-6" />
@@ -4366,28 +4620,28 @@ export function ArchivedClearanceCard({
         
         <div className=" p-6">
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Academic Year</div>
-          <div className="text-sm text-black text-left break-words">{AcademicYear}</div>
+          <div className="text-md font-bold text-gray-900">Academic Year</div>
+          <div className="text-sm text-gray-900 text-left break-words">{AcademicYear}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Clearance Period</div>
-          <div className="text-sm text-black text-left break-words">{ClearancePeriod}</div>
+          <div className="text-md font-bold text-gray-900">Clearance Period</div>
+          <div className="text-sm text-gray-900 text-left break-words">{ClearancePeriod}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Semester</div>
-          <div className="text-sm text-black text-left break-words">{Semester}</div>
+          <div className="text-md font-bold text-gray-900">Semester</div>
+          <div className="text-sm text-gray-900 text-left break-words">{Semester}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Last Update</div>
-          <div className="text-sm text-black text-left break-words">{LastUpdate}</div>
+          <div className="text-md font-bold text-gray-900">Last Update</div>
+          <div className="text-sm text-gray-900 text-left break-words">{LastUpdate}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Archived</div>
-          <div className="text-sm text-black text-left break-words">{Archived}</div>
+          <div className="text-md font-bold text-gray-900">Archived</div>
+          <div className="text-sm text-gray-900 text-left break-words">{Archived}</div>
         </div>
       </div>
       </Card>
@@ -4435,7 +4689,7 @@ export function ViewArchivedClearanceWithStatusCard({
   return (
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
       
-        <div className="text-xl font-bold text-foreground justify-between p-6">
+        <div className="text-xl font-bold text-gray-900 justify-between p-6">
           <div className="items-right pb-3">
             <Badge variant={status === "complete" ? "success" : "warning"}>
               {status === "complete" ? "COMPLETE" : "INCOMPLETE"}
@@ -4453,38 +4707,38 @@ export function ViewArchivedClearanceWithStatusCard({
         
         <div className=" p-6">
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Academic Year</div>
-          <div className="text-sm text-black text-left break-words">{AcademicYear}</div>
+          <div className="text-md font-bold text-gray-900">Academic Year</div>
+          <div className="text-sm text-gray-900 text-left break-words">{AcademicYear}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Semester</div>
-          <div className="text-sm text-black text-left break-words">{Semester}</div>
+          <div className="text-md font-bold text-gray-900">Semester</div>
+          <div className="text-sm text-gray-900 text-left break-words">{Semester}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Clearance Period</div>
-          <div className="text-sm text-black text-left break-words">{ClearancePeriod}</div>
+          <div className="text-md font-bold text-gray-900">Clearance Period</div>
+          <div className="text-sm text-gray-900 text-left break-words">{ClearancePeriod}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Last Update</div>
-          <div className="text-sm text-black text-left break-words">{LastUpdate}</div>
+          <div className="text-md font-bold text-gray-900">Last Update</div>
+          <div className="text-sm text-gray-900 text-left break-words">{LastUpdate}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Archived</div>
-          <div className="text-sm text-black text-left break-words">{Archived}</div>
+          <div className="text-md font-bold text-gray-900">Archived</div>
+          <div className="text-sm text-gray-900 text-left break-words">{Archived}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Faculty CSV Dump</div>
-          <div className="text-sm text-black text-left break-words">{FacultyCSVDump}</div>
+          <div className="text-md font-bold text-gray-900">Faculty CSV Dump</div>
+          <div className="text-sm text-gray-900 text-left break-words">{FacultyCSVDump}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground"></div>
-          <div className="text-sm text-black text-left break-words">{Size}</div>
+          <div className="text-md font-bold text-gray-900"></div>
+          <div className="text-sm text-gray-900 text-left break-words">{Size}</div>
         </div>
       </div>
       </Card>
@@ -4528,7 +4782,7 @@ export function ViewArchivedClearanceCard({
 }: ViewArchivedClearanceCardProps) {
   return (
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
-        <div className="text-center text-xl font-bold text-foreground flex items-center justify-between p-6">
+        <div className="text-center text-xl font-bold text-gray-900 flex items-center justify-between p-6">
           <div>{title}</div>
           <Button variant="icon" className={iconClassName} size="icon">
             <img src="/PrimaryDownloadIcon.png" alt={iconAlt} className="h-6 w-6" />
@@ -4539,43 +4793,43 @@ export function ViewArchivedClearanceCard({
         
         <div className=" p-6">
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Academic Year</div>
-          <div className="text-sm text-black text-left break-words">{AcademicYear}</div>
+          <div className="text-md font-bold text-gray-900">Academic Year</div>
+          <div className="text-sm text-gray-900 text-left break-words">{AcademicYear}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Semester</div>
-          <div className="text-sm text-black text-left break-words">{Semester}</div>
+          <div className="text-md font-bold text-gray-900">Semester</div>
+          <div className="text-sm text-gray-900 text-left break-words">{Semester}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Clearance Period</div>
-          <div className="text-sm text-black text-left break-words">{ClearancePeriod}</div>
+          <div className="text-md font-bold text-gray-900">Clearance Period</div>
+          <div className="text-sm text-gray-900 text-left break-words">{ClearancePeriod}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Last Update</div>
-          <div className="text-sm text-black text-left break-words">{LastUpdate}</div>
+          <div className="text-md font-bold text-gray-900">Last Update</div>
+          <div className="text-sm text-gray-900 text-left break-words">{LastUpdate}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Archived</div>
-          <div className="text-sm text-black text-left break-words">{Archived}</div>
+          <div className="text-md font-bold text-gray-900">Archived</div>
+          <div className="text-sm text-gray-900 text-left break-words">{Archived}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Faculty CSV Dump</div>
-          <div className="text-sm text-black text-left break-words">{FacultyCSVDump}</div>
+          <div className="text-md font-bold text-gray-900">Faculty CSV Dump</div>
+          <div className="text-sm text-gray-900 text-left break-words">{FacultyCSVDump}</div>
         </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="text-md font-bold text-foreground">Total Faculty</div>
-            <div className="text-sm text-black text-left break-words">{totalFaculty}</div>
+            <div className="text-md font-bold text-gray-900">Total Faculty</div>
+            <div className="text-sm text-gray-900 text-left break-words">{totalFaculty}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="text-md font-bold text-foreground">Completed Clearances</div>
-            <div className="text-sm text-black text-left break-words">{completedClearances}</div>
+            <div className="text-md font-bold text-gray-900">Completed Clearances</div>
+            <div className="text-sm text-gray-900 text-left break-words">{completedClearances}</div>
           </div>
         </div>
       </Card>
@@ -4618,7 +4872,7 @@ export function ViewArchivedFacultyCard({
   const displayTitle = yearCode && termCode ? `${yearCode}${termCode} Archived Faculty` : "Archived Faculty";
   return (
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
-      <div className="text-center text-xl font-bold text-foreground flex items-center justify-between p-6">
+      <div className="text-center text-xl font-bold text-gray-900 flex items-center justify-between p-6">
         <div>{displayTitle}</div>
         <Button
           variant="icon"
@@ -4635,38 +4889,38 @@ export function ViewArchivedFacultyCard({
 
       <div className="p-6">
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Academic Year</div>
-          <div className="text-sm text-black text-left break-words">{academicYear}</div>
+          <div className="text-md font-bold text-gray-900">Academic Year</div>
+          <div className="text-sm text-gray-900 text-left break-words">{academicYear}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Semester</div>
-          <div className="text-sm text-black text-left break-words">{semester}</div>
+          <div className="text-md font-bold text-gray-900">Semester</div>
+          <div className="text-sm text-gray-900 text-left break-words">{semester}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Clearance Period</div>
-          <div className="text-sm text-black text-left break-words">{clearancePeriod}</div>
+          <div className="text-md font-bold text-gray-900">Clearance Period</div>
+          <div className="text-sm text-gray-900 text-left break-words">{clearancePeriod}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Last Update</div>
-          <div className="text-sm text-black text-left break-words">{archivedDate}</div>
+          <div className="text-md font-bold text-gray-900">Last Update</div>
+          <div className="text-sm text-gray-900 text-left break-words">{archivedDate}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Archived</div>
-          <div className="text-sm text-black text-left break-words">{archivedDate}</div>
+          <div className="text-md font-bold text-gray-900">Archived</div>
+          <div className="text-sm text-gray-900 text-left break-words">{archivedDate}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Faculty CSV Dump</div>
-          <div className="text-sm text-black text-left break-words">{csvFileName}</div>
+          <div className="text-md font-bold text-gray-900">Faculty CSV Dump</div>
+          <div className="text-sm text-gray-900 text-left break-words">{csvFileName}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-md font-bold text-foreground">Size</div>
-          <div className="text-sm text-black text-left break-words">{csvFileSize}</div>
+          <div className="text-md font-bold text-gray-900">Size</div>
+          <div className="text-sm text-gray-900 text-left break-words">{csvFileSize}</div>
         </div>
       </div>
     </Card>
@@ -4707,6 +4961,8 @@ export type SystemUsersCardProps = {
 
   onRemoveUser?: (user: SystemUser) => void;
 
+  currentUserEmail?: string;
+
   pageLabel?: string;
 
   pageCountLabel?: string;
@@ -4732,6 +4988,8 @@ export function SystemUsersCard({
   onEditUser,
 
   onRemoveUser,
+
+  currentUserEmail,
 
 }: SystemUsersCardProps) {
 
@@ -4778,7 +5036,7 @@ export function SystemUsersCard({
 
                       <div className="flex w-full items-center justify-between gap-3">
 
-                        <span className="text-xl font-bold text-foreground">{user.name}</span>
+                        <span className="text-xl font-bold text-gray-900">{user.name}</span>
 
 
 
@@ -4793,6 +5051,8 @@ export function SystemUsersCard({
                             className="h-7 rounded-md px-3 text-xs font-bold"
 
                             onClick={() => onEditUser?.(user)}
+
+                            disabled={user.email === currentUserEmail}
 
                           >
 
@@ -4812,6 +5072,8 @@ export function SystemUsersCard({
 
                             onClick={() => onRemoveUser?.(user)}
 
+                            disabled={user.email === currentUserEmail}
+
                           >
 
                             REMOVE
@@ -4826,37 +5088,37 @@ export function SystemUsersCard({
 
                       <div className="mt-4 grid grid-cols-[110px_1fr] gap-x-3 gap-y-1 text-md">
 
-                        <div className="font-semibold text-md text-foreground">System ID</div>
+                        <div className="font-semibold text-md text-gray-900">System ID</div>
 
                         <div className="text-muted-foreground">{user.systemId}</div>
 
 
 
-                        <div className="font-semibold text-md text-foreground">User Role</div>
+                        <div className="font-semibold text-md text-gray-900">User Role</div>
 
                         <div className="text-muted-foreground">{user.userRole}</div>
 
 
 
-                        <div className="font-semibold text-md text-foreground">University ID</div>
+                        <div className="font-semibold text-md text-gray-900">University ID</div>
 
                         <div className="text-muted-foreground">{user.universityId}</div>
 
 
 
-                        <div className="font-semibold text-foreground">College</div>
+                        <div className="font-semibold text-gray-900">College</div>
 
                         <div className="text-muted-foreground">{user.college}</div>
 
 
 
-                        <div className="font-semibold text-foreground">Department</div>
+                        <div className="font-semibold text-gray-900">Department</div>
 
                         <div className="text-muted-foreground">{user.department}</div>
 
 
 
-                        <div className="font-semibold text-foreground">Email</div>
+                        <div className="font-semibold text-gray-900">Email</div>
 
                         <div className="break-all text-muted-foreground">{user.email}</div>
 
@@ -4954,11 +5216,11 @@ export function SystemGuidlinesCard({
 
                 <div>
 
-                  <div className="mt-2 text-lg font-bold text-black">{item.title}</div>
+                  <div className="mt-2 text-lg font-bold text-gray-900">{item.title}</div>
 
 
 
-                  <div className="mt-3 text-md text-black">
+                  <div className="mt-3 text-md text-gray-900">
 
                     {Array.isArray(item.description) ? (
 
@@ -5134,7 +5396,7 @@ export function ClearanceTimelineCard({
 
                 <div className="min-w-0 flex-1">
 
-                  <div className="text-lg font-bold text-black">{item.term}</div>
+                  <div className="text-lg font-bold text-gray-900">{item.term}</div>
 
                 </div>
 
@@ -5179,22 +5441,22 @@ export function ClearanceTimelineCard({
                 <div className="space-y-0 bg-foregroundLight rounded-md border border-gray-200 p-4">
 
                   <div className="flex items-center gap-3">
-                      <div className="text-md font-bold text-black w-32">Name:</div>
-                      <div className="mt-1 text-sm font-semibold text-black">{item.Name || 'unset'}</div>
+                      <div className="text-md font-bold text-gray-900 w-32">Name:</div>
+                      <div className="mt-1 text-sm font-semibold text-gray-900">{item.Name || 'unset'}</div>
                     </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="text-md font-bold text-black w-32">School Year:</div>
-                    <div className="mt-1 text-sm font-semibold text-black">{item.schoolYear || 'unset'}</div>
+                    <div className="text-md font-bold text-gray-900 w-32">School Year:</div>
+                    <div className="mt-1 text-sm font-semibold text-gray-900">{item.schoolYear || 'unset'}</div>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="text-md font-bold text-black w-32">Timeline:</div>
-                    <div className="mt-1 text-sm font-semibold text-black">{item.Timeline || 'unset'}</div>
+                    <div className="text-md font-bold text-gray-900 w-32">Timeline:</div>
+                    <div className="mt-1 text-sm font-semibold text-gray-900">{item.Timeline || 'unset'}</div>
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <div className="text-sm text-foreground  italic">Last Update: {item.Date} {item.Time}</div>
+                    <div className="text-sm text-gray-900  italic">Last Update: {item.Date} {item.Time}</div>
                   </div>
 
                 </div>
@@ -5394,7 +5656,7 @@ export function DepartmentCompletionRateCard({
 
             <div key={section.title}>
 
-              <div className="text-sm font-bold text-foreground">{section.title}</div>
+              <div className="text-sm font-bold text-gray-900">{section.title}</div>
 
 
 
@@ -5418,7 +5680,7 @@ export function DepartmentCompletionRateCard({
 
                       <div className="flex items-center justify-between gap-3">
 
-                        <div className="text-sm font-semibold text-foreground">{item.label} </div>
+                        <div className="text-sm font-semibold text-gray-900">{item.label} </div>
 
                         <div className="text-xs font-semibold text-muted-foreground">
 
@@ -5682,19 +5944,19 @@ export function NoLinkClearanceRequestsCard({
                       </div>
 
                       <div className="mt-3 grid grid-cols-[88px_1fr] gap-x-3 gap-y-1 text-sm">
-                        <div className="font-bold text-black">Request ID</div>
-                        <div className="text-black">{item.requestId}</div>
-                        <div className="font-bold text-black">Employee ID</div>
-                        <div className="text-black">{item.employeeId}</div>
+                        <div className="font-bold text-gray-900">Request ID</div>
+                        <div className="text-gray-900">{item.requestId}</div>
+                        <div className="font-bold text-gray-900">Employee ID</div>
+                        <div className="text-gray-900">{item.employeeId}</div>
 
-                        <div className="font-bold text-black">College</div>
-                        <div className="text-black">{item.college}</div>
+                        <div className="font-bold text-gray-900">College</div>
+                        <div className="text-gray-900">{item.college}</div>
 
-                        <div className="font-bold text-black">Department</div>
-                        <div className="text-black">{item.department}</div>
+                        <div className="font-bold text-gray-900">Department</div>
+                        <div className="text-gray-900">{item.department}</div>
 
-                        <div className="font-bold text-black">Faculty Type</div>
-                        <div className="text-black">{item.facultyType}</div>
+                        <div className="font-bold text-gray-900">Faculty Type</div>
+                        <div className="text-gray-900">{item.facultyType}</div>
                       </div>
                     </div>
                   </div>

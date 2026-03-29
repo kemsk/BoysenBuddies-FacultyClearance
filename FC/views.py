@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.utils.decorators import method_decorator
-from django.db import transaction
+from django.db import transaction, models
 from django.db.models import Q, Count, Sum, Avg, Max, Min, Prefetch
 from django.core.paginator import Paginator
 from django.core.exceptions import ValidationError
@@ -301,9 +301,8 @@ def _dashboard_route_for_user(user: "User") -> str:
     if 'OVPHE' in user_roles:
         return "/OVPHE-dashboard"
     
-    # All approver roles (College Admin, Department Chair, Office Admin) go to approver dashboard
-    approver_roles = ['College Admin', 'Department Chair', 'Office Admin']
-    if any(role in user_roles for role in approver_roles):
+    # All approvers go to approver dashboard
+    if 'Approver' in user_roles:
         return "/approver-dashboard"
     
     # Student Assistant / Assistant Approver
@@ -714,6 +713,7 @@ def me_api(request):
     if not user:
         return JsonResponse({"detail": "Authentication required"}, status=401)
 
+    # Keep existing role_value behaviour for backwards compatibility
     from .decorators import get_role_value_for_user, get_role_name_for_value
     role_value = get_role_value_for_user(user)
     role_name = get_role_name_for_value(role_value)
@@ -747,6 +747,20 @@ def me_api(request):
     # Remove duplicates and sort
     user_role_values = sorted(list(set(user_role_values)))
 
+    # Expose structured role information so the frontend can derive
+    # College Dean / Department Chair / Office Approver from colleges,
+    # departments, and offices without introducing new endpoints.
+    roles_payload: list[dict] = []
+    for ur in user.get_active_roles().select_related("role", "college", "department", "office"):
+        roles_payload.append(
+            {
+                "role_name": ur.role.name,
+                "college": ur.college.name if ur.college else "",
+                "department": ur.department.name if ur.department else "",
+                "office": ur.office.name if ur.office else "",
+            }
+        )
+
     return JsonResponse(
         {
             "email": user.email,
@@ -756,8 +770,47 @@ def me_api(request):
             "last_name": user.last_name,
             "role_value": request.session.get("user_role_value"),
             "roles": user_role_values,  # Add all role values for frontend
+            "role_name": role_name,
+            "roles_payload": roles_payload,
         }
     )
+
+
+@csrf_exempt
+def approver_profile_api(request):
+    """
+    API endpoint to get the current user's approver profile with college/department assignments.
+    """
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    # Get approver profile if it exists
+    try:
+        approver = Approver.objects.get(user=user)
+        profile = {
+            "approver_type": approver.approver_type,
+            "college": approver.college.name if approver.college else None,
+            "department": approver.department.name if approver.department else None,
+            "office": approver.office.name if approver.office else None,
+            "college_id": approver.college.id if approver.college else None,
+            "department_id": approver.department.id if approver.department else None,
+            "office_id": approver.office.id if approver.office else None,
+        }
+    except Approver.DoesNotExist:
+        profile = None
+
+    return JsonResponse({
+        "email": user.email,
+        "university_id": user.university_id,
+        "first_name": user.first_name,
+        "middle_name": user.middle_name,
+        "last_name": user.last_name,
+        "approver_profile": profile,
+    })
 
 
 @csrf_exempt
@@ -948,12 +1001,12 @@ def _require_ciso_admin_user(request):
 
 
 def _require_approver_user(request):
-    user = getattr(request, "user", None)
-    if not user or not getattr(user, "is_authenticated", False):
+    user = _get_authenticated_user(request)
+    if not user:
         return None, JsonResponse({"detail": "Authentication required"}, status=401)
 
     # Check if user has approver-related role
-    approver_roles = ['Department Chair', 'Office Admin', 'College Admin']
+    approver_roles = ['Department Chair', 'Office Admin', 'College Admin', 'Approver']
     user_roles = user.get_active_roles().values_list('role__name', flat=True)
     if not any(role in user_roles for role in approver_roles):
         return None, JsonResponse({"detail": "Forbidden"}, status=403)
@@ -1369,7 +1422,7 @@ def clearance_requests_api(request):
         items.append(
             {
                 "id": str(r.id),
-                "requestId": str(r.id),
+                "requestId": r.request_id,
                 "employeeId": employee_id,
                 "name": full_name,
                 "college": college,
@@ -1407,7 +1460,7 @@ def ciso_system_user_detail_api(request, user_id: int):
 
         if user_roles:
             # Get the highest priority role for display
-            role_priority = ['CISO', 'OVPHE', 'College Admin', 'Department Chair', 'Office Admin', 'Student Assistant', 'Faculty']
+            role_priority = ['CISO', 'OVPHE', 'Approver', 'Student Assistant', 'Faculty']
             
             for priority_role in role_priority:
                 user_role = user_roles.filter(role__name=priority_role).first()
@@ -1471,7 +1524,8 @@ def ciso_system_user_detail_api(request, user_id: int):
     middle_name = (data.get("middleName") or "").strip()
     last_name = (data.get("lastName") or "").strip()
     university_id = (data.get("universityId") or "").strip()
-    email = _validate_xu_email(data.get("email") or "")
+    raw_email = (data.get("email") or "").strip()
+    email = _validate_xu_email(raw_email)
     is_active = bool(data.get("isActive", True))
 
     if not email:
@@ -1532,33 +1586,45 @@ def ciso_system_user_detail_api(request, user_id: int):
 
         assistant_profile = getattr(user, "assistant_profile", None)
         if assistant_profile and not system_admin_office:
+            assistant_type = (data.get("assistantType") or "student_assistant").strip() or "student_assistant"
+
             if approver_type:
                 atype = approver_type.strip().lower()
                 if atype != "college":
-                    return JsonResponse({"detail": "Assistant approvers must be department-based"}, status=400)
+                    return JsonResponse({"detail": "Invalid approver type"}, status=400)
 
             college_name = (data.get("college") or "").strip()
             dept_name = (data.get("department") or "").strip()
-            if not college_name:
-                return JsonResponse({"detail": "College is required"}, status=400)
-            if not dept_name:
-                return JsonResponse({"detail": "Department is required"}, status=400)
+            office_name = (data.get("office") or "").strip()
+            
+            if assistant_type == "student_assistant":
+                # Student assistant: need both college and department
+                if not college_name:
+                    return JsonResponse({"detail": "College is required"}, status=400)
+                if not dept_name:
+                    return JsonResponse({"detail": "Department is required"}, status=400)
+            else:
+                # Admin assistant: only need department OR office
+                if not dept_name and not office_name:
+                    return JsonResponse({"detail": "Department or Office is required for Admin assistants"}, status=400)
 
             college = College.objects.filter(name__iexact=college_name, is_active=True).first()
-            if not college:
+            if college_name and not college:
                 return JsonResponse({"detail": "College not found"}, status=400)
 
             department = Department.objects.filter(
                 name__iexact=dept_name,
-                college=college,
+                college=college if college else None,
                 is_active=True,
             ).first()
-            if not department:
+            if dept_name and not department:
                 return JsonResponse({"detail": "Department not found"}, status=400)
 
             assistant_profile.college = college
             assistant_profile.department = department
             assistant_profile.save(update_fields=["college", "department"])
+            
+            # Delete approver profile if exists
 
             approver_profile = getattr(user, "approver_profile", None)
             if approver_profile:
@@ -1625,14 +1691,12 @@ def ciso_system_user_detail_api(request, user_id: int):
             
             # Assign appropriate role based on approver type
             from .models import Role, UserRole
-            if atype == "college":
-                role_name = "College Admin"
-            else:
-                role_name = "Office Admin"
+            # Always use "Approver" role regardless of approver type
+            role_name = "Approver"
             
             role, created = Role.objects.get_or_create(
                 name=role_name,
-                defaults={'description': f'{role_name} role'}
+                defaults={'description': 'Approver role'}
             )
             user_role, _ = UserRole.objects.get_or_create(
                 user=user,
@@ -1706,6 +1770,36 @@ def _to_request_status(value: str | None):
     return "pending"
 
 
+def _can_approver_access_request(user: User, clearance_request: ClearanceRequest) -> bool:
+    """Check if approver has permission to access a specific clearance request"""
+    # Get user's approver profile
+    try:
+        approver_profile = user.approver_profile
+    except AttributeError:
+        return False
+    
+    faculty = clearance_request.faculty
+    requirement = clearance_request.requirement
+    
+    # Check if approver has scope based on their assignment
+    if approver_profile.office and requirement.approver_flow_step.office == approver_profile.office:
+        return True
+    
+    if approver_profile.college:
+        # Check if college matches faculty college or requirement target college
+        if (approver_profile.college == faculty.college or 
+            requirement.target_colleges.filter(id=approver_profile.college.id).exists()):
+            return True
+    
+    if approver_profile.department:
+        # Check if department matches faculty department or requirement target department
+        if (approver_profile.department == faculty.department or 
+            requirement.target_departments.filter(id=approver_profile.department.id).exists()):
+            return True
+    
+    return False
+
+
 def clearance_requests_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
@@ -1744,7 +1838,7 @@ def clearance_requests_api(request):
         items.append(
             {
                 "id": str(r.id),
-                "requestId": str(r.id),
+                "requestId": r.request_id,
                 "employeeId": employee_id,
                 "name": full_name,
                 "college": college,
@@ -2658,6 +2752,14 @@ def ciso_org_structure_api(request):
     )
     offices = list(
         Office.objects.filter(is_active=True)
+        .exclude(
+            models.Q(name__iexact="Department Chair") |
+            models.Q(name__icontains="Department Chair") |
+            models.Q(name__iexact="College Dean") |
+            models.Q(name__icontains="College Dean") |
+            models.Q(name__iexact="Dean") |
+            models.Q(name__icontains="Dean")
+        )
         .order_by("display_order", "name", "id")
         .values("id", "name", "abbreviation", "display_order")
     )
@@ -3940,13 +4042,16 @@ def ciso_system_users_api(request):
         )
 
     def _role_rank(item: dict) -> int:
-        role = (item.get("userRole") or "").strip().lower()
-        if "admin" in role:
+        role = (item.get("userRole") or "").strip()
+        # Prioritize CISO and OVPHE as system admin roles
+        if role == "CISO" or role == "OVPHE":
             return 3
-        if "assistant" in role:
+        if "admin" in role.lower():
             return 2
-        if "approver" in role:
+        if "assistant" in role.lower():
             return 1
+        if "approver" in role.lower():
+            return 0
         return 0
 
     deduped: dict[str, dict] = {}
@@ -4023,6 +4128,28 @@ def ciso_system_users_api(request):
                 defaults={'is_active': True}
             )
 
+            # Auto-create approver profile for OVPHE users
+            if office_norm == "OVPHE":
+                ovphe_office = Office.objects.filter(name__iexact="Office of the Vice President for Higher Education", is_active=True).first()
+                if ovphe_office:
+                    Approver.objects.get_or_create(
+                        user=user,
+                        defaults={
+                            'approver_type': 'Office',
+                            'office': ovphe_office
+                        }
+                    )
+                    # Also assign Approver role
+                    approver_role, created = Role.objects.get_or_create(
+                        name="Approver",
+                        defaults={'description': 'Approver role'}
+                    )
+                    UserRole.objects.get_or_create(
+                        user=user,
+                        role=approver_role,
+                        defaults={'is_active': True}
+                    )
+
         if approver_type:
             atype = approver_type.strip().lower()
             if atype not in {"college", "office"}:
@@ -4070,15 +4197,13 @@ def ciso_system_users_api(request):
             
             # Assign appropriate role based on approver type
             from .models import Role, UserRole
-            if atype == "college":
-                role_name = "College Admin"
-            else:
-                role_name = "Office Admin"
+            # Always use "Approver" role regardless of approver type
+            role_name = "Approver"
             
             # Create role if it doesn't exist
             role, created = Role.objects.get_or_create(
                 name=role_name,
-                defaults={'description': f'{role_name} role'}
+                defaults={'description': 'Approver role'}
             )
             UserRole.objects.get_or_create(
                 user=user,
@@ -4427,19 +4552,53 @@ def faculty_dashboard_api(request):
                 
                 # Find requests for this step
                 step_requests = clearance_requests.filter(
-                    requirement__title__icontains=flow_step.category
+                    requirement__approver_flow_step=flow_step
                 )
                 
-                if step_requests.exists():
-                    # Determine step status based on requests
-                    approved_count = step_requests.filter(status=ClearanceRequest.Status.APPROVED).count()
-                    total_count = step_requests.count()
+                # Find all requirements for this step (even if no request exists)
+                step_requirements = Requirement.objects.filter(
+                    approver_flow_step=flow_step,
+                    clearance_timeline=timeline,
+                    is_active=True
+                )
+                
+                # Filter requirements that apply to this faculty
+                applicable_requirements = []
+                for req in step_requirements:
+                    if _requirement_applies_to_faculty(req, faculty):
+                        # Check if faculty already submitted a request for this requirement
+                        existing_request = step_requests.filter(requirement=req).first()
+                        
+                        # Determine the status and whether it needs resubmission
+                        is_approved = existing_request and existing_request.status == ClearanceRequest.Status.APPROVED
+                        is_rejected = existing_request and existing_request.status == ClearanceRequest.Status.REJECTED
+                        is_submitted = existing_request is not None and not is_rejected
+                        
+                        applicable_requirements.append({
+                            "id": req.id,
+                            "title": req.title,
+                            "description": req.description or "",
+                            "completed": is_approved,
+                            "submitted": is_submitted,
+                            "requestId": existing_request.request_id if existing_request else None,
+                            "status": existing_request.status if existing_request else None,
+                            "submissionNotes": existing_request.submission_notes if existing_request and not is_rejected else None,
+                            "required_physical": req.required_physical,
+                            "rejected": is_rejected,
+                            "remarks": existing_request.remarks if existing_request and is_rejected else None
+                        })
+                
+                if applicable_requirements:
+                    # Calculate status based on applicable requirements
+                    submitted_count = len([req for req in applicable_requirements if req["submitted"]])
+                    approved_count = len([req for req in applicable_requirements if req["completed"]])
+                    total_count = len(applicable_requirements)
                     
                     if approved_count == total_count and total_count > 0:
                         status_label = "APPROVED"
                         status_variant = "success"
                         collapsed_type = "status"
-                    elif approved_count > 0:
+                    elif submitted_count > 0:
                         status_label = "IN_PROGRESS"
                         status_variant = "warning"
                         collapsed_type = "status"
@@ -4447,15 +4606,6 @@ def faculty_dashboard_api(request):
                         status_label = "PENDING"
                         status_variant = "warning"
                         collapsed_type = "status"
-                    
-                    # Get requirements for this step
-                    requirements = []
-                    for req in step_requests:
-                        requirements.append({
-                            "title": req.requirement.title,
-                            "description": req.requirement.description or "",
-                            "completed": req.status == ClearanceRequest.Status.APPROVED
-                        })
                     
                     steps.append({
                         "index": display_index,
@@ -4465,7 +4615,7 @@ def faculty_dashboard_api(request):
                         "collapsedType": collapsed_type,
                         "submittedTo": f"{step_title}",
                         "submittedOn": clearance.submitted_date.strftime("%B %d, %Y") if clearance and clearance.submitted_date else "",
-                        "requirements": requirements
+                        "requirements": applicable_requirements
                     })
                     display_index += 1
                 else:
@@ -4551,43 +4701,15 @@ def faculty_notifications_api(request):
 
 
 @csrf_exempt
-def approver_assistant_approvers_api(request):
-    user, err = _require_approver_user(request)
-    if err:
-        return err
-
-    def _full_name(u: User):
-        parts = [(u.first_name or "").strip(), (u.middle_name or "").strip(), (u.last_name or "").strip()]
-        parts = [p for p in parts if p]
-        return " ".join(parts) if parts else u.email
-
-    items = []
-
-    assistants = (
-        StudentAssistant.objects.select_related("user", "college", "department")
-        .order_by("id")
-    )
-    for sa in assistants:
-        u = sa.user
-        items.append(
-            {
-                "id": str(u.id),
-                "name": _full_name(u),
-                "systemId": f"SYS-{u.id}",
-                "userRole": "Assistant Approver",
-                "universityId": u.university_id or "",
-                "college": sa.college.name if sa.college else "N/A",
-                "department": sa.department.name if sa.department else "N/A",
-                "email": u.email,
-                "isActive": u.get_active_roles().exists(),
-            }
-        )
-
-    if request.method == "GET":
-        return JsonResponse({"items": items})
-
+@faculty_required
+def faculty_submit_requirement_api(request):
     if request.method != "POST":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    # Get the authenticated user
+    authenticated_user = _get_authenticated_user(request)
+    if not authenticated_user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
 
     data, parse_err = _parse_json_body(request)
     if parse_err:
@@ -4595,73 +4717,433 @@ def approver_assistant_approvers_api(request):
     if not isinstance(data, dict):
         return JsonResponse({"detail": "Invalid payload"}, status=400)
 
-    first_name = (data.get("firstName") or "").strip()
-    middle_name = (data.get("middleName") or "").strip()
-    last_name = (data.get("lastName") or "").strip()
-    university_id = (data.get("universityId") or "").strip()
-    email = _validate_xu_email(data.get("email") or "")
-    is_active = bool(data.get("isActive", True))
+    requirement_title = (data.get("requirementTitle") or "").strip()
+    comment = (data.get("comment") or "").strip()
 
-    if not email:
-        return JsonResponse({"detail": "Email must be an XU email (@xu.edu.ph or @my.xu.edu.ph)"}, status=400)
-    if not university_id or not university_id.isdigit():
-        return JsonResponse({"detail": "University ID must be a valid number"}, status=400)
+    if not requirement_title:
+        return JsonResponse({"detail": "Requirement title is required"}, status=400)
+    if not comment:
+        return JsonResponse({"detail": "Comment is required"}, status=400)
 
-    college_name = (data.get("college") or "").strip()
-    dept_name = (data.get("department") or "").strip()
-    if not college_name:
-        return JsonResponse({"detail": "College is required"}, status=400)
-    if not dept_name:
-        return JsonResponse({"detail": "Department is required"}, status=400)
+    # Get the faculty member
+    faculty = Faculty.objects.filter(user=authenticated_user).first()
+    if not faculty:
+        return JsonResponse({"detail": "Faculty not found"}, status=404)
 
-    college = College.objects.filter(name__iexact=college_name, is_active=True).first()
-    if not college:
-        return JsonResponse({"detail": "College not found"}, status=400)
+    # Get active clearance timeline
+    timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year_start", "-id").first()
+    if not timeline:
+        return JsonResponse({"detail": "No active clearance timeline"}, status=400)
 
-    department = Department.objects.filter(
-        name__iexact=dept_name,
-        college=college,
-        is_active=True,
+    # Find the requirement by title (case-insensitive search)
+    try:
+        requirement = Requirement.objects.filter(title__iexact=requirement_title).first()
+        if not requirement:
+            # Log all available requirements for debugging
+            all_requirements = Requirement.objects.all().values_list('title', flat=True)
+            print(f"Available requirements: {list(all_requirements)}")
+            print(f"Looking for: '{requirement_title}'")
+            return JsonResponse({"detail": f"Requirement '{requirement_title}' not found"}, status=404)
+    except Exception as e:
+        print(f"Error finding requirement: {e}")
+        return JsonResponse({"detail": "Error finding requirement"}, status=500)
+
+    # Check if a request already exists for this requirement
+    existing_request = ClearanceRequest.objects.filter(
+        faculty=faculty,
+        clearance_timeline=timeline,
+        requirement=requirement
     ).first()
-    if not department:
-        return JsonResponse({"detail": "Department not found"}, status=400)
+    
+    if existing_request:
+        # Allow resubmission if the existing request was rejected
+        if existing_request.status == ClearanceRequest.Status.REJECTED:
+            # Update the existing rejected request instead of creating a new one
+            existing_request.status = ClearanceRequest.Status.PENDING
+            existing_request.submission_notes = comment
+            existing_request.remarks = ""  # Clear previous rejection remarks
+            existing_request.approved_by = None  # Clear previous approver
+            existing_request.approved_date = None  # Clear previous approval date
+            existing_request.save()
+            
+            return JsonResponse({
+                "detail": "Requirement resubmitted successfully",
+                "requestId": existing_request.request_id
+            })
+        else:
+            return JsonResponse({"detail": "Requirement already submitted"}, status=400)
 
-    with transaction.atomic():
-        if User.objects.filter(email__iexact=email).exists():
-            return JsonResponse({"detail": "Email already exists"}, status=400)
-        if User.objects.filter(university_id__iexact=university_id).exists():
-            return JsonResponse({"detail": "University ID already exists"}, status=400)
-
-        user = User.objects.create_user(
-            email=email,
-            university_id=university_id,
-            first_name=first_name,
-            middle_name=middle_name,
-            last_name=last_name,
-            is_active=is_active,
-            is_staff=True,
-        )
-
-        StudentAssistant.objects.create(
-            user=user,
-            college=college,
-            department=department,
-            supervisor_approver=user,  # Assign the current approver as supervisor
+    # Create the clearance request
+    try:
+        # Get department code from faculty's department (not approver's)
+        dept_code = "GEN"  # Default generic code
+        if faculty.department:
+            # Use department abbreviation if available, otherwise use name
+            dept_code = faculty.department.abbreviation if faculty.department.abbreviation else faculty.department.name[:3].upper()
+        
+        # Get term from timeline
+        term_code = "00"  # Default
+        if timeline.term:
+            # Handle different term formats
+            term_lower = timeline.term.lower()
+            if "first" in term_lower:
+                term_code = "01"
+            elif "second" in term_lower:
+                term_code = "02"
+            elif "summer" in term_lower:
+                term_code = "03"
+            elif "intersession" in term_lower:
+                term_code = "03"
+            else:
+                # For terms like "1st Semester", "2nd Semester", etc.
+                if "1st" in term_lower or "1" in term_lower:
+                    term_code = "01"
+                elif "2nd" in term_lower or "2" in term_lower:
+                    term_code = "02"
+                elif "3rd" in term_lower or "3" in term_lower:
+                    term_code = "03"
+                else:
+                    # Fallback to first 2 characters if no pattern matches
+                    term_code = timeline.term[:2].upper()
+        
+        # Get academic year (last 2 digits)
+        year_code = "00"
+        if timeline.academic_year_start:
+            year_code = str(timeline.academic_year_start)[-2:]
+        
+        # Get university ID
+        uni_id = faculty.user.university_id or str(faculty.user.id)
+        
+        # Count existing requests for this faculty to determine the requirement number
+        existing_count = ClearanceRequest.objects.filter(
+            faculty=faculty,
+            clearance_timeline=timeline
+        ).count()
+        
+        # Generate request number with padding (001, 002, etc.)
+        request_number = str(existing_count + 1).zfill(3)
+        
+        # Build the request ID
+        request_id = f"{year_code}{term_code}-{uni_id}-{dept_code}-{request_number}"
+        
+        clearance_request = ClearanceRequest.objects.create(
+            request_id=request_id,
+            faculty=faculty,
+            clearance_timeline=timeline,
+            requirement=requirement,
+            status=ClearanceRequest.Status.PENDING,
+            submission_notes=comment
         )
         
-        # Assign Student Assistant role
-        from .models import Role, UserRole
-        student_role, created = Role.objects.get_or_create(
-            name='Student Assistant',
-            defaults={'description': 'Student Assistant role'}
-        )
-        UserRole.objects.get_or_create(
-            user=user,
-            role=student_role,
-            defaults={'is_active': True}
-        )
+        print(f"Created clearance request: {clearance_request.id} with request_id: {request_id}")
+        
+    except Exception as e:
+        print(f"Error creating clearance request: {e}")
+        return JsonResponse({"detail": f"Error creating clearance request: {str(e)}"}, status=500)
 
-    return JsonResponse({"ok": True, "id": str(user.id)})
+    return JsonResponse({
+        "id": str(clearance_request.id),
+        "requestId": clearance_request.request_id,
+        "requirementTitle": requirement_title,
+        "comment": comment,
+        "status": "pending",
+        "submittedDate": clearance_request.submitted_date.isoformat()
+    })
+
+
+@csrf_exempt
+def approver_assistant_approvers_api(request):
+    try:
+        user, err = _require_approver_user(request)
+        if err:
+            return err
+
+        if request.method == "GET":
+            def _full_name(u: User):
+                parts = [(u.first_name or "").strip(), (u.middle_name or "").strip(), (u.last_name or "").strip()]
+                parts = [p for p in parts if p]
+                return " ".join(parts) if parts else u.email
+
+            items: list[dict] = []
+
+            # Assistants supervised by this approver (student assistants)
+            assistants = (
+                StudentAssistant.objects.select_related("user", "college", "department")
+                .filter(supervisor_approver=user)
+                .order_by("id")
+            )
+            for sa in assistants:
+                u = sa.user
+                items.append(
+                    {
+                        "id": str(u.id),
+                        "name": _full_name(u),
+                        "systemId": f"SYS-{u.id}",
+                        "userRole": "Assistant Approver",
+                        "assistantType": "student_assistant",
+                        "universityId": u.university_id or "",
+                        "college": sa.college.name if sa.college else "N/A",
+                        "department": sa.department.name if sa.department else "N/A",
+                        "office": "",
+                        "email": u.email,
+                        "isActive": u.get_active_roles().exists(),
+                    }
+                )
+
+            # Admin-type assistants (these are regular Approvers supervised by this user)
+            admin_assistants = (
+                ApproverAssistant.objects.select_related("assistant", "college", "department", "office")
+                .filter(supervisor=user)
+                .order_by("id")
+            )
+            for aa in admin_assistants:
+                admin_user = aa.assistant
+                items.append(
+                    {
+                        "id": str(admin_user.id),
+                        "name": _full_name(admin_user),
+                        "systemId": f"SYS-{admin_user.id}",
+                        "userRole": "Admin Assistant",
+                        "assistantType": aa.assistant_type,
+                        "universityId": admin_user.university_id or "",
+                        "college": aa.college.name if aa.college else "N/A",
+                        "department": aa.department.name if aa.department else "N/A",
+                        "office": aa.office.name if aa.office else "N/A",
+                        "email": admin_user.email,
+                        "isActive": admin_user.get_active_roles().exists(),
+                    }
+                )
+
+            return JsonResponse({"items": items})
+
+        elif request.method == "POST":
+            data, parse_err = _parse_json_body(request)
+            if parse_err:
+                return parse_err
+            if not isinstance(data, dict):
+                return JsonResponse({"detail": "Invalid payload"}, status=400)
+
+            first_name = (data.get("firstName") or "").strip()
+            middle_name = (data.get("middleName") or "").strip()
+            last_name = (data.get("lastName") or "").strip()
+            university_id = (data.get("universityId") or "").strip()
+            email = _validate_xu_email(data.get("email") or "")
+            is_active = bool(data.get("isActive", True))
+
+            if not email:
+                return JsonResponse({"detail": "Email must be an XU email (@xu.edu.ph or @my.xu.edu.ph)"}, status=400)
+            if not university_id or not university_id.isdigit():
+                return JsonResponse({"detail": "University ID must be a valid number"}, status=400)
+
+            college_name = (data.get("college") or "").strip()
+            dept_name = (data.get("department") or "").strip()
+            office_name = (data.get("office") or "").strip()
+            assistant_type = (data.get("assistantType") or "student_assistant").strip() or "student_assistant"
+            
+            # Get current approver's profile to determine scope
+            from .models import Approver
+            current_approver = None
+            try:
+                current_approver = Approver.objects.get(user=user)
+            except Approver.DoesNotExist:
+                return JsonResponse({"detail": "Approver profile not found"}, status=400)
+            
+            # Check if this is a College Dean (department with "Dean" in title)
+            is_college_dean = False
+            if current_approver.department and "dean" in current_approver.department.name.lower():
+                is_college_dean = True
+                # For College Dean, get the college from their department
+                college = current_approver.department.college
+            
+            # Validation logic based on approver type
+            if is_college_dean:
+                # College Dean logic
+                if not current_approver.department or not current_approver.department.college:
+                    return JsonResponse({"detail": "College Dean must have an assigned department and college"}, status=400)
+                
+                # For College Dean, the college is fixed to their department's college
+                if college_name and college_name.lower() != college.name.lower():
+                    return JsonResponse({"detail": f"College must be {college.name}"}, status=400)
+                
+                # Set college to Dean's college
+                college_name = college.name
+                
+                if assistant_type == "student_assistant":
+                    # Student Assistant: can add anyone from department EXCEPT Dean
+                    if not dept_name:
+                        return JsonResponse({"detail": "Department is required"}, status=400)
+                    
+                    # Validate department belongs to Dean's college
+                    department = Department.objects.filter(
+                        name__iexact=dept_name,
+                        college=college,
+                        is_active=True
+                    ).first()
+                    if not department:
+                        return JsonResponse({"detail": "Department not found in your college"}, status=400)
+                    
+                    # Check if the person being added is a Dean
+                    # We'll validate this after user creation by checking their roles
+                    
+                else:  # admin assistant
+                    # Admin: can add anyone from the department
+                    if not dept_name and not office_name:
+                        return JsonResponse({"detail": "Department or Office is required for Admin assistants"}, status=400)
+                    
+                    if dept_name:
+                        department = Department.objects.filter(
+                            name__iexact=dept_name,
+                            college=college,
+                            is_active=True
+                        ).first()
+                        if not department:
+                            return JsonResponse({"detail": "Department not found in your college"}, status=400)
+                    
+                    if office_name:
+                        office = Office.objects.filter(
+                            name__iexact=office_name,
+                            is_active=True
+                        ).first()
+                        if not office:
+                            return JsonResponse({"detail": "Office not found"}, status=400)
+                            
+            elif current_approver.approver_type == "Department":
+                # Department Chair logic (existing logic should work)
+                pass
+            elif current_approver.approver_type == "Office":
+                # Office Admin logic (existing logic should work)  
+                pass
+            else:
+                return JsonResponse({"detail": "Invalid approver type"}, status=400)
+            
+            # Original validation logic for non-College Dean types
+            if assistant_type == "student_assistant":
+                # Student assistant: need both college and department
+                if not college_name:
+                    return JsonResponse({"detail": "College is required"}, status=400)
+                if not dept_name:
+                    return JsonResponse({"detail": "Department is required"}, status=400)
+            else:
+                # Admin assistant: only need department OR office
+                if not dept_name and not office_name:
+                    return JsonResponse({"detail": "Department or Office is required for Admin assistants"}, status=400)
+
+            # Skip redundant lookups for College Dean (already done above)
+            if not is_college_dean:
+                # Only look up college if it's provided (for student assistants)
+                college = None
+                if college_name:
+                    college = College.objects.filter(name__iexact=college_name, is_active=True).first()
+                    if not college:
+                        return JsonResponse({"detail": "College not found"}, status=400)
+
+                # Look up department if provided
+                department = None
+                if dept_name:
+                    if college:  # Student assistant case
+                        department = Department.objects.filter(
+                            name__iexact=dept_name,
+                            college=college,
+                            is_active=True,
+                        ).first()
+                        if not department:
+                            return JsonResponse({"detail": "Department not found"}, status=400)
+                    else:  # Admin assistant case - find department by name only
+                        department = Department.objects.filter(
+                            name__iexact=dept_name,
+                            is_active=True,
+                        ).first()
+                        if not department:
+                            return JsonResponse({"detail": "Department not found"}, status=400)
+
+                # Look up office if provided (for admin assistants)
+                office = None
+                if office_name:
+                    office = Office.objects.filter(
+                        name__iexact=office_name,
+                        is_active=True,
+                    ).first()
+                    if not office:
+                        return JsonResponse({"detail": "Office not found"}, status=400)
+
+            with transaction.atomic():
+                if User.objects.filter(email__iexact=email).exists():
+                    return JsonResponse({"detail": "Email already exists"}, status=400)
+                if User.objects.filter(university_id__iexact=university_id).exists():
+                    return JsonResponse({"detail": "University ID already exists"}, status=400)
+
+                user_obj = User.objects.create(
+                    email=email,
+                    university_id=university_id,
+                    first_name=first_name,
+                    middle_name=middle_name,
+                    last_name=last_name,
+                )
+
+                # Additional validation for College Dean: Check if person being added is a Dean
+                if is_college_dean and assistant_type == "student_assistant":
+                    # Check if the user being created already has a Dean role for this college
+                    from .models import Role, UserRole
+                    dean_roles = UserRole.objects.filter(
+                        user=user_obj,
+                        role__name__in=['College Dean', 'College Admin'],
+                        college=college,
+                        is_active=True
+                    )
+                    if dean_roles.exists():
+                        return JsonResponse({"detail": "Cannot add a Dean as a Student Assistant"}, status=400)
+
+                # Student assistants are represented via StudentAssistant + Student Assistant role
+                if assistant_type == "student_assistant":
+                    sa = StudentAssistant.objects.create(
+                        user=user_obj,
+                        college=college,
+                        department=department,
+                        supervisor_approver=user,
+                    )
+
+                    from .models import Role, UserRole
+
+                    student_role, _ = Role.objects.get_or_create(
+                        name="Student Assistant",
+                        defaults={"description": "Student Assistant role"},
+                    )
+                    UserRole.objects.get_or_create(
+                        user=user_obj,
+                        role=student_role,
+                        defaults={"is_active": True, "college": college, "department": department},
+                    )
+                else:
+                    # Admin-type assistants are stored in ApproverAssistant and use the generic Approver role.
+                    from .models import Role, UserRole
+
+                    approver_role, _ = Role.objects.get_or_create(
+                        name="Approver",
+                        defaults={"description": "Approver role"},
+                    )
+                    UserRole.objects.get_or_create(
+                        user=user_obj,
+                        role=approver_role,
+                        defaults={"is_active": True, "college": college, "department": department},
+                    )
+
+                    ApproverAssistant.objects.create(
+                        assistant=user_obj,
+                        supervisor=user,
+                        assistant_type=assistant_type,
+                        college=college,
+                        department=department,
+                        office=office,
+                    )
+
+            return JsonResponse({"ok": True, "id": str(user_obj.id)})
+
+        else:
+            return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    except Exception as e:
+        import traceback
+        return JsonResponse({"detail": f"Internal server error: {str(e)}", "traceback": traceback.format_exc()}, status=500)
 
 
 @csrf_exempt
@@ -4676,7 +5158,7 @@ def approver_assistant_approver_detail_api(request, user_id):
         return JsonResponse({"detail": "Invalid user ID"}, status=400)
 
     try:
-        user = User.objects.get(pk=user_id_int)
+        target_user = User.objects.get(pk=user_id_int)
     except User.DoesNotExist:
         return JsonResponse({"detail": "User not found"}, status=404)
 
@@ -4686,37 +5168,62 @@ def approver_assistant_approver_detail_api(request, user_id):
         return " ".join(parts) if parts else u.email
 
     if request.method == "GET":
-        assistant_profile = getattr(user, "assistant_profile", None)
+        assistant_profile = getattr(target_user, "assistant_profile", None)
         if not assistant_profile:
-            return JsonResponse({"detail": "Assistant profile not found"}, status=404)
+            # Check if this is an admin-type ApproverAssistant instead
+            aa = (
+                ApproverAssistant.objects.select_related("assistant", "college", "department", "office")
+                .filter(supervisor=user, assistant=target_user)
+                .first()
+            )
+            if not aa:
+                return JsonResponse({"detail": "Assistant profile not found"}, status=404)
+
+            return JsonResponse(
+                {
+                    "item": {
+                        "id": str(target_user.id),
+                        "name": _full_name(target_user),
+                        "systemId": f"SYS-{target_user.id}",
+                        "userRole": "Admin Assistant",
+                        "assistantType": aa.assistant_type,
+                        "universityId": target_user.university_id or "",
+                        "college": aa.college.name if aa.college else "N/A",
+                        "department": aa.department.name if aa.department else (aa.office.name if aa.office else "N/A"),
+                        "office": aa.office.name if aa.office else "",
+                        "email": target_user.email,
+                        "isActive": bool(aa.is_active and target_user.is_active),
+                    }
+                }
+            )
 
         return JsonResponse(
             {
                 "item": {
-                    "id": str(user.id),
-                    "name": _full_name(user),
-                    "systemId": f"SYS-{u.id}",
+                    "id": str(target_user.id),
+                    "name": _full_name(target_user),
+                    "systemId": f"SYS-{target_user.id}",
                     "userRole": "Assistant Approver",
-                    "universityId": user.university_id or "",
+                    "assistantType": "student_assistant",
+                    "universityId": target_user.university_id or "",
                     "college": assistant_profile.college.name if assistant_profile.college else "N/A",
                     "department": assistant_profile.department.name if assistant_profile.department else "N/A",
-                    "email": user.email,
-                    "isActive": bool(user.is_active),
+                    "office": "",
+                    "email": target_user.email,
+                    "isActive": bool(target_user.is_active),
                 }
             }
         )
 
     if request.method == "DELETE":
-        assistant_profile = getattr(user, "assistant_profile", None)
-        if not assistant_profile:
-            return JsonResponse({"detail": "Assistant profile not found"}, status=404)
-
+        assistant_profile = getattr(target_user, "assistant_profile", None)
+        # Prefer deleting StudentAssistant if it exists; otherwise check ApproverAssistant
         with transaction.atomic():
-            # Delete related profiles first
-            assistant_profile.delete()
-
+            if assistant_profile:
+                assistant_profile.delete()
+            ApproverAssistant.objects.filter(supervisor=user, assistant=target_user).delete()
             # Delete the user completely
-            user.delete()
+            target_user.delete()
 
         return JsonResponse({"ok": True})
 
@@ -4743,51 +5250,102 @@ def approver_assistant_approver_detail_api(request, user_id):
 
     college_name = (data.get("college") or "").strip()
     dept_name = (data.get("department") or "").strip()
-    if not college_name:
-        return JsonResponse({"detail": "College is required"}, status=400)
-    if not dept_name:
-        return JsonResponse({"detail": "Department is required"}, status=400)
+    office_name = (data.get("office") or "").strip()
+    
+    # Check if this is an admin assistant
+    admin_assistant = (
+        ApproverAssistant.objects.select_related("assistant", "college", "department", "office")
+        .filter(supervisor=user, assistant=target_user)
+        .first()
+    )
+    
+    if admin_assistant:
+        # Admin assistant: only need department OR office
+        if not dept_name and not office_name:
+            return JsonResponse({"detail": "Department or Office is required for Admin assistants"}, status=400)
+        college_name = admin_assistant.college.name if admin_assistant.college else ""
+    else:
+        # Student assistant: need both college and department
+        if not college_name:
+            return JsonResponse({"detail": "College is required"}, status=400)
+        if not dept_name:
+            return JsonResponse({"detail": "Department is required"}, status=400)
 
-    college = College.objects.filter(name__iexact=college_name, is_active=True).first()
-    if not college:
-        return JsonResponse({"detail": "College not found"}, status=400)
+    # Only look up college if it's provided (for student assistants)
+    college = None
+    if college_name:
+        college = College.objects.filter(name__iexact=college_name, is_active=True).first()
+        if not college:
+            return JsonResponse({"detail": "College not found"}, status=400)
 
-    department = Department.objects.filter(
-        name__iexact=dept_name,
-        college=college,
-        is_active=True,
-    ).first()
-    if not department:
-        return JsonResponse({"detail": "Department not found"}, status=400)
+    # Look up department if provided
+    department = None
+    if dept_name:
+        if college:  # Student assistant case
+            department = Department.objects.filter(
+                name__iexact=dept_name,
+                college=college,
+                is_active=True,
+            ).first()
+            if not department:
+                return JsonResponse({"detail": "Department not found"}, status=400)
+        else:  # Admin assistant case - find department by name only
+            department = Department.objects.filter(
+                name__iexact=dept_name,
+                is_active=True,
+            ).first()
+            if not department:
+                return JsonResponse({"detail": "Department not found"}, status=400)
 
-    assistant_profile = getattr(user, "assistant_profile", None)
-    if not assistant_profile:
+    # Look up office if provided (for admin assistants)
+    office = None
+    if office_name:
+        office = Office.objects.filter(
+            name__iexact=office_name,
+            is_active=True,
+        ).first()
+        if not office:
+            return JsonResponse({"detail": "Office not found"}, status=400)
+
+    assistant_profile = getattr(target_user, "assistant_profile", None)
+
+    if not assistant_profile and not admin_assistant:
         return JsonResponse({"detail": "Assistant profile not found"}, status=404)
 
     with transaction.atomic():
-        if User.objects.filter(email__iexact=email).exclude(pk=user.id).exists():
+        if User.objects.filter(email__iexact=email).exclude(pk=target_user.id).exists():
             return JsonResponse({"detail": "Email already exists"}, status=400)
-        if User.objects.filter(university_id__iexact=university_id).exclude(pk=user.id).exists():
+        if User.objects.filter(university_id__iexact=university_id).exclude(pk=target_user.id).exists():
             return JsonResponse({"detail": "University ID already exists"}, status=400)
 
-        user.email = email
-        user.university_id = university_id
-        user.first_name = first_name
-        user.middle_name = middle_name
-        user.last_name = last_name
-        user.is_active = is_active
-        user.save(update_fields=[
-            "email",
-            "university_id",
-            "first_name",
-            "middle_name",
-            "last_name",
-            "is_active",
-        ])
+        # Update core user fields
+        target_user.email = email
+        target_user.university_id = university_id
+        target_user.first_name = first_name
+        target_user.middle_name = middle_name
+        target_user.last_name = last_name
+        target_user.is_active = is_active
+        target_user.save(
+            update_fields=[
+                "email",
+                "university_id",
+                "first_name",
+                "middle_name",
+                "last_name",
+                "is_active",
+            ]
+        )
 
-        assistant_profile.college = college
-        assistant_profile.department = department
-        assistant_profile.save(update_fields=["college", "department"])
+        # Update either StudentAssistant or ApproverAssistant profile
+        if assistant_profile:
+            assistant_profile.college = college
+            assistant_profile.department = department
+            assistant_profile.save(update_fields=["college", "department"])
+        if admin_assistant:
+            admin_assistant.college = college
+            admin_assistant.department = department
+            admin_assistant.office = None
+            admin_assistant.save(update_fields=["college", "department", "office"])
 
     return JsonResponse({"ok": True})
 
@@ -4986,19 +5544,32 @@ def faculty_view_clearance_api(request):
     })
 
 # Approver endpoints
-@approver_required
 def approver_dashboard_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
-    
-    user = getattr(request, "user", None)
-    if not user or not getattr(user, "is_authenticated", False):
+
+    user = _get_authenticated_user(request)
+    if not user:
         return JsonResponse({"detail": "Authentication required"}, status=401)
-    
-    # Check if user is an approver
-    if not user.is_approver():
+
+    # Check if user has Approver role
+    if not user.userrole_set.filter(role__name='Approver', is_active=True).exists():
         return JsonResponse({"detail": "Access denied"}, status=403)
-    
+
+    # Get approver profile information
+    from .models import Approver
+    approver_info = None
+    try:
+        approver = Approver.objects.get(user=user)
+        approver_info = {
+            "approver_type": approver.approver_type,
+            "college": approver.college.name if approver.college else None,
+            "department": approver.department.name if approver.department else None,
+            "office": approver.office.name if approver.office else None,
+        }
+    except Approver.DoesNotExist:
+        approver_info = None
+
     # Get active timeline
     timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year_start", "-id").first()
     
@@ -5011,10 +5582,8 @@ def approver_dashboard_api(request):
             is_active=True
         )
         
-        # Get approver profile
-        approver = getattr(user, "approver_profile", None)
-        if approver:
-            # Filter based on approver's scope
+        # Filter based on approver's scope
+        if approver and approver_info:
             if approver.college:
                 requirements = requirements.filter(target_colleges=approver.college)
             elif approver.department:
@@ -5038,24 +5607,757 @@ def approver_dashboard_api(request):
                 "submittedDate": req.submitted_date.strftime("%Y-%m-%d") if req.submitted_date else None,
             })
     
+    timeline_data = None
+    if timeline:
+        academic_year = ""
+        if timeline.academic_year_start is not None and timeline.academic_year_end is not None:
+            academic_year = f"{timeline.academic_year_start}-{timeline.academic_year_end}"
+        
+        timeline_data = {
+            "academicYear": academic_year,
+            "semester": ""
+        }
+    
     return JsonResponse({
         "pendingRequests": pending_requests,
         "pendingCount": len(pending_requests),
-        "timeline": {
-            "academicYear": timeline.academic_year_start if timeline else None,
-            "term": timeline.term if timeline else None,
-        }
+        "approverInfo": approver_info,
+        "timeline": timeline_data
     })
 
-# Placeholder implementations for remaining endpoints
+@csrf_exempt
 def approver_requirement_list_api(request):
-    return JsonResponse({"items": []})
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    # Check if user has approver role
+    user_roles = user.get_active_roles().values_list('role__name', flat=True)
+    if 'Approver' not in user_roles:
+        return JsonResponse({"detail": "Forbidden - Approver role required"}, status=403)
+
+    if request.method == "GET":
+        return _get_approver_requirements(user, request)
+    elif request.method == "POST":
+        return _create_approver_requirement(user, request)
+    else:
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+
+def _get_approver_requirements(user, request):
+    """Get requirements for the approver based on their role and scope"""
+    timeline = _get_active_timeline()
+    if not timeline:
+        return JsonResponse({"items": []})
+
+    # Get approver profile to determine scope
+    try:
+        approver_profile = user.approver_profile
+    except AttributeError:
+        return JsonResponse({"items": []})
+
+    # Filter requirements based on approver's scope
+    requirements = Requirement.objects.filter(
+        clearance_timeline=timeline,
+        is_active=True
+    ).select_related(
+        'created_by', 'clearance_timeline'
+    ).prefetch_related(
+        'target_colleges', 'target_departments', 'target_offices', 'target_faculty'
+    ).order_by('-last_updated')
+
+    # Apply role-based filtering
+    filtered_requirements = []
+    for req in requirements:
+        if _can_approver_access_requirement(approver_profile, req):
+            filtered_requirements.append(_serialize_approver_requirement(req))
+
+    return JsonResponse({"items": filtered_requirements})
+
+
+def _can_approver_access_requirement(approver_profile, requirement):
+    """Check if approver can access this requirement based on their role and scope"""
+    
+    # Always allow access to requirements created by the user
+    if requirement.created_by == approver_profile.user:
+        return True
+    
+    # Check if the requirement creator is an Office Approver (OVPHE, etc.)
+    # Department/College approvers should not see requirements created by Office Approvers
+    creator_is_office_approver = False
+    try:
+        creator_approver_profile = requirement.created_by.approver_profile
+        if creator_approver_profile.office:
+            creator_office_name = creator_approver_profile.office.name.lower()
+            if any(term in creator_office_name for term in ['vice president', 'ovphe', 'registrar', 'library', 'human resources', 'hr']):
+                creator_is_office_approver = True
+            elif not creator_approver_profile.college and not creator_approver_profile.department:
+                creator_is_office_approver = True
+    except AttributeError:
+        pass
+    
+    # If creator is an Office Approver and current approver is not, deny access
+    if creator_is_office_approver:
+        return False
+    
+    # Determine approver type based on user's logic:
+    # 1. College Dean: Has "Dean" in their department name
+    # 2. Department Chair: Has both College and Department but no "Dean"
+    # 3. Office Approver: Only has Office (priority over department/college if office is OVPHE-related)
+    
+    is_college_dean = False
+    is_department_chair = False
+    is_office_approver = False
+    
+    # Check for Office Approver first (especially for OVPHE)
+    if approver_profile.office:
+        office_name_lower = approver_profile.office.name.lower()
+        # OVPHE and similar offices should be treated as Office Approvers even if they have college/department
+        if any(term in office_name_lower for term in ['vice president', 'ovphe', 'registrar', 'library', 'human resources', 'hr']):
+            is_office_approver = True
+        # If they only have office (no college/department), they're definitely an Office Approver
+        elif not approver_profile.college and not approver_profile.department:
+            is_office_approver = True
+    
+    # If not identified as Office Approver, check for College/Department roles
+    if not is_office_approver and approver_profile.department and approver_profile.college:
+        # Check if this is a College Dean (has "Dean" in department name)
+        if "dean" in approver_profile.department.name.lower():
+            is_college_dean = True
+        else:
+            # This is a Department Chair (has college and department but no "Dean")
+            is_department_chair = True
+    
+    # College Dean logic
+    if is_college_dean:
+        college = approver_profile.college
+        if requirement.recipient_scope in ['all', 'college']:
+            return approver_profile.college in requirement.target_colleges.all()
+        elif requirement.recipient_scope == 'department':
+            # Check if any target department is under their college
+            return requirement.target_departments.filter(
+                college=college
+            ).exists()
+        elif requirement.recipient_scope == 'office':
+            # College Dean should not see office-specific requirements
+            return False
+        elif requirement.recipient_scope == 'individual':
+            # Check if any target faculty is under their college
+            return requirement.target_faculty.filter(
+                department__college=college
+            ).exists()
+    
+    # Department Chair logic
+    elif is_department_chair:
+        department = approver_profile.department
+        if requirement.recipient_scope == 'department':
+            return department in requirement.target_departments.all()
+        elif requirement.recipient_scope == 'college':
+            # Department Chair should only see college-wide requirements if their department's college is targeted
+            return department.college in requirement.target_colleges.all()
+        elif requirement.recipient_scope == 'all':
+            return True
+        elif requirement.recipient_scope == 'office':
+            # Department Chair should not see office-specific requirements
+            return False
+        elif requirement.recipient_scope == 'individual':
+            # Department Chair should only see individual requirements for faculty in their specific department
+            # BUT NOT if created by Office Approvers (handled above)
+            return requirement.target_faculty.filter(
+                department=department
+            ).exists()
+    
+    # Office Approver logic
+    elif is_office_approver:
+        office = approver_profile.office
+        if requirement.recipient_scope == 'office':
+            return office in requirement.target_offices.all()
+        elif requirement.recipient_scope == 'all':
+            return True
+        elif requirement.recipient_scope in ['college', 'department', 'individual']:
+            # Office approvers should only see college/department/individual specific requirements
+            # if their office is explicitly targeted as a recipient for that scope
+            return office in requirement.target_offices.all()
+    
+    return False
+
+
+def _serialize_approver_requirement(requirement):
+    """Serialize requirement for approver view"""
+    recipients = []
+    
+    if requirement.recipient_scope == 'all':
+        recipients = ['All Faculty']
+    elif requirement.recipient_scope == 'college':
+        recipients = [college.name for college in requirement.target_colleges.all()]
+    elif requirement.recipient_scope == 'department':
+        recipients = [department.name for department in requirement.target_departments.all()]
+    elif requirement.recipient_scope == 'office':
+        recipients = [office.name for office in requirement.target_offices.all()]
+    elif requirement.recipient_scope == 'individual':
+        recipients = [f"{faculty.user.first_name} {faculty.user.last_name}" 
+                     for faculty in requirement.target_faculty.all()]
+    
+    return {
+        "id": requirement.id,
+        "title": requirement.title or "",
+        "description": requirement.description or "",
+        "physicalSubmission": bool(requirement.required_physical),
+        "recipients": ", ".join(recipients) if recipients else "",
+        "lastUpdated": timezone.localtime(requirement.last_updated).strftime("%B %d, %Y, %I:%M %p") if requirement.last_updated else "",
+        "createdBy": f"{requirement.created_by.first_name} {requirement.created_by.last_name}" if requirement.created_by else "",
+        "clearanceTimeline": requirement.clearance_timeline.name if requirement.clearance_timeline else "",
+        "recipientScope": requirement.recipient_scope,
+        "targetColleges": [college.id for college in requirement.target_colleges.all()],
+        "targetDepartments": [dept.id for dept in requirement.target_departments.all()],
+        "targetOffices": [office.id for office in requirement.target_offices.all()],
+        "targetFaculty": [faculty.id for faculty in requirement.target_faculty.all()],
+        "approverFlowStepId": requirement.approver_flow_step.id if requirement.approver_flow_step else None,
+        "approverFlowStepCategory": requirement.approver_flow_step.category if requirement.approver_flow_step else None,
+    }
+
+
+def _get_approver_flow_step_for_user(user):
+    """Automatically determine the approver flow step for a user based on their role"""
+    timeline = _get_active_timeline()
+    if not timeline:
+        return None
+    
+    # Get approver flow config for the active timeline
+    config = timeline.approver_flow_configs.first()
+    if not config:
+        return None
+    
+    # Get user's approver profile
+    try:
+        approver_profile = user.approver_profile
+    except AttributeError:
+        return None
+    
+    # Determine approver type based on user's logic:
+    # 1. College Dean: Has "Dean" in their department name
+    # 2. Department Chair: Has both College and Department but no "Dean"
+    # 3. Office Approver: Only has Office (priority over department/college if office is OVPHE-related)
+    
+    is_college_dean = False
+    is_department_chair = False
+    is_office_approver = False
+    
+    # Check for Office Approver first (especially for OVPHE)
+    if approver_profile.office:
+        office_name_lower = approver_profile.office.name.lower()
+        # OVPHE and similar offices should be treated as Office Approvers even if they have college/department
+        if any(term in office_name_lower for term in ['vice president', 'ovphe', 'registrar', 'library', 'human resources', 'hr']):
+            is_office_approver = True
+        # If they only have office (no college/department), they're definitely an Office Approver
+        elif not approver_profile.college and not approver_profile.department:
+            is_office_approver = True
+    
+    # If not identified as Office Approver, check for College/Department roles
+    if not is_office_approver and approver_profile.department and approver_profile.college:
+        # Check if this is a College Dean (has "Dean" in department name)
+        if "dean" in approver_profile.department.name.lower():
+            is_college_dean = True
+        else:
+            # This is a Department Chair (has college and department but no "Dean")
+            is_department_chair = True
+    
+    # Find the matching flow step based on approver's role and scope
+    flow_steps = config.steps.order_by('order').prefetch_related('colleges')
+    
+    for step in flow_steps:
+        step_category = step.category.lower()
+        
+        # Department Chair matching
+        if is_department_chair and 'department chair' in step_category:
+            return step
+        
+        # College Dean matching - only match if user is actually a Dean
+        elif is_college_dean and ('college dean' in step_category or 'dean' in step_category):
+            return step
+        
+        # Office Approver matching
+        elif is_office_approver and step.office and approver_profile.office:
+            if step.office == approver_profile.office:
+                return step
+        
+        # University-wide offices (fallback for specific office names)
+        elif is_office_approver:
+            office_name = approver_profile.office.name.lower()
+            if 'registrar' in step_category and 'registrar' in office_name:
+                return step
+            elif 'library' in step_category and 'library' in office_name:
+                return step
+            elif 'human resources' in step_category and ('human resources' in office_name or 'hr' in office_name):
+                return step
+            elif 'vice president' in step_category and ('vice president' in office_name or 'ovphe' in office_name):
+                return step
+    
+    return None
+
+
+def _create_approver_requirement(user, request):
+    """Create a new requirement"""
+    timeline = _get_active_timeline()
+    if not timeline:
+        return JsonResponse({"detail": "No active clearance timeline"}, status=400)
+
+    data, parse_err = _parse_json_body(request)
+    if parse_err:
+        return parse_err
+
+    title = data.get("title", "").strip()
+    description = data.get("description", "").strip()
+    physical_submission = data.get("physicalSubmission", False)
+    recipient_scope = data.get("recipientScope", "individual")
+    target_colleges = data.get("targetColleges", [])
+    target_departments = data.get("targetDepartments", [])
+    target_offices = data.get("targetOffices", [])
+    target_faculty = data.get("targetFaculty", [])
+
+    if not title:
+        return JsonResponse({"detail": "Title is required"}, status=400)
+    
+    # Automatically detect approver flow step based on user's role
+    approver_flow_step = _get_approver_flow_step_for_user(user)
+    if not approver_flow_step:
+        return JsonResponse({"detail": "Could not determine approver flow step for your role. Please ensure you have an approver profile assigned."}, status=400)
+
+    try:
+        with transaction.atomic():
+            requirement = Requirement.objects.create(
+                title=title,
+                description=description,
+                required_physical=physical_submission,
+                created_by=user,
+                clearance_timeline=timeline,
+                recipient_scope=recipient_scope,
+                approver_flow_step=approver_flow_step
+            )
+
+            # Set target recipients based on scope
+            if recipient_scope == 'college' and target_colleges:
+                requirement.target_colleges.set(target_colleges)
+            elif recipient_scope == 'department' and target_departments:
+                requirement.target_departments.set(target_departments)
+            elif recipient_scope == 'office' and target_offices:
+                requirement.target_offices.set(target_offices)
+            elif recipient_scope == 'individual' and target_faculty:
+                requirement.target_faculty.set(target_faculty)
+
+        return JsonResponse({
+            "id": requirement.id,
+            "message": "Requirement created successfully"
+        })
+
+    except Exception as e:
+        return JsonResponse({"detail": f"Failed to create requirement: {str(e)}"}, status=500)
+
+
+@csrf_exempt
+def approver_requirement_detail_api(request, requirement_id):
+    """Handle individual requirement operations (GET, PUT, DELETE)"""
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    # Check if user has approver role
+    user_roles = user.get_active_roles().values_list('role__name', flat=True)
+    if 'Approver' not in user_roles:
+        return JsonResponse({"detail": "Forbidden - Approver role required"}, status=403)
+
+    try:
+        requirement = Requirement.objects.get(id=requirement_id, is_active=True)
+    except Requirement.DoesNotExist:
+        return JsonResponse({"detail": "Requirement not found"}, status=404)
+
+    # Check if user can access this requirement
+    try:
+        approver_profile = user.approver_profile
+        if not _can_approver_access_requirement(approver_profile, requirement):
+            return JsonResponse({"detail": "Forbidden - Cannot access this requirement"}, status=403)
+    except AttributeError:
+        return JsonResponse({"detail": "Forbidden - Approver profile not found"}, status=403)
+
+    if request.method == "GET":
+        return JsonResponse(_serialize_approver_requirement(requirement))
+    elif request.method == "PUT":
+        return _update_approver_requirement(user, requirement, request)
+    elif request.method == "DELETE":
+        return _delete_approver_requirement(user, requirement, request)
+    else:
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+
+def _update_approver_requirement(user, requirement, request):
+    """Update an existing requirement"""
+    data, parse_err = _parse_json_body(request)
+    if parse_err:
+        return parse_err
+
+    title = data.get("title", "").strip()
+    description = data.get("description", "").strip()
+    physical_submission = data.get("physicalSubmission", False)
+    recipient_scope = data.get("recipientScope", requirement.recipient_scope)
+    target_colleges = data.get("targetColleges", [])
+    target_departments = data.get("targetDepartments", [])
+    target_offices = data.get("targetOffices", [])
+    target_faculty = data.get("targetFaculty", [])
+
+    if not title:
+        return JsonResponse({"detail": "Title is required"}, status=400)
+
+    try:
+        with transaction.atomic():
+            requirement.title = title
+            requirement.description = description
+            requirement.required_physical = physical_submission
+            requirement.recipient_scope = recipient_scope
+            requirement.save()
+
+            # Clear existing targets and set new ones
+            requirement.target_colleges.clear()
+            requirement.target_departments.clear()
+            requirement.target_offices.clear()
+            requirement.target_faculty.clear()
+
+            # Set target recipients based on scope
+            if recipient_scope == 'college' and target_colleges:
+                requirement.target_colleges.set(target_colleges)
+            elif recipient_scope == 'department' and target_departments:
+                requirement.target_departments.set(target_departments)
+            elif recipient_scope == 'office' and target_offices:
+                requirement.target_offices.set(target_offices)
+            elif recipient_scope == 'individual' and target_faculty:
+                requirement.target_faculty.set(target_faculty)
+
+        return JsonResponse({
+            "id": requirement.id,
+            "message": "Requirement updated successfully"
+        })
+
+    except Exception as e:
+        return JsonResponse({"detail": f"Failed to update requirement: {str(e)}"}, status=500)
+
+
+def _delete_approver_requirement(user, requirement, request):
+    """Delete a requirement (soft delete by setting is_active=False)"""
+    try:
+        with transaction.atomic():
+            requirement.is_active = False
+            requirement.save()
+
+        return JsonResponse({"message": "Requirement deleted successfully"})
+
+    except Exception as e:
+        return JsonResponse({"detail": f"Failed to delete requirement: {str(e)}"}, status=500)
+
+
+def approver_faculty_options_api(request):
+    """Get faculty options for recipient selection based on approver's role and scope"""
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    # Check if user has approver role
+    user_roles = user.get_active_roles().values_list('role__name', flat=True)
+    if 'Approver' not in user_roles:
+        return JsonResponse({"detail": "Forbidden - Approver role required"}, status=403)
+
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    try:
+        approver_profile = user.approver_profile
+    except AttributeError:
+        return JsonResponse({"options": []})
+
+    # Get faculty based on approver's scope
+    faculty_queryset = Faculty.objects.select_related('user', 'college', 'department').order_by('user__last_name', 'user__first_name')
+
+    if approver_profile.college:
+        # College Admin - all faculty in their college
+        faculty_queryset = faculty_queryset.filter(college=approver_profile.college)
+    elif approver_profile.department:
+        # Department Chair - all faculty in their department
+        faculty_queryset = faculty_queryset.filter(department=approver_profile.department)
+    elif approver_profile.office:
+        # Office Admin - all faculty
+        pass  # No filtering needed
+    else:
+        return JsonResponse({"options": []})
+
+    # Get search query
+    query = (request.GET.get("query", "") or "").strip()
+    if query:
+        faculty_queryset = faculty_queryset.filter(
+            Q(user__first_name__icontains=query) |
+            Q(user__last_name__icontains=query) |
+            Q(employee_id__icontains=query)
+        )
+
+    # Serialize faculty options
+    options = []
+    for faculty in faculty_queryset[:50]:  # Limit to 50 results
+        name = f"{faculty.user.first_name} {faculty.user.last_name}".strip()
+        if not name:
+            name = faculty.user.email
+        
+        options.append({
+            "id": str(faculty.id),
+            "name": name,
+            "subtitle": faculty.employee_id,
+            "email": faculty.user.email,
+            "college": faculty.college.name if faculty.college else "",
+            "department": faculty.department.name if faculty.department else "",
+        })
+
+    return JsonResponse({"options": options})
+
+
+def approver_college_department_options_api(request):
+    """Get college and department options for recipient selection"""
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    # Check if user has approver role
+    user_roles = user.get_active_roles().values_list('role__name', flat=True)
+    if 'Approver' not in user_roles:
+        return JsonResponse({"detail": "Forbidden - Approver role required"}, status=403)
+
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    try:
+        approver_profile = user.approver_profile
+    except AttributeError:
+        return JsonResponse({"colleges": [], "departments": []})
+
+    colleges = []
+    departments = []
+
+    if approver_profile.college:
+        # College Admin - their college and its departments
+        colleges = [{
+            "id": approver_profile.college.id,
+            "name": approver_profile.college.name,
+            "abbreviation": approver_profile.college.abbreviation or ""
+        }]
+        departments = [
+            {
+                "id": dept.id,
+                "name": dept.name,
+                "abbreviation": dept.abbreviation or "",
+                "college": dept.college.name
+            }
+            for dept in approver_profile.college.departments.filter(is_active=True)
+        ]
+    elif approver_profile.department:
+        # Department Chair - their department and college
+        colleges = [{
+            "id": approver_profile.department.college.id,
+            "name": approver_profile.department.college.name,
+            "abbreviation": approver_profile.department.college.abbreviation or ""
+        }]
+        departments = [{
+            "id": approver_profile.department.id,
+            "name": approver_profile.department.name,
+            "abbreviation": approver_profile.department.abbreviation or "",
+            "college": approver_profile.department.college.name
+        }]
+    elif approver_profile.office:
+        # Office Admin - all colleges and departments
+        colleges = [
+            {
+                "id": college.id,
+                "name": college.name,
+                "abbreviation": college.abbreviation or ""
+            }
+            for college in College.objects.filter(is_active=True).order_by('name')
+        ]
+        departments = [
+            {
+                "id": dept.id,
+                "name": dept.name,
+                "abbreviation": dept.abbreviation or "",
+                "college": dept.college.name
+            }
+            for dept in Department.objects.filter(is_active=True).select_related('college').order_by('college__name', 'name')
+        ]
+
+    return JsonResponse({"colleges": colleges, "departments": departments})
+
+
+def faculty_requirements_api(request):
+    """Get requirements for faculty based on their department/college/office"""
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    # Check if user has faculty role
+    if not user.userrole_set.filter(role__name='Faculty', is_active=True).exists():
+        return JsonResponse({"detail": "Forbidden"}, status=403)
+
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    timeline = _get_active_timeline()
+    if not timeline:
+        return JsonResponse({"items": []})
+
+    try:
+        faculty = user.faculty_profile
+    except AttributeError:
+        return JsonResponse({"items": []})
+
+    # Get requirements that apply to this faculty
+    requirements = Requirement.objects.filter(
+        clearance_timeline=timeline,
+        is_active=True
+    ).select_related(
+        'created_by', 'clearance_timeline'
+    ).prefetch_related(
+        'target_colleges', 'target_departments', 'target_offices', 'target_faculty'
+    ).order_by('title', 'id')
+
+    # Filter requirements based on faculty's profile
+    applicable_requirements = []
+    for req in requirements:
+        if _requirement_applies_to_faculty(req, faculty):
+            applicable_requirements.append(_serialize_faculty_requirement(req))
+
+    return JsonResponse({"items": applicable_requirements})
+
+
+def _requirement_applies_to_faculty(requirement, faculty):
+    """Check if a requirement applies to a specific faculty member"""
+    if requirement.recipient_scope == 'all':
+        return True
+    elif requirement.recipient_scope == 'college':
+        return faculty.college and faculty.college in requirement.target_colleges.all()
+    elif requirement.recipient_scope == 'department':
+        return faculty.department and faculty.department in requirement.target_departments.all()
+    elif requirement.recipient_scope == 'office':
+        return faculty.office and faculty.office in requirement.target_offices.all()
+    elif requirement.recipient_scope == 'individual':
+        return faculty in requirement.target_faculty.all()
+    return False
+
+
+def _serialize_faculty_requirement(requirement):
+    """Serialize requirement for faculty view"""
+    return {
+        "id": requirement.id,
+        "title": requirement.title or "",
+        "description": requirement.description or "",
+        "physicalSubmission": bool(requirement.required_physical),
+        "createdBy": f"{requirement.created_by.first_name} {requirement.created_by.last_name}" if requirement.created_by else "",
+        "clearanceTimeline": requirement.clearance_timeline.name if requirement.clearance_timeline else "",
+        "lastUpdated": timezone.localtime(requirement.last_updated).strftime("%B %d, %Y, %I:%M %p") if requirement.last_updated else "",
+        "approverFlowStepCategory": requirement.approver_flow_step.category if requirement.approver_flow_step else None,
+    }
 
 def approver_clearance_api(request):
     return JsonResponse({"items": []})
 
+@csrf_exempt
+@approver_required
 def approver_action_api(request):
-    return JsonResponse({"success": True, "message": "Action completed"})
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    try:
+        data = json.loads(request.body.decode("utf-8") or "{}")
+    except Exception:
+        return JsonResponse({"detail": "Invalid JSON"}, status=400)
+
+    request_ids = data.get("request_ids", [])
+    action = data.get("action")  # "approve" or "reject"
+    remarks = data.get("remarks", "")
+
+    if not request_ids or action not in ["approve", "reject"]:
+        return JsonResponse({"detail": "Invalid request data"}, status=400)
+
+    if action == "reject" and not remarks.strip():
+        return JsonResponse({"detail": "Remarks are required for rejection"}, status=400)
+
+    active_timeline = _get_active_timeline()
+    if not active_timeline:
+        return JsonResponse({"detail": "No active clearance timeline"}, status=400)
+
+    # Get all clearance requests
+    clearance_requests = ClearanceRequest.objects.filter(
+        id__in=request_ids,
+        clearance_timeline=active_timeline
+    )
+
+    if len(clearance_requests) != len(request_ids):
+        return JsonResponse({"detail": "Some clearance requests not found"}, status=404)
+
+    # Check if any requests are already processed
+    processed_requests = []
+    for cr in clearance_requests:
+        if cr.status in [ClearanceRequest.Status.APPROVED, ClearanceRequest.Status.REJECTED]:
+            processed_requests.append({
+                "id": str(cr.id),
+                "requestId": cr.request_id,
+                "status": _to_request_status(cr.status),
+                "message": "Request already processed"
+            })
+
+    if processed_requests:
+        return JsonResponse({
+            "detail": f"{len(processed_requests)} request(s) already processed and cannot be modified",
+            "processed_requests": processed_requests
+        }, status=400)
+
+    # Validate permissions for all requests
+    for cr in clearance_requests:
+        if not _can_approver_access_request(user, cr):
+            return JsonResponse({"detail": f"Permission denied for request {cr.request_id}"}, status=403)
+
+    # Process all requests in a transaction
+    with transaction.atomic():
+        updated_requests = []
+        for clearance_request in clearance_requests:
+            old_status = clearance_request.status
+            clearance_request.status = (
+                ClearanceRequest.Status.APPROVED if action == "approve"
+                else ClearanceRequest.Status.REJECTED
+            )
+            clearance_request.approved_by = user
+            clearance_request.approved_date = timezone.now()
+            clearance_request.remarks = remarks
+            clearance_request.save()
+
+            # Log the activity
+            ActivityLog.objects.create(
+                event_type=(
+                    ActivityLog.EventType.APPROVED_CLEARANCE if action == "approve"
+                    else ActivityLog.EventType.REJECTED_CLEARANCE
+                ),
+                user=user,
+                faculty=clearance_request.faculty,
+                requirement=clearance_request.requirement
+            )
+
+            updated_requests.append({
+                "id": str(clearance_request.id),
+                "requestId": clearance_request.request_id,
+                "status": _to_request_status(clearance_request.status),
+                "oldStatus": _to_request_status(old_status)
+            })
+
+    return JsonResponse({
+        "success": True,
+        "message": f"Successfully {action}d {len(updated_requests)} clearance request(s)",
+        "updated_requests": updated_requests
+    })
 
 def approver_assistant_list_api(request):
     return JsonResponse({"items": []})
@@ -5239,8 +6541,96 @@ def assistant_approver_archived_individual_api(request):
         },
     })
 
+@csrf_exempt
+@approver_required
 def approver_individual_approval_api(request):
-    return JsonResponse({"items": []})
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    if request.method == "GET":
+        # Get individual clearance request details
+        request_id = request.GET.get("request_id")
+        if not request_id:
+            return JsonResponse({"detail": "Request ID required"}, status=400)
+        
+        try:
+            clearance_request = ClearanceRequest.objects.get(
+                request_id=request_id,
+                clearance_timeline=_get_active_timeline()
+            )
+        except ClearanceRequest.DoesNotExist:
+            return JsonResponse({"detail": "Clearance request not found"}, status=404)
+        
+        # Validate approver has permission to view this request
+        if not _can_approver_access_request(user, clearance_request):
+            return JsonResponse({"detail": "Permission denied"}, status=403)
+        
+        return JsonResponse(_serialize_assistant_individual_request(clearance_request))
+    
+    elif request.method == "POST":
+        # Update clearance request status (approve/reject)
+        try:
+            data = json.loads(request.body.decode("utf-8") or "{}")
+        except Exception:
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
+        
+        request_id = data.get("request_id")
+        action = data.get("action")  # "approve" or "reject"
+        remarks = data.get("remarks", "")
+        
+        if not request_id or action not in ["approve", "reject"]:
+            return JsonResponse({"detail": "Invalid request data"}, status=400)
+        
+        try:
+            clearance_request = ClearanceRequest.objects.get(
+                request_id=request_id,
+                clearance_timeline=_get_active_timeline()
+            )
+        except ClearanceRequest.DoesNotExist:
+            return JsonResponse({"detail": "Clearance request not found"}, status=404)
+        
+        # Validate approver has permission to approve this request
+        if not _can_approver_access_request(user, clearance_request):
+            return JsonResponse({"detail": "Permission denied"}, status=403)
+        
+        # Check if request is already processed
+        if clearance_request.status in [ClearanceRequest.Status.APPROVED, ClearanceRequest.Status.REJECTED]:
+            return JsonResponse({
+                "detail": "This request has already been processed and cannot be modified",
+                "current_status": _to_request_status(clearance_request.status)
+            }, status=400)
+        
+        # Update the clearance request
+        with transaction.atomic():
+            clearance_request.status = (
+                ClearanceRequest.Status.APPROVED if action == "approve" 
+                else ClearanceRequest.Status.REJECTED
+            )
+            clearance_request.approved_by = user
+            clearance_request.approved_date = timezone.now()
+            clearance_request.remarks = remarks
+            clearance_request.save()
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                event_type=(
+                    ActivityLog.EventType.APPROVED_CLEARANCE if action == "approve"
+                    else ActivityLog.EventType.REJECTED_CLEARANCE
+                ),
+                user=user,
+                faculty=clearance_request.faculty,
+                requirement=clearance_request.requirement
+            )
+        
+        return JsonResponse({
+            "success": True,
+            "message": f"Clearance request {action}d successfully",
+            "status": _to_request_status(clearance_request.status)
+        })
+    
+    else:
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
 
 # Assistant Approver endpoints
 @assistant_required
@@ -5484,7 +6874,14 @@ def ciso_college_office_configuration_api(request):
             })
         
         # Get offices
-        offices = Office.objects.filter(is_active=True).order_by('name')
+        offices = Office.objects.filter(is_active=True).exclude(
+            models.Q(name__iexact="Department Chair") |
+            models.Q(name__icontains="Department Chair") |
+            models.Q(name__iexact="College Dean") |
+            models.Q(name__icontains="College Dean") |
+            models.Q(name__iexact="Dean") |
+            models.Q(name__icontains="Dean")
+        ).order_by('name')
         offices_data = [{'id': office.id, 'name': office.name, 'abbreviation': office.abbreviation or ''} for office in offices]
         
         # Get approver flow configuration
