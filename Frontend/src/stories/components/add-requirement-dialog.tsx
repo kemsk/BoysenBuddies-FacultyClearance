@@ -63,6 +63,15 @@ export type AddRequirementDialogProps = {
   onCancel?: () => void;
 };
 
+type ApproverRole = 'college_dean' | 'department_chair' | 'office_approver' | null;
+
+type ApproverProfile = {
+  approver_type: string;
+  college?: string;
+  department?: string;
+  office?: string;
+};
+
 export function AddRequirementDialog({
   trigger,
   initialValues,
@@ -72,6 +81,8 @@ export function AddRequirementDialog({
   onCancel,
 }: AddRequirementDialogProps) {
   const [open, setOpen] = React.useState(false);
+  const [approverProfile, setApproverProfile] = React.useState<ApproverProfile | null>(null);
+  const [approverRole, setApproverRole] = React.useState<ApproverRole>(null);
 
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
@@ -103,9 +114,45 @@ export function AddRequirementDialog({
     setSelectedDepartments(initialValues?.targetDepartments ?? []);
     setFacultyQuery("");
     
-    // Load options from API
+    // Load approver profile and options
+    loadApproverProfile();
     loadOptions();
   }, [open, initialValues]);
+
+  const loadApproverProfile = async () => {
+    try {
+      const response = await fetch("/admin/xu-faculty-clearance/api/approver/dashboard");
+      if (response.ok) {
+        const data = await response.json();
+        if (data.approverInfo) {
+          const profile: ApproverProfile = {
+            approver_type: data.approverInfo.approver_type,
+            college: data.approverInfo.college || undefined,
+            department: data.approverInfo.department || undefined,
+            office: data.approverInfo.office || undefined,
+          };
+          setApproverProfile(profile);
+          
+          // Determine role based on assigned fields and department name
+          if (profile.office && !profile.college && !profile.department) {
+            // Only has office - Office Approver
+            setApproverRole('office_approver');
+          } else if (profile.college && profile.department) {
+            // Has both college and department
+            if (profile.department.toLowerCase().includes('dean')) {
+              // Department name contains "Dean" - College Dean
+              setApproverRole('college_dean');
+            } else {
+              // Regular department - Department Chair
+              setApproverRole('department_chair');
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load approver profile:", error);
+    }
+  };
 
   const loadOptions = async () => {
     try {
@@ -128,15 +175,105 @@ export function AddRequirementDialog({
     }
   };
 
-  const filteredFaculty = facultyOptions.filter((f) => {
+  // Get available recipient scopes based on approver role
+  const getAvailableRecipientScopes = () => {
+    const scopes = [];
+    
+    switch (approverRole) {
+      case 'college_dean':
+        scopes.push(
+          { value: 'college', label: 'By College' },
+          { value: 'department', label: 'By Department' },
+          { value: 'individual', label: 'Individual Faculty' }
+        );
+        break;
+      case 'department_chair':
+        scopes.push(
+          { value: 'department', label: 'By Department' },
+          { value: 'individual', label: 'Individual Faculty' }
+        );
+        break;
+      case 'office_approver':
+        scopes.push(
+          { value: 'all', label: 'All Faculty' },
+          { value: 'college', label: 'By College' },
+          { value: 'department', label: 'By Department' },
+          { value: 'individual', label: 'Individual Faculty' }
+        );
+        break;
+      default:
+        // Fallback to all scopes if role is not determined
+        scopes.push(
+          { value: 'all', label: 'All Faculty' },
+          { value: 'college', label: 'By College' },
+          { value: 'department', label: 'By Department' },
+          { value: 'individual', label: 'Individual Faculty' }
+        );
+    }
+    
+    return scopes;
+  };
+
+  // Filter colleges based on approver role
+  const getFilteredColleges = () => {
+    if (approverRole === 'office_approver') {
+      // Office approver can see all colleges
+      return colleges;
+    } else if (approverRole === 'college_dean' && approverProfile?.college) {
+      // College dean can only see their college
+      return colleges.filter(college => college.name === approverProfile.college);
+    } else if (approverRole === 'department_chair' && approverProfile?.college) {
+      // Department chair can only see their college (but will primarily use department selection)
+      return colleges.filter(college => college.name === approverProfile.college);
+    }
+    return colleges;
+  };
+
+  // Filter departments based on approver role
+  const getFilteredDepartments = () => {
+    if (approverRole === 'office_approver') {
+      // Office approver can see all departments
+      return departments;
+    } else if (approverRole === 'college_dean' && approverProfile?.college) {
+      // College dean can see all departments in their college except dean department
+      return departments.filter(dept => 
+        dept.college === approverProfile?.college && 
+        !dept.name.toLowerCase().includes('dean')
+      );
+    } else if (approverRole === 'department_chair' && approverProfile?.department) {
+      // Department chair can only see their department
+      return departments.filter(dept => dept.name === approverProfile.department);
+    }
+    return departments;
+  };
+
+  // Filter faculty based on approver role and recipient scope
+  const getFilteredFaculty = () => {
+    let filtered = facultyOptions;
+    
+    if (approverRole === 'college_dean' && approverProfile?.college) {
+      // College dean - faculty from their college only
+      filtered = filtered.filter(f => f.college === approverProfile.college);
+    } else if (approverRole === 'department_chair' && approverProfile?.department) {
+      // Department chair - faculty from their department only
+      filtered = filtered.filter(f => f.department === approverProfile.department);
+    }
+    // Office approver can see all faculty (no filtering needed)
+    
+    // Apply search query
     const q = facultyQuery.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      f.name.toLowerCase().includes(q) ||
-      f.id.toLowerCase().includes(q) ||
-      (f.subtitle ? f.subtitle.toLowerCase().includes(q) : false)
-    );
-  });
+    if (q) {
+      filtered = filtered.filter((f) => 
+        f.name.toLowerCase().includes(q) ||
+        f.id.toLowerCase().includes(q) ||
+        (f.subtitle ? f.subtitle.toLowerCase().includes(q) : false)
+      );
+    }
+    
+    return filtered;
+  };
+
+  const filteredFaculty = getFilteredFaculty();
 
   const allFilteredSelected =
     filteredFaculty.length > 0 &&
@@ -375,10 +512,11 @@ export function AddRequirementDialog({
                       <SelectValue placeholder="Select recipient scope" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Faculty</SelectItem>
-                      <SelectItem value="college">By College</SelectItem>
-                      <SelectItem value="department">By Department</SelectItem>
-                      <SelectItem value="individual">Individual Faculty</SelectItem>
+                      {getAvailableRecipientScopes().map((scope) => (
+                        <SelectItem key={scope.value} value={scope.value}>
+                          {scope.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -386,41 +524,87 @@ export function AddRequirementDialog({
                 {/* College/Department Selection */}
                 {recipientScope === "college" && (
                   <div className="mt-3 space-y-1.5">
-                    <Select 
-                      value={selectedColleges.length > 0 ? selectedColleges[0].toString() : ""}
-                      onValueChange={(value) => setSelectedColleges([parseInt(value)])}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select college" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {colleges.map((college) => (
-                          <SelectItem key={college.id} value={college.id.toString()}>
-                            {college.name}
-                          </SelectItem>
+                    {approverRole === 'office_approver' ? (
+                      // Multi-select for Office Approvers
+                      <div className="space-y-2">
+                        <div className="text-sm text-muted-foreground">Select colleges (multiple allowed):</div>
+                        {getFilteredColleges().map((college) => (
+                          <label key={college.id} className="flex items-center gap-2 cursor-pointer">
+                            <Checkbox
+                              checked={selectedColleges.includes(college.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedColleges(prev => [...prev, college.id]);
+                                } else {
+                                  setSelectedColleges(prev => prev.filter(id => id !== college.id));
+                                }
+                              }}
+                            />
+                            <span className="text-sm">{college.name}</span>
+                          </label>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </div>
+                    ) : (
+                      // Single select for other roles
+                      <Select 
+                        value={selectedColleges.length > 0 ? selectedColleges[0].toString() : ""}
+                        onValueChange={(value) => setSelectedColleges([parseInt(value)])}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select college" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getFilteredColleges().map((college) => (
+                            <SelectItem key={college.id} value={college.id.toString()}>
+                              {college.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                 )}
 
                 {recipientScope === "department" && (
                   <div className="mt-3 space-y-1.5">
-                    <Select 
-                      value={selectedDepartments.length > 0 ? selectedDepartments[0].toString() : ""}
-                      onValueChange={(value) => setSelectedDepartments([parseInt(value)])}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select department" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {departments.map((dept) => (
-                          <SelectItem key={dept.id} value={dept.id.toString()}>
-                            {dept.name} ({dept.college})
-                          </SelectItem>
+                    {approverRole === 'office_approver' ? (
+                      // Multi-select for Office Approvers
+                      <div className="space-y-2">
+                        <div className="text-sm text-muted-foreground">Select departments (multiple allowed):</div>
+                        {getFilteredDepartments().map((dept) => (
+                          <label key={dept.id} className="flex items-center gap-2 cursor-pointer">
+                            <Checkbox
+                              checked={selectedDepartments.includes(dept.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedDepartments(prev => [...prev, dept.id]);
+                                } else {
+                                  setSelectedDepartments(prev => prev.filter(id => id !== dept.id));
+                                }
+                              }}
+                            />
+                            <span className="text-sm">{dept.name} ({dept.college})</span>
+                          </label>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </div>
+                    ) : (
+                      // Single select for other roles
+                      <Select 
+                        value={selectedDepartments.length > 0 ? selectedDepartments[0].toString() : ""}
+                        onValueChange={(value) => setSelectedDepartments([parseInt(value)])}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select department" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getFilteredDepartments().map((dept) => (
+                            <SelectItem key={dept.id} value={dept.id.toString()}>
+                              {dept.name} ({dept.college})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                 )}
 
@@ -489,16 +673,36 @@ export function AddRequirementDialog({
                   <div className="mt-4">
                     <div className="rounded-md bg-muted px-4 py-3">
                       <div className="text-sm font-medium text-foreground">
-                        {recipientScope === "all" && "All Faculty"}
-                        {recipientScope === "college" && selectedColleges.length > 0 && 
-                          colleges.find(c => c.id === selectedColleges[0])?.name}
-                        {recipientScope === "department" && selectedDepartments.length > 0 && 
-                          departments.find(d => d.id === selectedDepartments[0])?.name}
+                        {(() => {
+                          if (recipientScope === "all") {
+                            return "All Faculty";
+                          } else if (recipientScope === "college") {
+                            return selectedColleges.length === 1 
+                              ? colleges.find(c => c.id === selectedColleges[0])?.name
+                              : `${selectedColleges.length} colleges selected`;
+                          } else if (recipientScope === "department") {
+                            return selectedDepartments.length === 1
+                              ? departments.find(d => d.id === selectedDepartments[0])?.name
+                              : `${selectedDepartments.length} departments selected`;
+                          }
+                          return "";
+                        })()}
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">
-                        {recipientScope === "all" && "All faculty members will receive this requirement"}
-                        {recipientScope === "college" && "All faculty in this college will receive this requirement"}
-                        {recipientScope === "department" && "All faculty in this department will receive this requirement"}
+                        {(() => {
+                          if (recipientScope === "all") {
+                            return "All faculty members will receive this requirement";
+                          } else if (recipientScope === "college" && selectedColleges.length > 0) {
+                            return selectedColleges.length === 1 
+                              ? `All faculty in ${colleges.find(c => c.id === selectedColleges[0])?.name} will receive this requirement`
+                              : `All faculty in ${selectedColleges.length} selected colleges will receive this requirement`;
+                          } else if (recipientScope === "department" && selectedDepartments.length > 0) {
+                            return selectedDepartments.length === 1
+                              ? `All faculty in ${departments.find(d => d.id === selectedDepartments[0])?.name} will receive this requirement`
+                              : `All faculty in ${selectedDepartments.length} selected departments will receive this requirement`;
+                          }
+                          return "";
+                        })()}
                       </div>
                     </div>
                   </div>
