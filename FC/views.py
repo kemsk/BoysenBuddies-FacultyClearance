@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.utils.decorators import method_decorator
-from django.db import transaction
+from django.db import transaction, models
 from django.db.models import Q, Count, Sum, Avg, Max, Min, Prefetch
 from django.core.paginator import Paginator
 from django.core.exceptions import ValidationError
@@ -2650,6 +2650,14 @@ def ciso_org_structure_api(request):
     )
     offices = list(
         Office.objects.filter(is_active=True)
+        .exclude(
+            models.Q(name__iexact="Department Chair") |
+            models.Q(name__icontains="Department Chair") |
+            models.Q(name__iexact="College Dean") |
+            models.Q(name__icontains="College Dean") |
+            models.Q(name__iexact="Dean") |
+            models.Q(name__icontains="Dean")
+        )
         .order_by("display_order", "name", "id")
         .values("id", "name", "abbreviation", "display_order")
     )
@@ -5567,38 +5575,107 @@ def _get_approver_requirements(user, request):
 
 def _can_approver_access_requirement(approver_profile, requirement):
     """Check if approver can access this requirement based on their role and scope"""
-    # College approver can access requirements for their college
-    if approver_profile.approver_type == 'College' and approver_profile.college:
+    
+    # Always allow access to requirements created by the user
+    if requirement.created_by == approver_profile.user:
+        return True
+    
+    # Check if the requirement creator is an Office Approver (OVPHE, etc.)
+    # Department/College approvers should not see requirements created by Office Approvers
+    creator_is_office_approver = False
+    try:
+        creator_approver_profile = requirement.created_by.approver_profile
+        if creator_approver_profile.office:
+            creator_office_name = creator_approver_profile.office.name.lower()
+            if any(term in creator_office_name for term in ['vice president', 'ovphe', 'registrar', 'library', 'human resources', 'hr']):
+                creator_is_office_approver = True
+            elif not creator_approver_profile.college and not creator_approver_profile.department:
+                creator_is_office_approver = True
+    except AttributeError:
+        pass
+    
+    # If creator is an Office Approver and current approver is not, deny access
+    if creator_is_office_approver:
+        return False
+    
+    # Determine approver type based on user's logic:
+    # 1. College Dean: Has "Dean" in their department name
+    # 2. Department Chair: Has both College and Department but no "Dean"
+    # 3. Office Approver: Only has Office (priority over department/college if office is OVPHE-related)
+    
+    is_college_dean = False
+    is_department_chair = False
+    is_office_approver = False
+    
+    # Check for Office Approver first (especially for OVPHE)
+    if approver_profile.office:
+        office_name_lower = approver_profile.office.name.lower()
+        # OVPHE and similar offices should be treated as Office Approvers even if they have college/department
+        if any(term in office_name_lower for term in ['vice president', 'ovphe', 'registrar', 'library', 'human resources', 'hr']):
+            is_office_approver = True
+        # If they only have office (no college/department), they're definitely an Office Approver
+        elif not approver_profile.college and not approver_profile.department:
+            is_office_approver = True
+    
+    # If not identified as Office Approver, check for College/Department roles
+    if not is_office_approver and approver_profile.department and approver_profile.college:
+        # Check if this is a College Dean (has "Dean" in department name)
+        if "dean" in approver_profile.department.name.lower():
+            is_college_dean = True
+        else:
+            # This is a Department Chair (has college and department but no "Dean")
+            is_department_chair = True
+    
+    # College Dean logic
+    if is_college_dean:
+        college = approver_profile.college
         if requirement.recipient_scope in ['all', 'college']:
             return approver_profile.college in requirement.target_colleges.all()
         elif requirement.recipient_scope == 'department':
             # Check if any target department is under their college
             return requirement.target_departments.filter(
-                college=approver_profile.college
+                college=college
             ).exists()
+        elif requirement.recipient_scope == 'office':
+            # College Dean should not see office-specific requirements
+            return False
         elif requirement.recipient_scope == 'individual':
             # Check if any target faculty is under their college
             return requirement.target_faculty.filter(
-                department__college=approver_profile.college
+                department__college=college
             ).exists()
     
-    # Department approver can access requirements for their department
-    elif approver_profile.approver_type == 'Department' and approver_profile.department:
+    # Department Chair logic
+    elif is_department_chair:
+        department = approver_profile.department
         if requirement.recipient_scope == 'department':
-            return approver_profile.department in requirement.target_departments.all()
+            return department in requirement.target_departments.all()
         elif requirement.recipient_scope == 'college':
-            return approver_profile.department.college in requirement.target_colleges.all()
+            # Department Chair should only see college-wide requirements if their department's college is targeted
+            return department.college in requirement.target_colleges.all()
         elif requirement.recipient_scope == 'all':
             return True
+        elif requirement.recipient_scope == 'office':
+            # Department Chair should not see office-specific requirements
+            return False
         elif requirement.recipient_scope == 'individual':
-            # Check if any target faculty is in their department
+            # Department Chair should only see individual requirements for faculty in their specific department
+            # BUT NOT if created by Office Approvers (handled above)
             return requirement.target_faculty.filter(
-                department=approver_profile.department
+                department=department
             ).exists()
     
-    # Office approver can access all requirements
-    elif approver_profile.approver_type == 'Office' and approver_profile.office:
-        return True
+    # Office Approver logic
+    elif is_office_approver:
+        office = approver_profile.office
+        if requirement.recipient_scope == 'office':
+            return office in requirement.target_offices.all()
+        elif requirement.recipient_scope == 'all':
+            return True
+        elif requirement.recipient_scope in ['college', 'department', 'individual']:
+            # Office approvers should only see college/department/individual specific requirements
+            # if their office is explicitly targeted as a recipient for that scope
+            return office in requirement.target_offices.all()
     
     return False
 
@@ -5655,30 +5732,55 @@ def _get_approver_flow_step_for_user(user):
     except AttributeError:
         return None
     
+    # Determine approver type based on user's logic:
+    # 1. College Dean: Has "Dean" in their department name
+    # 2. Department Chair: Has both College and Department but no "Dean"
+    # 3. Office Approver: Only has Office (priority over department/college if office is OVPHE-related)
+    
+    is_college_dean = False
+    is_department_chair = False
+    is_office_approver = False
+    
+    # Check for Office Approver first (especially for OVPHE)
+    if approver_profile.office:
+        office_name_lower = approver_profile.office.name.lower()
+        # OVPHE and similar offices should be treated as Office Approvers even if they have college/department
+        if any(term in office_name_lower for term in ['vice president', 'ovphe', 'registrar', 'library', 'human resources', 'hr']):
+            is_office_approver = True
+        # If they only have office (no college/department), they're definitely an Office Approver
+        elif not approver_profile.college and not approver_profile.department:
+            is_office_approver = True
+    
+    # If not identified as Office Approver, check for College/Department roles
+    if not is_office_approver and approver_profile.department and approver_profile.college:
+        # Check if this is a College Dean (has "Dean" in department name)
+        if "dean" in approver_profile.department.name.lower():
+            is_college_dean = True
+        else:
+            # This is a Department Chair (has college and department but no "Dean")
+            is_department_chair = True
+    
     # Find the matching flow step based on approver's role and scope
     flow_steps = config.steps.order_by('order').prefetch_related('colleges')
     
     for step in flow_steps:
         step_category = step.category.lower()
         
-        # Department Chair matching (has College and Department)
-        if 'department chair' in step_category and approver_profile.department and approver_profile.college:
+        # Department Chair matching
+        if is_department_chair and 'department chair' in step_category:
             return step
         
-        # College Dean matching (has Dean title in their Department)
-        # Note: College Dean should have both college and department, but we check for 'dean' in step category
-        elif 'college dean' in step_category and approver_profile.college:
-            return step
-        elif 'dean' in step_category and approver_profile.college:
+        # College Dean matching - only match if user is actually a Dean
+        elif is_college_dean and ('college dean' in step_category or 'dean' in step_category):
             return step
         
-        # Office Approver matching (has Office only)
-        elif step.office and approver_profile.office and not approver_profile.department and not approver_profile.college:
+        # Office Approver matching
+        elif is_office_approver and step.office and approver_profile.office:
             if step.office == approver_profile.office:
                 return step
         
         # University-wide offices (fallback for specific office names)
-        elif approver_profile.office and not approver_profile.department and not approver_profile.college:
+        elif is_office_approver:
             office_name = approver_profile.office.name.lower()
             if 'registrar' in step_category and 'registrar' in office_name:
                 return step
@@ -6670,7 +6772,14 @@ def ciso_college_office_configuration_api(request):
             })
         
         # Get offices
-        offices = Office.objects.filter(is_active=True).order_by('name')
+        offices = Office.objects.filter(is_active=True).exclude(
+            models.Q(name__iexact="Department Chair") |
+            models.Q(name__icontains="Department Chair") |
+            models.Q(name__iexact="College Dean") |
+            models.Q(name__icontains="College Dean") |
+            models.Q(name__iexact="Dean") |
+            models.Q(name__icontains="Dean")
+        ).order_by('name')
         offices_data = [{'id': office.id, 'name': office.name, 'abbreviation': office.abbreviation or ''} for office in offices]
         
         # Get approver flow configuration
