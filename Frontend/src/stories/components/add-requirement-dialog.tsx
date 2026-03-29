@@ -10,7 +10,7 @@ import {
 } from "./dialog";
 import { Input } from "./input";
 import { SearchInputGroup } from "./input-group";
-import { Textarea } from "./textarea";
+import { InputGroupWithAddon } from "./input-group";
 import {
   Select,
   SelectContent,
@@ -60,6 +60,7 @@ export type AddRequirementDialogProps = {
   dialogTitle?: string;
   saveLabel?: string;
   onSave?: (payload: AddRequirementPayload) => void;
+  onCancel?: () => void;
 };
 
 export function AddRequirementDialog({
@@ -68,6 +69,7 @@ export function AddRequirementDialog({
   dialogTitle = "Add Requirement",
   saveLabel = "Save",
   onSave,
+  onCancel,
 }: AddRequirementDialogProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -165,34 +167,19 @@ export function AddRequirementDialog({
   const selectedPrimaryId = facultyIds[0];
   const selectedOthersCount = Math.max(0, facultyIds.length - 1);
 
-  const getRecipientDisplayText = () => {
+  const getPlaceholderText = () => {
     switch (recipientScope) {
       case "all":
         return "All Faculty";
       case "college":
         if (selectedColleges.length === 0) return "Select Colleges";
-        if (selectedColleges.length === 1) {
-          const college = colleges.find(c => c.id === selectedColleges[0]);
-          return college?.name || "Selected College";
-        }
-        return `${selectedColleges.length} Colleges`;
+        return ""; // Empty when colleges are selected since we show chips
       case "department":
         if (selectedDepartments.length === 0) return "Select Departments";
-        if (selectedDepartments.length === 1) {
-          const dept = departments.find(d => d.id === selectedDepartments[0]);
-          return dept?.name || "Selected Department";
-        }
-        return `${selectedDepartments.length} Departments`;
+        return ""; // Empty when departments are selected since we show chips
       case "individual":
         if (facultyIds.length === 0) return "Search Faculty";
-        if (allSelected) return "All Faculty";
-        if (facultyIds.length === 1) {
-          const faculty = facultyOptions.find(f => f.id === selectedPrimaryId);
-          return faculty?.name || selectedPrimaryId;
-        }
-        const faculty = facultyOptions.find(f => f.id === selectedPrimaryId);
-        const primaryName = faculty?.name || selectedPrimaryId;
-        return `${primaryName} +${selectedOthersCount} others`;
+        return ""; // Empty when faculty are selected since we show chips
       default:
         return "Select Recipients";
     }
@@ -299,7 +286,7 @@ export function AddRequirementDialog({
                         setFacultyOpen(true);
                       }
                     }}
-                    placeholder={getRecipientDisplayText()}
+                    placeholder={getPlaceholderText()}
                     className="h-6 min-w-0 flex-1 rounded-none border-0 bg-transparent p-0 text-sm text-foreground shadow-none outline-none placeholder:text-muted-foreground focus-visible:ring-0"
                   />
                 </div>
@@ -318,10 +305,11 @@ export function AddRequirementDialog({
               </div>
 
               <div className="space-y-1.5">
-                <Textarea
+                <InputGroupWithAddon
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="min-h-[88px]" placeholder="Description"
+                  onValueChange={setDescription}
+                  placeholder="Description"
+                  className="w-full"
                 />
               </div>
 
@@ -342,7 +330,10 @@ export function AddRequirementDialog({
                 type="button"
                 variant="cancel"
                 className="h-11 w-full"
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  onCancel?.();
+                  setOpen(false);
+                }}
               >
                 Cancel
               </Button>

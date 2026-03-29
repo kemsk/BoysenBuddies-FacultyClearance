@@ -395,6 +395,9 @@ export default function RequirementList() {
             handleEditRequirement(payload);
             setEditingRequirement(null);
           }}
+          onCancel={() => {
+            setEditingRequirement(null);
+          }}
         />
       )}
     </div>

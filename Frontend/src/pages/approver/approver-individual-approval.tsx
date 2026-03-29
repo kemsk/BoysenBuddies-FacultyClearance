@@ -213,7 +213,7 @@ export default function ApproverIndividualApproval() {
           
           <div className="mt-5">
             <div className="bg-white rounded-lg p-6 border">
-              <h2 className="text-xl font-semibold mb-4 text-gray-900">Individual Approval</h2>
+              <h2 className="text-xl font-semibold mb-4 text-gray-900">{item.requirementName}</h2>
               
               {/* Requirement Information */}
               <div className="mb-6">
