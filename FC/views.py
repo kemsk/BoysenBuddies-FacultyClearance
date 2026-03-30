@@ -1889,7 +1889,6 @@ def ciso_faculty_dump_template_api(request):
         "last_name",
         "faculty_type",
         "phone_number",
-        "office",
         "college",
         "department",
     ]
@@ -1908,7 +1907,6 @@ def ciso_faculty_dump_template_api(request):
             "last_name": "Faculty",
             "faculty_type": "Full-time",
             "phone_number": "09171234567",
-            "office": "",
             "college": "College of Computer Studies",
             "department": "Information Technology",
         },
@@ -1921,7 +1919,6 @@ def ciso_faculty_dump_template_api(request):
             "last_name": "New",
             "faculty_type": "Part-time",
             "phone_number": "09987654321",
-            "office": "",
             "college": "College of Arts and Sciences",
             "department": "Mathematics",
         },
