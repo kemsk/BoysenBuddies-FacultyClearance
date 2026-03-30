@@ -61,7 +61,7 @@ export default function Approverdashboard() {
         
         // Set clearance counts from backend response
         setPendingClearance(data.pendingCount || 0);
-        setTotalClearanceRequests(data.pendingRequests?.length || 0);
+        setTotalClearanceRequests(data.totalCount || 0);
       })
       .catch(() => {
         setTimeline(null);

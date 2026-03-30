@@ -190,7 +190,7 @@ SELECT
     u.id AS user_id, 
     r.id AS role_id,
     @ccs_id AS college_id,
-    @cs_id AS department_id,
+    @it_id AS department_id,
     @ciso_user_id AS assigned_by_id,
     NOW() AS assigned_date,
     1 AS is_active
@@ -220,7 +220,7 @@ SELECT
     u.id AS user_id, 
     r.id AS role_id,
     @ccs_id AS college_id,
-    @cs_id AS department_id,
+    @it_id AS department_id,
     @ciso_user_id AS assigned_by_id,
     NOW() AS assigned_date,
     1 AS is_active
@@ -650,6 +650,7 @@ WHERE NOT EXISTS (
 
 -- Get department IDs for commonly used departments
 SET @cs_id = (SELECT id FROM FC_department WHERE abbreviation = 'CS' AND college_id = @ccs_id LIMIT 1);
+SET @it_id = (SELECT id FROM FC_department WHERE abbreviation = 'IT' AND college_id = @ccs_id LIMIT 1);
 SET @cas_dean_id = (SELECT id FROM FC_department WHERE abbreviation = 'CAS_DEAN' AND college_id = @cas_id LIMIT 1);
 SET @ccs_dean_id = (SELECT id FROM FC_department WHERE abbreviation = 'CCS_DEAN' AND college_id = @ccs_id LIMIT 1);
 
@@ -707,7 +708,7 @@ SET @ovphe_user_id = (SELECT id FROM FC_user WHERE email = '20190016375@my.xu.ed
 -- Seed Approver for main user (20220025546@my.xu.edu.ph) as Department Chair
 INSERT INTO FC_approver (user_id, approver_type, college_id, department_id)
 VALUES 
-(@ciso_user_id, 'Department', @ccs_id, @cs_id)
+(@ciso_user_id, 'Department', @ccs_id, @it_id)
 ON DUPLICATE KEY UPDATE
     approver_type = VALUES(approver_type),
     college_id = VALUES(college_id),
@@ -746,7 +747,7 @@ ON DUPLICATE KEY UPDATE
 
 INSERT INTO FC_studentassistant (user_id, college_id, department_id)
 VALUES 
-(@ciso_user_id, @ccs_id, @cs_id)
+(@ciso_user_id, @ccs_id, @it_id)
 ON DUPLICATE KEY UPDATE
     college_id = VALUES(college_id),
     department_id = VALUES(department_id);

@@ -751,15 +751,31 @@ def me_api(request):
     # College Dean / Department Chair / Office Approver from colleges,
     # departments, and offices without introducing new endpoints.
     roles_payload: list[dict] = []
+    
+    # Get approver profile for Approver roles
+    approver_profile = None
+    try:
+        approver_profile = Approver.objects.get(user=user)
+    except Approver.DoesNotExist:
+        approver_profile = None
+    
     for ur in user.get_active_roles().select_related("role", "college", "department", "office"):
-        roles_payload.append(
-            {
-                "role_name": ur.role.name,
-                "college": ur.college.name if ur.college else "",
-                "department": ur.department.name if ur.department else "",
-                "office": ur.office.name if ur.office else "",
-            }
-        )
+        role_data = {
+            "role_name": ur.role.name,
+            "college": ur.college.name if ur.college else "",
+            "department": ur.department.name if ur.department else "",
+            "office": ur.office.name if ur.office else "",
+        }
+        
+        # For Approver roles, enrich with actual approver profile data
+        if ur.role.name == 'Approver' and approver_profile:
+            role_data.update({
+                "college": approver_profile.college.name if approver_profile.college else "",
+                "department": approver_profile.department.name if approver_profile.department else "",
+                "office": approver_profile.office.name if approver_profile.office else "",
+            })
+        
+        roles_payload.append(role_data)
 
     return JsonResponse(
         {
@@ -1418,16 +1434,21 @@ def clearance_requests_api(request):
     requirements = Requirement.objects.filter(
         clearance_timeline=active_timeline,
         is_active=True
+    ).select_related(
+        'created_by', 'clearance_timeline'
+    ).prefetch_related(
+        'target_colleges', 'target_departments', 'target_offices', 'target_faculty'
     )
     
-    # Filter based on approver's scope
-    if approver and approver_info:
-        if approver.college:
-            requirements = requirements.filter(target_colleges=approver.college)
-        elif approver.department:
-            requirements = requirements.filter(target_departments=approver.department)
-        elif approver.office:
-            requirements = requirements.filter(target_offices=approver.office)
+    # Filter requirements based on approver's scope using the same logic as requirement access
+    filtered_requirements = []
+    for req in requirements:
+        if approver and approver_info:
+            if _can_approver_access_requirement(approver, req):
+                filtered_requirements.append(req)
+        else:
+            # If no approver profile, include all requirements (fallback)
+            filtered_requirements.append(req)
 
     qs = (
         ClearanceRequest.objects.select_related(
@@ -1435,7 +1456,7 @@ def clearance_requests_api(request):
             "faculty__college",
             "faculty__department",
         )
-        .filter(clearance_timeline=active_timeline, requirement__in=requirements)
+        .filter(clearance_timeline=active_timeline, requirement__in=filtered_requirements)
         .order_by("-id")
     )
 
@@ -5542,76 +5563,129 @@ def approver_dashboard_api(request):
     if not user.userrole_set.filter(role__name='Approver', is_active=True).exists():
         return JsonResponse({"detail": "Access denied"}, status=403)
 
-    # Get approver profile information
-    from .models import Approver
-    approver_info = None
     try:
-        approver = Approver.objects.get(user=user)
-        approver_info = {
-            "approver_type": approver.approver_type,
-            "college": approver.college.name if approver.college else None,
-            "department": approver.department.name if approver.department else None,
-            "office": approver.office.name if approver.office else None,
-        }
-    except Approver.DoesNotExist:
+        # Get approver profile information
+        from .models import Approver
         approver_info = None
+        approver = None
+        try:
+            approver = Approver.objects.get(user=user)
+            approver_info = {
+                "approver_type": approver.approver_type,
+                "college": approver.college.name if approver.college else None,
+                "department": approver.department.name if approver.department else None,
+                "office": approver.office.name if approver.office else None,
+            }
+        except Approver.DoesNotExist:
+            approver_info = None
 
-    # Get active timeline using the same function as other endpoints
-    timeline = _get_active_timeline()
-    
-    # Get pending clearance requests for this approver
-    pending_requests = []
-    if timeline:
-        # Get requirements that this approver needs to approve
-        requirements = Requirement.objects.filter(
-            clearance_timeline=timeline,
-            is_active=True
-        )
+        # Get active timeline using the same function as other endpoints
+        timeline = _get_active_timeline()
         
-        # Filter based on approver's scope
-        if approver and approver_info:
-            if approver.college:
-                requirements = requirements.filter(target_colleges=approver.college)
-            elif approver.department:
-                requirements = requirements.filter(target_departments=approver.department)
-            elif approver.office:
-                requirements = requirements.filter(target_offices=approver.office)
+        # Get pending clearance requests for this approver
+        pending_requests = []
+        total_requests = []
+        if timeline:
+            try:
+                # Get requirements that this approver needs to approve
+                requirements = Requirement.objects.filter(
+                    clearance_timeline=timeline,
+                    is_active=True
+                ).select_related(
+                    'created_by', 'clearance_timeline'
+                ).prefetch_related(
+                    'target_colleges', 'target_departments', 'target_offices', 'target_faculty'
+                )
+                
+                # Filter requirements based on approver's scope using the existing _can_approver_access_requirement function
+                filtered_requirements = []
+                for req in requirements:
+                    if approver and approver_info:
+                        if _can_approver_access_requirement(approver, req):
+                            filtered_requirements.append(req)
+                    else:
+                        # If no approver profile, include all requirements (fallback)
+                        filtered_requirements.append(req)
+                
+                # Get all clearance requests (for total count)
+                all_clearance_requests = ClearanceRequest.objects.filter(
+                    clearance_timeline=timeline,
+                    requirement__in=filtered_requirements
+                ).select_related('faculty__user', 'requirement')
+                
+                # Get only pending clearance requests (for pending count)
+                pending_clearance_requests = all_clearance_requests.filter(
+                    status=ClearanceRequest.Status.PENDING
+                )
+                
+                for req in pending_clearance_requests:
+                    try:
+                        pending_requests.append({
+                            "id": req.id,
+                            "requestId": req.request_id,
+                            "facultyName": req.faculty.user.get_full_name() or req.faculty.user.email,
+                            "facultyEmail": req.faculty.user.email,
+                            "title": req.requirement.title,
+                            "submittedDate": req.submitted_date.strftime("%Y-%m-%d") if req.submitted_date else None,
+                        })
+                    except Exception as e:
+                        continue
+                
+                for req in all_clearance_requests:
+                    try:
+                        total_requests.append({
+                            "id": req.id,
+                            "requestId": req.request_id,
+                            "facultyName": req.faculty.user.get_full_name() or req.faculty.user.email,
+                            "facultyEmail": req.faculty.user.email,
+                            "title": req.requirement.title,
+                            "status": _to_request_status(req.status),
+                            "submittedDate": req.submitted_date.strftime("%Y-%m-%d") if req.submitted_date else None,
+                        })
+                    except Exception as e:
+                        continue
+                        
+            except Exception as e:
+                # If there's an error in the main logic, return empty data
+                pending_requests = []
+                total_requests = []
         
-        clearance_requests = ClearanceRequest.objects.filter(
-            clearance_timeline=timeline,
-            requirement__in=requirements,
-            status=ClearanceRequest.Status.PENDING
-        ).select_related('faculty__user', 'requirement')
+        # Use the same timeline data format as active_clearance_timeline_api
+        timeline_data = None
+        if timeline:
+            try:
+                if timeline.academic_year_start is not None and timeline.academic_year_end is not None:
+                    academic_year = f"{timeline.academic_year_start}–{timeline.academic_year_end}"
+                else:
+                    academic_year = ""
+                
+                timeline_data = {
+                    "academicYear": academic_year,
+                    "semester": _term_to_label(timeline.term)
+                }
+            except Exception as e:
+                timeline_data = None
         
-        for req in clearance_requests:
-            pending_requests.append({
-                "id": req.id,
-                "requestId": req.request_id,
-                "facultyName": req.faculty.user.get_full_name() or req.faculty.user.email,
-                "facultyEmail": req.faculty.user.email,
-                "title": req.requirement.title,
-                "submittedDate": req.submitted_date.strftime("%Y-%m-%d") if req.submitted_date else None,
-            })
-    
-    # Use the same timeline data format as active_clearance_timeline_api
-    timeline_data = None
-    if timeline:
-        if timeline.academic_year_start is not None and timeline.academic_year_end is not None:
-            academic_year = f"{timeline.academic_year_start}–{timeline.academic_year_end}"
-        else:
-            academic_year = ""
+        return JsonResponse({
+            "pendingRequests": pending_requests,
+            "pendingCount": len(pending_requests),
+            "totalRequests": total_requests,
+            "totalCount": len(total_requests),
+            "approverInfo": approver_info,
+            "timeline": timeline_data
+        })
         
-        timeline_data = {
-            "academicYear": academic_year,
-            "semester": _term_to_label(timeline.term)
-        }
-    
-    return JsonResponse({
-        "pendingRequests": pending_requests,
-        "pendingCount": len(pending_requests),
-        "approverInfo": approver_info,
-        "timeline": timeline_data
-    })
+    except Exception as e:
+        # Return a safe response if anything goes wrong
+        return JsonResponse({
+            "pendingRequests": [],
+            "pendingCount": 0,
+            "totalRequests": [],
+            "totalCount": 0,
+            "approverInfo": None,
+            "timeline": None,
+            "error": f"Dashboard error: {str(e)}"
+        })
 
 @csrf_exempt
 def approver_requirement_list_api(request):
@@ -5719,20 +5793,19 @@ def _can_approver_access_requirement(approver_profile, requirement):
     # College Dean logic
     if is_college_dean:
         college = approver_profile.college
+        department = approver_profile.department
         if requirement.recipient_scope in ['all', 'college']:
             return approver_profile.college in requirement.target_colleges.all()
         elif requirement.recipient_scope == 'department':
-            # Check if any target department is under their college
-            return requirement.target_departments.filter(
-                college=college
-            ).exists()
+            # College Dean can only see requirements for their specific department
+            return department in requirement.target_departments.all()
         elif requirement.recipient_scope == 'office':
             # College Dean should not see office-specific requirements
             return False
         elif requirement.recipient_scope == 'individual':
-            # Check if any target faculty is under their college
+            # Check if any target faculty is under their specific department
             return requirement.target_faculty.filter(
-                department__college=college
+                department=department
             ).exists()
     
     # Department Chair logic
@@ -6247,7 +6320,97 @@ def _serialize_faculty_requirement(requirement):
     }
 
 def approver_clearance_api(request):
-    return JsonResponse({"items": []})
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    # Check if user has Approver role
+    if not user.userrole_set.filter(role__name='Approver', is_active=True).exists():
+        return JsonResponse({"detail": "Access denied"}, status=403)
+
+    active_timeline = _get_active_timeline()
+    if not active_timeline:
+        return JsonResponse({"items": []})
+
+    # Get approver profile information
+    from .models import Approver
+    approver_info = None
+    try:
+        approver = Approver.objects.get(user=user)
+        approver_info = {
+            "approver_type": approver.approver_type,
+            "college": approver.college,
+            "department": approver.department,
+            "office": approver.office,
+        }
+    except Approver.DoesNotExist:
+        approver_info = None
+
+    # Get requirements that this approver needs to approve
+    requirements = Requirement.objects.filter(
+        clearance_timeline=active_timeline,
+        is_active=True
+    ).select_related(
+        'created_by', 'clearance_timeline'
+    ).prefetch_related(
+        'target_colleges', 'target_departments', 'target_offices', 'target_faculty'
+    )
+    
+    # Filter requirements based on approver's scope using the same logic as requirement access
+    filtered_requirements = []
+    for req in requirements:
+        if approver and approver_info:
+            if _can_approver_access_requirement(approver, req):
+                filtered_requirements.append(req)
+        else:
+            # If no approver profile, include all requirements (fallback)
+            filtered_requirements.append(req)
+
+    # Get clearance requests for the filtered requirements
+    clearance_requests = ClearanceRequest.objects.select_related(
+        'faculty',
+        'faculty__college',
+        'faculty__department',
+        'requirement'
+    ).filter(
+        clearance_timeline=active_timeline,
+        requirement__in=filtered_requirements
+    ).order_by('-submitted_date')
+
+    items = []
+    for req in clearance_requests:
+        faculty = req.faculty
+        
+        first_name = (getattr(faculty, "first_name", "") or "").strip()
+        middle_name = (getattr(faculty, "middle_name", "") or "").strip()
+        last_name = (getattr(faculty, "last_name", "") or "").strip()
+
+        parts = [p for p in [first_name, middle_name, last_name] if p]
+        full_name = " ".join(parts)
+
+        college = getattr(getattr(faculty, "college", None), "name", "") or ""
+        department = getattr(getattr(faculty, "department", None), "name", "") or ""
+        faculty_type = getattr(faculty, "faculty_type", "") or ""
+        employee_id = getattr(faculty, "employee_id", "") or ""
+
+        items.append({
+            "id": str(req.id),
+            "requestId": req.request_id,
+            "employeeId": employee_id,
+            "name": full_name,
+            "college": college,
+            "department": department,
+            "facultyType": faculty_type,
+            "requirementTitle": req.requirement.title if req.requirement else "",
+            "status": _to_request_status(req.status),
+            "submittedDate": req.submitted_date.strftime("%Y-%m-%d") if req.submitted_date else None,
+            "submissionNotes": req.submission_notes or "",
+        })
+
+    return JsonResponse({"items": items})
 
 @csrf_exempt
 @approver_required
