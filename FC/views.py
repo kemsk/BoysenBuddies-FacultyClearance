@@ -1388,9 +1388,46 @@ def clearance_requests_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    # Check if user has Approver role
+    if not user.userrole_set.filter(role__name='Approver', is_active=True).exists():
+        return JsonResponse({"detail": "Access denied"}, status=403)
+
     active_timeline = _get_active_timeline()
     if not active_timeline:
         return JsonResponse({"items": []})
+
+    # Get approver profile information
+    from .models import Approver
+    approver_info = None
+    try:
+        approver = Approver.objects.get(user=user)
+        approver_info = {
+            "approver_type": approver.approver_type,
+            "college": approver.college,
+            "department": approver.department,
+            "office": approver.office,
+        }
+    except Approver.DoesNotExist:
+        approver_info = None
+
+    # Get requirements that this approver needs to approve
+    requirements = Requirement.objects.filter(
+        clearance_timeline=active_timeline,
+        is_active=True
+    )
+    
+    # Filter based on approver's scope
+    if approver and approver_info:
+        if approver.college:
+            requirements = requirements.filter(target_colleges=approver.college)
+        elif approver.department:
+            requirements = requirements.filter(target_departments=approver.department)
+        elif approver.office:
+            requirements = requirements.filter(target_offices=approver.office)
 
     qs = (
         ClearanceRequest.objects.select_related(
@@ -1398,7 +1435,7 @@ def clearance_requests_api(request):
             "faculty__college",
             "faculty__department",
         )
-        .filter(clearance_timeline=active_timeline)
+        .filter(clearance_timeline=active_timeline, requirement__in=requirements)
         .order_by("-id")
     )
 
@@ -1798,57 +1835,6 @@ def _can_approver_access_request(user: User, clearance_request: ClearanceRequest
             return True
     
     return False
-
-
-def clearance_requests_api(request):
-    if request.method != "GET":
-        return JsonResponse({"detail": "Method not allowed"}, status=405)
-
-    active_timeline = _get_active_timeline()
-    if not active_timeline:
-        return JsonResponse({"items": []})
-
-    qs = (
-        ClearanceRequest.objects.select_related(
-            "faculty",
-            "faculty__college",
-            "faculty__department",
-        )
-        .filter(clearance_timeline=active_timeline)
-        .order_by("-id")
-    )
-
-    items = []
-    for r in qs:
-        faculty = getattr(r, "faculty", None)
-
-        first_name = (getattr(faculty, "first_name", "") or "").strip()
-        middle_name = (getattr(faculty, "middle_name", "") or "").strip()
-        last_name = (getattr(faculty, "last_name", "") or "").strip()
-
-        parts = [p for p in [first_name, middle_name, last_name] if p]
-        full_name = " ".join(parts)
-
-        college = getattr(getattr(faculty, "college", None), "name", "") or ""
-        department = getattr(getattr(faculty, "department", None), "name", "") or ""
-        faculty_type = getattr(faculty, "faculty_type", "") or ""
-
-        employee_id = getattr(faculty, "employee_id", "") or ""
-
-        items.append(
-            {
-                "id": str(r.id),
-                "requestId": r.request_id,
-                "employeeId": employee_id,
-                "name": full_name,
-                "college": college,
-                "department": department,
-                "facultyType": faculty_type,
-                "status": _to_request_status(r.status),
-            }
-        )
-
-    return JsonResponse({"items": items})
 
 
 def active_clearance_timeline_api(request):
@@ -5570,8 +5556,8 @@ def approver_dashboard_api(request):
     except Approver.DoesNotExist:
         approver_info = None
 
-    # Get active timeline
-    timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year_start", "-id").first()
+    # Get active timeline using the same function as other endpoints
+    timeline = _get_active_timeline()
     
     # Get pending clearance requests for this approver
     pending_requests = []
@@ -5607,15 +5593,17 @@ def approver_dashboard_api(request):
                 "submittedDate": req.submitted_date.strftime("%Y-%m-%d") if req.submitted_date else None,
             })
     
+    # Use the same timeline data format as active_clearance_timeline_api
     timeline_data = None
     if timeline:
-        academic_year = ""
         if timeline.academic_year_start is not None and timeline.academic_year_end is not None:
-            academic_year = f"{timeline.academic_year_start}-{timeline.academic_year_end}"
+            academic_year = f"{timeline.academic_year_start}–{timeline.academic_year_end}"
+        else:
+            academic_year = ""
         
         timeline_data = {
             "academicYear": academic_year,
-            "semester": ""
+            "semester": _term_to_label(timeline.term)
         }
     
     return JsonResponse({

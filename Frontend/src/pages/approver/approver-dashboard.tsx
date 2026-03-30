@@ -14,8 +14,8 @@ import {
 export default function Approverdashboard() {
   const [timeline, setTimeline] = React.useState<{ academicYear: string; semester: string } | null>(null);
   const [approverOffice, setApproverOffice] = React.useState<string>("");
-  const pendingClearance = 0;
-  const totalClearanceRequests = 1;
+  const [pendingClearance, setPendingClearance] = React.useState<number>(0);
+  const [totalClearanceRequests, setTotalClearanceRequests] = React.useState<number>(0);
 
   const [profile, setProfile] = React.useState<{
     email: string;
@@ -58,10 +58,16 @@ export default function Approverdashboard() {
         } else {
           setApproverOffice("Not Assigned");
         }
+        
+        // Set clearance counts from backend response
+        setPendingClearance(data.pendingCount || 0);
+        setTotalClearanceRequests(data.pendingRequests?.length || 0);
       })
       .catch(() => {
         setTimeline(null);
         setApproverOffice("Not Assigned");
+        setPendingClearance(0);
+        setTotalClearanceRequests(0);
       });
   }, []);
 

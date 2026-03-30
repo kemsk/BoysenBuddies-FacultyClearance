@@ -215,6 +215,21 @@ WHERE u.email = '20220024573@my.xu.edu.ph' AND r.name = 'Student Assistant'
 ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
 
+INSERT INTO FC_userrole (user_id, role_id, college_id, department_id, assigned_by_id, assigned_date, is_active)
+SELECT 
+    u.id AS user_id, 
+    r.id AS role_id,
+    @ccs_id AS college_id,
+    @cs_id AS department_id,
+    @ciso_user_id AS assigned_by_id,
+    NOW() AS assigned_date,
+    1 AS is_active
+FROM FC_user u
+CROSS JOIN FC_role r
+WHERE u.email = '20220025546@my.xu.edu.ph' AND r.name = 'Student Assistant'
+ON DUPLICATE KEY UPDATE
+    is_active = VALUES(is_active);
+
 INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
 SELECT 
     u.id AS user_id, 
@@ -725,6 +740,13 @@ ON DUPLICATE KEY UPDATE
 INSERT INTO FC_studentassistant (user_id, college_id, department_id)
 VALUES 
 (@assistant_user_id, @ccs_id, @cs_id)
+ON DUPLICATE KEY UPDATE
+    college_id = VALUES(college_id),
+    department_id = VALUES(department_id);
+
+INSERT INTO FC_studentassistant (user_id, college_id, department_id)
+VALUES 
+(@ciso_user_id, @ccs_id, @cs_id)
 ON DUPLICATE KEY UPDATE
     college_id = VALUES(college_id),
     department_id = VALUES(department_id);
