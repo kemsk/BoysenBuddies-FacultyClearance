@@ -5617,11 +5617,17 @@ def approver_dashboard_api(request):
                 
                 for req in pending_clearance_requests:
                     try:
+                        # Get faculty name from faculty model, not user model
+                        faculty = req.faculty
+                        faculty_name = f"{faculty.first_name or ''} {faculty.middle_name or ''} {faculty.last_name or ''}".strip()
+                        if not faculty_name:
+                            faculty_name = faculty.user.email
+                        
                         pending_requests.append({
                             "id": req.id,
                             "requestId": req.request_id,
-                            "facultyName": req.faculty.user.get_full_name() or req.faculty.user.email,
-                            "facultyEmail": req.faculty.user.email,
+                            "facultyName": faculty_name,
+                            "facultyEmail": faculty.user.email,
                             "title": req.requirement.title,
                             "submittedDate": req.submitted_date.strftime("%Y-%m-%d") if req.submitted_date else None,
                         })
@@ -5630,11 +5636,17 @@ def approver_dashboard_api(request):
                 
                 for req in all_clearance_requests:
                     try:
+                        # Get faculty name from faculty model, not user model
+                        faculty = req.faculty
+                        faculty_name = f"{faculty.first_name or ''} {faculty.middle_name or ''} {faculty.last_name or ''}".strip()
+                        if not faculty_name:
+                            faculty_name = faculty.user.email
+                        
                         total_requests.append({
                             "id": req.id,
                             "requestId": req.request_id,
-                            "facultyName": req.faculty.user.get_full_name() or req.faculty.user.email,
-                            "facultyEmail": req.faculty.user.email,
+                            "facultyName": faculty_name,
+                            "facultyEmail": faculty.user.email,
                             "title": req.requirement.title,
                             "status": _to_request_status(req.status),
                             "submittedDate": req.submitted_date.strftime("%Y-%m-%d") if req.submitted_date else None,
