@@ -506,6 +506,44 @@ def me_api(request):
 
 
 @csrf_exempt
+def unread_notifications_count_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    role_names = set()
+    try:
+        from .decorators import get_role_name_for_value
+
+        role_value = request.session.get("user_role_value")
+        if role_value is not None:
+            role_names.add(str(get_role_name_for_value(role_value) or "").strip())
+    except Exception:
+        pass
+
+    try:
+        role_names.update(
+            r.strip() for r in user.get_active_roles().values_list("role__name", flat=True) if (r or "").strip()
+        )
+    except Exception:
+        pass
+
+    role_names = {r for r in role_names if r}
+
+    filters = (
+        Q(user=user)
+        | Q(approver=user)
+        | (Q(user__isnull=True) & Q(user_role__in=list(role_names)))
+    )
+
+    unread_count = Notification.objects.filter(filters, is_read=False).count()
+    return JsonResponse({"unreadCount": int(unread_count)})
+
+
+@csrf_exempt
 def idle_check_api(request):
     """
     API endpoint that forces Django middleware to run and check idle timeout.
@@ -737,6 +775,26 @@ def _serialize_guideline(g: SystemGuideline):
     }
 
 
+def _post_notification(title: str, body: str, details: list, user_role: str, user_id: int | None):
+    """POST a notification via the internal API."""
+    from django.test import Client
+    client = Client()
+    response = client.post(
+        "/admin/xu-faculty-clearance/api/faculty/notifications",
+        data=json.dumps({
+            "title": title,
+            "body": body,
+            "details": details,
+            "user_role": user_role,
+            "user_id": user_id,
+            "is_read": False,
+            "status": None,
+        }),
+        content_type="application/json",
+    )
+    return response.status_code == 200
+
+
 def _serialize_announcement(a: Announcement):
     return {
         "id": a.id,
@@ -778,6 +836,7 @@ def _system_guidelines_api(request, role: str):
         return JsonResponse({"detail": "title is required"}, status=400)
 
     admin = _get_active_admin_for_role(request, role)
+    session_user = _get_authenticated_user(request)
     created_by = admin if admin else None
 
     guideline = SystemGuideline.objects.create(
@@ -794,6 +853,24 @@ def _system_guidelines_api(request, role: str):
         )
     except Exception:
         pass
+    
+    # Auto-create notifications like announcements API
+    try:
+        for role in ["Approver", "CISO", "OVPHE", "Assistant"]:
+            Notification.objects.create(
+                user=session_user,
+                user_role=role,
+                title="New Guideline Released",
+                status=None,
+                body=f"{title} is now active. Please review the updated procedures.",
+                details=[f'Guideline = "{title}"'],
+                is_read=False,
+            )
+    except Exception as e:
+        import traceback
+        print(f"ERROR creating guideline notifications: {e}")
+        traceback.print_exc()
+    
     return JsonResponse({"item": _serialize_guideline(guideline)})
 
 
@@ -904,6 +981,7 @@ def _announcements_api(request, role: str):
         return JsonResponse({"detail": "title is required"}, status=400)
 
     admin = _get_active_admin_for_role(request, role)
+    session_user = _get_authenticated_user(request)
 
     announcement = Announcement.objects.create(
         title=title,
@@ -913,24 +991,20 @@ def _announcements_api(request, role: str):
         is_active=bool(enabled) if enabled is not None else True,
     )
     try:
-        notification_body = f"{title}. Check announcements section for more details."
-        notification_details = [f'Announcement title = "{title}"']
-        Notification.objects.bulk_create(
-            [
-                Notification(
-                    user=None,
-                    user_role=target_role,
-                    title="New Announcement",
-                    status=None,
-                    body=notification_body,
-                    details=notification_details,
-                    is_read=False,
-                )
-                for target_role in ["Approver", "CISO", "OVPHE", "Assistant"]
-            ]
-        )
-    except Exception:
-        pass
+        for role in ["Approver", "CISO", "OVPHE", "Assistant"]:
+            Notification.objects.create(
+                user_id=session_user.id if session_user else None,
+                user_role=role,
+                title="New Announcement",
+                status=None,
+                body=f"{title}. Check announcements section for more details.",
+                details=[f'Announcement = "{title}"'],
+                is_read=False,
+            )
+    except Exception as e:
+        import traceback
+        print(f"ERROR creating create notifications: {e}")
+        traceback.print_exc()
     return JsonResponse({"item": _serialize_announcement(announcement)})
 
 
@@ -942,6 +1016,7 @@ def _announcement_detail_api(request, role: str, announcement_id: int):
         return JsonResponse({"detail": "Not found"}, status=404)
 
     admin = _get_active_admin_for_role(request, role)
+    session_user = _get_authenticated_user(request)
 
     if request.method == "PUT":
         payload = _json_body(request)
@@ -964,13 +1039,26 @@ def _announcement_detail_api(request, role: str, announcement_id: int):
             announcement.created_by = admin
         announcement.save(update_fields=["title", "body", "pin_announcement", "created_at", "created_by"])
         try:
+            for role in ["Approver", "CISO", "OVPHE", "Assistant"]:
+                Notification.objects.create(
+                    user_id=session_user.id if session_user else None,
+                    user_role=role,
+                    title="Update",
+                    status=None,
+                    body=f'The announcement "{title}" has been updated by the System Admin.',
+                    details=[f'Announcement = "{title}"'],
+                    is_read=False,
+                )
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.EDITED_ANNOUNCEMENT,
-                user=admin.user if admin else None,
+                user=admin,
                 details=[f"Announcement: {title}"] if title else [],
             )
-        except Exception:
-            pass
+        except Exception as e:
+            # Debug: log the error
+            import traceback
+            print(f"ERROR creating edit notification: {e}")
+            traceback.print_exc()
         return JsonResponse({"item": _serialize_announcement(announcement)})
 
     if request.method == "PATCH":
@@ -998,6 +1086,18 @@ def _announcement_detail_api(request, role: str, announcement_id: int):
         announcement.save(update_fields=updated_fields)
         try:
             if "enabled" in payload:
+                # Inactive announcement notification
+                if not announcement.is_active:
+                    for role in ["CISO", "OVPHE"]:
+                        Notification.objects.create(
+                            user_id=session_user.id if session_user else None,
+                            user_role=role,
+                            title="Notice",
+                            status=None,
+                            body=f'The announcement "{announcement.title}" has been set to Inactive and is no longer visible to the approvers and their approver assistants.',
+                            details=[f'Announcement = "{announcement.title}"'],
+                            is_read=False,
+                        )
                 evt = (
                     ActivityLog.EventType.ENABLED_ANNOUNCEMENT
                     if announcement.is_active
@@ -1005,23 +1105,40 @@ def _announcement_detail_api(request, role: str, announcement_id: int):
                 )
                 ActivityLog.objects.create(
                     event_type=evt,
-                    user=admin.user if admin else None,
+                    user=admin,
                     details=[f"Announcement: {announcement.title}"] if announcement.title else [],
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            # Debug: log the error
+            import traceback
+            print(f"ERROR creating inactive notification: {e}")
+            traceback.print_exc()
         return JsonResponse({"item": _serialize_announcement(announcement)})
 
     if request.method == "DELETE":
         announcement_title = announcement.title
         try:
+            user_name = f"{session_user.first_name} {session_user.last_name}".strip() if session_user else "System Admin"
+            for role in ["CISO", "OVPHE"]:
+                Notification.objects.create(
+                    user_id=session_user.id if session_user else None,
+                    user_role=role,
+                    title="Content Archived",
+                    status=None,
+                    body=f'"{announcement_title}" has been moved to archives by {user_name}.',
+                    details=[f'Announcement = "{announcement_title}"'],
+                    is_read=False,
+                )
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.DELETED_ANNOUNCEMENT,
-                user=admin.user if admin else None,
+                user=admin,
                 details=[f"Announcement: {announcement_title}"] if announcement_title else [],
             )
-        except Exception:
-            pass
+        except Exception as e:
+            # Debug: log the error
+            import traceback
+            print(f"ERROR creating archived notification: {e}")
+            traceback.print_exc()
         announcement.delete()
         return JsonResponse({"ok": True})
 
@@ -2279,7 +2396,39 @@ def _legacy_faculty_dashboard_api_v1(request):
     )
 
 
+@csrf_exempt
 def faculty_notifications_api(request):
+    if request.method == "POST":
+        payload = _json_body(request)
+        if payload is None:
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
+
+        title = (payload.get("title") or "").strip()
+        body = (payload.get("body") or "").strip()
+        details = payload.get("details", [])
+        user_role = (payload.get("user_role") or "").strip()
+        user_id = payload.get("user_id")
+        is_read = payload.get("is_read", False)
+        status = payload.get("status")  # Can be None
+
+        if not title:
+            return JsonResponse({"detail": "title is required"}, status=400)
+
+        # Get session user like other notification functions
+        session_user = _get_authenticated_user(request)
+        notification_user_id = session_user.id if session_user else None
+
+        notification = Notification.objects.create(
+            user=session_user,  # Use user field, not user_id
+            user_role=user_role,
+            title=title,
+            status=status,
+            body=body,
+            details=details,
+            is_read=is_read,
+        )
+        return JsonResponse({"item": {"id": notification.id}})
+
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
@@ -3153,13 +3302,75 @@ def ciso_approver_flow_order_api(request):
     return JsonResponse({"ok": True})
 
 
+@csrf_exempt
 def ovphe_notifications_api(request):
-    if request.method != "GET":
-        return JsonResponse({"detail": "Method not allowed"}, status=405)
-
     admin = _get_active_ovphe_admin(request)
     if not admin:
         return JsonResponse({"detail": "OVPHE user not found"}, status=404)
+
+    if request.method == "POST":
+        payload = _json_body(request)
+        if payload is None:
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
+
+        title = (payload.get("title") or "").strip()
+        body = (payload.get("body") or "").strip()
+        details = payload.get("details")
+        status = payload.get("status")
+        is_read = bool(payload.get("is_read"))
+        user_roles = payload.get("user_roles")
+
+        if not title:
+            return JsonResponse({"detail": "title is required"}, status=400)
+        if not body:
+            return JsonResponse({"detail": "body is required"}, status=400)
+        if details is None:
+            details = []
+        if not isinstance(details, list):
+            return JsonResponse({"detail": "details must be a list"}, status=400)
+        details = [str(d) for d in details]
+        if user_roles is None:
+            user_roles = []
+        if not isinstance(user_roles, list) or not user_roles:
+            return JsonResponse({"detail": "user_roles must be a non-empty list"}, status=400)
+
+        session_user = _get_authenticated_user(request)
+        try:
+            user_name = "System Admin"
+            if session_user:
+                candidate = f"{(session_user.first_name or '').strip()} {(session_user.last_name or '').strip()}".strip()
+                user_name = candidate or (session_user.email or user_name)
+        except Exception:
+            user_name = "System Admin"
+
+        try:
+            if isinstance(body, str) and "[User Name]" in body:
+                body = body.replace("[User Name]", user_name)
+        except Exception:
+            pass
+
+        try:
+            Notification.objects.bulk_create(
+                [
+                    Notification(
+                        user=session_user,
+                        user_role=str(role_value),
+                        title=title,
+                        status=status,
+                        body=body,
+                        details=details,
+                        is_read=is_read,
+                    )
+                    for role_value in user_roles
+                ]
+            )
+        except Exception:
+            return JsonResponse({"detail": "Failed to create notifications"}, status=500)
+
+        return JsonResponse({"ok": True})
+
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
 
     qs = Notification.objects.filter(
         models.Q(user=admin.user) | models.Q(user_role__istartswith="CISO")
@@ -3448,14 +3659,117 @@ def ciso_announcement_detail_api(request, announcement_id: int):
     return _announcement_detail_api(request, "ciso", announcement_id)
 
 
+@csrf_exempt
 def ciso_notifications_api(request):
-    if request.method != "GET":
-        return JsonResponse({"detail": "Method not allowed"}, status=405)
-
     admin = _get_active_ciso_admin(request)
     if not admin:
         return JsonResponse({"detail": "CISO user not found"}, status=404)
+ 
+    if request.method == "POST":
+        payload = _json_body(request)
+        if payload is None:
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
+ 
+        title = (payload.get("title") or "").strip()
+        body = (payload.get("body") or "").strip()
+        details = payload.get("details")
+        status = payload.get("status")
+        is_read = bool(payload.get("is_read"))
+        user_roles = payload.get("user_roles")
+        created_by_id_raw = payload.get("created_by_id")
+        approver_id_raw = payload.get("approver_id")
+        clearance_period_start_raw = payload.get("clearance_period_start_date")
+        clearance_period_end_raw = payload.get("clearance_period_end_date")
+ 
+        if not title:
+            return JsonResponse({"detail": "title is required"}, status=400)
+        if not body:
+            return JsonResponse({"detail": "body is required"}, status=400)
+        if details is None:
+            details = []
+        if not isinstance(details, list):
+            return JsonResponse({"detail": "details must be a list"}, status=400)
+        details = [str(d) for d in details]
+        if user_roles is None:
+            user_roles = []
+        if not isinstance(user_roles, list) or not user_roles:
+            return JsonResponse({"detail": "user_roles must be a non-empty list"}, status=400)
+ 
+        session_user = _get_authenticated_user(request)
+        try:
+            user_name = "System Admin"
+            if session_user:
+                candidate = f"{(session_user.first_name or '').strip()} {(session_user.last_name or '').strip()}".strip()
+                user_name = candidate or (session_user.email or user_name)
+        except Exception:
+            user_name = "System Admin"
+ 
+        try:
+            if isinstance(body, str) and "[User Name]" in body:
+                body = body.replace("[User Name]", user_name)
+        except Exception:
+            pass
 
+        created_by_id_value = None
+        approver_id_value = None
+        try:
+            if created_by_id_raw is not None and created_by_id_raw != "":
+                created_by_id_value = int(created_by_id_raw)
+        except Exception:
+            created_by_id_value = None
+
+        try:
+            if approver_id_raw is not None and approver_id_raw != "":
+                approver_id_value = int(approver_id_raw)
+        except Exception:
+            approver_id_value = None
+
+        if created_by_id_value is not None and not User.objects.filter(id=created_by_id_value).exists():
+            created_by_id_value = None
+        if approver_id_value is not None and not User.objects.filter(id=approver_id_value).exists():
+            approver_id_value = None
+
+        clearance_period_start_value = None
+        clearance_period_end_value = None
+        try:
+            if isinstance(clearance_period_start_raw, str) and clearance_period_start_raw.strip():
+                clearance_period_start_value = datetime.fromisoformat(clearance_period_start_raw.strip()).date()
+        except Exception:
+            clearance_period_start_value = None
+
+        try:
+            if isinstance(clearance_period_end_raw, str) and clearance_period_end_raw.strip():
+                clearance_period_end_value = datetime.fromisoformat(clearance_period_end_raw.strip()).date()
+        except Exception:
+            clearance_period_end_value = None
+ 
+        try:
+            Notification.objects.bulk_create(
+                [
+                    Notification(
+                        user=session_user,
+                        user_role=str(role_value),
+                        title=title,
+                        status=status,
+                        body=body,
+                        details=details,
+                        is_read=is_read,
+                        created_by_id=created_by_id_value,
+                        approver_id=approver_id_value,
+                        clearance_period_start_date=clearance_period_start_value,
+                        clearance_period_end_date=clearance_period_end_value,
+                    )
+                    for role_value in user_roles
+                ]
+            )
+        except Exception:
+            return JsonResponse({"detail": "Failed to create notifications"}, status=500)
+ 
+        return JsonResponse({"ok": True})
+ 
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+ 
     qs = Notification.objects.filter(user=admin.user).order_by("-created_at", "-id")
     items = []
     for n in qs:

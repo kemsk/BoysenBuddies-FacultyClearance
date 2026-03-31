@@ -25,6 +25,35 @@ import {
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
 
+// Helper to POST notifications for multiple roles
+function postCISONotification(payload: {
+  title: string;
+  body: string;
+  details: string[];
+  status: null;
+  is_read: 0;
+  user_roles: string[];
+  created_by_id?: string | number | null;
+  approver_id?: string | number | null;
+  clearance_period_start_date?: string | null;
+  clearance_period_end_date?: string | null;
+}) {
+  fetch("/admin/xu-faculty-clearance/api/ciso/notifications", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+    .then(async (r) => {
+      if (r.ok) return;
+      const text = await r.text().catch(() => "");
+      console.error("CISO notification POST failed", r.status, text);
+    })
+    .catch((e) => {
+      console.error("CISO notification POST threw", e);
+    });
+}
+
 function GuidelinesToggle({
   checked,
   onChange,
@@ -311,6 +340,33 @@ export default function CISOAnnouncements() {
                             ).finally(() => {
                               setConfirm({ open: false });
                               refresh().catch(() => null);
+                              // POST Inactive notification only when deactivating
+                              if (!nextEnabled) {
+                                postCISONotification({
+                                    title: "Content Archived",
+                                    body: `"${title}" has been moved to archives by [User Name].`,
+                                    details: [`Announcement title = "${title}"`],
+                                    status: null,
+                                    is_read: 0,
+                                    user_roles: ["CISO", "OVPHE"],
+                                    created_by_id: null,
+                                    approver_id: null,
+                                    clearance_period_start_date: null,
+                                    clearance_period_end_date: null,                                    
+                                  });                                  
+                                postCISONotification({
+                                  title: "Notice",
+                                  body: `The announcement "${title}" has been set to Inactive and is no longer visible to the approvers and their approver assistants.`,
+                                  details: [`Announcement = "${title}"`],
+                                  status: null,
+                                  is_read: 0,
+                                  user_roles: ["CISO", "OVPHE"],
+                                  created_by_id: null,
+                                  approver_id: null,
+                                  clearance_period_start_date: null,
+                                  clearance_period_end_date: null,                                  
+                                });
+                              }
                             });
                           }}
                         >
@@ -343,6 +399,7 @@ export default function CISOAnnouncements() {
             }
             onSave={({ title, description, pinned }) => {
               if (editingIndex !== null) {
+                // EDIT: Update announcement then POST notifications
                 const current = items[editingIndex];
                 if (!current?.id) {
                   setEditingIndex(null);
@@ -355,23 +412,46 @@ export default function CISOAnnouncements() {
                 }).finally(() => {
                   setEditingIndex(null);
                   refresh().catch(() => null);
+                  // POST Edit notifications
+                  postCISONotification({
+                    title: "Update",
+                    body: `The announcement "${title}" has been updated by the System Admin.`,
+                    details: [`Announcement = "${title}"`],
+                    status: null,
+                    is_read: 0,
+                    user_roles: ["APPROVER", "CISO", "OVPHE", "ASSISTANT_APPROVER"],
+                    created_by_id: null,
+                    approver_id: null,
+                    clearance_period_start_date: null,
+                    clearance_period_end_date: null,                    
+                  });
                 });
                 return;
               }
 
+              // CREATE: Create announcement then POST notifications
               fetch("/admin/xu-faculty-clearance/api/ciso/announcements", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ title, description, pinned }),
               }).finally(() => {
                 refresh().catch(() => null);
+                // POST Create notifications
+                postCISONotification({
+                  title: "New Announcement",
+                  body: `${title}. Check announcements section for more details.`,
+                  details: [`Announcement = "${title}"`],
+                  status: null,
+                  is_read: 0,
+                  user_roles: ["APPROVER", "CISO", "OVPHE", "ASSISTANT_APPROVER"],
+                  created_by_id: null,
+                  approver_id: null,
+                  clearance_period_start_date: null,
+                  clearance_period_end_date: null,                  
+                });
               });
             }}
           />
-  
-
-
-
       </main>
 
     </div>

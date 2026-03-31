@@ -95,7 +95,37 @@ export function Header() {
 
 export function FacultyHeader() {
   const navigate = useNavigate();
-  const unreadCount = 3;
+  const [unreadCount, setUnreadCount] = React.useState(0);
+
+  React.useEffect(() => {
+    let mounted = true;
+    fetch("/admin/xu-faculty-clearance/api/notifications/unread-count", {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) {
+          return null;
+        }
+        return resp.json();
+      })
+      .then((data) => {
+        if (!mounted || !data) return;
+        const count = Number(data.unreadCount);
+        setUnreadCount(Number.isFinite(count) ? count : 0);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setUnreadCount(0);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleLogout = async () => {
     console.log("LOGOUT: FacultyHeader handleLogout called!");
@@ -246,7 +276,37 @@ export function AdminHeader() {
 
 export function ApprovalHeader() {
   const navigate = useNavigate();
-  const unreadCount = 3;
+  const [unreadCount, setUnreadCount] = React.useState(0);
+
+  React.useEffect(() => {
+    let mounted = true;
+    fetch("/admin/xu-faculty-clearance/api/notifications/unread-count", {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) {
+          return null;
+        }
+        return resp.json();
+      })
+      .then((data) => {
+        if (!mounted || !data) return;
+        const count = Number(data.unreadCount);
+        setUnreadCount(Number.isFinite(count) ? count : 0);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setUnreadCount(0);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -475,7 +535,37 @@ export function ApprovalHeader() {
 
 export function HROHeader() {
   const navigate = useNavigate();
-  const unreadCount = 3;
+  const [unreadCount, setUnreadCount] = React.useState(0);
+
+  React.useEffect(() => {
+    let mounted = true;
+    fetch("/admin/xu-faculty-clearance/api/notifications/unread-count", {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) {
+          return null;
+        }
+        return resp.json();
+      })
+      .then((data) => {
+        if (!mounted || !data) return;
+        const count = Number(data.unreadCount);
+        setUnreadCount(Number.isFinite(count) ? count : 0);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setUnreadCount(0);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -701,7 +791,37 @@ export function HROHeader() {
 
 export function CISOHeader() {
   const navigate = useNavigate();
-  const unreadCount = 3;
+  const [unreadCount, setUnreadCount] = React.useState(0);
+
+  React.useEffect(() => {
+    let mounted = true;
+    fetch("/admin/xu-faculty-clearance/api/notifications/unread-count", {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) {
+          return null;
+        }
+        return resp.json();
+      })
+      .then((data) => {
+        if (!mounted || !data) return;
+        const count = Number(data.unreadCount);
+        setUnreadCount(Number.isFinite(count) ? count : 0);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setUnreadCount(0);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -951,7 +1071,37 @@ export function CISOHeader() {
 
 export function OVPHEHeader() {
   const navigate = useNavigate();
-  const unreadCount = 3;
+  const [unreadCount, setUnreadCount] = React.useState(0);
+
+  React.useEffect(() => {
+    let mounted = true;
+    fetch("/admin/xu-faculty-clearance/api/notifications/unread-count", {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) {
+          return null;
+        }
+        return resp.json();
+      })
+      .then((data) => {
+        if (!mounted || !data) return;
+        const count = Number(data.unreadCount);
+        setUnreadCount(Number.isFinite(count) ? count : 0);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setUnreadCount(0);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -1165,7 +1315,37 @@ export function OVPHEHeader() {
 
 export function AssistantApproverHeader() {
   const navigate = useNavigate();
-  const unreadCount = 3;
+  const [unreadCount, setUnreadCount] = React.useState(0);
+
+  React.useEffect(() => {
+    let mounted = true;
+    fetch("/admin/xu-faculty-clearance/api/notifications/unread-count", {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) {
+          return null;
+        }
+        return resp.json();
+      })
+      .then((data) => {
+        if (!mounted || !data) return;
+        const count = Number(data.unreadCount);
+        setUnreadCount(Number.isFinite(count) ? count : 0);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setUnreadCount(0);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {

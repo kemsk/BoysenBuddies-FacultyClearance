@@ -24,6 +24,35 @@ import {
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
 
+// Helper to POST notifications for multiple roles
+function postCISONotification(payload: {
+  title: string;
+  body: string;
+  details: string[];
+  status: null;
+  is_read: 0;
+  user_roles: string[];
+  created_by_id?: string | number | null;
+  approver_id?: string | number | null;
+  clearance_period_start_date?: string | null;
+  clearance_period_end_date?: string | null;
+}) {
+  fetch("/admin/xu-faculty-clearance/api/ciso/notifications", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+    .then(async (r) => {
+      if (r.ok) return;
+      const text = await r.text().catch(() => "");
+      console.error("CISO notification POST failed", r.status, text);
+    })
+    .catch((e) => {
+      console.error("CISO notification POST threw", e);
+    });
+}
+
 function GuidelinesToggle({
   checked,
   onChange,
@@ -304,7 +333,36 @@ export default function CISOSystemGuideline() {
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ enabled: nextEnabled }),
                               }
-                            ).finally(() => {
+                            ).then(() => {
+                              // POST Inactive notification only when deactivating
+                              if (!nextEnabled) {
+                                  postCISONotification({
+                                    title: "Content Archived",
+                                    body: `"${title}" has been moved to archives by [User Name].`,
+                                    details: [`Guidelines title = "${title}"`],
+                                    status: null,
+                                    is_read: 0,
+                                    user_roles: ["CISO", "OVPHE"],
+                                    created_by_id: null,
+                                    approver_id: null,
+                                    clearance_period_start_date: null,
+                                    clearance_period_end_date: null,                                    
+                                  });
+                                
+                                postCISONotification({
+                                  title: "Notice",
+                                  body: `The guideline "${title}" has been set to Inactive and is no longer visible to the approvers and their approver assistants.`,
+                                  details: [`Guideline = "${title}"`],
+                                  status: null,
+                                  is_read: 0,
+                                  user_roles: ["CISO", "OVPHE"],
+                                  created_by_id: null,
+                                  approver_id: null,
+                                  clearance_period_start_date: null,
+                                  clearance_period_end_date: null,                                  
+                                });
+                              }
+                            }).finally(() => {
                               setConfirm({ open: false });
                               refresh().catch(() => null);
                             });
@@ -349,18 +407,51 @@ export default function CISOSystemGuideline() {
                   method: "PUT",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ title, description }),
-                }).finally(() => {
+                })
+                .then((r) => {
+                  if (!r.ok) throw new Error("Guideline update failed");
+                  postCISONotification({
+                    title: "Update",
+                    body: `The Guideline "${title}" has been updated by the System Admin.`,
+                    details: [`Guideline  = "${title}"`],
+                    status: null,
+                    is_read: 0,
+                    user_roles: ["APPROVER", "CISO", "OVPHE", "ASSISTANT_APPROVER"],
+                    created_by_id: null,
+                    approver_id: null,
+                    clearance_period_start_date: null,
+                    clearance_period_end_date: null,                    
+                  });
+                })
+                .finally(() => {
                   setEditingIndex(null);
                   refresh().catch(() => null);
                 });
                 return;
               }
 
+              // CREATE: Create guideline then POST notifications
               fetch("/admin/xu-faculty-clearance/api/ciso/system-guidelines", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ title, description }),
-              }).finally(() => {
+              })
+              .then((r) => {
+                if (!r.ok) throw new Error("Guideline create failed");
+                postCISONotification({
+                  title: "New Guideline Released",
+                  body: `${title} is now active. Please review the updated procedures.`,
+                  details: [`Guideline = "${title}"`],
+                  status: null,
+                  is_read: 0,
+                  user_roles: ["APPROVER", "CISO", "OVPHE", "ASSISTANT_APPROVER"],
+                  created_by_id: null,
+                  approver_id: null,
+                  clearance_period_start_date: null,
+                  clearance_period_end_date: null,
+                });
+              })
+              .finally(() => {
                 refresh().catch(() => null);
               });
             }}

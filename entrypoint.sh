@@ -918,61 +918,61 @@ SET @seed_days_left = '7 days';
 SET @seed_announcement_title = 'System Maintenance Notice';
 
 -- Seed Notifications for OVPHE user
-INSERT INTO FC_notification (user_id, title, status, body, details, is_read, created_at)
+INSERT INTO FC_notification (user_id, user_role, title, status, body, details, is_read, created_at)
 SELECT * FROM (
-    SELECT @ovphe_user_id AS user_id, 'Clearance Timeline Started' AS title, 'submitted' AS status, CONCAT('The clearance timeline for ', @seed_school_year_label, ' ', @seed_term_label, ' is now active. Faculty Members may begin submitting requests.') AS body, '[]' AS details, 0 AS is_read, NOW() AS created_at
+    SELECT @ovphe_user_id AS user_id, 'OVPHE' AS user_role, 'Clearance Timeline Started' AS title, 'submitted' AS status, CONCAT('The clearance timeline for ', @seed_school_year_label, ' ', @seed_term_label, ' is now active. Faculty Members may begin submitting requests.') AS body, '[]' AS details, 0 AS is_read, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_notification n WHERE n.user_id = v.user_id AND n.title = v.title AND n.status = v.status
 );
 
-INSERT INTO FC_notification (user_id, title, status, body, details, is_read, created_at)
+INSERT INTO FC_notification (user_id, user_role, title, status, body, details, is_read, created_at)
 SELECT * FROM (
-    SELECT @ovphe_user_id AS user_id, 'Workflow Update' AS title, 'submitted' AS status, CONCAT(@seed_dept_office_name, ' has been added to the approval flow. You may now receive clearance requests.') AS body, '[]' AS details, 0 AS is_read, NOW() AS created_at
+    SELECT @ovphe_user_id AS user_id, 'OVPHE' AS user_role, 'Workflow Update' AS title, 'submitted' AS status, CONCAT(@seed_dept_office_name, ' has been added to the approval flow. You may now receive clearance requests.') AS body, '[]' AS details, 0 AS is_read, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_notification n WHERE n.user_id = v.user_id AND n.title = v.title AND n.status = v.status
 );
 
 -- Seed Notifications for CISO user
-INSERT INTO FC_notification (user_id, title, status, body, details, is_read, created_at)
+INSERT INTO FC_notification (user_id, user_role, title, status, body, details, is_read, created_at)
 SELECT * FROM (
-    SELECT @ciso_user_id AS user_id, 'New Announcement' AS title, 'submitted' AS status, CONCAT(@seed_announcement_title, ', Check announcements section for more details.') AS body, '[]' AS details, 0 AS is_read, NOW() AS created_at
+    SELECT @ciso_user_id AS user_id, 'CISO' AS user_role, 'New Announcement' AS title, 'submitted' AS status, CONCAT(@seed_announcement_title, ', Check announcements section for more details.') AS body, '[]' AS details, 0 AS is_read, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_notification n WHERE n.user_id = v.user_id AND n.title = v.title AND n.status = v.status
 );
 
-INSERT INTO FC_notification (user_id, title, status, body, details, is_read, created_at)
+INSERT INTO FC_notification (user_id, user_role, title, status, body, details, is_read, created_at)
 SELECT * FROM (
-    SELECT @ciso_user_id AS user_id, 'Faculty Data Dump Uploaded' AS title, 'submitted' AS status, CONCAT('A new faculty data dump has been successfully downloaded for ', @seed_school_year_label, ' ', @seed_term_label, '.') AS body, '[]' AS details, 0 AS is_read, NOW() AS created_at
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_notification n WHERE n.user_id = v.user_id AND n.title = v.title AND n.status = v.status
-);
-
--- Seed Notifications for Faculty user
-INSERT INTO FC_notification (user_id, title, status, body, details, is_read, created_at)
-SELECT * FROM (
-    SELECT @faculty_user_id AS user_id, 'Deadline Approaching' AS title, 'submitted' AS status, CONCAT('The clearance period is coming to end in ', @seed_days_left, '. Ensure to submit your requirements on time to maintain timely submissions.') AS body, '["Submission of Requirement 1", "Submission of Requirement 2"]' AS details, 0 AS is_read, NOW() AS created_at
+    SELECT @ciso_user_id AS user_id, 'CISO' AS user_role, 'Faculty Data Dump Uploaded' AS title, 'submitted' AS status, CONCAT('A new faculty data dump has been successfully downloaded for ', @seed_school_year_label, ' ', @seed_term_label, '.') AS body, '[]' AS details, 0 AS is_read, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_notification n WHERE n.user_id = v.user_id AND n.title = v.title AND n.status = v.status
 );
 
 -- Seed Notifications for Faculty user
-INSERT INTO FC_notification (user_id, title, status, body, details, is_read, created_at)
+INSERT INTO FC_notification (user_id, user_role, title, status, body, details, is_read, created_at)
 SELECT * FROM (
-    SELECT @faculty_user_id AS user_id, 'Deadline Approaching' AS title, 'submitted' AS status, CONCAT('The clearance period is coming to end in ', @seed_days_left, '. Ensure to submit your requirements on time to maintain timely submissions.') AS body, '["Submission of Requirement 1", "Submission of Requirement 2"]' AS details, 0 AS is_read, NOW() AS created_at
+    SELECT @faculty_user_id AS user_id, 'Faculty' AS user_role, 'Deadline Approaching' AS title, 'submitted' AS status, CONCAT('The clearance period is coming to end in ', @seed_days_left, '. Ensure to submit your requirements on time to maintain timely submissions.') AS body, '["Submission of Requirement 1", "Submission of Requirement 2"]' AS details, 0 AS is_read, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_notification n WHERE n.user_id = v.user_id AND n.title = v.title AND n.status = v.status
 );
 
 -- Seed Notifications for Faculty user
-INSERT INTO FC_notification (user_id, title, status, body, details, is_read, created_at)
+INSERT INTO FC_notification (user_id, user_role, title, status, body, details, is_read, created_at)
 SELECT * FROM (
-    SELECT @faculty_user_id AS user_id, 'Deadline Approaching' AS title, 'submitted' AS status, CONCAT('The clearance period is coming to end in ', @seed_days_left, '. Ensure to submit your requirements on time to maintain timely submissions.') AS body, '["Submission of Requirement 1", "Submission of Requirement 2"]' AS details, 0 AS is_read, NOW() AS created_at
+    SELECT @faculty_user_id AS user_id, 'Faculty' AS user_role, 'Deadline Approaching' AS title, 'submitted' AS status, CONCAT('The clearance period is coming to end in ', @seed_days_left, '. Ensure to submit your requirements on time to maintain timely submissions.') AS body, '["Submission of Requirement 1", "Submission of Requirement 2"]' AS details, 0 AS is_read, NOW() AS created_at
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_notification n WHERE n.user_id = v.user_id AND n.title = v.title AND n.status = v.status
+);
+
+-- Seed Notifications for Faculty user
+INSERT INTO FC_notification (user_id, user_role, title, status, body, details, is_read, created_at)
+SELECT * FROM (
+    SELECT @faculty_user_id AS user_id, 'Faculty' AS user_role, 'Deadline Approaching' AS title, 'submitted' AS status, CONCAT('The clearance period is coming to end in ', @seed_days_left, '. Ensure to submit your requirements on time to maintain timely submissions.') AS body, '["Submission of Requirement 1", "Submission of Requirement 2"]' AS details, 0 AS is_read, NOW() AS created_at
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_notification n WHERE n.user_id = v.user_id AND n.title = v.title AND n.status = v.status
