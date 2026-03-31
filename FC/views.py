@@ -758,6 +758,7 @@ def me_api(request):
         approver_profile = Approver.objects.get(user=user)
     except Approver.DoesNotExist:
         approver_profile = None
+    assistant_scope = _assistant_scope(user)
     
     for ur in user.get_active_roles().select_related("role", "college", "department", "office"):
         role_data = {
@@ -773,6 +774,12 @@ def me_api(request):
                 "college": approver_profile.college.name if approver_profile.college else "",
                 "department": approver_profile.department.name if approver_profile.department else "",
                 "office": approver_profile.office.name if approver_profile.office else "",
+            })
+        elif ur.role.name in {'ASSISTANT_APPROVER', 'Student Assistant'} and assistant_scope.get("assistant"):
+            role_data.update({
+                "college": assistant_scope["college"].name if assistant_scope.get("college") else "",
+                "department": assistant_scope["department"].name if assistant_scope.get("department") else "",
+                "office": assistant_scope["office"].name if assistant_scope.get("office") else "",
             })
         
         roles_payload.append(role_data)
@@ -1503,6 +1510,9 @@ def ciso_system_user_detail_api(request, user_id: int):
         user = User.objects.get(pk=user_id)
     except User.DoesNotExist:
         return JsonResponse({"detail": "User not found"}, status=404)
+
+    if request.method in {"PUT", "PATCH", "DELETE"} and user.pk == admin.pk:
+        return JsonResponse({"detail": "You cannot edit or remove your own account from Manage System Users"}, status=403)
 
     def _full_name(u: User):
         parts = [(u.first_name or "").strip(), (u.middle_name or "").strip(), (u.last_name or "").strip()]
@@ -4100,19 +4110,32 @@ def ciso_system_users_api(request):
         return JsonResponse({"detail": "Missing user type"}, status=400)
 
     with transaction.atomic():
-        if User.objects.filter(email__iexact=email).exists():
-            return JsonResponse({"detail": "Email already exists"}, status=400)
-        if User.objects.filter(university_id__iexact=university_id).exists():
-            return JsonResponse({"detail": "University ID already exists"}, status=400)
+        user = User.objects.filter(email__iexact=email).first()
+        if user:
+            existing_university_id = (user.university_id or "").strip()
+            if existing_university_id and existing_university_id != university_id:
+                return JsonResponse({"detail": "This email is already assigned to a different University ID"}, status=400)
+            duplicate_university_user = User.objects.filter(university_id__iexact=university_id).exclude(pk=user.pk).first()
+            if duplicate_university_user:
+                return JsonResponse({"detail": "University ID already exists"}, status=400)
 
-        # Our custom User model does not have a create_user manager or is_active/is_staff fields
-        user = User.objects.create(
-            email=email,
-            university_id=university_id,
-            first_name=first_name,
-            middle_name=middle_name,
-            last_name=last_name,
-        )
+            user.university_id = university_id
+            user.first_name = first_name
+            user.middle_name = middle_name
+            user.last_name = last_name
+            user.save(update_fields=["university_id", "first_name", "middle_name", "last_name"])
+        else:
+            if User.objects.filter(university_id__iexact=university_id).exists():
+                return JsonResponse({"detail": "University ID already exists"}, status=400)
+
+            # Our custom User model does not have a create_user manager or is_active/is_staff fields
+            user = User.objects.create(
+                email=email,
+                university_id=university_id,
+                first_name=first_name,
+                middle_name=middle_name,
+                last_name=last_name,
+            )
 
         if system_admin_office:
             office_norm = system_admin_office.strip().upper()
@@ -4191,13 +4214,12 @@ def ciso_system_users_api(request):
                 if not office:
                     return JsonResponse({"detail": f"Office '{office_name}' not found"}, status=400)
 
-            Approver.objects.create(
-                user=user,
-                approver_type="College" if atype == "college" else "Office",
-                college=college,
-                department=department,
-                office=office,
-            )
+            approver_profile, _ = Approver.objects.get_or_create(user=user)
+            approver_profile.approver_type = "College" if atype == "college" else "Office"
+            approver_profile.college = college
+            approver_profile.department = department
+            approver_profile.office = office
+            approver_profile.save(update_fields=["approver_type", "college", "department", "office"])
             
             # Assign appropriate role based on approver type
             from .models import Role, UserRole
@@ -4973,9 +4995,11 @@ def approver_assistant_approvers_api(request):
                 college_name = college.name
                 
                 if assistant_type == "student_assistant":
-                    # Student Assistant: can add anyone from department EXCEPT Dean
+                    # Student Assistant: restricted to the dean's own assigned department
                     if not dept_name:
                         return JsonResponse({"detail": "Department is required"}, status=400)
+                    if dept_name.lower() != current_approver.department.name.lower():
+                        return JsonResponse({"detail": f"You can only add assistants under your assigned department ({current_approver.department.name})"}, status=400)
                     
                     # Validate department belongs to Dean's college
                     department = Department.objects.filter(
@@ -5002,6 +5026,8 @@ def approver_assistant_approvers_api(request):
                         ).first()
                         if not department:
                             return JsonResponse({"detail": "Department not found in your college"}, status=400)
+                        if current_approver.department and department.pk != current_approver.department.pk:
+                            return JsonResponse({"detail": f"You can only add assistants under your assigned department ({current_approver.department.name})"}, status=400)
                     
                     if office_name:
                         office = Office.objects.filter(
@@ -5052,6 +5078,8 @@ def approver_assistant_approvers_api(request):
                         ).first()
                         if not department:
                             return JsonResponse({"detail": "Department not found"}, status=400)
+                        if current_approver.department and department.pk != current_approver.department.pk:
+                            return JsonResponse({"detail": f"You can only add assistants under your assigned department ({current_approver.department.name})"}, status=400)
                     else:  # Admin assistant case - find department by name only
                         department = Department.objects.filter(
                             name__iexact=dept_name,
@@ -5059,6 +5087,8 @@ def approver_assistant_approvers_api(request):
                         ).first()
                         if not department:
                             return JsonResponse({"detail": "Department not found"}, status=400)
+                        if current_approver.department and department.pk != current_approver.department.pk:
+                            return JsonResponse({"detail": f"You can only add assistants under your assigned department ({current_approver.department.name})"}, status=400)
 
                 # Look up office if provided (for admin assistants)
                 office = None
@@ -5071,18 +5101,32 @@ def approver_assistant_approvers_api(request):
                         return JsonResponse({"detail": "Office not found"}, status=400)
 
             with transaction.atomic():
-                if User.objects.filter(email__iexact=email).exists():
+                existing_email_user = User.objects.filter(email__iexact=email).first()
+                existing_university_user = User.objects.filter(university_id__iexact=university_id).first()
+
+                if existing_email_user and existing_university_user and existing_email_user.pk != existing_university_user.pk:
+                    return JsonResponse({"detail": "Email and University ID belong to different existing users"}, status=400)
+                if existing_email_user and not existing_university_user:
                     return JsonResponse({"detail": "Email already exists"}, status=400)
-                if User.objects.filter(university_id__iexact=university_id).exists():
+                if existing_university_user and not existing_email_user:
                     return JsonResponse({"detail": "University ID already exists"}, status=400)
 
-                user_obj = User.objects.create(
-                    email=email,
-                    university_id=university_id,
-                    first_name=first_name,
-                    middle_name=middle_name,
-                    last_name=last_name,
-                )
+                user_obj = existing_email_user or existing_university_user
+                if user_obj:
+                    user_obj.email = email
+                    user_obj.university_id = university_id
+                    user_obj.first_name = first_name
+                    user_obj.middle_name = middle_name
+                    user_obj.last_name = last_name
+                    user_obj.save(update_fields=["email", "university_id", "first_name", "middle_name", "last_name"])
+                else:
+                    user_obj = User.objects.create(
+                        email=email,
+                        university_id=university_id,
+                        first_name=first_name,
+                        middle_name=middle_name,
+                        last_name=last_name,
+                    )
 
                 # Additional validation for College Dean: Check if person being added is a Dean
                 if is_college_dean and assistant_type == "student_assistant":
@@ -5099,12 +5143,11 @@ def approver_assistant_approvers_api(request):
 
                 # Student assistants are represented via StudentAssistant + Student Assistant role
                 if assistant_type == "student_assistant":
-                    sa = StudentAssistant.objects.create(
-                        user=user_obj,
-                        college=college,
-                        department=department,
-                        supervisor_approver=user,
-                    )
+                    sa, _ = StudentAssistant.objects.get_or_create(user=user_obj)
+                    sa.college = college
+                    sa.department = department
+                    sa.supervisor_approver = user
+                    sa.save(update_fields=["college", "department", "supervisor_approver"])
 
                     from .models import Role, UserRole
 
@@ -5131,13 +5174,15 @@ def approver_assistant_approvers_api(request):
                         defaults={"is_active": True, "college": college, "department": department},
                     )
 
-                    ApproverAssistant.objects.create(
+                    ApproverAssistant.objects.update_or_create(
                         assistant=user_obj,
                         supervisor=user,
-                        assistant_type=assistant_type,
-                        college=college,
-                        department=department,
-                        office=office,
+                        defaults={
+                            "assistant_type": assistant_type,
+                            "college": college,
+                            "department": department,
+                            "office": office,
+                        },
                     )
 
             return JsonResponse({"ok": True, "id": str(user_obj.id)})
@@ -5557,7 +5602,8 @@ def approver_dashboard_api(request):
         return JsonResponse({"detail": "Authentication required"}, status=401)
 
     # Check if user has Approver role
-    if not user.userrole_set.filter(role__name='Approver', is_active=True).exists():
+    allowed_approver_roles = ['Approver', 'Office Admin', 'College Admin', 'Department Chair']
+    if not user.userrole_set.filter(role__name__in=allowed_approver_roles, is_active=True).exists():
         return JsonResponse({"detail": "Access denied"}, status=403)
 
     try:
@@ -6652,6 +6698,54 @@ def approver_view_clearance_api(request):
     if status_filter in ["COMPLETED", "INCOMPLETE"]:
         items = [item for item in items if item.get("status") == status_filter]
     return JsonResponse({"items": items})
+
+
+def approver_archived_individual_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    timeline_id = (request.GET.get("timelineId") or request.GET.get("timeline_id") or "").strip()
+    archived_id = (request.GET.get("archivedId") or request.GET.get("id") or "").strip()
+
+    if not timeline_id or not archived_id:
+        return JsonResponse({"detail": "Missing timelineId or archivedId"}, status=400)
+
+    timeline = ClearanceTimeline.objects.filter(id=timeline_id, archive_date__isnull=False).first()
+    if not timeline:
+        return JsonResponse({"detail": "Archived timeline not found"}, status=404)
+
+    archived = _approver_scoped_archived_clearances(user, timeline).filter(id=archived_id).first()
+    if not archived:
+        return JsonResponse({"detail": "Archived clearance not found"}, status=404)
+
+    faculty = archived.faculty
+    faculty_user = getattr(faculty, "user", None)
+    requests = _assistant_archived_requests_for_archived_clearance(archived)
+
+    return JsonResponse({
+        "timeline": {
+            "id": str(timeline.id),
+            "name": timeline.name or _clearance_timeline_name(timeline.academic_year_start, timeline.academic_year_end, timeline.term),
+        },
+        "item": {
+            "id": str(archived.id),
+            "employeeId": getattr(faculty, "employee_id", "") or "",
+            "schoolId": getattr(faculty, "employee_id", "") or "",
+            "name": _archived_faculty_display_name(faculty),
+            "fullName": _archived_faculty_display_name(faculty),
+            "schoolEmail": getattr(faculty_user, "email", "") or "",
+            "college": getattr(getattr(faculty, "college", None), "name", "") or "",
+            "department": getattr(getattr(faculty, "department", None), "name", "") or "",
+            "facultyType": getattr(faculty, "faculty_type", "") or "",
+            "status": "approved" if archived.status == ArchivedClearance.Status.COMPLETED else "pending",
+            "missingApproval": (archived.clearance_data or {}).get("missing_approval", ""),
+            "requests": requests,
+        },
+    })
 
 
 def assistant_approver_archived_individual_api(request):

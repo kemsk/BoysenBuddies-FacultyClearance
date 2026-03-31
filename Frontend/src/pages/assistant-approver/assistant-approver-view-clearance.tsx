@@ -43,7 +43,9 @@ export default function AssistantApproverViewClearance() {
   const [, setItems] = React.useState<AnnouncementApiItem[]>([]);
 
   const refresh = React.useCallback(() => {
-    return fetch("/admin/xu-faculty-clearance/api/ovphe/announcements")
+    return fetch("/admin/xu-faculty-clearance/api/ovphe/announcements", {
+      credentials: "include",
+    })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: { items: AnnouncementApiItem[] }) => {
         const initial = (data.items ?? []).map((item) => ({

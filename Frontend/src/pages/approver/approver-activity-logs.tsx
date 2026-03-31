@@ -256,7 +256,7 @@ export default function ApproverActivityLogs() {
         </Breadcrumb>
         
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/Approver-Action")}> 
+          <Button variant="back" onClick={() => navigate("/approver-action")}> 
             <img src="BlackArrowIcon.png" alt="back" />Back
           </Button>
         </div>

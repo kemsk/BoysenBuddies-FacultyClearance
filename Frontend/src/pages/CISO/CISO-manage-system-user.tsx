@@ -309,6 +309,10 @@ import {
               onAddAdmin={() => setAddAdminOpen(true)}
               currentUserEmail={adminEmail}
               onEditUser={(user) => {
+                if (user.email.trim().toLowerCase() === adminEmail.trim().toLowerCase()) {
+                  window.alert("You cannot edit your own account from Manage System Users.");
+                  return;
+                }
                 setActiveUserId(user.id);
                 if (isSystemLevelRole(user)) {
                   setEditAdminOpen(true);
@@ -317,6 +321,10 @@ import {
                 }
               }}
               onRemoveUser={(user) => {
+                if (user.email.trim().toLowerCase() === adminEmail.trim().toLowerCase()) {
+                  window.alert("You cannot remove your own account from Manage System Users.");
+                  return;
+                }
                 setActiveUserId(user.id);
                 setRemoveOpen(true);
               }}

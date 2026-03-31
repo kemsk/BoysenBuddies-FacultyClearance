@@ -51,7 +51,9 @@ export default function AssitantApproverIndividualApproval() {
       return;
     }
 
-    fetch(`/admin/xu-faculty-clearance/api/assistant-approver/individual-approval?requestId=${encodeURIComponent(requestId)}`)
+    fetch(`/admin/xu-faculty-clearance/api/assistant-approver/individual-approval?requestId=${encodeURIComponent(requestId)}`, {
+      credentials: "include",
+    })
       .then((res) => (res.ok ? res.json() : res.json().then((data) => Promise.reject(new Error(data.detail || "Failed to load request")))))
       .then((data: { item?: AssistantApprovalItem }) => {
         setItem(data.item ?? null);
@@ -80,7 +82,7 @@ export default function AssitantApproverIndividualApproval() {
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || "Failed to save action.");
-        return data as { item?: AssistantApprovalItem };
+        return data as { item?: AssistantApprovalItem; ok?: boolean };
       })
       .then((data) => {
         if (data.item) {

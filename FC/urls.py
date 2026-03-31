@@ -72,6 +72,7 @@ urlpatterns = [
     path('api/approver/notifications', views.approver_notifications_api, name='ApproverNotifications'),
     path('api/approver/archived-clearance', views.approver_archived_clearance_api, name='ApproverArchivedClearance'),
     path('api/approver/view-clearance', views.approver_view_clearance_api, name='ApproverViewClearance'),
+    path('api/approver/archived-individual', views.approver_archived_individual_api, name='ApproverArchivedIndividual'),
     path('api/approver/individual-approval', views.approver_individual_approval_api, name='ApproverIndividualApproval'),
     # Assistant Approver endpoints
     path('api/assistant-approver/dashboard', views.assistant_approver_dashboard_api, name='AssistantApproverDashboard'),

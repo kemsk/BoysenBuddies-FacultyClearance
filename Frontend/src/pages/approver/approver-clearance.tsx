@@ -23,7 +23,9 @@ export default function ApproverClearance() {
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
-    fetch("/admin/xu-faculty-clearance/api/clearance-requests")
+    fetch("/admin/xu-faculty-clearance/api/approver/clearance", {
+      credentials: "include",
+    })
       .then((res) => {
         if (!res.ok) {
           throw new Error(`Failed to load requests: ${res.statusText}`);

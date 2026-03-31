@@ -113,7 +113,7 @@ export default function ApproverViewClearance() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/Approver-action">Action</Link>
+                <Link to="/approver-action">Action</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -192,7 +192,7 @@ export default function ApproverViewClearance() {
             <div className="mt-6">
               <ClearanceRequestsCard
                 items={filteredRequests}
-                getItemHref={() => "/approver-archived-individual"}
+                getItemHref={(item) => `/approver-archived-individual?timelineId=${encodeURIComponent(timelineId)}&archivedId=${encodeURIComponent(item.id)}`}
               />
             </div>
           </div>

@@ -14,7 +14,6 @@ import {
 
 export default function AssistantApproverDashboard() {
   const [timeline, setTimeline] = React.useState<{ academicYear: string; semester: string } | null>(null);
-  const approverOffice = "College of Computer Studies";
 
   const [profile, setProfile] = React.useState<{
     email: string;
@@ -23,6 +22,12 @@ export default function AssistantApproverDashboard() {
     middle_name: string | null;
     last_name: string | null;
     role_value: number | null;
+    roles_payload?: Array<{
+      role_name: string;
+      college: string;
+      department: string;
+      office: string;
+    }>;
   } | null>(null);
 
   React.useEffect(() => {
@@ -43,13 +48,21 @@ export default function AssistantApproverDashboard() {
     return parts.length ? parts.join(" ") : profile.email;
   }, [profile]);
 
+  const approverOffice = React.useMemo(() => {
+    const assistantRole = profile?.roles_payload?.find(
+      (role) => role.role_name === "ASSISTANT_APPROVER" || role.role_name === "Student Assistant"
+    );
+    return assistantRole?.department || assistantRole?.office || assistantRole?.college || "Not Assigned";
+  }, [profile]);
+
   React.useEffect(() => {
     fetch("/admin/xu-faculty-clearance/api/active-clearance-timeline")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => setTimeline(data))
       .catch(() => setTimeline(null));
   }, []);
-   type AnnouncementsResponse = { items: AnnouncementItem[] };
+
+  type AnnouncementsResponse = { items: AnnouncementItem[] };
 
   const [requirementItems, setRequirementItems] = React.useState<RequirementListItem[]>([]);
   const [clearanceItems, setClearanceItems] = React.useState<ClearanceRequestItem[]>([]);

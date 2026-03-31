@@ -26,7 +26,9 @@ export default function AssistantApproverClearance() {
   const [requests, setRequests] = React.useState<ClearanceRequestItem[]>([]);
 
   React.useEffect(() => {
-    fetch("/admin/xu-faculty-clearance/api/assistant-approver/clearance")
+    fetch("/admin/xu-faculty-clearance/api/assistant-approver/clearance", {
+      credentials: "include",
+    })
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then((data) => {
         const items = Array.isArray(data?.items) ? (data.items as ClearanceRequestItem[]) : [];

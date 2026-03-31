@@ -49,11 +49,6 @@ export default function ApproverAssistantList() {
   const apiBase = "/admin/xu-faculty-clearance/api/approver/assistant-approvers";
   const orgStructureApi = "/admin/xu-faculty-clearance/api/ciso/org-structure";
 
-  function isXuEmail(email: string) {
-    const e = (email || "").trim().toLowerCase();
-    return e.endsWith("@xu.edu.ph") || e.endsWith("@my.xu.edu.ph");
-  }
-
   async function readErrorDetail(r: Response) {
     try {
       const data = (await r.json()) as { detail?: string };
@@ -147,12 +142,17 @@ export default function ApproverAssistantList() {
     try {
       const r = await fetch("/admin/xu-faculty-clearance/api/me", { method: "GET", credentials: "include" });
       if (!r.ok) throw new Error("Failed to load profile");
-      const data = (await r.json()) as { email?: string; roles?: Array<{ role_name: string; college: string; department: string; office: string }> };
+      const data = (await r.json()) as {
+        email?: string;
+        roles_payload?: Array<{ role_name: string; college?: string; department?: string; office?: string }>;
+      };
       if (data.email) {
         setApproverEmail(data.email);
       }
-      if (Array.isArray(data.roles)) {
-        setApproverRoles(data.roles);
+      if (Array.isArray(data.roles_payload)) {
+        setApproverRoles(data.roles_payload);
+      } else {
+        setApproverRoles([]);
       }
 
       // Fetch approver profile to get college/department/office assignments
@@ -254,8 +254,15 @@ export default function ApproverAssistantList() {
     return orgColleges;
   }
   // College/department approvers: show only their colleges
-  return orgColleges.filter(c => myColleges.includes(c));
-}, [orgColleges, myColleges, approverRoles.length, approverLevel]);
+  const collegesFromDepartments = orgColleges.filter((college) =>
+    (collegeDepartmentsMap[college] || []).some((department) => myDepartments.includes(department)),
+  );
+  const allowedColleges = Array.from(new Set([
+    ...myColleges,
+    ...collegesFromDepartments,
+  ].filter(Boolean)));
+  return allowedColleges.length > 0 ? allowedColleges : orgColleges.filter(c => myColleges.includes(c));
+}, [orgColleges, myColleges, myDepartments, collegeDepartmentsMap, approverRoles.length, approverLevel]);
 
   const visibleDepartments = React.useMemo(() => {
   if (approverRoles.length === 0) {
@@ -267,16 +274,8 @@ export default function ApproverAssistantList() {
     return orgDepartments.filter(dept => !dept.toLowerCase().includes("dean"));
   }
   if (myDepartments.length > 0) {
-    if (approverLevel === "dean") {
-      // Dean: show all departments in their colleges
-      return orgDepartments.filter(d => {
-        const college = Object.entries(collegeDepartmentsMap).find(([, depts]) => depts.includes(d))?.[0];
-        return college && myColleges.includes(college);
-      });
-    } else {
-      // Chair: show only their departments
-      return orgDepartments.filter(d => myDepartments.includes(d));
-    }
+    // Non-office approvers can only work within their own assigned departments
+    return Array.from(new Set(myDepartments));
   }
   // Has approver roles but no departments (e.g., college-only approver without specific department): show none
   return [];
@@ -304,19 +303,16 @@ export default function ApproverAssistantList() {
   const visibleCollegeDepartmentsMap = React.useMemo(() => {
     const map: Record<string, string[]> = {};
     visibleColleges.forEach(college => {
-      if (approverLevel === "dean") {
-        // Dean: show all departments for their colleges
-        map[college] = (collegeDepartmentsMap[college] || []).filter(d => {
-          return orgDepartments.includes(d); // ensure department exists
-        });
-      } else if (approverLevel === "office") {
+      if (approverLevel === "office") {
         // Office approvers: show all departments except Dean departments for optional assignment
         map[college] = (collegeDepartmentsMap[college] || []).filter(d => {
           return orgDepartments.includes(d) && !d.toLowerCase().includes("dean"); // ensure department exists and is not Dean
         });
       } else if (myDepartments.length > 0) {
-        // Chair: show only their departments
-        map[college] = (collegeDepartmentsMap[college] || []).filter(d => myDepartments.includes(d));
+        // Department-scoped approvers: show only their departments
+        const scopedDepartments = (collegeDepartmentsMap[college] || []).filter(d => myDepartments.includes(d));
+        const directDepartments = myColleges.includes(college) ? myDepartments : [];
+        map[college] = Array.from(new Set([...scopedDepartments, ...directDepartments]));
       } else {
         // fallback: show all
         map[college] = collegeDepartmentsMap[college] || [];

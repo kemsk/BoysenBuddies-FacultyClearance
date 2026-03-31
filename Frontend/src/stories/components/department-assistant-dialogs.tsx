@@ -96,7 +96,6 @@ export function AddDepartmentAssistantDialog({
   trigger,
   onCreate,
   colleges = [],
-  departments = [],
   collegeDepartmentsMap = {},
   emailHelpText = "Only @xu.edu.ph email address are allowed",
   mode = "assistant",
@@ -159,6 +158,26 @@ export function AddDepartmentAssistantDialog({
     setDepartment("");
   }, [college]);
 
+  const filteredDepartments = React.useMemo(() => {
+    // Only show departments for the selected college
+    if (!college) return [];
+    return collegeDepartmentsMap[college] || [];
+  }, [college, collegeDepartmentsMap]);
+
+  React.useEffect(() => {
+    if (mode !== "assistant" || approverType !== "College") return;
+    if (colleges.length === 1 && !college) {
+      setCollege(colleges[0]);
+    }
+  }, [mode, approverType, colleges, college]);
+
+  React.useEffect(() => {
+    if (mode !== "assistant" || approverType !== "College") return;
+    if (filteredDepartments.length === 1 && !department) {
+      setDepartment(filteredDepartments[0]);
+    }
+  }, [mode, approverType, filteredDepartments, department]);
+
   React.useEffect(() => {
     // Reset dependent fields when approver type changes
     if (approverType === "College") {
@@ -169,26 +188,6 @@ export function AddDepartmentAssistantDialog({
     }
   }, [approverType]);
 
-  const filteredDepartments = React.useMemo(() => {
-    // Only show departments for the selected college
-    if (!college) return [];
-    let departments = collegeDepartmentsMap[college] || [];
-    
-    // For College Dean, exclude the Dean department itself in assistant mode
-    if (mode === "assistant" && approverLevel === "dean") {
-      departments = departments.filter(dept => !dept.toLowerCase().includes("dean"));
-    }
-    
-    return departments;
-  }, [college, collegeDepartmentsMap, mode, approverLevel]);
-
-  // For Office approvers, show all departments for the optional College/Department section
-  const allFilteredDepartments = React.useMemo(() => {
-    if (!college) return [];
-    return collegeDepartmentsMap[college] || [];
-  }, [college, collegeDepartmentsMap]);
-
-  
   return (
     <Dialog open={effectiveOpen} onOpenChange={setOpen}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
@@ -273,99 +272,53 @@ export function AddDepartmentAssistantDialog({
                 </div>
               ) : (
                 <>
-                  {/* College dropdown - shown when College is selected */}
-                  {approverType === "College" && (
-                    <div className="space-y-1.5">
-                      <div className="text-xs font-semibold text-foreground">Select College</div>
-                      <Select value={college} onValueChange={setCollege}>
-                        <SelectTrigger className="h-10 w-full">
-                          <SelectValue placeholder="Choose from dropdown" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {colleges.map((c) => (
-                            <SelectItem key={c} value={c}>
-                              {c}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-semibold text-foreground">Select College</div>
+                    <Select value={college} onValueChange={setCollege} disabled={approverType !== "College"}>
+                      <SelectTrigger className="h-10 w-full">
+                        <SelectValue placeholder="Choose from dropdown" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {colleges.map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {c}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                  {/* Department dropdown - shown when College is selected */}
-                  {approverType === "College" && (
-                    <div className="space-y-1.5">
-                      <div className="text-xs font-semibold text-foreground">Select Department</div>
-                      <Select value={department} onValueChange={setDepartment}>
-                        <SelectTrigger className="h-10 w-full">
-                          <SelectValue placeholder="Choose from dropdown" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filteredDepartments.map((d) => (
-                            <SelectItem key={d} value={d}>
-                              {d}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-semibold text-foreground">Select Department</div>
+                    <Select value={department} onValueChange={setDepartment} disabled={approverType !== "College"}>
+                      <SelectTrigger className="h-10 w-full">
+                        <SelectValue placeholder="Choose from dropdown" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredDepartments.map((d) => (
+                          <SelectItem key={d} value={d}>
+                            {d}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                  {/* Office dropdown - shown when Office is selected */}
-                  {approverType === "Office" && (
-                    <div className="space-y-1.5">
-                      <div className="text-xs font-semibold text-foreground">Select Office</div>
-                      <Select value={office} onValueChange={setOffice}>
-                        <SelectTrigger className="h-10 w-full">
-                          <SelectValue placeholder="Choose from dropdown" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {offices.map((o) => (
-                            <SelectItem key={o} value={o}>
-                              {o}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {/* For Office approvers adding student assistants, allow setting college/department for the assistant */}
-                  {approverType === "Office" && (
-                    <div className="space-y-2">
-                      <div className="text-xs font-semibold text-foreground">Student Assistant College/Department (Optional)</div>
-                      <div className="space-y-1.5">
-                        <div className="text-xs font-normal text-muted-foreground">College</div>
-                        <Select value={college} onValueChange={setCollege}>
-                          <SelectTrigger className="h-10 w-full">
-                            <SelectValue placeholder="Choose from dropdown" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {colleges.map((c) => (
-                              <SelectItem key={c} value={c}>
-                                {c}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <div className="text-xs font-normal text-muted-foreground">Department</div>
-                        <Select value={department} onValueChange={setDepartment}>
-                          <SelectTrigger className="h-10 w-full">
-                            <SelectValue placeholder="Choose from dropdown" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {allFilteredDepartments.map((d) => (
-                              <SelectItem key={d} value={d}>
-                                {d}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  )}
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-semibold text-foreground">Select Office</div>
+                    <Select value={office} onValueChange={setOffice} disabled={approverType !== "Office"}>
+                      <SelectTrigger className="h-10 w-full">
+                        <SelectValue placeholder="Choose from dropdown" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {offices.map((o) => (
+                          <SelectItem key={o} value={o}>
+                            {o}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </>
               )}
 
@@ -375,7 +328,7 @@ export function AddDepartmentAssistantDialog({
                   <Checkbox
                     id="terms"
                     checked={termsAccepted}
-                    onCheckedChange={(checked) => setTermsAccepted(!!checked)}
+                    onCheckedChange={(checked: boolean | "indeterminate") => setTermsAccepted(checked === true)}
                   />
                   <div className="flex-1 text-xs text-foreground">
                     <label htmlFor="terms" className="block">
@@ -493,7 +446,6 @@ export function EditDepartmentAssistantDialog({
   initialValues,
   onSave,
   colleges = [],
-  departments = [],
   collegeDepartmentsMap = {},
   emailDisabled = false,
   emailHelpText = "Only @xu.edu.ph email address is allowed",
