@@ -42,12 +42,103 @@ export default function SystemAnalytics() {
   const [selectedTerm, setSelectedTerm] = React.useState("Term");
   const [selectedClearance, setSelectedClearance] = React.useState("All Clearances");
   const [selectedCollege, setSelectedCollege] = React.useState("College");
+  const [timelineReady, setTimelineReady] = React.useState(false);
 
+  const [timelineOptions, setTimelineOptions] = React.useState<
+    { value: string; label: string }[]
+  >([]);
   const [colleges, setColleges] = React.useState<{ id: string; name: string }[]>([]);
-  const [donutTitle, setDonutTitle] = React.useState("College");
+  const [donutTitle, setDonutTitle] = React.useState("Overall Count");
   const [donutCompleted, setDonutCompleted] = React.useState(0);
   const [donutTotal, setDonutTotal] = React.useState(100);
   const [completionSections, setCompletionSections] = React.useState<DepartmentCompletionRateSection[]>([]);
+
+  const buildAnalyticsParams = React.useCallback(() => {
+    const params = new URLSearchParams();
+
+    if (selectedClearance && selectedClearance !== "All Clearances") {
+      const m = selectedClearance.match(/(\d{4})/);
+      if (m) params.set("academic_year", m[1]);
+    }
+
+    if (selectedTerm && selectedTerm !== "Term") {
+      const map: Record<string, string> = {
+        "First Semester": "FIRST",
+        "Second Semester": "SECOND",
+        Intersession: "INTERSESSION",
+      };
+      if (map[selectedTerm]) params.set("term", map[selectedTerm]);
+    }
+
+    if (selectedCollege && selectedCollege !== "College") {
+      const found = colleges.find((c) => c.name === selectedCollege);
+      if (found?.id) params.set("college_id", found.id);
+    }
+
+    return params;
+  }, [selectedClearance, selectedTerm, selectedCollege, colleges]);
+
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/ovphe/analytics-timelines")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then(
+        (data: {
+          items?: {
+            academicYearStart?: string;
+            academicYearEnd?: string;
+            setAsActive?: boolean;
+            isArchived?: boolean;
+          }[];
+        }) => {
+          const items = data.items ?? [];
+          const optionMap = new Map<string, { value: string; label: string; active: boolean; archived: boolean }>();
+
+          items.forEach((item) => {
+            const startYear = (item.academicYearStart ?? "").trim();
+            const endYear = (item.academicYearEnd ?? "").trim();
+            if (!startYear || !endYear) {
+              return;
+            }
+
+            const value = `S.Y. ${startYear}-${endYear}`;
+            const existing = optionMap.get(value);
+            const next = {
+              value,
+              label: value,
+              active: Boolean(item.setAsActive) || Boolean(existing?.active),
+              archived: Boolean(item.isArchived) || Boolean(existing?.archived),
+            };
+            optionMap.set(value, next);
+          });
+
+          const options = Array.from(optionMap.values()).sort(
+            (a, b) => Number(b.active) - Number(a.active) || b.value.localeCompare(a.value),
+          );
+
+          setTimelineOptions(options.map(({ value, label }) => ({ value, label })));
+        },
+      )
+      .catch(() => setTimelineOptions([]));
+  }, []);
+
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/active-clearance-timeline")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { academicYear?: string; semester?: string }) => {
+        const academicYear = (data.academicYear ?? "").trim();
+        const semester = (data.semester ?? "").trim();
+
+        if (academicYear) {
+          const normalizedAcademicYear = academicYear.replace(/[–—]/g, "-");
+          setSelectedClearance(`S.Y. ${normalizedAcademicYear}`);
+        }
+        if (semester) {
+          setSelectedTerm(semester);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setTimelineReady(true));
+  }, []);
 
   React.useEffect(() => {
     fetch("/admin/xu-faculty-clearance/api/ovphe/org-structure")
@@ -59,30 +150,22 @@ export default function SystemAnalytics() {
   }, []);
 
   React.useEffect(() => {
-    const params = new URLSearchParams();
-    if (selectedClearance && selectedClearance !== "All Clearances") {
-      // selectedClearance is a label like "S.Y. 2025-2026"; backend expects academic_year int
-      const m = selectedClearance.match(/(\d{4})/);
-      if (m) params.set("academic_year", m[1]);
+    if (!timelineReady) {
+      return;
     }
-    if (selectedTerm && selectedTerm !== "Term") {
-      // backend expects FIRST/SECOND/INTERSESSION
-      const map: Record<string, string> = {
-        "First Semester": "FIRST",
-        "Second Semester": "SECOND",
-        Intersession: "INTERSESSION",
-      };
-      if (map[selectedTerm]) params.set("term", map[selectedTerm]);
-    }
-    if (selectedCollege && selectedCollege !== "College") {
-      const found = colleges.find((c) => c.name === selectedCollege);
-      if (found?.id) params.set("college_id", found.id);
-    }
+
+    const params = buildAnalyticsParams();
 
     fetch(`/admin/xu-faculty-clearance/api/ovphe/system-analytics?${params.toString()}`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(
         (data: {
+          summary?: {
+            label?: string;
+            completedCount?: number;
+            totalCount?: number;
+          };
+          sections?: DepartmentCompletionRateSection[];
           rows: {
             collegeName: string;
             completionRate: number;
@@ -90,51 +173,41 @@ export default function SystemAnalytics() {
             totalCount?: number;
           }[];
         }) => {
+        const summary = data.summary;
         const rows = data.rows ?? [];
-        if (rows.length) {
-          const first = rows[0];
-          const pct = Math.round(first.completionRate ?? 0);
-          setDonutTitle(first.collegeName || "College");
-          if (
-            typeof first.completedCount === "number" &&
-            typeof first.totalCount === "number"
-          ) {
-            setDonutCompleted(Math.max(0, first.completedCount));
-            setDonutTotal(Math.max(0, first.totalCount));
-          } else {
-            setDonutCompleted(pct);
-            setDonutTotal(100);
-          }
-        } else {
-          setDonutTitle("College");
-          setDonutCompleted(0);
-          setDonutTotal(100);
-        }
+        const fallback = rows[0];
 
-        setCompletionSections([
-          {
-            title: "Completion Rate",
-            items: rows.map((r) => ({
-              label: r.collegeName || "",
-              completed:
-                typeof r.completedCount === "number"
-                  ? Math.max(0, r.completedCount)
-                  : Math.max(0, Math.round(r.completionRate ?? 0)),
-              total:
-                typeof r.totalCount === "number"
-                  ? Math.max(0, r.totalCount)
-                  : 100,
-            })),
-          },
-        ]);
+        setDonutTitle(summary?.label || fallback?.collegeName || "Overall Count");
+        setDonutCompleted(
+          Math.max(
+            0,
+            typeof summary?.completedCount === "number"
+              ? summary.completedCount
+              : typeof fallback?.completedCount === "number"
+                ? fallback.completedCount
+                : 0,
+          ),
+        );
+        setDonutTotal(
+          Math.max(
+            0,
+            typeof summary?.totalCount === "number"
+              ? summary.totalCount
+              : typeof fallback?.totalCount === "number"
+                ? fallback.totalCount
+                : 0,
+          ),
+        );
+
+        setCompletionSections(data.sections ?? []);
       })
       .catch(() => {
-        setDonutTitle("College");
+        setDonutTitle("Overall Count");
         setDonutCompleted(0);
         setDonutTotal(0);
         setCompletionSections([]);
       });
-  }, [selectedClearance, selectedTerm, selectedCollege, colleges]);
+  }, [buildAnalyticsParams, timelineReady]);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -174,23 +247,26 @@ export default function SystemAnalytics() {
         <div className="mt-2 space-y-3">
           <div className="flex flex-wrap items-left gap-3 overflow-x-auto mt-4">
 
-            <Select  onValueChange={setSelectedClearance}>
+            <Select value={selectedClearance} onValueChange={setSelectedClearance}>
               <SelectTrigger className="w-max" variant="pill">
                 <SelectValue placeholder="School Year" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="S.Y. 2025-2026">S.Y. 2025-2026</SelectItem>
-                <SelectItem value="S.Y. 2024-2025">S.Y. 2024-2025</SelectItem>
-                <SelectItem value="S.Y. 2023-2024">S.Y. 2023-2024</SelectItem>
-                <SelectItem value="S.Y. 2022-2021">S.Y. 2022-2021</SelectItem>
+                <SelectItem value="All Clearances">School Year</SelectItem>
+                {timelineOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
-            <Select  onValueChange={setSelectedTerm}>
+            <Select value={selectedTerm} onValueChange={setSelectedTerm}>
               <SelectTrigger  variant="pill" className="w-max">
                 <SelectValue placeholder="Term" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="Term">Term</SelectItem>
                 <SelectItem value="First Semester">First Semester</SelectItem>
                 <SelectItem value="Second Semester">Second Semester</SelectItem>
                 <SelectItem value="Intersession">Intersession</SelectItem>
@@ -240,29 +316,12 @@ export default function SystemAnalytics() {
                         selectedTerm !== "Term" ? `Term: ${selectedTerm}` : "",
                       ].filter(Boolean),
                     });
-                    // Trigger download
-                    const params = new URLSearchParams();
-                    if (selectedClearance && selectedClearance !== "All Clearances") {
-                      const m = selectedClearance.match(/(\d{4})/);
-                      if (m) params.set("academic_year", m[1]);
-                    }
-                    if (selectedTerm && selectedTerm !== "Term") {
-                      const map: Record<string, string> = {
-                        "First Semester": "FIRST",
-                        "Second Semester": "SECOND",
-                        Intersession: "INTERSESSION",
-                      };
-                      if (map[selectedTerm]) params.set("term", map[selectedTerm]);
-                    }
-                    if (selectedCollege && selectedCollege !== "College") {
-                      const found = colleges.find((c) => c.name === selectedCollege);
-                      if (found?.id) params.set("college_id", found.id);
-                    }
+                    const params = buildAnalyticsParams();
                     const url = `/admin/xu-faculty-clearance/api/ovphe/export-clearance-results?${params.toString()}`;
-                    window.open(url, "_blank");
+                    window.location.assign(url);
                   }}
                 >
-                  <img src="/PrimaryChevronIcon.png" alt="Arrow" className="h-10 w-10 object-contain ml-2 mt-2" />
+                  <img src="/PrimaryChevronIcon.png" alt="Export analytics" className="h-5 w-5 object-contain" />
                 </Button>
               </div>
             </CardContent>

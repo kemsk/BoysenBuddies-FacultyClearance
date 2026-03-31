@@ -2903,6 +2903,38 @@ def ovphe_clearance_timelines_api(request):
     return _clearance_timelines_api(request, _get_active_ovphe_admin, "OVPHE user not found")
 
 
+@csrf_exempt
+def ovphe_analytics_timelines_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    admin = _get_active_ovphe_admin(request) or _get_active_ciso_admin(request)
+    if not admin:
+        return JsonResponse({"detail": "OVPHE user not found"}, status=404)
+
+    timelines = ClearanceTimeline.objects.order_by("-is_active", "-academic_year_start", "-id")
+    items = []
+    for t in timelines:
+        start_year = str(t.academic_year_start or "")
+        end_year = str(t.academic_year_end or "")
+        items.append(
+            {
+                "id": str(t.id),
+                "name": t.name or _clearance_timeline_name(t.academic_year_start, t.academic_year_end, t.term),
+                "academicYearStart": start_year,
+                "academicYearEnd": end_year,
+                "term": _term_to_label(t.term),
+                "clearanceStartDate": t.clearance_start_date.date().isoformat() if t.clearance_start_date else "",
+                "clearanceEndDate": t.clearance_end_date.date().isoformat() if t.clearance_end_date else "",
+                "setAsActive": bool(t.is_active),
+                "isArchived": bool(t.archive_date),
+                "createdAt": _format_timestamp(t.created_at),
+            }
+        )
+
+    return JsonResponse({"items": items})
+
+
 def _legacy_faculty_dashboard_api_v1(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
@@ -3095,6 +3127,74 @@ def ciso_org_structure_api(request):
             ],
         }
     )
+
+
+def _build_org_structure_payload():
+    colleges = list(
+        College.objects.filter(is_active=True)
+        .order_by("name", "id")
+        .values("id", "name", "abbreviation")
+    )
+    departments = list(
+        Department.objects.select_related("college")
+        .filter(is_active=True, college__is_active=True)
+        .order_by("college__name", "name", "id")
+        .values("id", "college_id", "name", "abbreviation")
+    )
+    offices = list(
+        Office.objects.filter(is_active=True)
+        .exclude(
+            models.Q(name__iexact="Department Chair") |
+            models.Q(name__icontains="Department Chair") |
+            models.Q(name__iexact="College Dean") |
+            models.Q(name__icontains="College Dean") |
+            models.Q(name__iexact="Dean") |
+            models.Q(name__icontains="Dean")
+        )
+        .order_by("display_order", "name", "id")
+        .values("id", "name", "abbreviation", "display_order")
+    )
+
+    return {
+        "colleges": [
+            {
+                "id": str(c["id"]),
+                "name": c["name"],
+                "short": c["abbreviation"] or "",
+            }
+            for c in colleges
+        ],
+        "departments": [
+            {
+                "id": str(d["id"]),
+                "collegeId": str(d["college_id"]),
+                "name": d["name"],
+                "short": d["abbreviation"] or "",
+            }
+            for d in departments
+        ],
+        "offices": [
+            {
+                "id": str(o["id"]),
+                "name": o["name"],
+                "short": o["abbreviation"] or "",
+                "displayOrder": int(o.get("display_order") or 0),
+            }
+            for o in offices
+        ],
+    }
+
+
+@csrf_exempt
+def ovphe_org_structure_api(request):
+    if request.method != "GET":
+        return _json_method_not_allowed()
+
+    admin = _get_active_ovphe_admin(request) or _get_active_ciso_admin(request)
+    if not admin:
+        return JsonResponse({"detail": "OVPHE user not found"}, status=404)
+
+    return JsonResponse(_build_org_structure_payload())
 
 
 def ciso_approver_flow_api(request):
@@ -3907,9 +4007,9 @@ def ovphe_notifications_api(request):
 
 @csrf_exempt
 def ovphe_export_clearance_results_api(request):
-    admin, err = _require_ciso_admin_user(request)
-    if err:
-        return err
+    admin = _get_active_ovphe_admin(request) or _get_active_ciso_admin(request)
+    if not admin:
+        return JsonResponse({"detail": "OVPHE user not found"}, status=404)
 
     academic_year = (request.GET.get("academic_year") or "").strip()
     term = (request.GET.get("term") or "").strip()
@@ -3918,7 +4018,7 @@ def ovphe_export_clearance_results_api(request):
     try:
         academic_year_int = int(academic_year) if academic_year else None
     except Exception:
-        academic_year_int = None
+        return JsonResponse({"detail": "Invalid academic_year"}, status=400)
 
     term_upper = term.upper()
     if term_upper == "FIRST":
@@ -3932,6 +4032,12 @@ def ovphe_export_clearance_results_api(request):
     else:
         term_normalized = None
 
+    if not academic_year_int or not term_normalized:
+        active_timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year_start", "-id").first()
+        if active_timeline:
+            academic_year_int = academic_year_int or active_timeline.academic_year_start
+            term_normalized = term_normalized or active_timeline.term
+
     college_name = ""
     if college_id:
         try:
@@ -3940,40 +4046,92 @@ def ovphe_export_clearance_results_api(request):
         except College.DoesNotExist:
             pass
 
-    # Log the export
     try:
         ActivityLog.objects.create(
             event_type=ActivityLog.EventType.EXPORTED_CLEARANCE_RESULTS,
             user=admin.user if admin else None,
             details=[
                 college_name or "All Colleges",
-                f"School Year: {academic_year or 'All'}",
-                f"Term: {term_normalized or 'All'}",
+                f"School Year: {academic_year_int or 'Active'}",
+                f"Term: {_term_to_label(term_normalized) if term_normalized else 'Active'}",
             ],
         )
     except Exception:
         pass
 
-    # Generate Excel file (simplified placeholder - you'd implement actual Excel generation here)
-    import io
-    import openpyxl
     from openpyxl import Workbook
-    from django.http import HttpResponse
+    from openpyxl.styles import Font
+
+    faculty_qs = Faculty.objects.select_related("user", "college", "department", "office")
+    if college_id:
+        faculty_qs = faculty_qs.filter(college_id=college_id)
+
+    faculty_items = list(faculty_qs.order_by("last_name", "first_name", "id"))
+    faculty_ids = [faculty.id for faculty in faculty_items]
+
+    clearances_by_faculty = {}
+    for clearance in Clearance.objects.filter(
+        faculty_id__in=faculty_ids,
+        academic_year=academic_year_int,
+        term=term_normalized,
+    ).order_by("faculty_id", "-id"):
+        clearances_by_faculty.setdefault(clearance.faculty_id, clearance)
 
     wb = Workbook()
     ws = wb.active
-    ws.title = "Clearance Results"
+    ws.title = "Clearance Analytics"
 
-    # Headers
-    ws.append(["Faculty Name", "College", "Department", "Status", "Completion Date"])
+    ws.append(["Faculty Clearance Analytics"])
+    ws.append(
+        [
+            f"School Year: {academic_year_int or 'N/A'}",
+            f"Term: {_term_to_label(term_normalized) if term_normalized else 'N/A'}",
+            f"College: {college_name or 'All Colleges'}",
+        ]
+    )
+    ws.append([])
+    ws.append(["Faculty Name", "University ID", "College", "Department", "Office", "Status", "Completion Date"])
 
-    # Sample data - replace with actual query
-    ws.append(["Sample Faculty", college_name or "Sample College", "Sample Dept", "Completed", "2025-01-15"])
+    ws["A1"].font = Font(bold=True, size=14)
+    for cell in ws[4]:
+        cell.font = Font(bold=True)
+
+    for faculty in faculty_items:
+        clearance = clearances_by_faculty.get(faculty.id)
+        user = getattr(faculty, "user", None)
+        name_parts = [
+            (getattr(user, "first_name", "") or getattr(faculty, "first_name", "") or "").strip(),
+            (getattr(user, "middle_name", "") or getattr(faculty, "middle_name", "") or "").strip(),
+            (getattr(user, "last_name", "") or getattr(faculty, "last_name", "") or "").strip(),
+        ]
+        faculty_name = " ".join([part for part in name_parts if part]).strip() or (getattr(user, "email", "") or faculty.employee_id)
+
+        ws.append(
+            [
+                faculty_name,
+                getattr(user, "university_id", "") or "",
+                faculty.college.name if faculty.college else "",
+                faculty.department.name if faculty.department else "",
+                faculty.office.name if faculty.office else "",
+                clearance.status if clearance else "INCOMPLETE",
+                timezone.localtime(clearance.completed_date).strftime("%Y-%m-%d %I:%M %p") if clearance and clearance.completed_date else "",
+            ]
+        )
+
+    for column_cells in ws.columns:
+        max_length = 0
+        column_letter = column_cells[0].column_letter
+        for cell in column_cells:
+            try:
+                max_length = max(max_length, len(str(cell.value or "")))
+            except Exception:
+                pass
+        ws.column_dimensions[column_letter].width = min(max(max_length + 2, 12), 40)
 
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
-            "Content-Disposition": f'attachment; filename="clearance_results_{academic_year or "all"}_{term or "all"}.xlsx"',
+            "Content-Disposition": f'attachment; filename="clearance_results_{academic_year_int or "active"}_{(term_normalized or "active").lower()}.xlsx"',
         },
     )
     wb.save(response)
@@ -3984,11 +4142,13 @@ def ovphe_system_analytics_api(request):
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
+    admin = _get_active_ovphe_admin(request) or _get_active_ciso_admin(request)
+    if not admin:
+        return JsonResponse({"detail": "OVPHE user not found"}, status=404)
+
     academic_year = (request.GET.get("academic_year") or "").strip()
     term = (request.GET.get("term") or "").strip()
     college_id = (request.GET.get("college_id") or "").strip()
-
-    admin = _get_active_ovphe_admin(request) or _get_active_ciso_admin(request)
 
     try:
         year_val = int(academic_year) if academic_year else None
@@ -4006,56 +4166,117 @@ def ovphe_system_analytics_api(request):
     if not year_val or not term_val:
         return JsonResponse({"rows": []})
 
+    faculty_qs = Faculty.objects.select_related("college", "department", "office")
+    if college_id:
+        faculty_qs = faculty_qs.filter(college_id=college_id)
+
+    faculty_items = list(
+        faculty_qs.values(
+            "id",
+            "college_id",
+            "college__name",
+            "department_id",
+            "department__name",
+            "office_id",
+            "office__name",
+        )
+    )
+    faculty_ids = [item["id"] for item in faculty_items]
+
     clearances = Clearance.objects.select_related("faculty", "faculty__college").filter(
         academic_year=year_val,
         term=term_val,
+        faculty_id__in=faculty_ids,
     )
-    if college_id:
-        clearances = clearances.filter(faculty__college_id=college_id)
-
-    aggregates = (
-        clearances.values("faculty__college_id", "faculty__college__name")
-        .annotate(
-            total=models.Count("id"),
-            completed=models.Count("id", filter=models.Q(status=Clearance.Status.COMPLETED)),
-        )
-        .order_by("faculty__college__name")
+    completed_faculty_ids = set(
+        clearances.filter(status=Clearance.Status.COMPLETED).values_list("faculty_id", flat=True)
     )
 
-    rows = []
-    for r in aggregates:
-        c_id = r["faculty__college_id"]
-        c_name = r["faculty__college__name"] or ""
-        total = int(r["total"] or 0)
-        completed = int(r["completed"] or 0)
-        incomplete = max(0, total - completed)
-        rate = (Decimal(completed) / Decimal(total) * Decimal("100")) if total else Decimal("0")
+    total_faculty = len(faculty_items)
+    completed_count = len(completed_faculty_ids)
+    incomplete_count = max(0, total_faculty - completed_count)
 
-        if c_id:
-            SystemAnalytics.objects.update_or_create(
-                academic_year=year_val,
-                term=term_val,
-                college_id=c_id,
-                defaults={
-                    "completion_rate": rate,
-                    "generated_by": admin,
-                },
-            )
+    department_buckets = {}
+    office_buckets = {}
+    selected_college_name = ""
 
-        rows.append(
-            {
-                "collegeId": str(c_id) if c_id else "",
-                "collegeName": c_name,
-                "completionRate": float(rate),
-                "academicYear": year_val,
-                "term": term_val,
-                "completedCount": completed,
-                "incompleteCount": incomplete,
-                "totalCount": total,
+    for item in faculty_items:
+        if not selected_college_name and item.get("college__name"):
+            selected_college_name = item.get("college__name") or ""
+
+        department_id = item.get("department_id")
+        department_name = item.get("department__name") or "Unassigned Department"
+        if department_id not in department_buckets:
+            department_buckets[department_id] = {
+                "label": department_name,
+                "faculty_ids": set(),
             }
-        )
+        department_buckets[department_id]["faculty_ids"].add(item["id"])
 
-    return JsonResponse({"rows": rows})
+        office_id = item.get("office_id")
+        office_name = item.get("office__name") or "Unassigned Office"
+        if office_id not in office_buckets:
+            office_buckets[office_id] = {
+                "label": office_name,
+                "faculty_ids": set(),
+            }
+        office_buckets[office_id]["faculty_ids"].add(item["id"])
+
+    department_items = [
+        {
+            "label": bucket["label"],
+            "completed": len(bucket["faculty_ids"] & completed_faculty_ids),
+            "total": len(bucket["faculty_ids"]),
+        }
+        for bucket in department_buckets.values()
+    ]
+    department_items.sort(key=lambda item: item["label"].lower())
+
+    office_items = [
+        {
+            "label": bucket["label"],
+            "completed": len(bucket["faculty_ids"] & completed_faculty_ids),
+            "total": len(bucket["faculty_ids"]),
+        }
+        for bucket in office_buckets.values()
+    ]
+    office_items.sort(key=lambda item: item["label"].lower())
+
+    summary_label = selected_college_name or "Overall Count"
+    if not college_id:
+        summary_label = "Overall Count"
+
+    rows = [
+        {
+            "collegeId": str(college_id) if college_id else "",
+            "collegeName": summary_label,
+            "completionRate": float((Decimal(completed_count) / Decimal(total_faculty) * Decimal("100")) if total_faculty else Decimal("0")),
+            "academicYear": year_val,
+            "term": term_val,
+            "completedCount": completed_count,
+            "incompleteCount": incomplete_count,
+            "totalCount": total_faculty,
+        }
+    ]
+
+    sections = []
+    if department_items:
+        sections.append({"title": "Department Chair", "items": department_items})
+    if office_items:
+        sections.append({"title": "Offices", "items": office_items})
+
+    return JsonResponse(
+        {
+            "rows": rows,
+            "summary": {
+                "label": summary_label,
+                "completedCount": completed_count,
+                "incompleteCount": incomplete_count,
+                "totalCount": total_faculty,
+            },
+            "sections": sections,
+        }
+    )
 
 
 @csrf_exempt
