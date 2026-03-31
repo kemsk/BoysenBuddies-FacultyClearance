@@ -64,7 +64,7 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: 'Pen Swish Dark Blue_FacultyClearTrack.png',
+            src: 'Pen Swish White_FacultyClearTrack.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
