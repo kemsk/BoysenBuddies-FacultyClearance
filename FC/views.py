@@ -2636,26 +2636,11 @@ def _assistant_scoped_archived_clearances(user, timeline: ClearanceTimeline):
     _ensure_archived_timeline_records(timeline)
 
     scope = _assistant_scope(user)
-    qs = ArchivedClearance.objects.filter(
-        clearance_timeline=timeline,
-    ).select_related(
-        'faculty',
-        'faculty__user',
-        'faculty__college',
-        'faculty__department',
-        'faculty__office',
-    )
-
-    if scope["department"]:
-        qs = qs.filter(faculty__department=scope["department"])
-    elif scope["college"]:
-        qs = qs.filter(faculty__college=scope["college"])
-    elif scope["office"]:
-        qs = qs.filter(faculty__office=scope["office"])
-    else:
+    supervisor = scope["supervisor"]
+    if not supervisor:
         return ArchivedClearance.objects.none()
 
-    return qs.order_by('faculty__last_name', 'faculty__first_name', 'pk')
+    return _approver_scoped_archived_clearances(supervisor, timeline)
 
 
 def _assistant_archived_requests_for_archived_clearance(archived: ArchivedClearance):

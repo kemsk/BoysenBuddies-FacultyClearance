@@ -5,11 +5,6 @@ import { CISOHeader } from "../../stories/components/header";
 
 import {
   type AnnouncementItem,
-  ApprovedCard,
-  ClearanceProgressCard,
-  ClearanceStatusCard,
-  ExpandableClearanceStepCard,
-  WelcomeAcademicCard,
 } from "../../stories/components/cards";
 
 import { Button } from "../../stories/components/button";
@@ -53,41 +48,6 @@ type ArchivedFacultyItem = {
   lastUpdated: string;
 };
 
-type ArchivedFacultyDetail = {
-  timeline?: {
-    id: string;
-    name: string;
-    academicYear: string;
-    semester: string;
-    archivedDate: string | null;
-  };
-  faculty: {
-    id: string;
-    employeeId: string;
-    name: string;
-    schoolEmail?: string;
-    college: string;
-    department: string;
-    facultyType: string;
-  };
-  clearance: {
-    status: string;
-    approvedCount: number;
-    totalCount: number;
-    missingApproval?: string;
-  };
-  requests: Array<{
-    id: number | string;
-    title: string;
-    description: string;
-    status: string;
-    approvedBy?: string | null;
-    approvedDate?: string | null;
-    submittedDate?: string | null;
-    remarks?: string | null;
-  }>;
-};
-
 function postCISOActivityLog(payload: { event_type: string; details?: string[] }) {
   fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
     method: "POST",
@@ -104,10 +64,6 @@ export default function CISOArchiveClearance() {
   const [selectedTerm, setSelectedTerm] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedTimeline, setSelectedTimeline] = React.useState<ArchivedTimelineItem | null>(null);
-  const [selectedFaculty, setSelectedFaculty] = React.useState<ArchivedFacultyItem | null>(null);
-  const [detail, setDetail] = React.useState<ArchivedFacultyDetail | null>(null);
-  const [detailLoading, setDetailLoading] = React.useState(false);
-  const [expandedStepIndex, setExpandedStepIndex] = React.useState<number | null>(1);
 
   type AnnouncementApiItem = AnnouncementItem & { id: number; email?: string };
 
@@ -135,7 +91,7 @@ export default function CISOArchiveClearance() {
     if (status && status !== "all") {
       params.append("status", status.toUpperCase());
     }
-    return fetch(`/admin/xu-faculty-clearance/api/ciso/archived-faculty?${params}`)
+    return fetch(`/admin/xu-faculty-clearance/api/ciso/view-clearance?${params}`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: { items: ArchivedFacultyItem[] }) => {
         setFaculty(data.items ?? []);
@@ -148,8 +104,6 @@ export default function CISOArchiveClearance() {
 
   const handleTimelineClick = (timeline: ArchivedTimelineItem) => {
     setSelectedTimeline(timeline);
-    setSelectedFaculty(null);
-    setDetail(null);
     setSelectedStatus("all");
     loadFaculty(timeline.id, "all");
   };
@@ -160,21 +114,6 @@ export default function CISOArchiveClearance() {
       loadFaculty(selectedTimeline.id, status);
     }
   };
-
-  const loadFacultyDetail = React.useCallback((timelineId: string, archivedId: string) => {
-    setDetailLoading(true);
-    return fetch(`/admin/xu-faculty-clearance/api/ciso/archived-individual?timelineId=${encodeURIComponent(timelineId)}&archivedId=${encodeURIComponent(archivedId)}`, {
-      credentials: "include",
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: ArchivedFacultyDetail) => {
-        setDetail(data);
-      })
-      .catch(() => {
-        setDetail(null);
-      })
-      .finally(() => setDetailLoading(false));
-  }, []);
 
   const handleExport = () => {
     if (!selectedTimeline || faculty.length === 0) return;
@@ -253,155 +192,6 @@ export default function CISOArchiveClearance() {
     });
   }, [query, selectedTerm, selectedYear, timelines]);
 
-  const clearanceCurrent = detail?.clearance.approvedCount ?? 0;
-  const clearanceTotal = detail?.clearance.totalCount ?? 0;
-  const clearancePercent = clearanceTotal > 0 ? Math.round((clearanceCurrent / clearanceTotal) * 100) : 0;
-  const isClearanceApproved = clearancePercent >= 100;
-
-  const stepsToRender = React.useMemo(() => {
-    return (detail?.requests ?? []).map((request, index) => {
-      const normalizedStatus = (request.status || "").toUpperCase();
-      const isApproved = normalizedStatus === "APPROVED";
-      const isPending = normalizedStatus === "PENDING";
-      return {
-        index: index + 1,
-        title: request.title,
-        statusLabel: normalizedStatus || "PENDING",
-        statusVariant: isApproved ? "success" as const : isPending ? "warning" as const : "muted" as const,
-        collapsedType: "status" as const,
-        submittedTo: request.approvedBy || "",
-        submittedOn: request.approvedDate || request.submittedDate || "",
-        requirements: [
-          {
-            id: String(request.id ?? index + 1),
-            title: request.title,
-            description: request.description || request.remarks || "",
-            completed: isApproved,
-          },
-        ],
-      };
-    });
-  }, [detail]);
-
-  if (selectedTimeline && selectedFaculty) {
-    const timeline = detail?.timeline ?? null;
-    const facultyDetail = detail?.faculty;
-    const statusLabel = detail?.clearance.status ?? "";
-
-    return (
-      <div className="min-h-screen bg-primary-foreground text-primary-foreground">
-        <div className="header mb-3">
-          <CISOHeader />
-        </div>
-
-        <main className="dashboard p-4 mt-2 space-y-3">
-          <h1 className="text-2xl text-left text-primary font-bold">{facultyDetail?.name || "Archived Faculty Clearance"}</h1>
-
-          <Breadcrumb className="mt-2">
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink asChild>
-                  <Link to="/CISO-archived-clearance" onClick={() => {
-                    setSelectedFaculty(null);
-                    setDetail(null);
-                  }}>View Archived Clearance</Link>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink asChild>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedFaculty(null);
-                      setDetail(null);
-                    }}
-                    className="text-inherit"
-                  >
-                    {selectedTimeline.name}
-                  </button>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{facultyDetail?.name || "Archived Faculty Clearance"}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-
-          <div className="mb-3 mt-2 flex items-center justify-end">
-            <Button variant="back" size="back" onClick={() => {
-              setSelectedFaculty(null);
-              setDetail(null);
-            }}>
-              <div className="flex items-center gap-2">
-                <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
-              </div>
-            </Button>
-          </div>
-
-          <WelcomeAcademicCard
-            name={facultyDetail?.name || ""}
-            topLeft={{ label: "Academic Year", value: timeline?.academicYear || "" }}
-            topRight={{ label: "Semester", value: timeline?.semester || "" }}
-            rows={[
-              { label: "College", value: facultyDetail?.college || "" },
-              { label: "Department", value: facultyDetail?.department || "" },
-              { label: "Faculty Type", value: facultyDetail?.facultyType || "" },
-            ]}
-            afterRows={
-              <ClearanceStatusCard
-                statusLabel={statusLabel}
-                statusVariant={statusLabel === "COMPLETED" ? "success" : "warning"}
-                className="mb-6"
-              />
-            }
-          />
-
-          <div className="mt-5">
-            <ClearanceProgressCard
-              value={clearancePercent}
-              current={clearanceCurrent}
-              total={clearanceTotal}
-            />
-          </div>
-
-          {detailLoading ? (
-            <div className="mt-5 text-sm text-gray-500">Loading...</div>
-          ) : stepsToRender.length ? (
-            <div className="mt-5 space-y-3">
-              {stepsToRender.map((step) => (
-                <ExpandableClearanceStepCard
-                  key={step.index}
-                  index={step.index}
-                  title={step.title}
-                  statusLabel={step.statusLabel}
-                  statusVariant={step.statusVariant}
-                  collapsedType={step.collapsedType}
-                  submittedTo={step.submittedTo}
-                  submittedOn={step.submittedOn}
-                  requirements={step.requirements}
-                  expanded={expandedStepIndex === step.index}
-                  onToggle={() =>
-                    setExpandedStepIndex((prev) => (prev === step.index ? null : step.index))
-                  }
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="mt-5 text-sm text-gray-500">No archived clearance records found.</div>
-          )}
-
-          {isClearanceApproved ? (
-            <div className="mt-5">
-              <ApprovedCard />
-            </div>
-          ) : null}
-        </main>
-      </div>
-    );
-  }
-
   if (selectedTimeline) {
     return (
       <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -468,15 +258,7 @@ export default function CISOArchiveClearance() {
 
             <div className="mt-3 space-y-3">
               {faculty.map((f) => (
-                <div
-                  key={f.id}
-                  className="border rounded-lg p-4 bg-white cursor-pointer transition-shadow hover:shadow-md"
-                  onClick={() => {
-                    setSelectedFaculty(f);
-                    setExpandedStepIndex(1);
-                    void loadFacultyDetail(selectedTimeline.id, f.id);
-                  }}
-                >
+                <div key={f.id} className="border rounded-lg p-4 bg-white">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h3 className="text-lg font-bold text-primary">{f.name}</h3>
