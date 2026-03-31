@@ -31,6 +31,7 @@ urlpatterns = [
     path('api/ciso/clearance-timeline', views.ciso_clearance_timeline_api, name='CISOClearanceTimeline'),
     path('api/ciso/archived-clearance', views.ciso_archived_clearance_api, name='CISOArchivedClearance'),
     path('api/ciso/view-clearance', views.ciso_view_clearance_api, name='CISOViewClearance'),
+    path('api/ciso/archived-individual', views.ciso_archived_individual_api, name='CISOArchivedIndividual'),
     path('api/ciso/archived-faculty', views.ciso_archived_faculty_api, name='CISOArchivedFaculty'),
     path('api/ciso/org-structure', views.ciso_org_structure_api, name='CISOOrgStructure'),
     path('api/ciso/colleges', views.ciso_colleges_api, name='CISOColleges'),

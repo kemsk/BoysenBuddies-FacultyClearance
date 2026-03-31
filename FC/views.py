@@ -2344,7 +2344,7 @@ def _archive_clearance_timeline_records(timeline: ClearanceTimeline):
                             "submissionLink": req.submission_link,
                             "submittedDate": req.submitted_date.isoformat() if req.submitted_date else None,
                             "approvedDate": req.approved_date.isoformat() if req.approved_date else None,
-                            "approvedBy": req.approved_by.get_full_name() if req.approved_by else None,
+                            "approvedBy": _user_display_name(req.approved_by) if req.approved_by else None,
                             "remarks": req.remarks,
                         }
                         for req in faculty_requests
@@ -2364,6 +2364,25 @@ def _archived_faculty_display_name(faculty: Faculty | None):
     if not faculty:
         return ""
     return f"{faculty.first_name or ''} {faculty.middle_name or ''} {faculty.last_name or ''}".strip()
+
+
+def _user_display_name(user: User | None):
+    if not user:
+        return ""
+    if hasattr(user, "get_full_name"):
+        try:
+            full_name = user.get_full_name()
+            if full_name:
+                return full_name
+        except Exception:
+            pass
+    parts = [
+        (getattr(user, "first_name", "") or "").strip(),
+        (getattr(user, "middle_name", "") or "").strip(),
+        (getattr(user, "last_name", "") or "").strip(),
+    ]
+    parts = [part for part in parts if part]
+    return " ".join(parts) if parts else (getattr(user, "email", "") or "")
 
 
 def _serialize_archived_faculty_item(archived: ArchivedClearance):
@@ -7412,6 +7431,92 @@ def ciso_view_clearance_api(request):
 
     items = _archived_clearance_items_for_timeline(timeline, status_filter)
     return JsonResponse({"items": items})
+
+
+def ciso_archived_individual_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    if not user.userrole_set.filter(role__name='CISO', is_active=True).exists():
+        return JsonResponse({"detail": "Forbidden"}, status=403)
+
+    timeline_id = (request.GET.get("timelineId") or request.GET.get("timeline_id") or "").strip()
+    archived_id = (request.GET.get("archivedId") or request.GET.get("archived_id") or "").strip()
+
+    if not timeline_id or not archived_id:
+        return JsonResponse({"detail": "Missing timelineId or archivedId"}, status=400)
+
+    timeline = ClearanceTimeline.objects.filter(id=timeline_id, archive_date__isnull=False).first()
+    if not timeline:
+        return JsonResponse({"detail": "Archived timeline not found"}, status=404)
+
+    _ensure_archived_timeline_records(timeline)
+
+    archived = ArchivedClearance.objects.select_related(
+        "faculty",
+        "faculty__user",
+        "faculty__college",
+        "faculty__department",
+    ).filter(id=archived_id, clearance_timeline=timeline).first()
+    if not archived:
+        return JsonResponse({"detail": "Archived clearance not found"}, status=404)
+
+    faculty = archived.faculty
+    faculty_user = getattr(faculty, "user", None)
+    archived_data = archived.clearance_data or {}
+    archived_requests = archived_data.get("requests") or []
+
+    requests = []
+    for index, req in enumerate(archived_requests, start=1):
+        requests.append({
+            "id": req.get("id") or index,
+            "requestId": req.get("requestId") or "",
+            "title": req.get("title") or "",
+            "description": req.get("description") or "",
+            "status": req.get("status") or ClearanceRequest.Status.PENDING,
+            "submissionNotes": req.get("submissionNotes") or "",
+            "submissionLink": req.get("submissionLink") or "",
+            "submittedDate": req.get("submittedDate"),
+            "approvedDate": req.get("approvedDate"),
+            "approvedBy": req.get("approvedBy"),
+            "remarks": req.get("remarks") or "",
+        })
+
+    return JsonResponse({
+        "timeline": {
+            "id": str(timeline.id),
+            "name": timeline.name or _clearance_timeline_name(timeline.academic_year_start, timeline.academic_year_end, timeline.term),
+            "academicYear": f"{timeline.academic_year_start}-{timeline.academic_year_end}",
+            "semester": _term_to_label(timeline.term),
+            "archivedDate": timeline.archive_date.strftime("%B %d, %Y, %H:%M %p") if timeline.archive_date else None,
+        },
+        "faculty": {
+            "id": str(archived.id),
+            "employeeId": getattr(faculty, "employee_id", "") or "",
+            "name": _archived_faculty_display_name(faculty),
+            "schoolEmail": getattr(faculty_user, "email", "") or "",
+            "college": getattr(getattr(faculty, "college", None), "name", "") or "",
+            "department": getattr(getattr(faculty, "department", None), "name", "") or "",
+            "facultyType": getattr(faculty, "faculty_type", "") or "",
+        },
+        "clearance": {
+            "id": archived.id,
+            "academicYear": archived.academic_year,
+            "term": archived.semester,
+            "status": archived.status,
+            "submittedDate": None,
+            "completedDate": archived.last_updated.strftime("%Y-%m-%d %H:%M:%S") if archived.last_updated else None,
+            "lastUpdated": archived.last_updated.strftime("%Y-%m-%d %H:%M:%S") if archived.last_updated else None,
+            "missingApproval": archived_data.get("missing_approval", ""),
+            "approvedCount": archived_data.get("approved_count", 0),
+            "totalCount": archived_data.get("request_count", len(requests)),
+        },
+        "requests": requests,
+    })
 
 def ciso_archived_faculty_api(request):
     if request.method != "GET":
