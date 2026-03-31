@@ -70,16 +70,25 @@ export default defineConfig({
             purpose: 'any maskable'
           },
           {
-            src: 'RemoveBG_Logomark.png',
-            sizes: '192x192',
+            src: 'Pen Swish White_FacultyClearTrack.png',
+            sizes: '1920x1920',
             type: 'image/png',
             purpose: 'any maskable'
           },
           {
-            src: 'vite.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
+            src: 'RemoveBG_Logomark.png',
+            sizes: '400x346',
+            type: 'image/png',
             purpose: 'any'
+          }
+        ],
+        screenshots: [
+          {
+            src: 'Pen Swish White_FacultyClearTrack.png',
+            sizes: '1920x1920',
+            type: 'image/png',
+            form_factor: 'wide',
+            label: 'Faculty Clearance System Dashboard'
           }
         ]
       }
