@@ -316,6 +316,10 @@ export default function OVPHESystemGuideline() {
                             });
                             if (!nextEnabled) {
                               postOVPHEActivityLog({
+                                event_type: "delete_guideline",
+                                details: title ? [`Guideline: ${title}`] : [],
+                              });
+                              postOVPHEActivityLog({
                                 event_type: "archived_guideline",
                                 details: title ? [`Guideline: ${title}`] : [],
                               });

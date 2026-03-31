@@ -16,11 +16,55 @@ import { Button } from "../../stories/components/button";
 import {
   ActivityLogsCard,
   type ActivityLogItem,
-} from "../../stories/components/cards";
+  type ActivityLogVariant,
+} from "../../stories/components/activity-logs-card";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useEffect, useMemo, useState } from "react";
+
+function mapEventNameToVariant(eventName: string): ActivityLogVariant {
+  const eventMapping: Record<string, ActivityLogVariant> = {
+    approved_clearance: "approved_clearance",
+    rejected_clearance: "rejected_clearance",
+    create_request: "create_request",
+    edited_requirements: "edited_requirements",
+    created_requirements: "created_requirements",
+    deleted_requirements: "deleted_requirements",
+    added_assistant_approver: "added_assistant_approver",
+    updated_assistant_approver: "updated_assistant_approver",
+    removed_assistant_approver: "removed_assistant_approver",
+    user_logout: "user_logout",
+    user_login: "user_login",
+    google_login: "user_login",
+    exported_clearance_results: "exported_clearance_results",
+    created_guideline: "created_guideline",
+    edited_guideline: "edited_guideline",
+    delete_guideline: "delete_guideline",
+    deleted_guideline: "deleted_guideline",
+    enabled_guideline: "enabled_guideline",
+    disabled_guideline: "disabled_guideline",
+    archived_guideline: "archived_guideline",
+    created_announcement: "created_announcement",
+    edited_announcement: "edited_announcement",
+    enabled_announcement: "enabled_announcement",
+    disabled_announcement: "disabled_announcement",
+    deleted_announcement: "deleted_announcement",
+    set_announcement_status_active: "set_announcement_status_active",
+    set_announcement_status_inactive: "set_announcement_status_inactive",
+    created_timeline: "created_timeline",
+    edited_timeline: "edited_timeline",
+    set_timeline_status_active: "set_timeline_status_active",
+    set_timeline_status_inactive: "set_timeline_status_inactive",
+    created_approver: "created_approver",
+    edited_approver: "edited_approver",
+    removed_approver: "removed_approver",
+    uploaded_faculty_data_dump: "uploaded_faculty_data_dump",
+    removed_faculty_data_dump: "removed_faculty_data_dump",
+  };
+
+  return eventMapping[eventName] ?? "create_request";
+}
 
 export default function ApproverActivityLogs() {
   const navigate = useNavigate();
@@ -28,198 +72,40 @@ export default function ApproverActivityLogs() {
   const [page, setPage] = useState(1);
   const pageSize = 40;
 
-  const items: ActivityLogItem[] = [
-    {
-      id: "log-1",
-      dateLabel: "01/10/2027",
-      timeLabel: "1:40 PM",
-      variant: "approved_clearance",
-      actorFirstName: "Merida",
-      actorLastName: "Santos",
-      approverDepartment: "College of Computer Studies",
-      facultyFirstName: "Alexander",
-      facultyLastName: "Hamilton",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Alexander Hamilton",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },
-    {
-      id: "log-2",
-      dateLabel: "01/10/2026",
-      timeLabel: "1:10 PM",
-      variant: "rejected_clearance",
-      actorFirstName: "Angela",
-      actorLastName: "Santos",
-      approverDepartment: "College of Computer Studies",
-      facultyFirstName: "Alexander",
-      facultyLastName: "Hamilton",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Alexander Hamilton",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },
-    {
-      id: "log-3",
-      dateLabel: "03/10/2026",
-      timeLabel: "4:10 PM",
-      variant: "create_request",
-      facultyFirstName: "Angela",
-      facultyLastName: "Santos",
-      facultyCollege: "College of Computer Studies",
-      facultyDepartment: "Computer Science",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Angela Santos",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },
-    {
-      id: "log-4",
-      dateLabel: "03/10/2027",
-      timeLabel: "4:10 PM",
-      variant: "edited_requirements",
-      actorFirstName: "Angela",
-      actorLastName: "Santos",
-      requirementTitle: "Exit Clearance Form",
-      approverDepartment: "College of Computer Studies",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Angela Santos",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },
-    {
-      id: "log-5",
-      dateLabel: "03/10/2027",
-      timeLabel: "3:10 PM",
-      variant: "created_requirements",
-      actorFirstName: "Angela",
-      actorLastName: "Santos",
-      requirementTitle: "Library Clearance",
-      approverDepartment: "Computer Science",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Angela Santos",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },
-    {
-      id: "log-6",
-      dateLabel: "06/10/2027",
-      timeLabel: "5:10 PM",
-      variant: "deleted_requirements",
-      actorFirstName: "Angela",
-      actorLastName: "Santos",
-      requirementTitle: "Library Clearance",
-      approverDepartment: "Computer Science",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Angela Santos",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },
-    {
-      id: "log-7",
-      dateLabel: "06/10/2025",
-      timeLabel: "5:10 PM",
-      variant: "added_assistant_approver",
-      actorFirstName: "Angela",
-      actorLastName: "Santos",
-      requirementTitle: "Library Clearance",
-      approverDepartment: "Computer Science",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Angela Santos",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },
-    {
-      id: "log-8",
-      dateLabel: "03/10/2027",
-      timeLabel: "5:10 PM",
-      variant: "updated_assistant_approver",
-      actorFirstName: "Angela",
-      actorLastName: "Santos",
-      requirementTitle: "Library Clearance",
-      approverDepartment: "Computer Science",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Angela Santos",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },
-    {
-      id: "log-9",
-      dateLabel: "03/10/2025",
-      timeLabel: "5:10 PM",
-      variant: "removed_assistant_approver",
-      actorFirstName: "Angela",
-      actorLastName: "Santos",
-      requirementTitle: "Library Clearance",
-      approverDepartment: "Computer Science",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Angela Santos",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },    
-    {
-      id: "log-9",
-      dateLabel: "07/15/2024",
-      timeLabel: "5:10 PM",
-      variant: "user_logout",
-      actorFirstName: "Angela",
-      actorLastName: "Santos",
-      requirementTitle: "Library Clearance",
-      approverDepartment: "Computer Science",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Angela Santos",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },    
-    {
-      id: "log-10",
-      dateLabel: "06/12/2027",
-      timeLabel: "5:10 PM",
-      variant: "edited_announcement",
-      actorFirstName: "Angela",
-      actorLastName: "Santos",
-      requirementTitle: "Library Clearance",
-      approverDepartment: "Computer Science",
-      universityId: "2005123456789",
-      requestId: "2005123456789",
-      details: [
-        "Angela Santos",
-        "University ID: 2005123456789",
-        "Request ID: 2005123456789",
-      ],
-    },    
+  const [items, setItems] = useState<ActivityLogItem[]>([]);
 
-  ];
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("query", query.trim());
+    params.set("page", "1");
+    params.set("pageSize", "500");
+
+    fetch(`/admin/xu-faculty-clearance/api/approver/activity-logs?${params.toString()}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { items: ActivityLogItem[] }) => {
+        const allowedRoles = new Set(["approver", "assistant"]);
+        const onlyApproverAndAssistant = (data.items ?? []).filter((it) => {
+          const role = String((it as any).actorRole ?? "").trim().toLowerCase();
+          if (!role) return false;
+          const head = role.split(/\s|-/)[0];
+          return allowedRoles.has(head);
+        });
+
+        const mappedItems = onlyApproverAndAssistant.map((it) => {
+          const evt = String((it as any).event_type ?? "").trim();
+          const raw = evt || String((it as any).variant ?? "").trim() || String((it as any).title ?? "").trim();
+          const variant = mapEventNameToVariant(raw);
+          return {
+            ...it,
+            event_type: evt || (it as any).event_type,
+            variant,
+          };
+        });
+
+        setItems(mappedItems);
+      })
+      .catch(() => setItems([]));
+  }, [query]);
 
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();

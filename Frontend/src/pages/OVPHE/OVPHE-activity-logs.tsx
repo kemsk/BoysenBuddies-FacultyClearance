@@ -15,7 +15,8 @@ import { SearchInputGroup } from "../../stories/components/input-group";
 import {
   ActivityLogsCard,
   type ActivityLogItem,
-} from "../../stories/components/cards";
+  type ActivityLogVariant,
+} from "../../stories/components/activity-logs-card";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -24,6 +25,49 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { Button } from "../../stories/components/button";
+
+function mapEventNameToVariant(eventName: string): ActivityLogVariant {
+  const eventMapping: Record<string, ActivityLogVariant> = {
+    approved_clearance: "approved_clearance",
+    rejected_clearance: "rejected_clearance",
+    create_request: "create_request",
+    edited_requirements: "edited_requirements",
+    created_requirements: "created_requirements",
+    deleted_requirements: "deleted_requirements",
+    added_assistant_approver: "added_assistant_approver",
+    updated_assistant_approver: "updated_assistant_approver",
+    removed_assistant_approver: "removed_assistant_approver",
+    user_logout: "user_logout",
+    user_login: "user_login",
+    google_login: "user_login",
+    exported_clearance_results: "exported_clearance_results",
+    created_guideline: "created_guideline",
+    edited_guideline: "edited_guideline",
+    delete_guideline: "delete_guideline",
+    deleted_guideline: "deleted_guideline",
+    enabled_guideline: "enabled_guideline",
+    disabled_guideline: "disabled_guideline",
+    archived_guideline: "archived_guideline",
+    created_announcement: "created_announcement",
+    edited_announcement: "edited_announcement",
+    enabled_announcement: "enabled_announcement",
+    disabled_announcement: "disabled_announcement",
+    deleted_announcement: "deleted_announcement",
+    set_announcement_status_active: "set_announcement_status_active",
+    set_announcement_status_inactive: "set_announcement_status_inactive",
+    created_timeline: "created_timeline",
+    edited_timeline: "edited_timeline",
+    set_timeline_status_active: "set_timeline_status_active",
+    set_timeline_status_inactive: "set_timeline_status_inactive",
+    created_approver: "created_approver",
+    edited_approver: "edited_approver",
+    removed_approver: "removed_approver",
+    uploaded_faculty_data_dump: "uploaded_faculty_data_dump",
+    removed_faculty_data_dump: "removed_faculty_data_dump",
+  };
+
+  return eventMapping[eventName] ?? "create_request";
+}
 
 export default function OVPHEActivityLogs() {
   
@@ -42,7 +86,27 @@ export default function OVPHEActivityLogs() {
 
     fetch(`/admin/xu-faculty-clearance/api/ovphe/activity-logs?${params.toString()}`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: { items: ActivityLogItem[] }) => setItems(data.items ?? []))
+      .then((data: { items: ActivityLogItem[] }) => {
+        const roleNeedle = "OVPHE";
+        const onlyOvphe = (data.items ?? []).filter((it) => {
+          const role = String((it as any).actorRole ?? "").trim();
+          if (!role) return false;
+          return role.toLowerCase() === roleNeedle.toLowerCase() || role.toLowerCase().startsWith(roleNeedle.toLowerCase());
+        });
+
+        const mappedItems = onlyOvphe.map((it) => {
+          const evt = String((it as any).event_type ?? "").trim();
+          const raw = evt || String((it as any).variant ?? "").trim() || String((it as any).title ?? "").trim();
+          const variant = mapEventNameToVariant(raw);
+          return {
+            ...it,
+            event_type: evt || (it as any).event_type,
+            variant,
+          };
+        });
+
+        setItems(mappedItems);
+      })
       .catch(() => setItems([]));
   }, [query]);
 
