@@ -44,15 +44,18 @@ export default function ApproverArchivedIndividualApproval() {
   const [item, setItem] = React.useState<ArchivedApproverItem | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState("");
+  const [remarksByRequest, setRemarksByRequest] = React.useState<Record<string, string>>({});
+  const [submittingRequestId, setSubmittingRequestId] = React.useState<string>("");
 
-  React.useEffect(() => {
+  const loadArchivedDetail = React.useCallback(() => {
     if (!timelineId || !archivedId) {
       setLoading(false);
       setError("Missing archived clearance selection.");
-      return;
+      return Promise.resolve();
     }
 
-    fetch(`/admin/xu-faculty-clearance/api/approver/archived-individual?timelineId=${encodeURIComponent(timelineId)}&archivedId=${encodeURIComponent(archivedId)}`, {
+    setLoading(true);
+    return fetch(`/admin/xu-faculty-clearance/api/approver/archived-individual?timelineId=${encodeURIComponent(timelineId)}&archivedId=${encodeURIComponent(archivedId)}`, {
       credentials: "include",
     })
       .then(async (res) => {
@@ -63,6 +66,9 @@ export default function ApproverArchivedIndividualApproval() {
       .then((data) => {
         setTimelineName(data.timeline?.name || "Archived Clearance");
         setItem(data.item ?? null);
+        setRemarksByRequest(
+          Object.fromEntries((data.item?.requests ?? []).map((request) => [request.id, request.remarks || ""]))
+        );
         setError("");
       })
       .catch((err: Error) => {
@@ -71,6 +77,38 @@ export default function ApproverArchivedIndividualApproval() {
       })
       .finally(() => setLoading(false));
   }, [archivedId, timelineId]);
+
+  React.useEffect(() => {
+    void loadArchivedDetail();
+  }, [loadArchivedDetail]);
+
+  const handleArchivedAction = React.useCallback(async (requestId: string, action: "approve" | "reject") => {
+    setSubmittingRequestId(requestId);
+    try {
+      const response = await fetch(`/admin/xu-faculty-clearance/api/approver/archived-individual?timelineId=${encodeURIComponent(timelineId)}&archivedId=${encodeURIComponent(archivedId)}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          request_id: requestId,
+          action,
+          remarks: remarksByRequest[requestId] || "",
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error((data && data.detail) || "Failed to update archived request.");
+      }
+
+      await loadArchivedDetail();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to update archived request.";
+      window.alert(message);
+    } finally {
+      setSubmittingRequestId("");
+    }
+  }, [archivedId, loadArchivedDetail, remarksByRequest, timelineId]);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -151,6 +189,43 @@ export default function ApproverArchivedIndividualApproval() {
                     {request.approvedBy ? <div><span className="font-bold">Processed By:</span> {request.approvedBy}</div> : null}
                     {request.approvedDate ? <div><span className="font-bold">Processed On:</span> {request.approvedDate}</div> : null}
                     {request.remarks ? <div><span className="font-bold">Remarks:</span> {request.remarks}</div> : null}
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+                    <div>
+                      <div className="text-md font-bold text-foreground">Remarks</div>
+                      <textarea
+                        className="mt-2 min-h-[88px] w-full rounded-md border border-foreground p-3 text-sm text-black"
+                        value={remarksByRequest[request.id] ?? ""}
+                        onChange={(event) =>
+                          setRemarksByRequest((prev) => ({
+                            ...prev,
+                            [request.id]: event.target.value,
+                          }))
+                        }
+                        placeholder="Input your remarks here"
+                      />
+                    </div>
+
+                    <div className="flex gap-3">
+                      <Button
+                        type="button"
+                        className="h-10 rounded-md px-5"
+                        onClick={() => void handleArchivedAction(request.requestId, "approve")}
+                        disabled={submittingRequestId === request.requestId}
+                      >
+                        {submittingRequestId === request.requestId ? "Processing..." : "Approve"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="cancel"
+                        className="h-10 rounded-md px-5"
+                        onClick={() => void handleArchivedAction(request.requestId, "reject")}
+                        disabled={submittingRequestId === request.requestId}
+                      >
+                        {submittingRequestId === request.requestId ? "Processing..." : "Reject"}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}

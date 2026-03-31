@@ -40,82 +40,110 @@ def _assistant_scope(user):
     supervisor_profile = getattr(supervisor, "approver_profile", None)
     return {
         "assistant": assistant,
-        "college": getattr(assistant, "college", None),
-        "department": getattr(assistant, "department", None),
-        "office": getattr(supervisor_profile, "office", None),
+        "college": getattr(assistant, "college", None) or getattr(supervisor_profile, "college", None),
+        "department": getattr(assistant, "department", None) or getattr(supervisor_profile, "department", None),
+        "office": getattr(assistant, "office", None) or getattr(supervisor_profile, "office", None),
         "supervisor": supervisor,
     }
 
 
 def _assistant_requirement_queryset(user, timeline):
+    scope = _assistant_scope(user)
+    supervisor = scope["supervisor"]
+    supervisor_profile = getattr(supervisor, "approver_profile", None)
+    if not supervisor_profile:
+        return Requirement.objects.none()
+
     requirements = Requirement.objects.filter(
         clearance_timeline=timeline,
         is_active=True,
-    ).prefetch_related("target_colleges", "target_departments", "target_offices")
+    ).select_related(
+        "created_by",
+        "clearance_timeline",
+        "approver_flow_step",
+    ).prefetch_related(
+        "target_colleges",
+        "target_departments",
+        "target_offices",
+        "target_faculty",
+    ).order_by("-last_updated", "-id")
 
-    scope = _assistant_scope(user)
-    department = scope["department"]
-    college = scope["college"]
-    office = scope["office"]
+    visible_ids = [
+        requirement.id
+        for requirement in requirements
+        if _can_approver_access_requirement(supervisor_profile, requirement)
+    ]
+    if not visible_ids:
+        return Requirement.objects.none()
 
-    if department:
-        return requirements.filter(
-            Q(recipient_scope="all")
-            | Q(target_departments=department)
-            | Q(target_colleges=college)
-        ).distinct().order_by("title", "id")
-
-    if college:
-        return requirements.filter(
-            Q(recipient_scope="all")
-            | Q(target_colleges=college)
-        ).distinct().order_by("title", "id")
-
-    if office:
-        return requirements.filter(
-            Q(recipient_scope="all")
-            | Q(target_offices=office)
-        ).distinct().order_by("title", "id")
-
-    return Requirement.objects.none()
+    return requirements.filter(id__in=visible_ids)
 
 
 def _assistant_clearance_queryset(user, timeline):
-    requirements = _assistant_requirement_queryset(user, timeline)
-    faculty_filters = Q()
     scope = _assistant_scope(user)
-    if scope["department"]:
-        faculty_filters &= Q(faculty__department=scope["department"])
-    elif scope["college"]:
-        faculty_filters &= Q(faculty__college=scope["college"])
-    elif scope["office"]:
-        faculty_filters &= Q(faculty__office=scope["office"])
-    else:
+    supervisor = scope["supervisor"]
+    if not supervisor:
         return ClearanceRequest.objects.none()
 
-    return (
-        ClearanceRequest.objects.select_related(
-            "faculty",
-            "faculty__user",
-            "faculty__college",
-            "faculty__department",
-            "faculty__office",
-            "requirement",
-            "approved_by",
-        )
-        .filter(clearance_timeline=timeline, requirement__in=requirements)
-        .filter(faculty_filters)
-        .order_by("-submitted_date", "-id")
-    )
+    requests = ClearanceRequest.objects.select_related(
+        "faculty",
+        "faculty__user",
+        "faculty__college",
+        "faculty__department",
+        "faculty__office",
+        "requirement",
+        "requirement__approver_flow_step",
+        "approved_by",
+    ).prefetch_related(
+        "requirement__target_colleges",
+        "requirement__target_departments",
+        "requirement__target_offices",
+        "requirement__target_faculty",
+    ).filter(
+        clearance_timeline=timeline,
+    ).order_by("-submitted_date", "-id")
+
+    visible_ids = [request.id for request in requests if _can_approver_access_request(supervisor, request)]
+    if not visible_ids:
+        return ClearanceRequest.objects.none()
+
+    return requests.filter(id__in=visible_ids)
 
 
 def _serialize_assistant_requirement(requirement: Requirement):
     deadline = getattr(requirement.clearance_timeline, "clearance_end_date", None)
+    recipients = []
+
+    if requirement.recipient_scope == "all":
+        recipients = ["All Faculty"]
+    elif requirement.recipient_scope == "college":
+        recipients = [college.name for college in requirement.target_colleges.all()]
+    elif requirement.recipient_scope == "department":
+        recipients = [department.name for department in requirement.target_departments.all()]
+    elif requirement.recipient_scope == "office":
+        recipients = [office.name for office in requirement.target_offices.all()]
+    elif requirement.recipient_scope == "individual":
+        recipients = [
+            f"{faculty.user.first_name} {faculty.user.last_name}".strip()
+            for faculty in requirement.target_faculty.select_related("user").all()
+        ]
+
     return {
         "title": requirement.title or "",
         "description": requirement.description or "",
         "physicalSubmission": bool(requirement.required_physical),
-        "lastUpdated": timezone.localtime(requirement.last_updated).strftime("Last updated: %B %d, %Y, %I:%M %p") if requirement.last_updated else "",
+        "recipients": ", ".join([recipient for recipient in recipients if recipient]) if recipients else "",
+        "lastUpdated": timezone.localtime(requirement.last_updated).strftime("%B %d, %Y, %I:%M %p") if requirement.last_updated else "",
+        "createdBy": " ".join(
+            [
+                part for part in [
+                    (getattr(requirement.created_by, "first_name", "") or "").strip(),
+                    (getattr(requirement.created_by, "last_name", "") or "").strip(),
+                ]
+                if part
+            ]
+        ) or getattr(requirement.created_by, "email", "") or "",
+        "clearanceTimeline": getattr(requirement.clearance_timeline, "name", "") or "",
         "submissionDeadline": timezone.localtime(deadline).strftime("%B %d, %Y, %I:%M %p") if deadline else "",
     }
 
@@ -185,6 +213,17 @@ def _serialize_assistant_individual_request(req: ClearanceRequest):
             "approvedBy": approver_name,
         }
     }
+
+
+def _assistant_request_by_identifier(user, timeline, request_identifier: str):
+    request_identifier = (request_identifier or "").strip()
+    if not request_identifier:
+        return None
+
+    queryset = _assistant_clearance_queryset(user, timeline)
+    if request_identifier.isdigit():
+        return queryset.filter(Q(id=int(request_identifier)) | Q(request_id=request_identifier)).first()
+    return queryset.filter(request_id=request_identifier).first()
 
 
 def _normalize_email(value: str | None) -> str:
@@ -2253,6 +2292,125 @@ def _clearance_timeline_name(start_year: int | None, end_year: int | None, term:
     return "Faculty Clearance"
 
 
+def _approver_step_label(requirement: Requirement | None):
+    if not requirement:
+        return ""
+
+    step = getattr(requirement, "approver_flow_step", None)
+    if step:
+        office_name = getattr(getattr(step, "office", None), "name", "") or ""
+        if office_name:
+            return office_name
+
+        category = (getattr(step, "category", "") or "").strip()
+        if category:
+            return category
+
+    target_departments = list(getattr(requirement, "target_departments", None).all()) if getattr(requirement, "target_departments", None) is not None else []
+    if target_departments:
+        return ", ".join(sorted({department.name for department in target_departments if getattr(department, "name", "")}))
+
+    target_colleges = list(getattr(requirement, "target_colleges", None).all()) if getattr(requirement, "target_colleges", None) is not None else []
+    if target_colleges:
+        return ", ".join(sorted({college.name for college in target_colleges if getattr(college, "name", "")}))
+
+    target_offices = list(getattr(requirement, "target_offices", None).all()) if getattr(requirement, "target_offices", None) is not None else []
+    if target_offices:
+        return ", ".join(sorted({office.name for office in target_offices if getattr(office, "name", "")}))
+
+    return requirement.title or ""
+
+
+def _timeline_applicable_faculty_ids(timeline: ClearanceTimeline):
+    requirements = list(
+        Requirement.objects.filter(
+            clearance_timeline=timeline,
+            is_active=True,
+        ).prefetch_related(
+            "target_colleges",
+            "target_departments",
+            "target_offices",
+            "target_faculty",
+        )
+    )
+
+    if not requirements:
+        return set()
+
+    faculty_rows = Faculty.objects.select_related("college", "department", "office").all()
+    faculty_ids: set[int] = set()
+    for faculty in faculty_rows:
+        if any(_requirement_applies_to_faculty(requirement, faculty) for requirement in requirements):
+            faculty_ids.add(faculty.id)
+    return faculty_ids
+
+
+def _timeline_dump_faculty_ids(timeline: ClearanceTimeline):
+    dump_entries = FacultyDumpArchive.objects.filter(
+        clearance_timeline=timeline,
+    ).order_by("-created_at", "-id")
+
+    if not dump_entries.exists():
+        return set()
+
+    try:
+        from django.conf import settings
+        import os
+    except Exception:
+        return set()
+
+    faculty_ids: set[int] = set()
+    media_root = getattr(settings, "MEDIA_ROOT", "") or ""
+
+    for dump in dump_entries:
+        dump_path = (getattr(dump, "dump_file_path", "") or "").strip()
+        if not dump_path:
+            continue
+
+        file_path = os.path.join(media_root, dump_path) if media_root else dump_path
+        if not os.path.exists(file_path):
+            continue
+
+        try:
+            with open(file_path, "rb") as dump_file:
+                raw = dump_file.read()
+        except Exception:
+            continue
+
+        text = None
+        for enc in ("utf-8-sig", "utf-8", "latin-1"):
+            try:
+                text = raw.decode(enc)
+                break
+            except Exception:
+                continue
+        if text is None:
+            continue
+
+        try:
+            reader = csv.DictReader(io.StringIO(text))
+        except Exception:
+            continue
+
+        for row in reader:
+            email = (row.get("email") or "").strip().lower()
+            employee_id = (row.get("employee_id") or "").strip()
+            university_id = (row.get("university_id") or "").strip()
+
+            faculty = None
+            if email:
+                faculty = Faculty.objects.select_related("user").filter(user__email__iexact=email).first()
+            if not faculty and employee_id:
+                faculty = Faculty.objects.filter(employee_id__iexact=employee_id).first()
+            if not faculty and university_id:
+                faculty = Faculty.objects.select_related("user").filter(user__university_id__iexact=university_id).first()
+
+            if faculty:
+                faculty_ids.add(faculty.id)
+
+    return faculty_ids
+
+
 def _archive_clearance_timeline_records(timeline: ClearanceTimeline):
     faculty_rows = (
         Faculty.objects.select_related("user", "college", "department", "office")
@@ -2277,7 +2435,8 @@ def _archive_clearance_timeline_records(timeline: ClearanceTimeline):
 
     request_rows = (
         ClearanceRequest.objects.filter(clearance_timeline=timeline)
-        .select_related("requirement", "approved_by")
+        .select_related("requirement", "requirement__approver_flow_step", "requirement__approver_flow_step__office", "approved_by")
+        .prefetch_related("requirement__target_colleges", "requirement__target_departments", "requirement__target_offices")
         .order_by("faculty_id", "id")
     )
 
@@ -2285,8 +2444,25 @@ def _archive_clearance_timeline_records(timeline: ClearanceTimeline):
     for req in request_rows:
         requests_by_faculty.setdefault(req.faculty_id, []).append(req)
 
+    requirement_rows = list(
+        Requirement.objects.filter(
+            clearance_timeline=timeline,
+            is_active=True,
+        ).select_related(
+            "approver_flow_step",
+            "approver_flow_step__office",
+        ).prefetch_related(
+            "target_colleges",
+            "target_departments",
+            "target_offices",
+            "target_faculty",
+        ).order_by("id")
+    )
+
     archived_at = timeline.archive_date or timezone.now()
-    faculty_ids = set(faculty_by_id.keys()) | set(latest_clearances.keys()) | set(requests_by_faculty.keys())
+    dump_faculty_ids = _timeline_dump_faculty_ids(timeline)
+    applicable_faculty_ids = _timeline_applicable_faculty_ids(timeline)
+    faculty_ids = dump_faculty_ids | applicable_faculty_ids | set(latest_clearances.keys()) | set(requests_by_faculty.keys())
 
     for faculty_id in faculty_ids:
         clearance = latest_clearances.get(faculty_id)
@@ -2299,16 +2475,33 @@ def _archive_clearance_timeline_records(timeline: ClearanceTimeline):
         if not faculty:
             continue
 
-        missing_approval = ", ".join(
-            req.requirement.title
+        applicable_requirements = [
+            requirement for requirement in requirement_rows if _requirement_applies_to_faculty(requirement, faculty)
+        ]
+
+        request_by_requirement_id = {
+            req.requirement_id: req
             for req in faculty_requests
-            if req.status != ClearanceRequest.Status.APPROVED and req.requirement
-        )
+            if getattr(req, "requirement_id", None)
+        }
+
+        missing_approval_labels = []
+        for requirement in applicable_requirements:
+            matched_request = request_by_requirement_id.get(requirement.id)
+            if not matched_request or matched_request.status != ClearanceRequest.Status.APPROVED:
+                label = _approver_step_label(requirement)
+                if label:
+                    missing_approval_labels.append(label)
+
+        missing_approval = ", ".join(dict.fromkeys(missing_approval_labels))
 
         approved_count = sum(
-            1 for req in faculty_requests if req.status == ClearanceRequest.Status.APPROVED
+            1
+            for requirement in applicable_requirements
+            if (request_by_requirement_id.get(requirement.id) and request_by_requirement_id[requirement.id].status == ClearanceRequest.Status.APPROVED)
         )
-        inferred_completed = bool(faculty_requests) and approved_count == len(faculty_requests)
+        total_requirement_count = len(applicable_requirements)
+        inferred_completed = total_requirement_count > 0 and approved_count == total_requirement_count
         clearance_status = (
             ArchivedClearance.Status.COMPLETED
             if (clearance and clearance.status == Clearance.Status.COMPLETED) or (not clearance and inferred_completed)
@@ -2333,7 +2526,7 @@ def _archive_clearance_timeline_records(timeline: ClearanceTimeline):
                     "department": faculty.department.name if faculty.department else "",
                     "facultyType": faculty.faculty_type or "",
                     "missing_approval": missing_approval,
-                    "request_count": len(faculty_requests),
+                    "request_count": total_requirement_count,
                     "approved_count": approved_count,
                     "requests": [
                         {
@@ -2363,7 +2556,26 @@ def _ensure_archived_timeline_records(timeline: ClearanceTimeline):
 def _archived_faculty_display_name(faculty: Faculty | None):
     if not faculty:
         return ""
-    return f"{faculty.first_name or ''} {faculty.middle_name or ''} {faculty.last_name or ''}".strip()
+    user = getattr(faculty, "user", None)
+    parts = [
+        (getattr(user, "first_name", "") or "").strip(),
+        (getattr(user, "middle_name", "") or "").strip(),
+        (getattr(user, "last_name", "") or "").strip(),
+    ]
+    parts = [part for part in parts if part]
+    if parts:
+        return " ".join(parts)
+
+    faculty_parts = [
+        (getattr(faculty, "first_name", "") or "").strip(),
+        (getattr(faculty, "middle_name", "") or "").strip(),
+        (getattr(faculty, "last_name", "") or "").strip(),
+    ]
+    faculty_parts = [part for part in faculty_parts if part]
+    if faculty_parts:
+        return " ".join(faculty_parts)
+
+    return getattr(user, "email", "") or getattr(faculty, "employee_id", "") or ""
 
 
 def _user_display_name(user: User | None):
@@ -2388,13 +2600,19 @@ def _user_display_name(user: User | None):
 def _serialize_archived_faculty_item(archived: ArchivedClearance):
     faculty = archived.faculty
     archived_data = archived.clearance_data or {}
+    user = getattr(faculty, "user", None)
+    college_name = archived_data.get("college") or (faculty.college.name if faculty and faculty.college else "")
+    department_name = archived_data.get("department") or (faculty.department.name if faculty and faculty.department else "")
+    faculty_type = archived_data.get("facultyType") or getattr(faculty, "faculty_type", "") or ""
+    employee_id = archived_data.get("employeeId") or getattr(faculty, "employee_id", "") or ""
+    display_name = archived_data.get("name") or _archived_faculty_display_name(faculty) or getattr(user, "email", "") or employee_id
     return {
         "id": str(archived.id),
-        "employeeId": archived_data.get("employeeId") or getattr(faculty, "employee_id", "") or "",
-        "name": archived_data.get("name") or _archived_faculty_display_name(faculty),
-        "college": archived_data.get("college") or (faculty.college.name if faculty and faculty.college else ""),
-        "department": archived_data.get("department") or (faculty.department.name if faculty and faculty.department else ""),
-        "facultyType": archived_data.get("facultyType") or getattr(faculty, "faculty_type", "") or "",
+        "employeeId": employee_id,
+        "name": display_name,
+        "college": college_name,
+        "department": department_name,
+        "facultyType": faculty_type,
         "status": archived.status,
         "missingApproval": archived_data.get("missing_approval", ""),
         "lastUpdated": archived.last_updated.strftime("%B %d, %Y, %H:%M %p") if archived.last_updated else "",
@@ -2459,12 +2677,86 @@ def _assistant_archived_requests_for_archived_clearance(archived: ArchivedCleara
     ]
 
 
+def _approver_archived_requests_for_archived_clearance(user, archived: ArchivedClearance):
+    timeline = archived.clearance_timeline
+    if not timeline:
+        return []
+
+    request_rows = list(
+        ClearanceRequest.objects.filter(
+            clearance_timeline=timeline,
+            faculty=archived.faculty,
+        ).select_related(
+            "requirement",
+            "requirement__approver_flow_step",
+            "requirement__approver_flow_step__office",
+            "approved_by",
+            "faculty",
+            "faculty__college",
+            "faculty__department",
+            "faculty__office",
+        ).prefetch_related(
+            "requirement__target_colleges",
+            "requirement__target_departments",
+            "requirement__target_offices",
+        ).order_by("id")
+    )
+
+    visible_requests = [req for req in request_rows if _can_approver_access_request(user, req)]
+    if not visible_requests:
+        return []
+
+    return [
+        {
+            "id": req.request_id or str(req.id),
+            "requestId": req.request_id or "",
+            "requirementName": req.requirement.title if req.requirement else "",
+            "submissionNotes": req.submission_notes or "",
+            "submissionLink": req.submission_link or "",
+            "status": _to_request_status(req.status),
+            "submittedDate": req.submitted_date.isoformat() if req.submitted_date else "",
+            "approvedDate": req.approved_date.isoformat() if req.approved_date else "",
+            "approvedBy": _user_display_name(req.approved_by) if req.approved_by else "",
+            "remarks": req.remarks or "",
+        }
+        for req in visible_requests
+    ]
+
+
 def _approver_scoped_archived_clearances(user, timeline: ClearanceTimeline):
     _ensure_archived_timeline_records(timeline)
 
-    approver = getattr(user, "approver_profile", None)
+    request_rows = list(
+        ClearanceRequest.objects.filter(
+            clearance_timeline=timeline,
+        ).select_related(
+            'faculty',
+            'faculty__user',
+            'faculty__college',
+            'faculty__department',
+            'faculty__office',
+            'requirement',
+            'requirement__approver_flow_step',
+            'requirement__approver_flow_step__office',
+            'approved_by',
+        ).prefetch_related(
+            'requirement__target_colleges',
+            'requirement__target_departments',
+            'requirement__target_offices',
+        )
+    )
+
+    visible_faculty_ids = {
+        req.faculty_id
+        for req in request_rows
+        if req.faculty_id and _can_approver_access_request(user, req)
+    }
+    if not visible_faculty_ids:
+        return ArchivedClearance.objects.none()
+
     qs = ArchivedClearance.objects.filter(
         clearance_timeline=timeline,
+        faculty_id__in=visible_faculty_ids,
     ).select_related(
         'faculty',
         'faculty__user',
@@ -2472,15 +2764,6 @@ def _approver_scoped_archived_clearances(user, timeline: ClearanceTimeline):
         'faculty__department',
         'faculty__office',
     )
-
-    if approver and approver.department:
-        qs = qs.filter(faculty__department=approver.department)
-    elif approver and approver.college:
-        qs = qs.filter(faculty__college=approver.college)
-    elif approver and approver.office:
-        qs = qs.filter(faculty__office=approver.office)
-    else:
-        return ArchivedClearance.objects.none()
 
     return qs.order_by('faculty__last_name', 'faculty__first_name', 'pk')
 
@@ -6720,7 +7003,7 @@ def approver_view_clearance_api(request):
 
 
 def approver_archived_individual_api(request):
-    if request.method != "GET":
+    if request.method not in {"GET", "POST"}:
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
     user = _get_authenticated_user(request)
@@ -6737,13 +7020,67 @@ def approver_archived_individual_api(request):
     if not timeline:
         return JsonResponse({"detail": "Archived timeline not found"}, status=404)
 
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8") or "{}")
+        except Exception:
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
+
+        request_id = (data.get("request_id") or "").strip()
+        action = (data.get("action") or "").strip().lower()
+        remarks = data.get("remarks", "")
+
+        if not request_id or action not in ["approve", "reject"]:
+            return JsonResponse({"detail": "Invalid request data"}, status=400)
+
+        try:
+            clearance_request = ClearanceRequest.objects.select_related("faculty", "requirement").get(
+                request_id=request_id,
+                clearance_timeline=timeline,
+            )
+        except ClearanceRequest.DoesNotExist:
+            return JsonResponse({"detail": "Clearance request not found"}, status=404)
+
+        if not _can_approver_access_request(user, clearance_request):
+            return JsonResponse({"detail": "Permission denied"}, status=403)
+
+        with transaction.atomic():
+            clearance_request.status = (
+                ClearanceRequest.Status.APPROVED if action == "approve"
+                else ClearanceRequest.Status.REJECTED
+            )
+            clearance_request.approved_by = user
+            clearance_request.approved_date = timezone.now()
+            clearance_request.remarks = remarks
+            clearance_request.save(update_fields=["status", "approved_by", "approved_date", "remarks"])
+
+            ActivityLog.objects.create(
+                event_type=(
+                    ActivityLog.EventType.APPROVED_CLEARANCE if action == "approve"
+                    else ActivityLog.EventType.REJECTED_CLEARANCE
+                ),
+                user=user,
+                faculty=clearance_request.faculty,
+                requirement=clearance_request.requirement,
+            )
+
+            _archive_clearance_timeline_records(timeline)
+
+        archived = _approver_scoped_archived_clearances(user, timeline).filter(faculty=clearance_request.faculty).first()
+        return JsonResponse({
+            "success": True,
+            "message": f"Clearance request {action}d successfully",
+            "status": _to_request_status(clearance_request.status),
+            "archivedId": str(archived.id) if archived else None,
+        })
+
     archived = _approver_scoped_archived_clearances(user, timeline).filter(id=archived_id).first()
     if not archived:
         return JsonResponse({"detail": "Archived clearance not found"}, status=404)
 
     faculty = archived.faculty
     faculty_user = getattr(faculty, "user", None)
-    requests = _assistant_archived_requests_for_archived_clearance(archived)
+    requests = _approver_archived_requests_for_archived_clearance(user, archived)
 
     return JsonResponse({
         "timeline": {
@@ -6997,6 +7334,8 @@ def assistant_approver_archived_clearance_api(request):
     
     return JsonResponse({"items": items})
 
+
+@csrf_exempt
 def assistant_approver_individual_approval_api(request):
     user = _get_authenticated_user(request)
     if not user:
@@ -7018,7 +7357,7 @@ def assistant_approver_individual_approval_api(request):
     if not request_id:
         return JsonResponse({"detail": "Missing requestId"}, status=400)
 
-    req = _assistant_clearance_queryset(user, timeline).filter(Q(id=request_id) | Q(request_id=request_id)).first()
+    req = _assistant_request_by_identifier(user, timeline, request_id)
     if not req:
         return JsonResponse({"detail": "Clearance request not found"}, status=404)
 
@@ -7040,6 +7379,19 @@ def assistant_approver_individual_approval_api(request):
     req.approved_by = user
     req.approved_date = timezone.now()
     req.save(update_fields=["status", "remarks", "approved_by", "approved_date"])
+
+    ActivityLog.objects.create(
+        event_type=(
+            ActivityLog.EventType.APPROVED_CLEARANCE if action == "approve"
+            else ActivityLog.EventType.REJECTED_CLEARANCE
+        ),
+        user=user,
+        faculty=req.faculty,
+        requirement=req.requirement,
+    )
+
+    if req.clearance_timeline and req.clearance_timeline.archive_date:
+        _archive_clearance_timeline_records(req.clearance_timeline)
 
     return JsonResponse({"ok": True, **_serialize_assistant_individual_request(req)})
 
@@ -7068,6 +7420,101 @@ def assistant_approver_view_clearance_api(request):
     if status_filter in ["COMPLETED", "INCOMPLETE"]:
         items = [item for item in items if item.get("status") == status_filter]
     return JsonResponse({"items": items})
+
+
+@csrf_exempt
+def assistant_approver_archived_individual_api(request):
+    if request.method not in {"GET", "POST"}:
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    timeline_id = (request.GET.get("timelineId") or request.GET.get("timeline_id") or "").strip()
+    archived_id = (request.GET.get("archivedId") or request.GET.get("id") or "").strip()
+
+    if not timeline_id or not archived_id:
+        return JsonResponse({"detail": "Missing timelineId or archivedId"}, status=400)
+
+    timeline = ClearanceTimeline.objects.filter(id=timeline_id, archive_date__isnull=False).first()
+    if not timeline:
+        return JsonResponse({"detail": "Archived timeline not found"}, status=404)
+
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8") or "{}")
+        except Exception:
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
+
+        request_id = (data.get("request_id") or data.get("requestId") or "").strip()
+        action = (data.get("action") or "").strip().lower()
+        remarks = str(data.get("remarks") or "").strip()
+
+        if not request_id or action not in ["approve", "reject"]:
+            return JsonResponse({"detail": "Invalid request data"}, status=400)
+        if not remarks:
+            return JsonResponse({"detail": "Remarks are required"}, status=400)
+
+        req = _assistant_request_by_identifier(user, timeline, request_id)
+        if not req:
+            return JsonResponse({"detail": "Clearance request not found"}, status=404)
+
+        with transaction.atomic():
+            req.status = ClearanceRequest.Status.APPROVED if action == "approve" else ClearanceRequest.Status.REJECTED
+            req.remarks = remarks
+            req.approved_by = user
+            req.approved_date = timezone.now()
+            req.save(update_fields=["status", "remarks", "approved_by", "approved_date"])
+
+            ActivityLog.objects.create(
+                event_type=(
+                    ActivityLog.EventType.APPROVED_CLEARANCE if action == "approve"
+                    else ActivityLog.EventType.REJECTED_CLEARANCE
+                ),
+                user=user,
+                faculty=req.faculty,
+                requirement=req.requirement,
+            )
+
+            _archive_clearance_timeline_records(timeline)
+
+        archived = _assistant_scoped_archived_clearances(user, timeline).filter(faculty=req.faculty).first()
+        return JsonResponse({
+            "success": True,
+            "message": f"Clearance request {action}d successfully",
+            "status": _to_request_status(req.status),
+            "archivedId": str(archived.id) if archived else None,
+        })
+
+    archived = _assistant_scoped_archived_clearances(user, timeline).filter(id=archived_id).first()
+    if not archived:
+        return JsonResponse({"detail": "Archived clearance not found"}, status=404)
+
+    faculty = archived.faculty
+    faculty_user = getattr(faculty, "user", None)
+    requests = _assistant_archived_requests_for_archived_clearance(archived)
+
+    return JsonResponse({
+        "timeline": {
+            "id": str(timeline.id),
+            "name": timeline.name or _clearance_timeline_name(timeline.academic_year_start, timeline.academic_year_end, timeline.term),
+        },
+        "item": {
+            "id": str(archived.id),
+            "employeeId": getattr(faculty, "employee_id", "") or "",
+            "schoolId": getattr(faculty, "employee_id", "") or "",
+            "name": _archived_faculty_display_name(faculty),
+            "fullName": _archived_faculty_display_name(faculty),
+            "schoolEmail": getattr(faculty_user, "email", "") or "",
+            "college": getattr(getattr(faculty, "college", None), "name", "") or "",
+            "department": getattr(getattr(faculty, "department", None), "name", "") or "",
+            "facultyType": getattr(faculty, "faculty_type", "") or "",
+            "status": "approved" if archived.status == ArchivedClearance.Status.COMPLETED else "pending",
+            "missingApproval": (archived.clearance_data or {}).get("missing_approval", ""),
+            "requests": requests,
+        },
+    })
 
 # Additional OVPHE endpoints
 def ovphe_tools_api(request):

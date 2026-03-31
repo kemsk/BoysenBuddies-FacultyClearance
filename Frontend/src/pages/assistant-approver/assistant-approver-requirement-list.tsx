@@ -22,12 +22,14 @@ import { Button } from "../../stories/components/button";
 export default function AssistantApproverRequirementList() {
   const navigate = useNavigate();
   const [items, setItems] = React.useState<RequirementListItem[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     fetch("/admin/xu-faculty-clearance/api/assistant-approver/requirement-list")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: { items?: RequirementListItem[] }) => setItems(data.items ?? []))
-      .catch(() => setItems([]));
+      .catch(() => setItems([]))
+      .finally(() => setLoading(false));
   }, []);
 
   return (
@@ -66,12 +68,24 @@ export default function AssistantApproverRequirementList() {
         </div>
        
        <div className="mt-2 space-y-3">
-        <RequirementListCard
-          items={items}
-          headerActionHref="/assistant-approver-requirement-list"
-          headerActionImgSrc="/BlackChevronIcon.png"
-          headerActionImgAlt="View requirement"
-        />
+        {loading ? (
+          <div className="rounded-xl border border-muted-foreground/20 bg-card p-6 text-black">Loading requirements...</div>
+        ) : items.length ? (
+          items.map((item, index) => (
+            <RequirementListCard
+              key={`${item.title}-${index}`}
+              title={item.title}
+              Recipients={(item as RequirementListItem & { recipients?: string }).recipients ?? "Same Department Faculty"}
+              description={item.description}
+              physicalSubmission={item.physicalSubmission}
+              LastUpdated={item.lastUpdated}
+              CreatedBy={(item as RequirementListItem & { createdBy?: string }).createdBy ?? ""}
+              ClearanceTimeline={(item as RequirementListItem & { clearanceTimeline?: string }).clearanceTimeline ?? ""}
+            />
+          ))
+        ) : (
+          <div className="rounded-xl border border-muted-foreground/20 bg-card p-6 text-black">No requirements found.</div>
+        )}
        </div>
 
       </main>

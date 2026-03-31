@@ -42,7 +42,7 @@ export default function Login() {
     {
       value: 4,
       name: 'assistant',
-      display_name: 'Student Assistant',
+      display_name: 'Assistant Approver',
       icon_primary: '/public/PrimaryHandIcon.png',
       icon_white: '/public/WhiteHandIcon.png'
     },

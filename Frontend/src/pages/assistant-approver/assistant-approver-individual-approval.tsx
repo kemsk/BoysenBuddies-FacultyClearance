@@ -7,6 +7,27 @@ import { Button } from "../../stories/components/button";
 import { useNavigate } from "react-router-dom";
 import { Textarea } from "../../stories/components/textarea";
 
+async function parseApiResponse<T>(res: Response): Promise<T> {
+  const text = await res.text();
+  let data: unknown = {};
+
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    if (!res.ok) {
+      throw new Error("The server returned an invalid response. Please refresh and try again.");
+    }
+    throw new Error("Received an invalid JSON response from the server.");
+  }
+
+  if (!res.ok) {
+    const detail = typeof data === "object" && data !== null && "detail" in data ? String((data as { detail?: string }).detail || "") : "";
+    throw new Error(detail || "Request failed.");
+  }
+
+  return data as T;
+}
+
 type AssistantApprovalItem = {
   id: string;
   requestId: string;
@@ -54,7 +75,7 @@ export default function AssitantApproverIndividualApproval() {
     fetch(`/admin/xu-faculty-clearance/api/assistant-approver/individual-approval?requestId=${encodeURIComponent(requestId)}`, {
       credentials: "include",
     })
-      .then((res) => (res.ok ? res.json() : res.json().then((data) => Promise.reject(new Error(data.detail || "Failed to load request")))))
+      .then((res) => parseApiResponse<{ item?: AssistantApprovalItem }>(res))
       .then((data: { item?: AssistantApprovalItem }) => {
         setItem(data.item ?? null);
         setRemarks(data.item?.remarks ?? "");
@@ -79,11 +100,7 @@ export default function AssitantApproverIndividualApproval() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ requestId: item.requestId, action, remarks }),
     })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Failed to save action.");
-        return data as { item?: AssistantApprovalItem; ok?: boolean };
-      })
+      .then((res) => parseApiResponse<{ item?: AssistantApprovalItem; ok?: boolean }>(res))
       .then((data) => {
         if (data.item) {
           setItem(data.item);
