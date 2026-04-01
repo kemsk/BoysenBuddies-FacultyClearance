@@ -5,6 +5,7 @@ app_name = 'fc'
 
 urlpatterns = [
     path('api/me', views.me_api, name='Me'),
+    path('api/notifications/unread-count', views.unread_notifications_count_api, name='UnreadNotificationsCount'),
     path('api/auth/google', views.google_sign_in_api, name='GoogleSignIn'),
     path('api/auth/heartbeat', views.heartbeat_api, name='Heartbeat'),
     path('api/auth/logout', views.logout_api, name='Logout'),

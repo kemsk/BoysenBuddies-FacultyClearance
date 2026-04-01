@@ -42,6 +42,35 @@ const CLEARANCE_TIMELINES_STORAGE_KEY = "ciso_clearance_timelines";
 const TIMELINE_API_PATH = "/admin/xu-faculty-clearance/api/ciso/clearance-timeline";
 const TERM_ORDER = ["First Semester", "Second Semester", "Intersession"] as const;
 
+function postCISONotification(payload: {
+  title: string;
+  body: string;
+  details: string[];
+  status: null;
+  is_read: 0;
+  user_roles: string[];
+  created_by_id?: string | number | null;
+  approver_id?: string | number | null;
+  clearance_period_start_date?: string | null;
+  clearance_period_end_date?: string | null;
+}) {
+  fetch("/admin/xu-faculty-clearance/api/ciso/notifications", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+    .then(async (r) => {
+      if (r.ok) return;
+      const text = await r.text().catch(() => "");
+      console.error("CISO notification POST failed", r.status, text);
+    })
+    .catch((e) => {
+      console.error("CISO notification POST threw", e);
+    });
+}
+
+
 function loadTimelineItems(): StoredClearanceTimelineItem[] {
   try {
     const raw = localStorage.getItem(CLEARANCE_TIMELINES_STORAGE_KEY);
@@ -68,6 +97,12 @@ type OVPHEClearanceTimelinesResponse = { items: StoredClearanceTimelineItem[] };
 type TimelineMutationPayload = ClearanceTimelineDialogValues & {
   id?: string;
 };
+
+type SubmitTimelineOptions = {
+  notifyStarted?: boolean;
+  notifyUpdated?: boolean;
+};
+ 
 
 type TimelineDeletePayload = {
   id: string;
@@ -338,8 +373,13 @@ export default function CISOClearanceTimeline() {
       });
   }, []);
 
+  const editingItem = React.useMemo(
+    () => (editingItemId ? items.find((i) => i.id === editingItemId) : undefined),
+    [editingItemId, items]
+  );
+
   const submitTimeline = React.useCallback(
-    async (method: "POST" | "PUT", payload: TimelineMutationPayload) => {
+    async (method: "POST" | "PUT", payload: TimelineMutationPayload, options?: SubmitTimelineOptions) => {
       setIsSubmitting(true);
       setTimelineError("");
 
@@ -356,6 +396,102 @@ export default function CISOClearanceTimeline() {
           throw new Error((data && data.detail) || "Timeline request failed.");
         }
 
+        const clearancePeriodStartDate = payload.clearanceStartDate
+          ? String(payload.clearanceStartDate).slice(0, 10)
+          : null;
+        const clearancePeriodEndDate = payload.clearanceEndDate
+          ? String(payload.clearanceEndDate).slice(0, 10)
+          : null;
+
+        // Post notification if timeline is set as active
+        if (payload.setAsActive) {
+          const schoolYear = payload.academicYearStart && payload.academicYearEnd
+            ? `${payload.academicYearStart}-${payload.academicYearEnd}` 
+            : `${payload.academicYearStart || payload.academicYearEnd || ""}`;
+          const semester = payload.term || "";
+
+          void postCISONotification({
+            title: "Clearance Timeline Started",
+            body: `The clearance timeline for ${schoolYear} ${semester} is now active. Faculty Members may begin submitting requests.`,
+            details: [`School Year = "${schoolYear}" Semester = "${semester}"`],
+            status: null,
+            is_read: 0,
+            user_roles: ["FACULTY"],
+            created_by_id: null,
+            approver_id: null,
+            clearance_period_start_date: clearancePeriodStartDate,
+            clearance_period_end_date: clearancePeriodEndDate, 
+          });
+
+          void postCISONotification({
+            title: "Clearance Timeline Started",
+            body: `The clearance timeline for ${schoolYear} ${semester} is now active. You may begin creating requests.`,
+            details: [`School Year = "${schoolYear}" Semester = "${semester}"`],
+            status: null,
+            is_read: 0,
+            user_roles: ["APPROVER"],
+            created_by_id: null,
+            approver_id: null,
+            clearance_period_start_date: clearancePeriodStartDate,
+            clearance_period_end_date: clearancePeriodEndDate,
+          });          
+        }
+
+        // Post notification if timeline is updated (but not just enable/disable)
+        if (options?.notifyUpdated) {
+          const madeInactive = Boolean(editingItem?.setAsActive) && payload.setAsActive === false;
+
+          if (madeInactive) {
+            const schoolYear = payload.academicYearStart && payload.academicYearEnd
+              ? `${payload.academicYearStart}-${payload.academicYearEnd}` 
+              : `${payload.academicYearStart || payload.academicYearEnd || ""}`;
+            const semester = payload.term || "";
+
+            void postCISONotification({
+              title: "Clearance Timeline Closed",
+              body: `The timeline for ${schoolYear} ${semester} is now inactive and has been archived.`,
+              details: [`School Year = "${schoolYear}" Semester = "${semester}"`],
+              status: null,
+              is_read: 0,
+              user_roles: ["APPROVER", "FACULTY", "ASSISTANT_APPROVER"],
+              created_by_id: null,
+              approver_id: null,
+              clearance_period_start_date: clearancePeriodStartDate,
+              clearance_period_end_date: clearancePeriodEndDate,              
+            });
+          }
+
+          // Check if this is just an enable/disable change
+          const isJustToggleChange = (
+            payload.academicYearStart === editingItem?.academicYearStart &&
+            payload.academicYearEnd === editingItem?.academicYearEnd &&
+            payload.term === editingItem?.term &&
+            payload.clearanceStartDate === editingItem?.clearanceStartDate &&
+            payload.clearanceEndDate === editingItem?.clearanceEndDate &&
+            payload.setAsActive !== editingItem?.setAsActive
+          );
+
+          if (!isJustToggleChange) {
+            const schoolYear = payload.academicYearStart && payload.academicYearEnd
+              ? `${payload.academicYearStart}-${payload.academicYearEnd}` 
+              : `${payload.academicYearStart || payload.academicYearEnd || ""}`;
+            const semester = payload.term || "";
+
+            void postCISONotification({
+              title: "Clearance Timeline Updated",
+              body: `The clearance period for ${schoolYear} ${semester} has been modified. Check the new start/end dates.`,
+              details: [`School Year = "${schoolYear}" Semester = "${semester}"`],
+              status: null,
+              is_read: 0,
+              user_roles: ["APPROVER", "FACULTY", "ASSISTANT_APPROVER"],
+              created_by_id: null,
+              approver_id: null,
+              clearance_period_start_date: clearancePeriodStartDate,
+              clearance_period_end_date: clearancePeriodEndDate,
+            });
+          }
+        }
+
         await refreshTimelines();
         return data;
       } catch (error) {
@@ -366,7 +502,7 @@ export default function CISOClearanceTimeline() {
         setIsSubmitting(false);
       }
     },
-    [refreshTimelines]
+    [refreshTimelines, editingItem]
   );
 
   const deleteTimeline = React.useCallback(
@@ -407,11 +543,6 @@ export default function CISOClearanceTimeline() {
   const timelinesByTerm = React.useMemo(() => {
     return TERM_ORDER.map((term) => items.find((item) => item.term === term));
   }, [items]);
-
-  const editingItem = React.useMemo(
-    () => (editingItemId ? items.find((i) => i.id === editingItemId) : undefined),
-    [editingItemId, items]
-  );
 
   const editInitialValues = React.useMemo((): Partial<ClearanceTimelineDialogValues> | undefined => {
     if (!editingItem) return undefined;
@@ -478,7 +609,9 @@ export default function CISOClearanceTimeline() {
       clearanceStartDate: selected.clearanceStartDate,
       clearanceEndDate: selected.clearanceEndDate,
       setAsActive: next,
-    })
+    },
+      { notifyStarted: next }
+    )
       .then(() => {
         postCISOActivityLog({
           event_type: next ? "enabled_timeline" : "disabled_timeline",
@@ -487,6 +620,33 @@ export default function CISOClearanceTimeline() {
             `Semester: ${selected.term}`,
           ],
         });
+        // Post notification if timeline is being deactivated
+        if (!next) {
+          const schoolYear = selected.academicYearStart && selected.academicYearEnd
+            ? `${selected.academicYearStart}-${selected.academicYearEnd}` 
+            : `${selected.academicYearStart || selected.academicYearEnd || ""}`;
+          const semester = selected.term || "";
+          const clearancePeriodStartDate = selected.clearanceStartDate
+            ? String(selected.clearanceStartDate).slice(0, 10)
+            : null;
+          const clearancePeriodEndDate = selected.clearanceEndDate
+            ? String(selected.clearanceEndDate).slice(0, 10)
+            : null;
+
+          void postCISONotification({
+            title: "Clearance Timeline Closed",
+            body: `The timeline for ${schoolYear} ${semester} is now inactive and has been archived.`,
+            details: [`School Year = "${schoolYear}" Semester = "${semester}"`],
+            status: null,
+            is_read: 0,
+            user_roles: ["APPROVER", "FACULTY", "ASSISTANT_APPROVER"],
+            created_by_id: null,
+            approver_id: null,
+            clearance_period_start_date: clearancePeriodStartDate,
+            clearance_period_end_date: clearancePeriodEndDate,
+          });
+        }
+
         setToggleConfirm({ open: false, item: null, next: false });
         openCreateResult(
           "success",
@@ -574,7 +734,7 @@ export default function CISOClearanceTimeline() {
           initialValues={createInitialValues}
           hideTermField
           onCreate={(payload) => {
-            void submitTimeline("POST", payload)
+            void submitTimeline("POST", payload, { notifyStarted: Boolean(payload.setAsActive) })
               .then(() => {
                 postCISOActivityLog({
                   event_type: "created_timeline",
@@ -611,7 +771,7 @@ export default function CISOClearanceTimeline() {
               return;
             }
 
-            void submitTimeline("PUT", { ...payload, id: editingItemId })
+            void submitTimeline("PUT", { ...payload, id: editingItemId }, { notifyUpdated: true })
               .then(() => {
                 postCISOActivityLog({
                   event_type: "edited_timeline",
@@ -620,6 +780,7 @@ export default function CISOClearanceTimeline() {
                     `Semester: ${payload.term}`,
                   ],
                 });
+
                 setEditOpen(false);
                 setEditingItemId(null);
                 openCreateResult(

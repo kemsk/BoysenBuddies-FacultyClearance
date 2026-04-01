@@ -1021,17 +1021,30 @@ class Notification(models.Model):
 
 
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="notifications")
-
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_notifications",
+    )
+    approver = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approver_notifications",
+    )
     title = models.CharField(max_length=200, null=True, blank=True)
-
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.SUBMITTED)
-
+    status = models.CharField(max_length=20, choices=Status.choices, null=True, blank=True, default=None)
     body = models.TextField(null=True, blank=True)
 
     details = models.JSONField(default=list, blank=True)
 
     is_read = models.BooleanField(default=False)
-
+    user_role = models.CharField(max_length=100, blank=True, default="") # Store list of role names this notification targets
+    clearance_period_start_date = models.DateField(null=True, blank=True)
+    clearance_period_end_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 

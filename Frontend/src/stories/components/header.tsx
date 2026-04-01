@@ -95,7 +95,37 @@ export function Header() {
 
 export function FacultyHeader() {
   const navigate = useNavigate();
-  const unreadCount = 3;
+  const [unreadCount, setUnreadCount] = React.useState(0);
+
+  React.useEffect(() => {
+    let mounted = true;
+    fetch("/admin/xu-faculty-clearance/api/notifications/unread-count", {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) {
+          return null;
+        }
+        return resp.json();
+      })
+      .then((data) => {
+        if (!mounted || !data) return;
+        const count = Number(data.unreadCount);
+        setUnreadCount(Number.isFinite(count) ? count : 0);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setUnreadCount(0);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleLogout = async () => {
     console.log("LOGOUT: FacultyHeader handleLogout called!");
@@ -246,7 +276,37 @@ export function AdminHeader() {
 
 export function ApprovalHeader() {
   const navigate = useNavigate();
-  const unreadCount = 3;
+  const [unreadCount, setUnreadCount] = React.useState(0);
+
+  React.useEffect(() => {
+    let mounted = true;
+    fetch("/admin/xu-faculty-clearance/api/notifications/unread-count", {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) {
+          return null;
+        }
+        return resp.json();
+      })
+      .then((data) => {
+        if (!mounted || !data) return;
+        const count = Number(data.unreadCount);
+        setUnreadCount(Number.isFinite(count) ? count : 0);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setUnreadCount(0);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -484,9 +544,295 @@ export function ApprovalHeader() {
 }
 
 
+export function HROHeader() {
+  const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = React.useState(0);
+
+  React.useEffect(() => {
+    let mounted = true;
+    fetch("/admin/xu-faculty-clearance/api/notifications/unread-count", {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) {
+          return null;
+        }
+        return resp.json();
+      })
+      .then((data) => {
+        if (!mounted || !data) return;
+        const count = Number(data.unreadCount);
+        setUnreadCount(Number.isFinite(count) ? count : 0);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setUnreadCount(0);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      console.log("LOGOUT(UI): Clearing current session...");
+      const response = await fetch(
+        "/admin/xu-faculty-clearance/api/auth/logout",
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("LOGOUT(UI): Logout request failed", response.status);
+      } else {
+        console.log("LOGOUT(UI): Session cleared");
+      }
+    } catch (err) {
+      console.error("LOGOUT(UI): Logout request error", err);
+    } finally {
+      navigate("/login");
+    }
+  };
+
+  return (
+    <HeaderVariant>
+      <div className="mt-4 flex h-full flex-col">
+        <div className="flex flex-col gap-4">
+
+          <div className="flex items-center gap-4">
+            <img
+              src="/Pen Swish Dark Blue_FacultyClearTrack.png"
+              alt="Faculty ClearTrack"
+              className="h-10 w-auto object-contain"
+            />
+
+            <span className="text-primary font-bold leading-[1.1] text-[clamp(1rem,3.5vw,1.4rem)]">
+              XU Faculty <br /> ClearTrack
+            </span>
+          </div>
+
+        <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
+
+          <nav className="flex flex-col gap-4 mt-2">
+            <div>
+              <SheetClose asChild>
+                <Link
+                  to="/HRO-dashboard"
+                  className="flex items-center gap-3  font-semibold text-primary text-xl"
+                >
+                  <img
+                    src="/PrimaryHomeIcon.png"
+                    alt="Dashboard"
+                    className="h-5 w-5 object-contain"
+                  />
+                  <span>Dashboard</span>
+                </Link>
+              </SheetClose>
+
+              <div className="mt-5 flex gap-3">
+                <div className="flex w-5 justify-center">
+                  <div className="w-px bg-[hsl(var(--gray-border))]" />
+                </div>
+                
+                <div className="flex flex-col space-y-3">
+                  <SheetClose asChild>
+                    <Link
+                      to="/HRO-dashboard"
+                      className="text-xl font-regular text-primary"
+                    >
+                      Approver View
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link
+                      to="/HRO-dashboard"
+                      className="text-xl font-regular text-primary"
+                    >
+                      Announcements
+                    </Link>
+                  </SheetClose>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-2">
+            <SheetClose asChild>
+              <Link
+                to="/HRO-clearance"
+                className="flex items-center gap-3 text-xl font-semibold text-primary"
+              >
+                <img
+                  src="/PrimaryPenIcon.png"
+                  alt="Clearance"
+                  className="h-5 w-5 object-contain"
+                />
+                <span>Clearance</span>
+              </Link>
+            </SheetClose>
+            </div>
+
+           <div className="mt-2">
+              <SheetClose asChild>
+                <Link
+                  to="/HRO-action"
+                  className="flex items-center gap-3 text-xl font-semibold text-primary"
+                >
+                  <img
+                    src="/PrimaryClockIcon.png"
+                    alt="Actions"
+                    className="h-5 w-5 object-contain"
+                  />
+                  <span>Actions</span>
+                </Link>
+              </SheetClose>
+
+              <div className="mt-5 flex gap-3">
+                <div className="flex w-5 justify-center">
+                  <div className="w-px bg-[hsl(var(--gray-border))]" />
+                </div>
+                <div className=" flex flex-col space-y-3">
+                  <SheetClose asChild>
+                    <Link
+                      to="/HRO-assistant-list"
+                      className="text-xl font-regular text-primary"
+                    >
+                      View Approver Assistants
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link
+                      to="/HRO-export-archive-clearance"
+                      className="text-xl font-regular text-primary"
+                    >
+                      Export & Archive Clearance
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link
+                      to="/HRO-activity-logs"
+                      className="text-xl font-regular text-primary"
+                    >
+                      Check Activity Logs
+                    </Link>
+                  </SheetClose>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-2">
+            <SheetClose asChild>
+              <Link
+                to="/HRO-notification"
+                className="flex items-center gap-3 text-xl font-semibold text-primary"
+              >
+                <img
+                  src="/PrimaryNotificationsIcon.png"
+                  alt="Notifications"
+                  className="h-5 w-5 object-contain"
+                />
+                <span>Notifications</span>
+                {unreadCount > 0 ? (
+                  <div className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+                    {unreadCount}
+                  </div>
+                ) : null}
+              </Link>
+            </SheetClose>
+            </div>
+          </nav>
+        </div>
+
+        <Divider className="-mx-6 mt-6 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
+
+        <div className="pt-4">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 text-left text-xl font-semibold text-primary"
+              >
+                <img
+                  src="/PrimaryLogoutIcon.png"
+                  alt="Logout"
+                  className="h-5 w-5 object-contain"
+                />
+                <span>Logout</span>
+              </button>
+            </AlertDialogTrigger>
+
+            <AlertDialogContent className="max-w-xs">
+              <AlertDialogHeader className="items-center text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border-2 border-red-500 text-red-500">
+                  <span className="text-2xl font-bold">!</span>
+                </div>
+                <AlertDialogTitle className="mt-2 text-base font-semibold">
+                  You are logging out
+                </AlertDialogTitle>
+                <div className="text-sm font-semibold text-muted-foreground">
+                  XU Faculty ClearTrack
+                </div>
+              </AlertDialogHeader>
+
+              <AlertDialogFooter className="mt-2 flex flex-col gap-2 sm:flex-col sm:space-x-0">
+                <AlertDialogAction
+                  className="w-full"
+                  onClick={handleLogout}
+                >
+                  Logout
+                </AlertDialogAction>
+                <AlertDialogCancel className="w-full">Cancel</AlertDialogCancel>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </div>
+    </HeaderVariant>
+  );
+}
+
 export function CISOHeader() {
   const navigate = useNavigate();
-  const unreadCount = 3;
+  const [unreadCount, setUnreadCount] = React.useState(0);
+
+  React.useEffect(() => {
+    let mounted = true;
+    fetch("/admin/xu-faculty-clearance/api/notifications/unread-count", {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) {
+          return null;
+        }
+        return resp.json();
+      })
+      .then((data) => {
+        if (!mounted || !data) return;
+        const count = Number(data.unreadCount);
+        setUnreadCount(Number.isFinite(count) ? count : 0);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setUnreadCount(0);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -747,7 +1093,37 @@ export function CISOHeader() {
 
 export function OVPHEHeader() {
   const navigate = useNavigate();
-  const unreadCount = 3;
+  const [unreadCount, setUnreadCount] = React.useState(0);
+
+  React.useEffect(() => {
+    let mounted = true;
+    fetch("/admin/xu-faculty-clearance/api/notifications/unread-count", {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) {
+          return null;
+        }
+        return resp.json();
+      })
+      .then((data) => {
+        if (!mounted || !data) return;
+        const count = Number(data.unreadCount);
+        setUnreadCount(Number.isFinite(count) ? count : 0);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setUnreadCount(0);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -972,7 +1348,37 @@ export function OVPHEHeader() {
 
 export function AssistantApproverHeader() {
   const navigate = useNavigate();
-  const unreadCount = 3;
+  const [unreadCount, setUnreadCount] = React.useState(0);
+
+  React.useEffect(() => {
+    let mounted = true;
+    fetch("/admin/xu-faculty-clearance/api/notifications/unread-count", {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
+    })
+      .then(async (resp) => {
+        if (!resp.ok) {
+          return null;
+        }
+        return resp.json();
+      })
+      .then((data) => {
+        if (!mounted || !data) return;
+        const count = Number(data.unreadCount);
+        setUnreadCount(Number.isFinite(count) ? count : 0);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setUnreadCount(0);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
