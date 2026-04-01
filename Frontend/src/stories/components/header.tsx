@@ -460,12 +460,21 @@ export function ApprovalHeader() {
                   className="w-full"
                   onClick={async () => {
                     try {
-                      await fetch("/admin/xu-faculty-clearance/api/approver/activity-logs", {
+                      const r = await fetch("/admin/xu-faculty-clearance/api/approver/activity-logs", {
                         method: "POST",
                         credentials: "include",
+                        keepalive: true,
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ event_type: "user_logout", details: ["Approver Logout"] }),
+                        body: JSON.stringify({
+                          event_type: "user_logout",
+                          user_role: "Approver",
+                          details: ["Approver Logout"],
+                        }),
                       });
+                      if (!r.ok) {
+                        const text = await r.text().catch(() => "");
+                        console.error("[Approver] activity log POST failed:", r.status, text);
+                      }
                     } catch {
                     }
                     await handleLogout();
@@ -722,12 +731,21 @@ export function CISOHeader() {
                   className="w-full"
                   onClick={async () => {
                     try {
-                      await fetch("/admin/xu-faculty-clearance/api/ovphe/activity-logs", {
+                      const r = await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
                         method: "POST",
                         credentials: "include",
+                        keepalive: true,
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ event_type: "user_logout", details: ["CISO Logout"] }),
+                        body: JSON.stringify({
+                          event_type: "user_logout",
+                          user_role: "CISO",
+                          details: ["CISO Logout"],
+                        }),
                       });
+                      if (!r.ok) {
+                        const text = await r.text().catch(() => "");
+                        console.error("[CISO] activity log POST failed:", r.status, text);
+                      }
                     } catch {
                     }
                     await handleLogout();
@@ -947,12 +965,21 @@ export function OVPHEHeader() {
                   className="w-full" 
                   onClick={async () => {
                     try {
-                      await fetch("/admin/xu-faculty-clearance/api/ovphe/activity-logs", {
+                      const r = await fetch("/admin/xu-faculty-clearance/api/ovphe/activity-logs", {
                         method: "POST",
                         credentials: "include",
+                        keepalive: true,
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ event_type: "user_logout", details: ["OVPHE Logout"] }),
+                        body: JSON.stringify({
+                          event_type: "user_logout",
+                          user_role: "OVPHE",
+                          details: ["OVPHE Logout"],
+                        }),
                       });
+                      if (!r.ok) {
+                        const text = await r.text().catch(() => "");
+                        console.error("[OVPHE] activity log POST failed:", r.status, text);
+                      }
                     } catch {
                     }
                     await handleLogout();
@@ -1154,11 +1181,12 @@ export function AssistantApproverHeader() {
                   className="w-full"
                   onClick={async () => {
                     try {
-                      await fetch(
+                      const r = await fetch(
                         "/admin/xu-faculty-clearance/api/approver/activity-logs",
                         {
                           method: "POST",
                           credentials: "include",
+                          keepalive: true,
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({
                             event_type: "user_logout",
@@ -1167,6 +1195,10 @@ export function AssistantApproverHeader() {
                           }),
                         }
                       );
+                      if (!r.ok) {
+                        const text = await r.text().catch(() => "");
+                        console.error("[Assistant] activity log POST failed:", r.status, text);
+                      }
                     } catch {
                     }
                     await handleLogout();

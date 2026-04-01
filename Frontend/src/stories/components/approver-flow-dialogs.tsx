@@ -101,7 +101,22 @@ export function AddApproverDialog(props: {
               <Button
                 type="button"
                 className="h-11 w-full rounded-md"
-                onClick={() => {
+                onClick={async () => {
+                  try {
+                    await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                      method: "POST",
+                      credentials: "include",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        event_type: "added_to_approver_flow",
+                        user_role: "CISO",
+                        details: category ? [`Department/Office Name = (\"${category}\")`] : [],
+                      }),
+                    });
+                  } catch {
+                    // ignore
+                  }
+
                   onCreate({ category, collegeIds });
                   onOpenChange(false);
                 }}

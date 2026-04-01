@@ -3977,195 +3977,211 @@ export function SectionListCard(props: SectionListCardProps) {
     </Card>
 
   );
-
 }
 
-
-
-export type FacultyDataDumpCardProps = {
-
+export interface FacultyDataDumpCardProps {
   title?: string;
-
   className?: string;
-
   onFileSelected?: (file: File) => void;
-
+  selectedFile?: File | null;
+  uploadStatus?: "idle" | "uploading" | "success" | "error";
+  uploadProgress?: number;
+  uploadStatusText?: string;
+  onCancelUpload?: () => void;
+  onRemoveFile?: () => void;
+  onActivate?: () => void;
+  activateDisabled?: boolean;
   onDownloadTemplate?: () => void;
-
   maxSizeLabel?: string;
-
   accept?: string;
-
   semesters?: { id: string; label: string }[];
-
   selectedSemesterId?: string;
-
   onSemesterChange?: (id: string) => void;
-
-};
-
-
+}
 
 export function FacultyDataDumpCard({
-
   title = "Upload Faculty Data",
-
   className,
-
   onFileSelected,
-
+  selectedFile,
+  uploadStatus = "idle",
+  uploadProgress = 0,
+  uploadStatusText,
+  onCancelUpload,
+  onRemoveFile,
+  onActivate,
+  activateDisabled = false,
   onDownloadTemplate,
-
   maxSizeLabel = "Max size 50 MB",
-
   accept = ".csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-
   semesters,
-
   selectedSemesterId,
-
   onSemesterChange,
-
 }: FacultyDataDumpCardProps) {
-
   const inputRef = React.useRef<HTMLInputElement | null>(null);
-
   const [internalSemesterId, setInternalSemesterId] = React.useState("");
-
+  const [internalFile, setInternalFile] = React.useState<File | null>(null);
   const currentSemesterId = selectedSemesterId ?? internalSemesterId;
-
-
+  const currentFile = selectedFile ?? internalFile;
 
   function handleFiles(files: FileList | null) {
-
     const file = files?.[0];
-
     if (!file) return;
-
+    setInternalFile(file);
     onFileSelected?.(file);
-
   }
 
+  const prettyBytes = (bytes: number) => {
+    if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+    const units = ["B", "KB", "MB", "GB"];
+    const idx = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+    const val = bytes / Math.pow(1024, idx);
+    return `${val.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`;
+  };
 
+  const statusLabel = (() => {
+    if (uploadStatusText?.trim()) return uploadStatusText.trim();
+    if (uploadStatus === "uploading") return "Uploading...";
+    if (uploadStatus === "success") return "Upload complete.";
+    if (uploadStatus === "error") return "Upload failed.";
+    return "";
+  })();
 
   return (
-
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
-
       <CardContent className="p-6">
-
         <div className="text-center text-base font-bold text-gray-900">{title}</div>
-
         <div className="mt-4">
-
           <Select
-
             value={currentSemesterId}
-
             onValueChange={(val) => {
-
               setInternalSemesterId(val);
-
               onSemesterChange?.(val);
-
             }}
-
           >
-
             <SelectTrigger className="w-full">
-
               <SelectValue placeholder="Select Semester" />
-
             </SelectTrigger>
-
             <SelectContent>
-
               {(semesters ?? []).map((s) => (
-
                 <SelectItem key={s.id} value={s.id}>
-
                   {s.label}
-
                 </SelectItem>
-
               ))}
-
             </SelectContent>
-
           </Select>
-
         </div>
-
-
 
         <div
-
-          className="mt-4 rounded-md border-2 border-dashed border-muted-foreground/40 bg-muted/30 p-8"
-
+          className={cn(
+            "mt-4 rounded-md border-2 border-dashed border-muted-foreground/40 bg-muted/30",
+            currentFile ? "p-4" : "p-8"
+          )}
           onDragOver={(e) => e.preventDefault()}
-
           onDrop={(e) => {
-
             e.preventDefault();
-
             handleFiles(e.dataTransfer.files);
-
           }}
-
         >
+          {currentFile ? (
+            <div className="w-full">
+              <div className="flex items-center gap-3 rounded-md border border-muted-foreground/20 bg-background p-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                  <Upload className="h-6 w-6" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold text-gray-900">{currentFile.name}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">
+                    {prettyBytes(currentFile.size)}{statusLabel ? ` • ${statusLabel}` : ""}
+                  </div>
+                  {uploadStatus === "uploading" ? (
+                    <div className="mt-2 h-2 w-full overflow-hidden rounded bg-muted">
+                      <div
+                        className="h-full bg-primary"
+                        style={{ width: `${Math.max(0, Math.min(100, uploadProgress))}%` }}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-2">
+                  {uploadStatus === "uploading" ? (
+                    <Button type="button" variant="icon" size="icon" onClick={onCancelUpload}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  ) : uploadStatus === "success" ? (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-success">
+                      <Check className="h-4 w-4 text-white" strokeWidth={4} />
+                    </div>
+                  ) : (
+                    <Button type="button" variant="icon" size="icon" onClick={onRemoveFile}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
 
-          <button
-
-            type="button"
-
-            className="mx-auto flex w-full flex-col items-center justify-center gap-3"
-
-            onClick={() => inputRef.current?.click()}
-
-          >
-
-            <div className="flex h-12 w-12 items-center justify-center rounded-md text-muted-foreground">
-
-              <Upload className="h-10 w-10" />
-
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                {uploadStatus === "uploading" ? (
+                  <Button type="button" variant="secondary" disabled className="col-span-2 h-10 w-full rounded-md">
+                    Cancel
+                  </Button>
+                ) : uploadStatus === "success" ? (
+                  <>
+                    <Button
+                      type="button"
+                      className="h-10 w-full rounded-md bg-destructive font-bold text-destructive-foreground hover:bg-destructive/90"
+                      onClick={onRemoveFile}
+                    >
+                      Remove File
+                    </Button>
+                    <Button
+                      type="button"
+                      className="h-10 w-full rounded-md bg-primary font-bold text-primary-foreground hover:bg-primary/90"
+                      onClick={onActivate}
+                      disabled={activateDisabled || !onActivate}
+                    >
+                      Activate
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="col-span-2 h-10 w-full rounded-md"
+                    onClick={() => inputRef.current?.click()}
+                  >
+                    Choose another file
+                  </Button>
+                )}
+              </div>
             </div>
-
-            <div className="text-md text-muted-foreground">
-
-              {" "}
-
-              <span className="font-bold">Click to upload </span> or drag and drop
-
-            </div>
-
-            <div className="text-xs text-muted-foreground">CSV or Excel files ({maxSizeLabel})</div>
-
-          </button>
-
-
-
+          ) : (
+            <button
+              type="button"
+              className="mx-auto flex w-full flex-col items-center justify-center gap-3"
+              onClick={() => inputRef.current?.click()}
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-md text-muted-foreground">
+                <Upload className="h-10 w-10" />
+              </div>
+              <div className="text-md text-muted-foreground">
+                {" "}
+                <span className="font-bold">Click to upload </span> or drag and drop
+              </div>
+              <div className="text-xs text-muted-foreground">CSV or Excel files ({maxSizeLabel})</div>
+            </button>
+          )}
           <input
-
             ref={inputRef}
-
             type="file"
-
             accept={accept}
-
             className="hidden"
-
             onChange={(e) => handleFiles(e.target.files)}
-
           />
-
         </div>
 
-
-
         <div className="mt-5 rounded-md bg-primary/10 p-4">
-
           <div className="text-lg font-bold text-primary">Need a template?</div>
-
           <div className="mt-1 mt-2 text-sm  text-muted-foreground">
 
             Download our CSV template to ensure your student data is formatted correctly

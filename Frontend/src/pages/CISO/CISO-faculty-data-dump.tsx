@@ -21,6 +21,14 @@ export default function CISOFacultyDataDump() {
   const [busy, setBusy] = React.useState(false);
   const [timelines, setTimelines] = React.useState<{ id: string; label: string }[]>([]);
   const [selectedTimelineId, setSelectedTimelineId] = React.useState("");
+  const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
+  const [uploadStatus, setUploadStatus] = React.useState<"idle" | "uploading" | "success" | "error">("idle");
+  const [uploadProgress, setUploadProgress] = React.useState(0);
+
+  const selectedTimelineLabel = React.useMemo(() => {
+    const found = timelines.find((t) => t.id === selectedTimelineId);
+    return found?.label || selectedTimelineId || "";
+  }, [timelines, selectedTimelineId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -101,11 +109,46 @@ export default function CISOFacultyDataDump() {
       
        <div className="mt-2 space-y-3">
 
+
+          
+
         <FacultyDataDumpCard
           accept=".csv,text/csv"
           semesters={timelines}
           selectedSemesterId={selectedTimelineId}
           onSemesterChange={setSelectedTimelineId}
+          selectedFile={uploadedFile}
+          uploadStatus={uploadStatus}
+          uploadProgress={uploadProgress}
+          onRemoveFile={async () => {
+            const fileName = uploadedFile?.name;
+            const timelineLabel = selectedTimelineLabel;
+            setUploadedFile(null);
+            setUploadStatus("idle");
+            setUploadProgress(0);
+            if (fileName && timelineLabel) {
+              try {
+                await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "faculty_data_dump_removed",
+                    details: [
+                      `File name = ${fileName}`,
+                      `Timeline = ${timelineLabel}`,
+                    ],
+                  }),
+                });
+              } catch {
+                // best-effort logging only
+              }
+            }
+          }}
+          onActivate={() => {
+            // Placeholder for activation logic
+            alert("Activate placeholder");
+          }}
           onFileSelected={async (file) => {
             if (busy) return;
             if (!selectedTimelineId) {
@@ -113,6 +156,9 @@ export default function CISOFacultyDataDump() {
               return;
             }
             setBusy(true);
+            setUploadedFile(file);
+            setUploadStatus("uploading");
+            setUploadProgress(0);
             try {
               const formData = new FormData();
               formData.append("file", file);
@@ -127,8 +173,45 @@ export default function CISOFacultyDataDump() {
               if (!res.ok) {
                 const msg = (data && (data.detail || JSON.stringify(data))) || "Import failed";
                 alert(msg);
+                setUploadStatus("error");
+                try {
+                  await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      event_type: "faculty_data_dump_error",
+                      details: [
+                        `File name = ${file.name}`,
+                        `Timeline = ${selectedTimelineLabel}`,
+                      ],
+                    }),
+                  });
+                } catch {
+                  // best-effort logging only
+                }
                 return;
               }
+
+              try {
+                await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "faculty_data_dump_upload",
+                    details: [
+                      `File name = ${file.name}`,
+                      `Timeline = ${selectedTimelineLabel}`,
+                    ],
+                  }),
+                });
+              } catch {
+                // best-effort logging only
+              }
+
+              setUploadStatus("success");
+              setUploadProgress(100);
 
               const created = data?.created_count ?? 0;
               const updated = data?.updated_count ?? 0;

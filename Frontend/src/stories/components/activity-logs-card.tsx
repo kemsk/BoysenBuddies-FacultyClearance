@@ -34,7 +34,6 @@ export type ActivityLogVariant =
   | "enabled_guideline"
   | "disabled_guideline"
   | "delete_guideline"
-  | "deleted_guideline"
   | "set_guideline_status_active"
   | "set_guideline_status_inactive"
   | "archived_guideline"
@@ -47,8 +46,9 @@ export type ActivityLogVariant =
   | "edited_announcement"
   | "created_timeline"
   | "edited_timeline"
-  | "set_timeline_status_active"
-  | "set_timeline_status_inactive"
+  | "archived_timeline"
+  | "enabled_timeline"
+  | "disabled_timeline"
   | "created_college"
   | "edited_college"
   | "deleted_college"
@@ -65,7 +65,10 @@ export type ActivityLogVariant =
   | "edited_approver"
   | "removed_approver"
   | "uploaded_faculty_data_dump"
-  | "removed_faculty_data_dump";
+  | "removed_faculty_data_dump"
+  | "faculty_data_dump_error"
+  | "faculty_data_dump_upload"
+  | "faculty_data_dump_removed";
 
 export type ActivityLogItem = {
   id: string;
@@ -153,7 +156,7 @@ function getActivityIcon(variant: ActivityLogVariant) {
     variant === "set_guideline_status_inactive" ||
     variant === "set_announcement_status_inactive" ||
     variant === "disabled_announcement" ||
-    variant === "set_timeline_status_inactive" ||
+    variant === "disabled_timeline" ||
     variant === "disabled_guideline" 
   ) {
     return (
@@ -206,7 +209,7 @@ function getActivityIcon(variant: ActivityLogVariant) {
     );
   }
 
-  if (variant === "removed_assistant_approver" || variant === "removed_approver") {
+  if (variant === "removed_assistant_approver" || variant === "removed_approver" || variant === "removed_faculty_data_dump") {
     return (
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-[hsl(var(--destructive))] p-0.5">
         <UserMinus strokeWidth={4} className="h-3 w-3 text-white" />
@@ -247,7 +250,7 @@ function getActivityIcon(variant: ActivityLogVariant) {
   }
 
   if (
-    variant === "set_timeline_status_active" ||
+    variant === "enabled_timeline" ||
     variant === "enabled_guideline" ||
     variant === "enabled_announcement" ||
     variant === "set_announcement_status_active"
@@ -263,12 +266,10 @@ function getActivityIcon(variant: ActivityLogVariant) {
     variant === "deleted_college" ||
     variant === "deleted_department" ||
     variant === "removed_from_approver_flow" ||
-    variant === "removed_faculty_data_dump" ||
     variant === "deleted_requirements" ||
     variant === "deleted_office" ||
     variant === "deleted_announcement" ||
-    variant === "delete_guideline" ||
-    variant === "deleted_guideline"
+    variant === "delete_guideline" 
   ) {
     return (
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-[hsl(var(--destructive))] p-0.5">
@@ -277,10 +278,17 @@ function getActivityIcon(variant: ActivityLogVariant) {
     );
   }
 
-  if (variant === "uploaded_faculty_data_dump") {
+  if (variant === "faculty_data_dump_upload") {
     return (
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-[#1f2b88] p-0.5">
         <Download strokeWidth={4} className="h-3 w-3 text-white" />
+      </div>
+    );
+  }
+  if (variant === "faculty_data_dump_error") {
+    return (
+      <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-destructive p-0.5">
+        <X strokeWidth={4} className="h-3 w-3 text-white" />
       </div>
     );
   }
@@ -423,14 +431,6 @@ function formatActivityLogText(item: ActivityLogItem): {
     return { title, description };
   }
 
-  if (item.variant === "deleted_guideline") {
-    const title = "Deleted Guideline";
-    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
-    const titleTail = resolvedGuidelineTitle ? `: ${resolvedGuidelineTitle}.` : ".";
-    const description = `User ${fullName} deleted guideline${titleTail}`;
-    return { title, description };
-  }
-
   if (item.variant === "set_guideline_status_active") {
     const title = "Set Guideline Status to \"Active\"";
     const guidelineLabel = resolvedGuidelineTitle ? `, ${resolvedGuidelineTitle}` : guidelineTitle ? `, ${guidelineTitle}` : "";
@@ -511,78 +511,282 @@ function formatActivityLogText(item: ActivityLogItem): {
 
   if (item.variant === "created_timeline") {
     const title = "Created Timeline";
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const details = (item as any).details || [];
+    const schoolYear = details.find((d: string) => d.includes("S.Y.")) || "";
+    const semester = details.find((d: string) => d.includes("Semester:"))?.replace("Semester:", "").trim() || "";
     const timelineLabel = [schoolYear, semester].filter(Boolean).join(" ").trim();
-    const labelTail = timelineLabel ? `: ${timelineLabel}.` : ".";
-    const description = `User ${userName} created timeline${labelTail}`;
+    const description = `User ${fullName} created timeline: ${timelineLabel}.`;
     return { title, description };
   }
 
   if (item.variant === "edited_timeline") {
     const title = "Edited Timeline";
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const details = (item as any).details || [];
+    const schoolYear = details.find((d: string) => d.includes("S.Y.")) || "";
+    const semester = details.find((d: string) => d.includes("Semester:"))?.replace("Semester:", "").trim() || "";
     const timelineLabel = [schoolYear, semester].filter(Boolean).join(" ").trim();
-    const labelTail = timelineLabel ? `: ${timelineLabel}.` : ".";
-    const description = `User ${userName} edited timeline${labelTail}`;
+    const description = `User ${fullName} edited timeline: ${timelineLabel}.`;
     return { title, description };
   }
 
-  if (item.variant === "set_timeline_status_active") {
+  if (item.variant === "enabled_timeline") {
     const title = "Set Timeline Status to \"Active\"";
+    const details = (item as any).details || [];
+    const schoolYear = details.find((d: string) => d.includes("S.Y.")) || "";
+    const semester = details.find((d: string) => d.includes("Semester:"))?.replace("Semester:", "").trim() || "";
     const timelineLabel = [schoolYear, semester].filter(Boolean).join(" ").trim();
     const labelTail = timelineLabel ? ` ${timelineLabel}` : "";
     const description = `User ${userName} set timeline,${labelTail} status to Active.`;
     return { title, description };
   }
 
-  if (item.variant === "set_timeline_status_inactive") {
+  if (item.variant === "disabled_timeline") {
     const title = "Set Timeline Status to \"Inactive\"";
+    const details = (item as any).details || [];
+    const schoolYear = details.find((d: string) => d.includes("S.Y.")) || "";
+    const semester = details.find((d: string) => d.includes("Semester:"))?.replace("Semester:", "").trim() || "";
     const timelineLabel = [schoolYear, semester].filter(Boolean).join(" ").trim();
     const labelTail = timelineLabel ? ` ${timelineLabel}` : "";
     const description = `User ${userName} set timeline,${labelTail} status to Inactive, clearance timeline is archived.`;
     return { title, description };
   }
 
-  if (item.variant === "created_college") {
-    const title = "Created College";
-    const collegeTail = collegeName ? `: ${collegeName}.` : ".";
-    const description = `User ${userName} created college${collegeTail}`;
+  if (item.variant === "archived_timeline") {
+    const title = "Archived Timeline";
+    const details = (item as any).details || [];
+    const schoolYear = details.find((d: string) => d.includes("S.Y.")) || "";
+    const semester = details.find((d: string) => d.includes("Semester:"))?.replace("Semester:", "").trim() || "";
+    const timelineLabel = [schoolYear, semester].filter(Boolean).join(" ").trim();
+    const labelTail = timelineLabel ? ` ${timelineLabel}` : "";
+    const description = `User ${userName} archived timeline,${labelTail}.`;
+    return { title, description };
+  }
+
+  if (item.variant === "edited_approver_flow") {
+    const title = "Edited Approver Flow";
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const details = (item as any).details || [];
+    const normalizedLines = (Array.isArray(details) ? details : [details])
+      .map((d: any) => String(d ?? "").trim())
+      .filter(Boolean);
+    const sequenceLines = normalizedLines
+      .map((line) => line.replace(/\s+/g, " ").trim())
+      .filter(Boolean);
+
+    const sequenceBlock = sequenceLines.length
+      ? `<br/>New sequence:<br/><br/>${sequenceLines.join("<br/>")}`
+      : "";
+
+    const description = `User ${fullName} updated the approver flow.${sequenceBlock}`;
+    return { title, description };
+  }
+
+  if (item.variant === "edited_approver") {
+    const title = "Edited Approver Flow";
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const details = (item as any).details || [];
+    const normalizedLines = (Array.isArray(details) ? details : [details])
+      .map((d: any) => String(d ?? "").trim())
+      .filter(Boolean);
+    const updated = normalizedLines.find((d) => /^Updated\s*:/i.test(d)) || "";
+    const previous = normalizedLines.find((d) => /^Previous\s*:/i.test(d)) || "";
+    const scopeRaw = updated || previous || normalizedLines[0] || "";
+    const approverScope = String(scopeRaw)
+      .replace(/^Updated\s*:\s*/i, "")
+      .replace(/^Previous\s*:\s*/i, "")
+      .trim() || "Approver";
+    const description = `User ${fullName} edited the ${approverScope} for the approver flow.`;
+    return { title, description };
+  }
+
+  if (item.variant === "added_to_approver_flow") {
+    const title = "Added to Approver Flow";
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const details = (item as any).details || [];
+    const deptFromDetails =
+      details.find((d: string) => d.includes("Department/Office"))?.replace(/.*?:\s*/g, "").trim() ||
+      details.find((d: string) => d.includes("Department"))?.replace(/.*?:\s*/g, "").trim() ||
+      details.find((d: string) => d.includes("Office"))?.replace(/.*?:\s*/g, "").trim() ||
+      "";
+    const parsedDeptLabel = (() => {
+      const raw = String(deptFromDetails || "").trim();
+      if (!raw) return "";
+      const quoted = raw.match(/"([^"]+)"/);
+      if (quoted?.[1]) return quoted[1].trim();
+      const paren = raw.match(/\(([^)]+)\)/);
+      if (paren?.[1]) return paren[1].replace(/"/g, "").trim();
+      const eq = raw.split("=").pop();
+      if (eq) return String(eq).replace(/[()\"]/g, "").trim();
+      return raw.replace(/[()\"]/g, "").trim();
+    })();
+    const deptLabel = parsedDeptLabel || deptOffice || "";
+    const tail = deptLabel ? ` ${deptLabel}` : "";
+    const description = `User ${fullName} added ${tail} to the approver flow.`;
+    return { title, description };
+  }
+
+  if (item.variant === "removed_from_approver_flow") {
+    const title = "Removed from Approver Flow";
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const details = (item as any).details || [];
+    const deptFromDetails =
+      details.find((d: string) => d.includes("Department/Office"))?.replace(/.*?:\s*/g, "").trim() ||
+      details.find((d: string) => d.includes("Department"))?.replace(/.*?:\s*/g, "").trim() ||
+      details.find((d: string) => d.includes("Office"))?.replace(/.*?:\s*/g, "").trim() ||
+      "";
+    const parsedDeptLabel = (() => {
+      const raw = String(deptFromDetails || "").trim();
+      if (!raw) return "";
+      const quoted = raw.match(/"([^"]+)"/);
+      if (quoted?.[1]) return quoted[1].trim();
+      const paren = raw.match(/\(([^)]+)\)/);
+      if (paren?.[1]) return paren[1].replace(/"/g, "").trim();
+      const eq = raw.split("=").pop();
+      if (eq) return String(eq).replace(/[()\"]/g, "").trim();
+      return raw.replace(/[()\"]/g, "").trim();
+    })();
+    const deptLabel = parsedDeptLabel || deptOffice || "";
+    const tail = deptLabel ? ` ${deptLabel}` : "";
+    const description = `User ${fullName} removed ${tail} to the approver flow.`;
     return { title, description };
   }
 
   if (item.variant === "edited_college") {
     const title = "Edited College";
-    const collegeTail = collegeName ? `: ${collegeName}.` : ".";
-    const description = `User ${userName} edited college${collegeTail}`;
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const details = (item as any).details || [];
+    const updatedCollege = details.find((d: string) => d.includes("Updated:"))?.replace("Updated:", "").trim() || "";
+    const finalCollegeName = updatedCollege || collegeName || "";
+    const collegeTail = finalCollegeName ? `: ${finalCollegeName}.` : ".";
+    const description = `User ${fullName} edited college${collegeTail}`;
     return { title, description };
   }
 
   if (item.variant === "deleted_college") {
     const title = "Deleted College";
-    const collegeTail = collegeName ? `: ${collegeName}.` : ".";
-    const description = `User ${userName} deleted college${collegeTail}`;
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const details = (item as any).details || [];
+    const collegeFromDetails = details.find((d: string) => d.includes("College :"))?.replace("College :", "").trim() || "";
+    const finalCollegeName = collegeFromDetails || collegeName || "";
+    const collegeTail = finalCollegeName ? `: ${finalCollegeName}.` : ".";
+    const description = `User ${fullName} deleted college${collegeTail}`;
+    return { title, description };
+  }
+
+  if (item.variant === "created_college") {
+    const title = "Created College";
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const details = (item as any).details || [];
+    const collegeFromDetails =
+      details.find((d: string) => d.includes("College :"))?.replace("College :", "").trim() ||
+      details.find((d: string) => d.includes("College:"))?.replace("College:", "").trim() ||
+      "";
+    const finalCollegeName = collegeFromDetails || collegeName || "";
+    const collegeTail = finalCollegeName ? `: ${finalCollegeName}.` : ".";
+    const description = `User ${fullName} created college${collegeTail}`;
     return { title, description };
   }
 
   if (item.variant === "created_department") {
     const title = "Created Department";
-    const deptTailLabel = departmentName ? `: ${departmentName}` : "";
-    const collegeTail = collegeName ? ` for ${collegeName}.` : ".";
-    const description = `User ${userName} created department${deptTailLabel}${collegeTail}`;
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const details = (item as any).details || [];
+    const deptFromDetails =
+      details.find((d: string) => d.includes("Department :"))?.replace("Department :", "").trim() ||
+      details.find((d: string) => d.includes("Department:"))?.replace("Department:", "").trim() ||
+      "";
+    const collegeFromDetails =
+      details.find((d: string) => d.includes("College :"))?.replace("College :", "").trim() ||
+      details.find((d: string) => d.includes("College:"))?.replace("College:", "").trim() ||
+      "";
+    const finalDepartmentName = deptFromDetails || departmentName || "";
+    const finalCollegeName = collegeFromDetails || collegeName || "";
+    const deptTail = finalDepartmentName ? `: ${finalDepartmentName}` : "";
+    const collegeTail = finalCollegeName ? ` for ${finalCollegeName}.` : ".";
+    const description = `User ${fullName} created department${deptTail}${collegeTail}`;
     return { title, description };
   }
 
   if (item.variant === "edited_department") {
     const title = "Edited Department";
-    const deptTailLabel = departmentName ? `: ${departmentName}` : "";
-    const collegeTail = collegeName ? ` for ${collegeName}.` : ".";
-    const description = `User ${userName} edited department${deptTailLabel}${collegeTail}`;
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const details = (item as any).details || [];
+    const deptFromDetails =
+      details.find((d: string) => d.includes("Updated:"))?.replace("Updated:", "").trim() ||
+      details.find((d: string) => d.includes("Department :"))?.replace("Department :", "").trim() ||
+      details.find((d: string) => d.includes("Department:"))?.replace("Department:", "").trim() ||
+      "";
+    const collegeFromDetails =
+      details.find((d: string) => d.includes("College :"))?.replace("College :", "").trim() ||
+      details.find((d: string) => d.includes("College:"))?.replace("College:", "").trim() ||
+      "";
+    const finalDepartmentName = deptFromDetails || departmentName || "";
+    const finalCollegeName = collegeFromDetails || collegeName || "";
+    const deptTail = finalDepartmentName ? `: ${finalDepartmentName}` : "";
+    const collegeTail = finalCollegeName ? ` for ${finalCollegeName}.` : ".";
+    const description = `User ${fullName} edited department${deptTail}${collegeTail}`;
     return { title, description };
   }
 
   if (item.variant === "deleted_department") {
     const title = "Deleted Department";
-    const deptTailLabel = departmentName ? `: ${departmentName}` : "";
-    const collegeTail = collegeName ? ` for ${collegeName}.` : ".";
-    const description = `User ${userName} deleted department${deptTailLabel}${collegeTail}`;
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const details = (item as any).details || [];
+    const deptFromDetails =
+      details.find((d: string) => d.includes("Department :"))?.replace("Department :", "").trim() ||
+      details.find((d: string) => d.includes("Department:"))?.replace("Department:", "").trim() ||
+      "";
+    const collegeFromDetails =
+      details.find((d: string) => d.includes("College :"))?.replace("College :", "").trim() ||
+      details.find((d: string) => d.includes("College:"))?.replace("College:", "").trim() ||
+      "";
+    const finalDepartmentName = deptFromDetails || departmentName || "";
+    const finalCollegeName = collegeFromDetails || collegeName || "";
+    const deptTail = finalDepartmentName ? `: ${finalDepartmentName}` : "";
+    const collegeTail = finalCollegeName ? ` for ${finalCollegeName}.` : ".";
+    const description = `User ${fullName} deleted department${deptTail}${collegeTail}`;
+    return { title, description };
+  }
+
+  if (item.variant === "created_office") {
+    const title = "Created Office";
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const details = (item as any).details || [];
+    const officeFromDetails =
+      details.find((d: string) => d.includes("Office :"))?.replace("Office :", "").trim() ||
+      details.find((d: string) => d.includes("Office:"))?.replace("Office:", "").trim() ||
+      "";
+    const officeTail = officeFromDetails ? `: ${officeFromDetails}.` : ".";
+    const description = `User ${fullName} created office${officeTail}`;
+    return { title, description };
+  }
+
+  if (item.variant === "edited_office") {
+    const title = "Edited Office";
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const details = (item as any).details || [];
+    const officeFromDetails =
+      details.find((d: string) => d.includes("Updated:"))?.replace("Updated:", "").trim() ||
+      details.find((d: string) => d.includes("Office :"))?.replace("Office :", "").trim() ||
+      details.find((d: string) => d.includes("Office:"))?.replace("Office:", "").trim() ||
+      "";
+    const officeTail = officeFromDetails ? `: ${officeFromDetails}.` : ".";
+    const description = `User ${fullName} edited office${officeTail}`;
+    return { title, description };
+  }
+
+  if (item.variant === "deleted_office") {
+    const title = "Deleted Office";
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const details = (item as any).details || [];
+    const officeFromDetails =
+      details.find((d: string) => d.includes("Office :"))?.replace("Office :", "").trim() ||
+      details.find((d: string) => d.includes("Office:"))?.replace("Office:", "").trim() ||
+      "";
+    const officeTail = officeFromDetails ? `: ${officeFromDetails}.` : ".";
+    const description = `User ${fullName} deleted office${officeTail}`;
     return { title, description };
   }
 
@@ -640,6 +844,41 @@ function formatActivityLogText(item: ActivityLogItem): {
   if (item.variant === "edited_requirements") {
     const title = "Edited Requirements";
     const description = `User ${userName} edited requirement${requirementTail}${deptTail}`;
+    return { title, description };
+  }
+
+  if (item.variant === "faculty_data_dump_upload") {
+    const title = "Faculty Data Dump Uploaded";
+    const details = (item as any).details || [];
+    const fileName = details.find((d: string) => d.includes("File name"))?.replace(/.*?=/, "").trim() || "";
+    const timeline = details.find((d: string) => d.includes("Timeline"))?.replace(/.*?=/, "").trim() || "";
+    const description = `User ${actorName} uploaded ${fileName} in timeline ${timeline}.`;
+    return { title, description };
+  }
+
+  if (item.variant === "faculty_data_dump_removed") {
+    const title = "Faculty Data Dump Removed";
+    const details = (item as any).details || [];
+    const fileName = details.find((d: string) => d.includes("File name"))?.replace(/.*?=/, "").trim() || "";
+    const timeline = details.find((d: string) => d.includes("Timeline"))?.replace(/.*?=/, "").trim() || "";
+    const description = `User ${actorName} removed ${fileName} in timeline ${timeline}.`;
+    return { title, description };
+  }
+
+  if (item.variant === "faculty_data_dump_error") {
+    const title = "Faculty Data Dump Error";
+    const details = (item as any).details || [];
+    const fileName = details.find((d: string) => d.includes("File name"))?.replace(/.*?=/, "").trim() || "";
+    const timeline = details.find((d: string) => d.includes("Timeline"))?.replace(/.*?=/, "").trim() || "";
+    const description = `User ${actorName} failed to upload ${fileName} in timeline ${timeline}.`;
+    return { title, description };
+  }
+
+  if (item.variant === "deleted_guideline") {
+    const title = "Deleted Guideline";
+    const details = (item as any).details || [];
+    const guidelineName = details.find((d: string) => d.includes("Guideline:"))?.replace("Guideline: ", "").trim() || "";
+    const description = `User ${actorName} deleted guideline${guidelineName ? `: ${guidelineName}` : ""}.`;
     return { title, description };
   }
 
