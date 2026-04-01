@@ -299,7 +299,7 @@ export default function SystemAnalytics() {
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-bold text-primary">Export Analytics</div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    Export faculty clearance analytics for chosen College in .xlsx
+                    Export faculty clearance analytics for chosen College in .csv
                   </div>
                 </div>
 
@@ -318,7 +318,31 @@ export default function SystemAnalytics() {
                     });
                     const params = buildAnalyticsParams();
                     const url = `/admin/xu-faculty-clearance/api/ovphe/export-clearance-results?${params.toString()}`;
-                    window.location.assign(url);
+                    fetch(url, { credentials: "include" })
+                      .then((response) => {
+                        if (!response.ok) {
+                          return Promise.reject();
+                        }
+                        const disposition = response.headers.get("content-disposition") || "";
+                        const match = disposition.match(/filename="?([^";]+)"?/i);
+                        const fallbackYear =
+                          selectedClearance && selectedClearance !== "All Clearances"
+                            ? selectedClearance.replace(/[^\d-]+/g, "_").replace(/^_+|_+$/g, "")
+                            : "active";
+                        const filename = match?.[1] || `clearance_results_${fallbackYear}.csv`;
+                        return response.blob().then((blob) => ({ blob, filename }));
+                      })
+                      .then(({ blob, filename }) => {
+                        const blobUrl = window.URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.href = blobUrl;
+                        link.download = filename;
+                        document.body.appendChild(link);
+                        link.click();
+                        link.remove();
+                        window.URL.revokeObjectURL(blobUrl);
+                      })
+                      .catch(() => {});
                   }}
                 >
                   <img src="/PrimaryChevronIcon.png" alt="Export analytics" className="h-5 w-5 object-contain" />

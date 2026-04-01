@@ -2345,6 +2345,70 @@ def _timeline_applicable_faculty_ids(timeline: ClearanceTimeline):
     return faculty_ids
 
 
+def _build_timeline_completion_lookup(timeline: ClearanceTimeline, faculty_rows):
+    requirement_rows = list(
+        Requirement.objects.filter(
+            clearance_timeline=timeline,
+            is_active=True,
+        ).prefetch_related(
+            "target_colleges",
+            "target_departments",
+            "target_offices",
+            "target_faculty",
+        ).order_by("id")
+    )
+
+    faculty_ids = [faculty.id for faculty in faculty_rows]
+    request_rows = list(
+        ClearanceRequest.objects.filter(
+            clearance_timeline=timeline,
+            faculty_id__in=faculty_ids,
+        ).select_related("requirement")
+    )
+
+    requests_by_faculty: dict[int, dict[int, ClearanceRequest]] = {}
+    for request_row in request_rows:
+        if not getattr(request_row, "requirement_id", None):
+            continue
+        requests_by_faculty.setdefault(request_row.faculty_id, {})[request_row.requirement_id] = request_row
+
+    completion_lookup = {}
+    for faculty in faculty_rows:
+        applicable_requirements = [
+            requirement for requirement in requirement_rows if _requirement_applies_to_faculty(requirement, faculty)
+        ]
+        request_by_requirement_id = requests_by_faculty.get(faculty.id, {})
+        approved_count = sum(
+            1
+            for requirement in applicable_requirements
+            if (
+                request_by_requirement_id.get(requirement.id)
+                and request_by_requirement_id[requirement.id].status == ClearanceRequest.Status.APPROVED
+            )
+        )
+        total_count = len(applicable_requirements)
+        is_completed = total_count > 0 and approved_count == total_count
+        completed_at = None
+        if is_completed:
+            approved_dates = [
+                request_by_requirement_id[requirement.id].approved_date
+                for requirement in applicable_requirements
+                if request_by_requirement_id.get(requirement.id)
+                and request_by_requirement_id[requirement.id].status == ClearanceRequest.Status.APPROVED
+                and request_by_requirement_id[requirement.id].approved_date
+            ]
+            if approved_dates:
+                completed_at = max(approved_dates)
+        completion_lookup[faculty.id] = {
+            "approved_count": approved_count,
+            "total_count": total_count,
+            "is_completed": is_completed,
+            "completed_at": completed_at,
+        }
+
+    return completion_lookup
+
+
 def _timeline_dump_faculty_ids(timeline: ClearanceTimeline):
     dump_entries = FacultyDumpArchive.objects.filter(
         clearance_timeline=timeline,
@@ -4077,6 +4141,15 @@ def ovphe_export_clearance_results_api(request):
     ).order_by("faculty_id", "-id"):
         clearances_by_faculty.setdefault(clearance.faculty_id, clearance)
 
+    timeline = None
+    if academic_year_int and term_normalized:
+        timeline = ClearanceTimeline.objects.filter(
+            academic_year_start=academic_year_int,
+            term=term_normalized,
+        ).order_by("-is_active", "-id").first()
+
+    completion_lookup = _build_timeline_completion_lookup(timeline, faculty_items) if timeline else {}
+
     wb = Workbook()
     ws = wb.active
     ws.title = "Clearance Analytics"
@@ -4098,6 +4171,10 @@ def ovphe_export_clearance_results_api(request):
 
     for faculty in faculty_items:
         clearance = clearances_by_faculty.get(faculty.id)
+        completion_info = completion_lookup.get(
+            faculty.id,
+            {"approved_count": 0, "total_count": 0, "is_completed": False, "completed_at": None},
+        )
         user = getattr(faculty, "user", None)
         name_parts = [
             (getattr(user, "first_name", "") or getattr(faculty, "first_name", "") or "").strip(),
@@ -4105,6 +4182,12 @@ def ovphe_export_clearance_results_api(request):
             (getattr(user, "last_name", "") or getattr(faculty, "last_name", "") or "").strip(),
         ]
         faculty_name = " ".join([part for part in name_parts if part]).strip() or (getattr(user, "email", "") or faculty.employee_id)
+        export_status = "COMPLETED" if completion_info["is_completed"] else "INCOMPLETE"
+        completion_date = ""
+        if completion_info["is_completed"] and clearance and clearance.completed_date:
+            completion_date = timezone.localtime(clearance.completed_date).strftime("%Y-%m-%d %I:%M %p")
+        elif completion_info["is_completed"] and completion_info["completed_at"]:
+            completion_date = timezone.localtime(completion_info["completed_at"]).strftime("%Y-%m-%d %I:%M %p")
 
         ws.append(
             [
@@ -4113,8 +4196,8 @@ def ovphe_export_clearance_results_api(request):
                 faculty.college.name if faculty.college else "",
                 faculty.department.name if faculty.department else "",
                 faculty.office.name if faculty.office else "",
-                clearance.status if clearance else "INCOMPLETE",
-                timezone.localtime(clearance.completed_date).strftime("%Y-%m-%d %I:%M %p") if clearance and clearance.completed_date else "",
+                export_status,
+                completion_date,
             ]
         )
 
@@ -4155,7 +4238,17 @@ def ovphe_system_analytics_api(request):
     except Exception:
         return JsonResponse({"detail": "Invalid academic_year"}, status=400)
 
-    term_val = term or None
+    term_upper = term.upper()
+    if term_upper == "FIRST":
+        term_val = Clearance.Term.FIRST
+    elif term_upper == "SECOND":
+        term_val = Clearance.Term.SECOND
+    elif term_upper in {"INTERSESSION", str(Clearance.Term.INTERSESSION)}:
+        term_val = Clearance.Term.INTERSESSION
+    elif term:
+        term_val = term
+    else:
+        term_val = None
 
     if not year_val or not term_val:
         active_timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year_start", "-id").first()
@@ -4181,16 +4274,20 @@ def ovphe_system_analytics_api(request):
             "office__name",
         )
     )
-    faculty_ids = [item["id"] for item in faculty_items]
-
-    clearances = Clearance.objects.select_related("faculty", "faculty__college").filter(
-        academic_year=year_val,
+    timeline = ClearanceTimeline.objects.filter(
+        academic_year_start=year_val,
         term=term_val,
-        faculty_id__in=faculty_ids,
+    ).order_by("-is_active", "-id").first()
+
+    faculty_rows = list(
+        Faculty.objects.select_related("college", "department", "office").filter(
+            id__in=[item["id"] for item in faculty_items]
+        )
     )
-    completed_faculty_ids = set(
-        clearances.filter(status=Clearance.Status.COMPLETED).values_list("faculty_id", flat=True)
-    )
+    completion_lookup = _build_timeline_completion_lookup(timeline, faculty_rows) if timeline else {}
+    completed_faculty_ids = {
+        faculty_id for faculty_id, info in completion_lookup.items() if info["is_completed"]
+    }
 
     total_faculty = len(faculty_items)
     completed_count = len(completed_faculty_ids)
@@ -5037,22 +5134,21 @@ def faculty_dashboard_api(request):
     total_reqs = 0
     approved_reqs = 0
     status = "Pending"
-    if clearance:
-        if clearance.status == Clearance.Status.PENDING:
-            status = "Pending"
-        elif clearance.status == Clearance.Status.IN_PROGRESS:
-            status = "In Progress"
-        elif clearance.status == Clearance.Status.COMPLETED:
-            status = "Completed"
-        elif clearance.status == Clearance.Status.REJECTED:
-            status = "Rejected"
-        else:
-            status = str(clearance.status)
-    elif timeline_requests.filter(status=ClearanceRequest.Status.APPROVED).exists():
-        status = "In Progress"
+    completion_lookup = _build_timeline_completion_lookup(timeline, [faculty]) if timeline else {}
+    completion_info = completion_lookup.get(
+        faculty.id,
+        {"approved_count": 0, "total_count": 0, "is_completed": False, "completed_at": None},
+    )
 
-    total_reqs = timeline_requests.count()
-    approved_reqs = timeline_requests.filter(status=ClearanceRequest.Status.APPROVED).count()
+    total_reqs = completion_info["total_count"]
+    approved_reqs = completion_info["approved_count"]
+
+    if timeline_requests.filter(status=ClearanceRequest.Status.REJECTED).exists():
+        status = "Rejected"
+    elif completion_info["is_completed"]:
+        status = "Completed"
+    elif approved_reqs > 0:
+        status = "In Progress"
 
     # Generate steps data for frontend
     steps = []
