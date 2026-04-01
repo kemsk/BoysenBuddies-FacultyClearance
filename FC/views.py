@@ -1083,7 +1083,24 @@ def _format_timestamp(dt: datetime | None):
     try:
         return local.strftime("%B %-d, %Y, %-I:%M %p")
     except Exception:
-        return local.strftime("%B %d, %Y, %I:%M %p")
+        return local.strftime("%B %d, %Y, %I:%M %p").replace(" 0", " ")
+
+
+def _format_export_datetime(dt: datetime | None):
+    if not dt:
+        return ""
+    try:
+        local = timezone.localtime(dt) if timezone.is_aware(dt) else dt
+    except Exception:
+        local = dt
+    return local.strftime("%Y-%m-%d %I:%M %p")
+
+
+def _format_time_label(dt: datetime):
+    try:
+        return dt.strftime("%-I:%M %p")
+    except Exception:
+        return dt.strftime("%I:%M %p").lstrip("0")
 
 
 def _json_body(request):
@@ -4123,9 +4140,6 @@ def ovphe_export_clearance_results_api(request):
     except Exception:
         pass
 
-    from openpyxl import Workbook
-    from openpyxl.styles import Font
-
     faculty_qs = Faculty.objects.select_related("user", "college", "department", "office")
     if college_id:
         faculty_qs = faculty_qs.filter(college_id=college_id)
@@ -4150,24 +4164,22 @@ def ovphe_export_clearance_results_api(request):
 
     completion_lookup = _build_timeline_completion_lookup(timeline, faculty_items) if timeline else {}
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Clearance Analytics"
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = (
+        f'attachment; filename="clearance_results_{academic_year_int or "active"}_{(term_normalized or "active").lower()}.csv"'
+    )
+    writer = csv.writer(response)
 
-    ws.append(["Faculty Clearance Analytics"])
-    ws.append(
+    writer.writerow(["Faculty Clearance Analytics"])
+    writer.writerow(
         [
             f"School Year: {academic_year_int or 'N/A'}",
             f"Term: {_term_to_label(term_normalized) if term_normalized else 'N/A'}",
             f"College: {college_name or 'All Colleges'}",
         ]
     )
-    ws.append([])
-    ws.append(["Faculty Name", "University ID", "College", "Department", "Office", "Status", "Completion Date"])
-
-    ws["A1"].font = Font(bold=True, size=14)
-    for cell in ws[4]:
-        cell.font = Font(bold=True)
+    writer.writerow([])
+    writer.writerow(["Faculty Name", "University ID", "College", "Department", "Office", "Status", "Completion Date"])
 
     for faculty in faculty_items:
         clearance = clearances_by_faculty.get(faculty.id)
@@ -4185,11 +4197,11 @@ def ovphe_export_clearance_results_api(request):
         export_status = "COMPLETED" if completion_info["is_completed"] else "INCOMPLETE"
         completion_date = ""
         if completion_info["is_completed"] and clearance and clearance.completed_date:
-            completion_date = timezone.localtime(clearance.completed_date).strftime("%Y-%m-%d %I:%M %p")
+            completion_date = _format_export_datetime(clearance.completed_date)
         elif completion_info["is_completed"] and completion_info["completed_at"]:
-            completion_date = timezone.localtime(completion_info["completed_at"]).strftime("%Y-%m-%d %I:%M %p")
+            completion_date = _format_export_datetime(completion_info["completed_at"])
 
-        ws.append(
+        writer.writerow(
             [
                 faculty_name,
                 getattr(user, "university_id", "") or "",
@@ -4201,23 +4213,6 @@ def ovphe_export_clearance_results_api(request):
             ]
         )
 
-    for column_cells in ws.columns:
-        max_length = 0
-        column_letter = column_cells[0].column_letter
-        for cell in column_cells:
-            try:
-                max_length = max(max_length, len(str(cell.value or "")))
-            except Exception:
-                pass
-        ws.column_dimensions[column_letter].width = min(max(max_length + 2, 12), 40)
-
-    response = HttpResponse(
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": f'attachment; filename="clearance_results_{academic_year_int or "active"}_{(term_normalized or "active").lower()}.xlsx"',
-        },
-    )
-    wb.save(response)
     return response
 
 
