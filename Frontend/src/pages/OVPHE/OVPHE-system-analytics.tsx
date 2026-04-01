@@ -47,6 +47,7 @@ export default function SystemAnalytics() {
   const [timelineOptions, setTimelineOptions] = React.useState<
     { value: string; label: string }[]
   >([]);
+  const [timelineTermsByYear, setTimelineTermsByYear] = React.useState<Record<string, string[]>>({});
   const [colleges, setColleges] = React.useState<{ id: string; name: string }[]>([]);
   const [donutTitle, setDonutTitle] = React.useState("Overall Count");
   const [donutCompleted, setDonutCompleted] = React.useState(0);
@@ -86,16 +87,19 @@ export default function SystemAnalytics() {
           items?: {
             academicYearStart?: string;
             academicYearEnd?: string;
+            term?: string;
             setAsActive?: boolean;
             isArchived?: boolean;
           }[];
         }) => {
           const items = data.items ?? [];
           const optionMap = new Map<string, { value: string; label: string; active: boolean; archived: boolean }>();
+          const termsByYear = new Map<string, Set<string>>();
 
           items.forEach((item) => {
             const startYear = (item.academicYearStart ?? "").trim();
             const endYear = (item.academicYearEnd ?? "").trim();
+            const term = (item.term ?? "").trim();
             if (!startYear || !endYear) {
               return;
             }
@@ -109,6 +113,13 @@ export default function SystemAnalytics() {
               archived: Boolean(item.isArchived) || Boolean(existing?.archived),
             };
             optionMap.set(value, next);
+
+            if (term) {
+              if (!termsByYear.has(value)) {
+                termsByYear.set(value, new Set<string>());
+              }
+              termsByYear.get(value)?.add(term);
+            }
           });
 
           const options = Array.from(optionMap.values()).sort(
@@ -116,10 +127,34 @@ export default function SystemAnalytics() {
           );
 
           setTimelineOptions(options.map(({ value, label }) => ({ value, label })));
+          setTimelineTermsByYear(
+            Array.from(termsByYear.entries()).reduce<Record<string, string[]>>((acc, [year, terms]) => {
+              acc[year] = Array.from(terms.values()).sort((a, b) => a.localeCompare(b));
+              return acc;
+            }, {}),
+          );
         },
       )
-      .catch(() => setTimelineOptions([]));
+      .catch(() => {
+        setTimelineOptions([]);
+        setTimelineTermsByYear({});
+      });
   }, []);
+
+  React.useEffect(() => {
+    if (!selectedClearance || selectedClearance === "All Clearances") {
+      return;
+    }
+
+    const availableTerms = timelineTermsByYear[selectedClearance] ?? [];
+    if (!availableTerms.length) {
+      return;
+    }
+
+    if (selectedTerm === "Term" || !availableTerms.includes(selectedTerm)) {
+      setSelectedTerm(availableTerms[0]);
+    }
+  }, [selectedClearance, selectedTerm, timelineTermsByYear]);
 
   React.useEffect(() => {
     fetch("/admin/xu-faculty-clearance/api/active-clearance-timeline")

@@ -4274,15 +4274,26 @@ def ovphe_system_analytics_api(request):
         term=term_val,
     ).order_by("-is_active", "-id").first()
 
-    faculty_rows = list(
-        Faculty.objects.select_related("college", "department", "office").filter(
-            id__in=[item["id"] for item in faculty_items]
+    completed_faculty_ids = set()
+    if timeline and timeline.archive_date:
+        _ensure_archived_timeline_records(timeline)
+        archived_clearances = ArchivedClearance.objects.filter(
+            clearance_timeline=timeline,
+            faculty_id__in=[item["id"] for item in faculty_items],
         )
-    )
-    completion_lookup = _build_timeline_completion_lookup(timeline, faculty_rows) if timeline else {}
-    completed_faculty_ids = {
-        faculty_id for faculty_id, info in completion_lookup.items() if info["is_completed"]
-    }
+        completed_faculty_ids = set(
+            archived_clearances.filter(status=ArchivedClearance.Status.COMPLETED).values_list("faculty_id", flat=True)
+        )
+    else:
+        faculty_rows = list(
+            Faculty.objects.select_related("college", "department", "office").filter(
+                id__in=[item["id"] for item in faculty_items]
+            )
+        )
+        completion_lookup = _build_timeline_completion_lookup(timeline, faculty_rows) if timeline else {}
+        completed_faculty_ids = {
+            faculty_id for faculty_id, info in completion_lookup.items() if info["is_completed"]
+        }
 
     total_faculty = len(faculty_items)
     completed_count = len(completed_faculty_ids)
