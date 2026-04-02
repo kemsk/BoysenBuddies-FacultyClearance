@@ -1374,6 +1374,10 @@ class ActivityLog(models.Model):
 
         REJECTED_CLEARANCE = "rejected_clearance", "rejected_clearance"
 
+        # ASSISTANT_APPROVED_CLEARANCE = "assistant_approved_clearance", "assistant_approved_clearance"
+
+        # ASSISTANT_REJECTED_CLEARANCE = "assistant_rejected_clearance", "assistant_rejected_clearance"
+
         CREATE_REQUEST = "create_request", "create_request"
 
         CREATED_REQUIREMENTS = "created_requirements", "created_requirements"
@@ -1563,6 +1567,12 @@ class ActivityLog(models.Model):
     is_staff = models.BooleanField(default=False)
 
     user_role = models.CharField(max_length=100, null=True, blank=True)
+
+    department = models.CharField(max_length=150, null=True, blank=True)
+
+    office = models.CharField(max_length=150, null=True, blank=True)
+
+    college = models.CharField(max_length=150, null=True, blank=True)
 
     details = models.JSONField(default=list, blank=True)
 

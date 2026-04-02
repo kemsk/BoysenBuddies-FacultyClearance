@@ -843,6 +843,11 @@ def approver_profile_api(request):
     """
     API endpoint to get the current user's approver profile with college/department assignments.
     """
+    # Get authenticated user
+    user = _get_authenticated_user(request)
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+    
     # Get approver profile if it exists
     try:
         approver = Approver.objects.get(user=user)
@@ -6002,7 +6007,9 @@ def approver_assistant_approvers_api(request):
             current_approver = None
             try:
                 current_approver = Approver.objects.get(user=user)
+                print(f"DEBUG: Found approver profile: {current_approver.approver_type}, dept: {current_approver.department}, college: {current_approver.department.college if current_approver.department else None}")
             except Approver.DoesNotExist:
+                print(f"DEBUG: No approver profile found for user {user.email} (ID: {user.id})")
                 return JsonResponse({"detail": "Approver profile not found"}, status=400)
             
             # Check if this is a College Dean (department with "Dean" in title)
@@ -6069,8 +6076,30 @@ def approver_assistant_approvers_api(request):
                             return JsonResponse({"detail": "Office not found"}, status=400)
                             
             elif current_approver.approver_type == "Department":
-                # Department Chair logic (existing logic should work)
-                pass
+                # Department Chair logic
+                print(f"DEBUG: Department Chair validation - checking profile")
+                if not current_approver.department or not current_approver.department.college:
+                    print(f"DEBUG: Department Chair missing department or college")
+                    return JsonResponse({"detail": "Department Chair must have an assigned department and college"}, status=400)
+                
+                print(f"DEBUG: Department Chair - assigned dept: {current_approver.department.name}, college: {current_approver.department.college.name}")
+                print(f"DEBUG: Requested college: '{college_name}', dept: '{dept_name}'")
+                
+                # For Department Chair, restrict to their assigned department and college
+                if college_name and college_name.lower() != current_approver.department.college.name.lower():
+                    print(f"DEBUG: College mismatch - requested: {college_name}, assigned: {current_approver.department.college.name}")
+                    return JsonResponse({"detail": f"College must be {current_approver.department.college.name}"}, status=400)
+                
+                if dept_name and dept_name.lower() != current_approver.department.name.lower():
+                    print(f"DEBUG: Department mismatch - requested: {dept_name}, assigned: {current_approver.department.name}")
+                    return JsonResponse({"detail": f"Department must be {current_approver.department.name}"}, status=400)
+                
+                # Set college and department to Department Chair's assigned ones
+                college_name = current_approver.department.college.name
+                dept_name = current_approver.department.name
+                college = current_approver.department.college
+                department = current_approver.department
+                print(f"DEBUG: Set college: {college_name}, dept: {dept_name}")
             elif current_approver.approver_type == "Office":
                 # Office Admin logic (existing logic should work)  
                 pass
@@ -6239,6 +6268,7 @@ def approver_assistant_approver_detail_api(request, user_id):
 
     try:
         target_user = User.objects.get(pk=user_id_int)
+        print(f"[DEBUG] PUT target_user: {target_user.id} - {target_user.email}")
     except User.DoesNotExist:
         return JsonResponse({"detail": "User not found"}, status=404)
 
@@ -6332,12 +6362,26 @@ def approver_assistant_approver_detail_api(request, user_id):
     dept_name = (data.get("department") or "").strip()
     office_name = (data.get("office") or "").strip()
     
+    # Handle "N/A" values from frontend
+    if college_name == "N/A":
+        college_name = ""
+    if dept_name == "N/A":
+        dept_name = ""
+    if office_name == "N/A":
+        office_name = ""
+    
     # Check if this is an admin assistant
     admin_assistant = (
         ApproverAssistant.objects.select_related("assistant", "college", "department", "office")
         .filter(supervisor=user, assistant=target_user)
         .first()
     )
+    
+    print(f"[DEBUG] admin_assistant found: {admin_assistant is not None}")
+    if admin_assistant:
+        print(f"[DEBUG] Treating as admin assistant")
+    else:
+        print(f"[DEBUG] Treating as student assistant")
     
     if admin_assistant:
         # Admin assistant: only need department OR office
@@ -6349,7 +6393,14 @@ def approver_assistant_approver_detail_api(request, user_id):
         if not college_name:
             return JsonResponse({"detail": "College is required"}, status=400)
         if not dept_name:
-            return JsonResponse({"detail": "Department is required"}, status=400)
+            # For student assistants, if department is empty, use existing one
+            print(f"[DEBUG] Department is empty, checking assistant_profile...")
+            if assistant_profile and assistant_profile.department:
+                dept_name = assistant_profile.department.name
+                print(f"[DEBUG] Using existing department: {dept_name}")
+            else:
+                print(f"[DEBUG] No assistant_profile or department found")
+                return JsonResponse({"detail": "Department is required"}, status=400)
 
     # Only look up college if it's provided (for student assistants)
     college = None
@@ -6378,7 +6429,7 @@ def approver_assistant_approver_detail_api(request, user_id):
                 return JsonResponse({"detail": "Department not found"}, status=400)
 
     # Look up office if provided (for admin assistants)
-    office = None
+    office = None  # Ensure office is always defined
     if office_name:
         office = Office.objects.filter(
             name__iexact=office_name,
@@ -6418,10 +6469,12 @@ def approver_assistant_approver_detail_api(request, user_id):
 
         # Update either StudentAssistant or ApproverAssistant profile
         if assistant_profile:
+            print(f"[DEBUG] Updating assistant_profile: college={college}, department={department}")
             assistant_profile.college = college
             assistant_profile.department = department
             assistant_profile.save(update_fields=["college", "department"])
         if admin_assistant:
+            print(f"[DEBUG] Updating admin_assistant: college={college}, department={department}, office=None")
             admin_assistant.college = college
             admin_assistant.department = department
             admin_assistant.office = None
@@ -7625,12 +7678,81 @@ def approver_activity_logs_api(request):
             return JsonResponse({"detail": "details must be a list"}, status=400)
 
         user_role = (data.get("user_role") or "").strip() or None
+        request_id = data.get("request_id")
+        
+        # For clearance-related events, fetch faculty data directly from database
+        if event_type in ["approved_clearance", "rejected_clearance", "individual_approved_clearance", "individual_rejected_clearance"] and request_id:
+            try:
+                # Get clearance request with faculty data (same logic as approver_clearance_api)
+                clearance_request = ClearanceRequest.objects.select_related(
+                    'faculty',
+                    'faculty__college',
+                    'faculty__department'
+                ).get(id=request_id)
+                
+                faculty = clearance_request.faculty
+                
+                # Extract faculty data using same logic as approver_clearance_api
+                college_name = getattr(getattr(faculty, "college", None), "name", "") or ""
+                department_name = getattr(getattr(faculty, "department", None), "name", "") or ""
+                employee_id = getattr(faculty, "employee_id", "") or ""
+                
+                # Update details to include employee ID if not already present
+                if employee_id and not any("Employee ID:" in str(detail) for detail in details):
+                    details.append(f"Employee ID: {employee_id}")
+                
+                print(f"[DEBUG] Activity log - Fetched faculty data from database:")
+                print(f"[DEBUG] - Employee ID: {employee_id}")
+                print(f"[DEBUG] - College: {college_name}")
+                print(f"[DEBUG] - Department: {department_name}")
+                
+            except ClearanceRequest.DoesNotExist:
+                print(f"[DEBUG] Activity log - Clearance request {request_id} not found")
+                college_name = ""
+                department_name = ""
+                employee_id = ""
+        else:
+            # For non-clearance events, use data from frontend
+            college_name = data.get("college") or ""
+            department_name = data.get("department") or ""
+            employee_id = data.get("university_id") or ""
+        
+        # Get office from frontend (approver's office)
+        office_name = data.get("office")
+        
+        print(f"[DEBUG] Activity log - Final data:")
+        print(f"[DEBUG] - event_type: {event_type}")
+        print(f"[DEBUG] - request_id: {request_id}")
+        print(f"[DEBUG] - college_name: {college_name}")
+        print(f"[DEBUG] - department_name: {department_name}")
+        print(f"[DEBUG] - office_name: {office_name}")
+        print(f"[DEBUG] - employee_id: {employee_id}")
+        print(f"[DEBUG] - details: {details}")
+        
+        # Look up actual objects if names are provided
+        department = None
+        if department_name:
+            department = Department.objects.filter(name__iexact=department_name, is_active=True).first()
+            print(f"[DEBUG] Activity log - Found department: {department}")
+        
+        college = None
+        if college_name:
+            college = College.objects.filter(name__iexact=college_name, is_active=True).first()
+            print(f"[DEBUG] Activity log - Found college: {college}")
+            
+        office = None
+        if office_name:
+            office = Office.objects.filter(name__iexact=office_name, is_active=True).first()
+            print(f"[DEBUG] Activity log - Found office: {office}")
 
         obj = ActivityLog.objects.create(
             event_type=event_type,
             user=user,
             user_role=user_role,
             details=[str(x) for x in details if x is not None and str(x).strip()],
+            department=department,
+            college=college,
+            office=office,
         )
 
         return JsonResponse(

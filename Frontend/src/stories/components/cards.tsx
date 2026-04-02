@@ -271,8 +271,6 @@ export type RequirementListItem = {
   lastUpdated?: string;
   submissionDeadline?: string;
 
-};
-
 
 
 export type StudentAssistantItem = {
@@ -284,6 +282,8 @@ export type StudentAssistantItem = {
   college: string;
 
   department: string;
+
+  office: string;
 
   email: string;
 
@@ -303,7 +303,6 @@ export type StudentAssistantItem = {
   assistantType?: string;
 
 };
-
 
 
 export type StudentAssistantsCardProps = {
@@ -725,11 +724,104 @@ export function ClearanceRequestsCard({
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData.detail || errorData.message || `Failed to approve: ${response.statusText}`;
-        throw new Error(errorMessage);
+        if (errorData.detail) {
+          throw new Error(`Failed to approve: ${errorData.detail}`);
+        } else if (errorData.message) {
+          throw new Error(`Failed to approve: ${errorData.message}`);
+        } else {
+          throw new Error(`Failed to approve: ${response.statusText}`);
+        }
       }
 
       const result = await response.json();
       console.log("Bulk approve successful:", result);
+      
+      // Log activity for each approved request
+      try {
+        // Get user profile for activity logging
+        const profileResponse = await fetch("/admin/xu-faculty-clearance/api/approver/profile", {
+          credentials: "include",
+        });
+        
+        console.log("[DEBUG] Profile response status:", profileResponse.status);
+        const userProfile = profileResponse.ok ? await profileResponse.json() : null;
+        console.log("[DEBUG] User profile:", userProfile);
+        
+        // Check if current user is an assistant approver by checking the current URL
+        const isAssistantApprover = window.location.pathname.includes('/assistant-approver');
+        console.log("[DEBUG] Is assistant approver:", isAssistantApprover);
+        
+        // Create activity log for each request
+        const activityPromises = Array.from(selectedIds).map(async (requestId) => {
+          const requestItem = items.find(item => item.id === requestId);
+          if (requestItem) {
+            // Debug: Log the requestItem structure
+            console.log("[DEBUG] requestItem:", requestItem);
+            
+            // Use faculty member's data from the clearance request
+            const facultyDepartment = requestItem.department || null;
+            const facultyCollege = requestItem.college || null;
+            const facultyEmployeeId = requestItem.employeeId || "N/A";
+            // Use session user's office (approver's office)
+            const userOffice = userProfile?.roles_payload?.[0]?.office || null;
+            
+            // Always use regular event types, add assistant info to details if needed
+            let details = [
+              `Faculty Member: ${requestItem.name}`,
+              `Employee ID: ${facultyEmployeeId}`,
+              `Remarks: Bulk approval`
+            ];
+            
+            // Add assistant info to details if this is an assistant approver
+            if (isAssistantApprover && userProfile) {
+              details.push(`Assistant: ${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || userProfile.email);
+            }
+            
+            console.log("[DEBUG] Extracted data:", {
+              facultyDepartment,
+              facultyCollege,
+              facultyEmployeeId,
+              userOffice,
+              userProfileExists: !!userProfile,
+              profileRoles: userProfile?.roles_payload,
+              isAssistantApprover
+            });
+            
+            const activityPayload = {
+              event_type: "approved_clearance",
+              details: details,
+              department: facultyDepartment,
+              college: facultyCollege,
+              office: userOffice,
+              university_id: facultyEmployeeId,
+              request_id: requestId
+            };
+            
+            console.log("[DEBUG] Activity payload:", activityPayload);
+            
+            const activityResponse = await fetch("/admin/xu-faculty-clearance/api/approver/activity-logs", {
+              method: "POST",
+              credentials: "include",
+              keepalive: true,
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(activityPayload),
+            });
+            
+            console.log("[DEBUG] Activity log response status:", activityResponse.status);
+            if (!activityResponse.ok) {
+              const errorText = await activityResponse.text();
+              console.error("[DEBUG] Activity log error response:", errorText);
+            }
+            
+            return activityResponse;
+          }
+          return null;
+        });
+        
+        await Promise.all(activityPromises);
+      } catch (logError) {
+        console.error("Failed to log bulk approval activity:", logError);
+      }
       
       // Refresh the page to show updated status
       window.location.reload();
@@ -773,6 +865,77 @@ export function ClearanceRequestsCard({
 
       const result = await response.json();
       console.log("Bulk reject successful:", result);
+      
+      // Log activity for each rejected request
+      try {
+        // Get user profile for activity logging
+        const profileResponse = await fetch("/admin/xu-faculty-clearance/api/approver/profile", {
+          credentials: "include",
+        });
+        const userProfile = await profileResponse.json();
+        
+        // Check if current user is an assistant approver by checking the current URL
+        const isAssistantApprover = window.location.pathname.includes('/assistant-approver');
+        console.log("[DEBUG] Is assistant approver (reject):", isAssistantApprover);
+        
+        // Create activity log for each request
+        const activityPromises = Array.from(selectedIds).map(async (requestId) => {
+          const requestItem = items.find(item => item.id === requestId);
+          if (requestItem) {
+            // Debug: Log the requestItem structure
+            console.log("[DEBUG] requestItem (reject):", requestItem);
+            
+            // Use faculty member's data from the clearance request
+            const facultyDepartment = requestItem.department || null;
+            const facultyCollege = requestItem.college || null;
+            const facultyEmployeeId = requestItem.employeeId || "N/A";
+            // Use session user's office (approver's office)
+            const userOffice = userProfile?.roles_payload?.[0]?.office || null;
+            
+            // Determine event type based on whether user is assistant approver
+            const eventType = isAssistantApprover ? "assistant_rejected_clearance" : "rejected_clearance";
+            
+            console.log("[DEBUG] Extracted data (reject):", {
+              facultyDepartment,
+              facultyCollege,
+              facultyEmployeeId,
+              userOffice,
+              eventType
+            });
+            
+            let details = [
+              `Faculty Member: ${requestItem.name}`,
+              `Employee ID: ${facultyEmployeeId}`,
+              `Remarks: ${reason}`
+            ];
+            
+            if (isAssistantApprover && userProfile) {
+              details.push(`Assistant: ${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || userProfile.email);
+            }
+            
+            return fetch("/admin/xu-faculty-clearance/api/approver/activity-logs", {
+              method: "POST",
+              credentials: "include",
+              keepalive: true,
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                event_type: eventType,
+                details: details,
+                department: facultyDepartment,
+                college: facultyCollege,
+                office: userOffice,
+                university_id: facultyEmployeeId,
+                request_id: requestId
+              }),
+            });
+          }
+          return null;
+        });
+        
+        await Promise.all(activityPromises);
+      } catch (logError) {
+        console.error("Failed to log bulk rejection activity:", logError);
+      }
       
       // Refresh the page to show updated status
       window.location.reload();

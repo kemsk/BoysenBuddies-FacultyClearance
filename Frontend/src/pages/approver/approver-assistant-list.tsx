@@ -500,6 +500,29 @@ export default function ApproverAssistantList() {
                 return;
               }
 
+              // Added Assistant Approver activity log
+              try {
+                await fetch("/admin/xu-faculty-clearance/api/approver/activity-logs", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "added_assistant_approver",
+                    details: [
+                      `Assistant: ${payload.firstName} ${payload.lastName}`,
+                      `Email: ${payload.email}`,
+                      `Department: ${payload.department || "N/A"}`,
+                      `College: ${payload.college || "N/A"}`
+                    ],
+                    department: payload.department || null,
+                    office: payload.office || null,
+                    college: payload.college || null
+                  })
+                });
+              } catch (logError) {
+                console.error("Failed to log activity:", logError);
+              }
+
               setAddOpen(false);
               await fetchUsers();
               window.alert("Assistant created successfully!");
@@ -529,7 +552,7 @@ export default function ApproverAssistantList() {
               // Derive assistantType based on selected department/office
               const selected = payload.department;
               const isOffice = adminOffices.includes(selected || "");
-              let assistantType: "college_admin" | "dept_chair" | "office_admin" | "admin_secondment" | "admin_representative" = "college_admin";
+              let assistantType: "college_admin" | "dept_chair" | "office_admin" | "admin_secondment" | "student_assistant" = "college_admin";
               if (isOffice) {
                 assistantType = "office_admin";
               } else {
@@ -548,6 +571,7 @@ export default function ApproverAssistantList() {
                   isActive: payload.isActive,
                   college: payload.college,
                   department: isOffice ? undefined : selected,
+                  office: isOffice ? selected : undefined,
                   assistantType,
                 }),
               });
@@ -555,6 +579,30 @@ export default function ApproverAssistantList() {
               if (!r.ok) {
                 window.alert(await readErrorDetail(r));
                 return;
+              }
+
+              // Added Assistant Admin activity log
+              try {
+                await fetch("/admin/xu-faculty-clearance/api/approver/activity-logs", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "added_assistant_admin",
+                    details: [
+                      `Assistant: ${payload.firstName} ${payload.lastName}`,
+                      `Email: ${payload.email}`,
+                      `Department: ${isOffice ? "N/A" : selected}`,
+                      `College: ${payload.college || "N/A"}`,
+                      `Type: ${assistantType}`
+                    ],
+                    department: isOffice ? null : selected,
+                    office: isOffice ? selected : null,
+                    college: payload.college || null
+                  })
+                });
+              } catch (logError) {
+                console.error("Failed to log activity:", logError);
               }
 
               setAddAdminOpen(false);
@@ -606,8 +654,9 @@ export default function ApproverAssistantList() {
                   universityId: payload.universityId,
                   email: activeAssistant.email,
                   isActive: payload.isActive,
-                  college: payload.college,
-                  department: payload.department,
+                  college: payload.college === "N/A" ? "" : payload.college,
+                  department: payload.department === "N/A" ? "" : payload.department,
+                  office: payload.office === "N/A" ? "" : payload.office,
                   assistantType: activeAssistant.assistantType,
                 }),
               });
@@ -615,6 +664,29 @@ export default function ApproverAssistantList() {
               if (!r.ok) {
                 window.alert(await readErrorDetail(r));
                 return;
+              }
+
+              // Updated Assistant Approver activity log
+              try {
+                await fetch("/admin/xu-faculty-clearance/api/approver/activity-logs", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "updated_assistant_approver",
+                    details: [
+                      `Assistant: ${payload.firstName} ${payload.lastName}`,
+                      `Email: ${activeAssistant.email}`,
+                      `Department: ${payload.department || "N/A"}`,
+                      `College: ${payload.college || "N/A"}`
+                    ],
+                    department: payload.department || null,
+                    office: payload.office || null,
+                    college: payload.college || null
+                  })
+                });
+              } catch (logError) {
+                console.error("Failed to log activity:", logError);
               }
 
               setEditOpen(false);
@@ -645,6 +717,29 @@ export default function ApproverAssistantList() {
               if (!r.ok) {
                 window.alert(await readErrorDetail(r));
                 return;
+              }
+
+              // Removed Assistant Approver activity log
+              try {
+                await fetch("/admin/xu-faculty-clearance/api/approver/activity-logs", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "removed_assistant_approver",
+                    details: [
+                      `Assistant: ${activeAssistant.name}`,
+                      `Email: ${activeAssistant.email}`,
+                      `Department: ${activeAssistant.department || "N/A"}`,
+                      `College: ${activeAssistant.college || "N/A"}`
+                    ],
+                    department: activeAssistant.department || null,
+                    office: activeAssistant.office || null,
+                    college: activeAssistant.college || null
+                  })
+                });
+              } catch (logError) {
+                console.error("Failed to log activity:", logError);
               }
 
               setRemoveOpen(false);

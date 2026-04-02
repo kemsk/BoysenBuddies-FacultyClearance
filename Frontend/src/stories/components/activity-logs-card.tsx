@@ -19,6 +19,8 @@ import { cn } from "../../components/lib/utils";
 export type ActivityLogVariant =
   | "approved_clearance"
   | "rejected_clearance"
+  | "individual_approved_clearance"
+  | "individual_rejected_clearance"
   | "create_request"
   | "edited_requirements"
   | "created_requirements"
@@ -143,6 +145,22 @@ function getActivityIcon(variant: ActivityLogVariant) {
     return (
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-success p-0.2">
         <Check strokeWidth={4} className="h-3 w-3 text-white transform translate-y-[0.5px]" />
+      </div>
+    );
+  }
+
+  if (variant === "individual_approved_clearance") {
+    return (
+      <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-success p-0.2">
+        <Check strokeWidth={4} className="h-3 w-3 text-white transform translate-y-[0.5px]" />
+      </div>
+    );
+  }
+
+  if (variant === "individual_rejected_clearance") {
+    return (
+      <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-[hsl(var(--destructive))] p-0.5">
+        <X strokeWidth={4} className="h-3 w-3 text-white transform " />
       </div>
     );
   }
@@ -874,14 +892,6 @@ function formatActivityLogText(item: ActivityLogItem): {
     return { title, description };
   }
 
-  if (item.variant === "deleted_guideline") {
-    const title = "Deleted Guideline";
-    const details = (item as any).details || [];
-    const guidelineName = details.find((d: string) => d.includes("Guideline:"))?.replace("Guideline: ", "").trim() || "";
-    const description = `User ${actorName} deleted guideline${guidelineName ? `: ${guidelineName}` : ""}.`;
-    return { title, description };
-  }
-
   if (item.variant === "create_request") {
     const title = "Create Request";
     const description = `Faculty Member ${facultyName || actorName} from ${facultyCollegeDepartment}, requested for clearance.`;
@@ -891,6 +901,32 @@ function formatActivityLogText(item: ActivityLogItem): {
   if (item.variant === "approved_clearance") {
     const title = "Approved Clearance";
     const description = `User ${actorName} of Department/Office ${item.approverDepartment || ""}, approved clearance for faculty member ${facultyName}.`;
+    return { title, description };
+  }
+
+  if (item.variant === "individual_approved_clearance") {
+    const title = "Individual Approved Clearance";
+    const details = (item as any).details || [];
+    const facultyMember = details.find((d: string) => d.includes("Faculty Member:"))?.replace("Faculty Member: ", "") || "";
+    const universityId = (item as any).university_id || "";
+    const requestId = (item as any).request_id || "";
+    const remarks = details.find((d: string) => d.includes("Remarks:"))?.replace("Remarks: ", "") || "";
+    const approverDepartment = item.departmentName || "";
+    
+    const description = `User ${actorName} of Department/Office ${approverDepartment}, approved clearance for faculty member:\n${facultyMember}\nUniversity ID: ${universityId}\nRequest ID: ${requestId}\nRemarks: ${remarks}`;
+    return { title, description };
+  }
+
+  if (item.variant === "individual_rejected_clearance") {
+    const title = "Individual Rejected Clearance";
+    const details = (item as any).details || [];
+    const facultyMember = details.find((d: string) => d.includes("Faculty Member:"))?.replace("Faculty Member: ", "") || "";
+    const universityId = (item as any).university_id || "";
+    const requestId = (item as any).request_id || "";
+    const remarks = details.find((d: string) => d.includes("Remarks:"))?.replace("Remarks: ", "") || "";
+    const approverDepartment = item.departmentName || "";
+    
+    const description = `User ${actorName} of Department/Office ${approverDepartment}, rejected clearance for faculty member:\n${facultyMember}\nUniversity ID: ${universityId}\nRequest ID: ${requestId}\nRemarks: ${remarks}`;
     return { title, description };
   }
 

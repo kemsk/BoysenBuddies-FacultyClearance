@@ -33,6 +33,7 @@ export default function ApproverClearance() {
         return res.json();
       })
       .then((data) => {
+        console.log("[DEBUG] API response from clearance:", data);
         setRequests(Array.isArray(data?.items) ? data.items : []);
         setLoading(false);
       })
