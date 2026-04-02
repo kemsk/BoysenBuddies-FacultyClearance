@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import "../../index.css"; // ensure index.css is accessible from src
 import { Button } from "../../stories/components/button";
 import { authService } from "../../services/authService";
+import PWAInstallPrompt from "../../components/PWAInstallPrompt";
 
 interface UserRole {
   value: number;
@@ -65,7 +66,7 @@ export default function Login() {
         
         if (!authStatus.authenticated || !authStatus.user_info) {
           // User not authenticated, redirect to login input
-          window.location.replace('http://localhost:8001/');
+          window.location.replace('https://localhost:4433/');
           return;
         }
 
@@ -179,7 +180,7 @@ export default function Login() {
       console.log('LOGIN: Redirecting to dashboard:', target);
       
       // Redirect to the appropriate dashboard
-      window.location.replace(`http://localhost:8001${target}`);
+      window.location.replace(`https://localhost:4433${target}`);
       
     } catch (error) {
       console.error('LOGIN: Error updating selected role:', error);
@@ -189,6 +190,7 @@ export default function Login() {
 
   return (
     <div className="login-container bg-primary text-primary-foreground min-h-screen flex justify-center items-center p-4">
+      <PWAInstallPrompt />
 
       {/* LOGIN PANEL */}
       <div className="w-full bg-primary p-8 flex flex-col items-center px-0">

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import "../../index.css"; // ensure index.css is accessible from src
 import { Button } from "../../stories/components/button";
 import { authService } from "../../services/authService";
+import PWAInstallPrompt from "../../components/PWAInstallPrompt";
 
 export default function LoginInput() {
   const [error, setError] = useState<string>(() => {
@@ -56,6 +57,7 @@ export default function LoginInput() {
 
   return (
     <div className="login-container bg-primary text-primary-foreground min-h-screen flex justify-center items-center p-4">
+      <PWAInstallPrompt />
 
       {/* LOGIN PANEL */}
       <div className="w-full bg-primary p-8 flex flex-col items-center px-0">

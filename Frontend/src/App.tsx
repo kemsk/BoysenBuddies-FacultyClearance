@@ -7,7 +7,6 @@ import {
   Navigate,
 } from "react-router-dom";
 
-
 import Login from "./pages/login/login";
 import LoginPrompt from "./pages/login/login-prompt";
 import LoginInput from "./pages/login/login-input";
