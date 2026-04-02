@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import "../../index.css"; // ensure index.css is accessible from src
 import { Button } from "../../stories/components/button";
-import { authService } from "../../services/authService";
 import PWAInstallPrompt from "../../components/PWAInstallPrompt";
 
 export default function LoginInput() {
@@ -46,13 +45,13 @@ export default function LoginInput() {
     console.log('Login page loaded - waiting for user action');
   }, []);
 
-  const handleGoogleLogin = () => {
+  const handleGoogleLogin = async () => {
     setError("");
     setIsLoading(true);
     
-    // Redirect to Google OAuth without role parameter
-    // Role selection will happen after authentication
-    window.location.assign(`/accounts/login/google/`);
+    // For PWA compatibility, use window.location.href instead of assign
+    // This helps keep the flow within the PWA context when possible
+    window.location.href = `/accounts/login/google/`;
   };
 
   return (

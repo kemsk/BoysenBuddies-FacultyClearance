@@ -66,7 +66,7 @@ export default function Login() {
         
         if (!authStatus.authenticated || !authStatus.user_info) {
           // User not authenticated, redirect to login input
-          window.location.replace('https://localhost:4433/');
+          window.location.replace('/');
           return;
         }
 
@@ -151,7 +151,7 @@ export default function Login() {
       console.log('LOGIN: Redirecting to dashboard:', target);
       
       // Redirect to the appropriate dashboard
-      window.location.replace(`https://localhost:4433${target}`);
+      window.location.replace(`${target}`);
       
     } catch (error) {
       console.error('LOGIN: Error updating selected role:', error);

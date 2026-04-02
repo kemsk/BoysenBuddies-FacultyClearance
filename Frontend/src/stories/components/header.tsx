@@ -102,13 +102,13 @@ export function FacultyHeader() {
     try {
       console.log("LOGOUT: Calling authService.logout...");
       await authService.logout();
-      console.log("LOGOUT: authService.logout completed, navigating to /login");
-      navigate("/login");
+      console.log("LOGOUT: authService.logout completed, navigating to /");
+      navigate("/");
     } catch (error) {
       console.error("LOGOUT: Logout failed:", error);
       // Still navigate to login even if logout API fails
-      console.log("LOGOUT: Navigating to /login despite error");
-      navigate("/login");
+      console.log("LOGOUT: Navigating to / despite error");
+      navigate("/");
     }
   };
 
@@ -270,7 +270,7 @@ export function ApprovalHeader() {
     } catch (err) {
       console.error("LOGOUT(UI): Logout request error", err);
     } finally {
-      navigate("/login");
+      navigate("/");
     }
   };
 
@@ -499,7 +499,7 @@ export function HROHeader() {
     } catch (err) {
       console.error("LOGOUT(UI): Logout request error", err);
     } finally {
-      navigate("/login");
+      navigate("/");
     }
   };
 
@@ -725,7 +725,7 @@ export function CISOHeader() {
     } catch (err) {
       console.error("LOGOUT(UI): Logout request error", err);
     } finally {
-      navigate("/login");
+      navigate("/");
     }
   };
 
@@ -975,7 +975,7 @@ export function OVPHEHeader() {
     } catch (err) {
       console.error("LOGOUT(UI): Logout request error", err);
     } finally {
-      navigate("/login");
+      navigate("/");
     }
   };
 
@@ -1189,7 +1189,7 @@ export function AssistantApproverHeader() {
     } catch (err) {
       console.error("LOGOUT(UI): Logout request error", err);
     } finally {
-      navigate("/login");
+      navigate("/");
     }
   };
 
