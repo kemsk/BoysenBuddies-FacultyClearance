@@ -36,7 +36,7 @@ export default function LoginPrompt() {
         const selectedRoleStr = sessionStorage.getItem('selected_role');
         if (!selectedRoleStr) {
           console.log('LOGIN_PROMPT: No selected role found, redirecting to role selection');
-          window.location.replace('https://localhost:4433/login');
+          window.location.replace('/login');
           return;
         }
         
@@ -70,7 +70,7 @@ export default function LoginPrompt() {
           console.log('LOGIN_PROMPT: Available roles:', userRoleValues);
           console.log('LOGIN_PROMPT: Selected role:', selectedRole.value);
           sessionStorage.removeItem('selected_role');
-          window.location.replace('https://localhost:4433/login?error=role_mismatch');
+          window.location.replace('/login?error=role_mismatch');
           return;
         }
         

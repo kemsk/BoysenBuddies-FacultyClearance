@@ -208,8 +208,15 @@ class AuthService {
 
     try {
 
-      const response = await fetch(`${AUTH_API_BASE_URL}/logout`, {
+      // Clear all local storage data
+      this.clearToken();
+      localStorage.removeItem('user_info');
+      localStorage.removeItem('selected_role');
+      sessionStorage.removeItem('selected_role');
+      sessionStorage.clear();
 
+      // Call server logout endpoint
+      const response = await fetch(`${API_BASE_URL}/admin/xu-faculty-clearance/api/auth/logout`, {
         method: 'POST',
 
         headers: {
@@ -226,22 +233,18 @@ class AuthService {
 
 
 
-      if (!response.ok) {
+      // Force clear cookies by setting them to expire
+      document.cookie.split(";").forEach(function(c) { 
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+      });
 
-        throw new Error('Logout failed');
-
-      }
-
-
-
-      return await response.json();
-
+      const result = { success: true, message: 'Logged out successfully' };
+      console.log('AUTH_SERVICE: Logout successful', result);
+      return result;
     } catch (error) {
-
-      console.error('Logout error:', error);
-
-      throw error;
-
+      console.error('AUTH_SERVICE: Logout error:', error);
+      // Still return success to allow navigation
+      return { success: true, message: 'Logged out (local cleanup only)' };
     }
 
   }

@@ -541,6 +541,16 @@ def google_oauth_callback(request):
         
         # Redirect to login page with JWT token for role selection
         login_url = f"https://localhost:4433/login?token={jwt_token}"
+        
+        # Check if this is a PWA request by checking user agent or referer
+        user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
+        is_pwa = any(pwa_indicator in user_agent for pwa_indicator in ['wv', 'webview', 'pwa'])
+        
+        # For PWA, try to keep the flow within the app context
+        if is_pwa:
+            # Use the same origin to stay within PWA
+            login_url = f"/login?token={jwt_token}"
+        
         print(f"GOOGLE OAUTH: No role selected, redirecting to role selection: {login_url}")
         return HttpResponseRedirect(login_url)
     
