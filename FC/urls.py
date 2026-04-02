@@ -62,6 +62,7 @@ urlpatterns = [
     path('api/faculty/requirements', views.faculty_requirements_api, name='FacultyRequirements'),
     path('api/faculty/submit-requirement', views.faculty_submit_requirement_api, name='FacultySubmitRequirement'),
     path('api/faculty/notifications', views.faculty_notifications_api, name='FacultyNotifications'),
+    path('api/faculty/activity-logs', views.faculty_activity_logs_api, name='FacultyActivityLogs'),
     path('api/faculty/archived-clearance', views.faculty_archived_clearance_api, name='FacultyArchivedClearance'),
     path('api/faculty/view-clearance', views.faculty_view_clearance_api, name='FacultyViewClearance'),
     path('api/approver/dashboard', views.approver_dashboard_api, name='ApproverDashboard'),

@@ -1192,6 +1192,14 @@ def _get_active_admin_for_role(request, role: str | None):
     return None
 
 
+def _admin_user_role_label(role: str | None) -> str | None:
+    if role == "ciso":
+        return "CISO"
+    if role == "ovphe":
+        return "OVPHE"
+    return None
+
+
 @csrf_exempt
 def _system_guidelines_api(request, role: str):
     if request.method == "GET":
@@ -1226,6 +1234,7 @@ def _system_guidelines_api(request, role: str):
         ActivityLog.objects.create(
             event_type=ActivityLog.EventType.CREATED_GUIDELINE,
             user=admin if admin else None,
+            user_role=_admin_user_role_label(role),
             details=[f"Guideline: {title}"],
         )
     except Exception:
@@ -1281,6 +1290,7 @@ def _system_guideline_detail_api(request, role: str, guideline_id: int):
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.EDITED_GUIDELINE,
                 user=admin if admin else None,
+                user_role=_admin_user_role_label(role),
                 details=[f"Guideline: {title}"],
             )
         except Exception:
@@ -1305,12 +1315,14 @@ def _system_guideline_detail_api(request, role: str, guideline_id: int):
             ActivityLog.objects.create(
                 event_type=evt,
                 user=admin if admin else None,
+                user_role=_admin_user_role_label(role),
                 details=[f"Guideline: {guideline.title}"],
             )
             if not guideline.is_active:
                 ActivityLog.objects.create(
                     event_type=ActivityLog.EventType.ARCHIVED_GUIDELINE,
                     user=admin if admin else None,
+                    user_role=_admin_user_role_label(role),
                     details=[f"Guideline: {guideline.title}"],
                 )
         except Exception:
@@ -1321,8 +1333,9 @@ def _system_guideline_detail_api(request, role: str, guideline_id: int):
         guideline_title = guideline.title
         try:
             ActivityLog.objects.create(
-                event_type=ActivityLog.EventType.ARCHIVED_GUIDELINE,
+                event_type=ActivityLog.EventType.DELETE_GUIDELINE,
                 user=admin if admin else None,
+                user_role=_admin_user_role_label(role),
                 details=[f"Guideline: {guideline_title}"],
             )
         except Exception:
@@ -3557,7 +3570,8 @@ def ciso_colleges_api(request):
                 ActivityLog.objects.create(
                     event_type=ActivityLog.EventType.CREATED_COLLEGE,
                     user=admin.user if admin else None,
-                    details=[f"College: {existing_inactive.name}"] if existing_inactive.name else [],
+                    user_role="CISO",
+                    details=[f"College : {existing_inactive.name}"] if existing_inactive.name else [],
                 )
             except Exception:
                 pass
@@ -3582,7 +3596,8 @@ def ciso_colleges_api(request):
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.CREATED_COLLEGE,
                 user=admin.user if admin else None,
-                details=[f"College: {obj.name}"] if obj.name else [],
+                user_role="CISO",
+                details=[f"College : {obj.name}"] if obj.name else [],
             )
         except Exception:
             pass
@@ -3596,7 +3611,52 @@ def ciso_colleges_api(request):
             status=201,
         )
 
-    return _json_method_not_allowed()
+
+@csrf_exempt
+def faculty_activity_logs_api(request):
+    if request.method == "POST":
+        user = _get_authenticated_user(request)
+        if not user:
+            return JsonResponse({"detail": "Authentication required"}, status=401)
+
+        data, jerr = _parse_json_body(request)
+        if jerr:
+            return jerr
+        if data is None:
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
+
+        event_type = (data.get("event_type") or "").strip()
+        details = data.get("details")
+        if details is None:
+            details = []
+
+        if not event_type:
+            return JsonResponse({"detail": "event_type is required"}, status=400)
+        if event_type not in {c[0] for c in ActivityLog.EventType.choices}:
+            return JsonResponse({"detail": "Invalid event_type"}, status=400)
+        if not isinstance(details, list):
+            return JsonResponse({"detail": "details must be a list"}, status=400)
+
+        user_role = (data.get("user_role") or "").strip() or None
+
+        obj = ActivityLog.objects.create(
+            event_type=event_type,
+            user=user,
+            user_role=user_role,
+            details=[str(x) for x in details if x is not None and str(x).strip()],
+        )
+
+        return JsonResponse(
+            {
+                "id": str(obj.id),
+                "event_type": obj.event_type,
+                "details": list(obj.details or []),
+                "created_at": obj.created_at.isoformat() if obj.created_at else None,
+            },
+            status=201,
+        )
+
+    return JsonResponse({"detail": "Method not allowed"}, status=405)
 
 
 @csrf_exempt
@@ -3639,7 +3699,8 @@ def ciso_college_detail_api(request, college_id: int):
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.EDITED_COLLEGE,
                 user=admin.user if admin else None,
-                details=[f"College: {obj.name}"],
+                user_role="CISO",
+                details=[f"College : {obj.name}"],
             )
         except Exception:
             pass
@@ -3659,7 +3720,8 @@ def ciso_college_detail_api(request, college_id: int):
             log = ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.DELETED_COLLEGE,
                 user=admin if admin else None,
-                details=[f"College: {college_name}"] if college_name else [],
+                user_role="CISO",
+                details=[f"College : {college_name}"] if college_name else [],
             )
             print(f"[DEBUG] ActivityLog created: id={log.id}, event_type={log.event_type}, details={log.details}")
         except Exception as e:
@@ -3827,23 +3889,7 @@ def ciso_department_detail_api(request, department_id: int):
             if obj.is_active:
                 obj.is_active = False
                 obj.save(update_fields=["is_active"])
-            try:
-                ActivityLog.objects.create(
-                    event_type=ActivityLog.EventType.DELETED_DEPARTMENT,
-                    user=admin if admin else None,
-                    details=[f"Department: {dept_name}", f"College: {college_name}"],
-                )
-            except Exception:
-                pass
             return JsonResponse({"id": str(obj.id), "softDeleted": True})
-        try:
-            ActivityLog.objects.create(
-                event_type=ActivityLog.EventType.DELETED_DEPARTMENT,
-                user=admin if admin else None,
-                details=[f"Department: {dept_name}", f"College: {college_name}"],
-            )
-        except Exception:
-            pass
         obj.delete()
         return JsonResponse({"id": str(department_id), "deleted": True})
 
@@ -4621,7 +4667,8 @@ def ovphe_activity_logs_api(request):
 
         obj = ActivityLog.objects.create(
             event_type=event_type,
-            user=admin.user if admin else None,
+            user=admin,
+            user_role="OVPHE",
             details=[str(x) for x in details if x is not None],
         )
 
@@ -4642,7 +4689,7 @@ def ovphe_activity_logs_api(request):
     page = int(request.GET.get("page") or 1)
     page_size = int(request.GET.get("pageSize") or 40)
 
-    qs = ActivityLog.objects.select_related("user", "faculty", "requirement").all()
+    qs = ActivityLog.objects.select_related("user", "faculty", "requirement").filter(user_role="OVPHE")
     if q:
         qs = qs.filter(
             models.Q(event_type__icontains=q)
@@ -4667,6 +4714,11 @@ def ovphe_activity_logs_api(request):
         description = ""
         if log.request_id:
             description = f"Request: {log.request_id}"
+
+        faculty_user = None
+        if log.faculty is not None:
+            faculty_user = getattr(log.faculty, "user", None)
+
         items.append(
             {
                 "id": str(log.id),
@@ -4677,12 +4729,13 @@ def ovphe_activity_logs_api(request):
                 "description": description,
                 "firstName": (log.user.first_name if log.user else ""),
                 "lastName": (log.user.last_name if log.user else ""),
+                "actorRole": log.user_role or "",
                 "approverDepartment": log.approver_department or "",
-                "facultyFirstName": log.faculty.first_name if log.faculty else "",
-                "facultyLastName": log.faculty.last_name if log.faculty else "",
+                "facultyFirstName": (faculty_user.first_name if faculty_user else "") or "",
+                "facultyLastName": (faculty_user.last_name if faculty_user else "") or "",
                 "universityId": log.university_id or "",
                 "requestId": log.request_id or "",
-                "requirementTitle": log.requirement.title if log.requirement else "",
+                "requirementTitle": getattr(log.requirement, "title", "") if log.requirement else "",
                 "details": list(log.details or []),
             }
         )
@@ -4839,20 +4892,63 @@ def ciso_notifications_api(request):
     return JsonResponse({"items": items})
 
 
+@csrf_exempt
 def ciso_activity_logs_api(request):
+    admin_user = _get_active_ciso_admin(request)
+    if not admin_user:
+        return JsonResponse({"detail": "CISO user not found"}, status=404)
+
+    if request.method == "POST":
+        try:
+            data, jerr = _parse_json_body(request)
+            if jerr:
+                return jerr
+
+            event_type = (data.get("event_type") or "").strip()
+            if not event_type:
+                return JsonResponse({"detail": "event_type is required"}, status=400)
+
+            allowed_event_types = {choice[0] for choice in ActivityLog.EventType.choices}
+            if event_type not in allowed_event_types:
+                return JsonResponse({"detail": "Invalid event_type"}, status=400)
+
+            details = data.get("details")
+            if details is None:
+                details = []
+            if not isinstance(details, list):
+                return JsonResponse({"detail": "details must be a list"}, status=400)
+            details = [str(d) for d in details if str(d).strip()]
+
+            log = ActivityLog.objects.create(
+                event_type=event_type,
+                user=admin_user,
+                user_role="CISO",
+                details=details,
+            )
+
+            return JsonResponse(
+                {"id": str(log.id), "event_type": log.event_type, "details": list(log.details or [])},
+                status=201,
+            )
+        except Exception as e:
+            import traceback
+
+            print("[ERROR] ciso_activity_logs_api POST failed:", str(e))
+            print(traceback.format_exc())
+            return JsonResponse(
+                {"detail": f"Internal server error: {str(e)}", "traceback": traceback.format_exc()},
+                status=500,
+            )
+
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
-
-    admin = _get_active_ciso_admin(request)
-    if not admin:
-        return JsonResponse({"detail": "CISO user not found"}, status=404)
 
     q = (request.GET.get("query") or "").strip().lower()
     page = int(request.GET.get("page") or 1)
     page_size = int(request.GET.get("pageSize") or 40)
 
     qs = ActivityLog.objects.select_related("user", "faculty", "requirement").filter(
-        user=admin.user
+        user_role="CISO"
     )
     if q:
         qs = qs.filter(
@@ -4878,6 +4974,11 @@ def ciso_activity_logs_api(request):
         description = ""
         if log.request_id:
             description = f"Request: {log.request_id}"
+
+        faculty_user = None
+        if log.faculty is not None:
+            faculty_user = getattr(log.faculty, "user", None)
+
         items.append(
             {
                 "id": str(log.id),
@@ -4888,9 +4989,10 @@ def ciso_activity_logs_api(request):
                 "description": description,
                 "firstName": (log.user.first_name if log.user else ""),
                 "lastName": (log.user.last_name if log.user else ""),
+                "actorRole": log.user_role or "",
                 "approverDepartment": log.approver_department or "",
-                "facultyFirstName": log.faculty.first_name if log.faculty else "",
-                "facultyLastName": log.faculty.last_name if log.faculty else "",
+                "facultyFirstName": (faculty_user.first_name if faculty_user else "") or "",
+                "facultyLastName": (faculty_user.last_name if faculty_user else "") or "",
                 "universityId": log.university_id or "",
                 "requestId": log.request_id or "",
                 "requirementTitle": log.requirement.title if log.requirement else "",
@@ -7497,7 +7599,50 @@ def approver_action_api(request):
 def approver_assistant_list_api(request):
     return JsonResponse({"items": []})
 
+@csrf_exempt
 def approver_activity_logs_api(request):
+    if request.method == "POST":
+        user = _get_authenticated_user(request)
+        if not user:
+            return JsonResponse({"detail": "Authentication required"}, status=401)
+
+        data, jerr = _parse_json_body(request)
+        if jerr:
+            return jerr
+        if data is None:
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
+
+        event_type = (data.get("event_type") or "").strip()
+        details = data.get("details")
+        if details is None:
+            details = []
+
+        if not event_type:
+            return JsonResponse({"detail": "event_type is required"}, status=400)
+        if event_type not in {c[0] for c in ActivityLog.EventType.choices}:
+            return JsonResponse({"detail": "Invalid event_type"}, status=400)
+        if not isinstance(details, list):
+            return JsonResponse({"detail": "details must be a list"}, status=400)
+
+        user_role = (data.get("user_role") or "").strip() or None
+
+        obj = ActivityLog.objects.create(
+            event_type=event_type,
+            user=user,
+            user_role=user_role,
+            details=[str(x) for x in details if x is not None and str(x).strip()],
+        )
+
+        return JsonResponse(
+            {
+                "id": str(obj.id),
+                "event_type": obj.event_type,
+                "details": list(obj.details or []),
+                "created_at": obj.created_at.isoformat() if obj.created_at else None,
+            },
+            status=201,
+        )
+
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 

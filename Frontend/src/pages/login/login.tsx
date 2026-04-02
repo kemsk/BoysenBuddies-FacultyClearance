@@ -133,6 +133,35 @@ export default function Login() {
       // Update the selected role in the session first
       console.log('LOGIN: Updating selected role in session:', role.value);
       await authService.updateSelectedRole(role.value);
+
+      const roleToActivityLog: Record<
+        number,
+        { endpoint: string; user_role: "CISO" | "OVPHE" | "Approver" | "Assistant" | "Faculty" }
+      > = {
+        1: { endpoint: "/admin/xu-faculty-clearance/api/ciso/activity-logs", user_role: "CISO" },
+        2: { endpoint: "/admin/xu-faculty-clearance/api/ovphe/activity-logs", user_role: "OVPHE" },
+        3: { endpoint: "/admin/xu-faculty-clearance/api/approver/activity-logs", user_role: "Approver" },
+        4: { endpoint: "/admin/xu-faculty-clearance/api/approver/activity-logs", user_role: "Assistant" },
+        5: { endpoint: "/admin/xu-faculty-clearance/api/faculty/activity-logs", user_role: "Faculty" },
+      };
+
+      const logTarget = roleToActivityLog[role.value];
+      if (logTarget) {
+        try {
+          await fetch(logTarget.endpoint, {
+            method: "POST",
+            credentials: "include",
+            keepalive: true,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              event_type: "user_login",
+              user_role: logTarget.user_role,
+              details: [`${logTarget.user_role} Login`],
+            }),
+          });
+        } catch {
+        }
+      }
       
       // Store the selected role for potential future use
       sessionStorage.setItem('selected_role', JSON.stringify(role));

@@ -643,13 +643,6 @@ export default function CISOCollegeOfficeConfiguration() {
     []
   );
 
-  const queueOVPHEActivityLog = React.useCallback(
-    (payload: { event_type: string; details?: string[] }) => {
-      setQueuedActivityLogs((prev) => [...prev, { role: "OVPHE", payload }]);
-    },
-    []
-  );
-
   const flushQueuedActivityLogs = React.useCallback(async () => {
     if (!queuedActivityLogs.length) return;
 
@@ -662,7 +655,7 @@ export default function CISOCollegeOfficeConfiguration() {
           postCISOActivityLog(log.payload);
           return;
         }
-        postOVPHEActivityLog(log.payload);
+        postCISOActivityLog(log.payload);
       })
     );
   }, [queuedActivityLogs]);
@@ -1185,6 +1178,21 @@ export default function CISOCollegeOfficeConfiguration() {
                 }
               );
 
+              try {
+                await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "created_college",
+                    details: created?.name ? [`College: ${created.name}`] : [],
+                    user_role: "CISO",
+                  }),
+                });
+              } catch {
+                // ignore
+              }
+
               postCISOActivityLog({
                 event_type: "created_college",
                 details: created?.name ? [`College: ${created.name}`] : [],
@@ -1208,6 +1216,24 @@ export default function CISOCollegeOfficeConfiguration() {
                   )
                 );
                 for (const dept of createdDepts) {
+                  try {
+                    await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                      method: "POST",
+                      credentials: "include",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        event_type: "created_department",
+                        details: [
+                          dept?.name ? `Department: ${dept.name}` : "",
+                          created?.name ? `College: ${created.name}` : "",
+                        ].filter(Boolean),
+                        user_role: "CISO",
+                      }),
+                    });
+                  } catch {
+                    // ignore
+                  }
+
                   postCISOActivityLog({
                     event_type: "created_department",
                     details: [
@@ -1248,14 +1274,6 @@ export default function CISOCollegeOfficeConfiguration() {
                 .map((id) => colleges.find((c) => c.id === id)?.name)
                 .filter(Boolean);
 
-              postCISOActivityLog({
-                event_type: "added_to_approver_flow",
-                details: [
-                  payload.category ? `Category: ${payload.category}` : "",
-                  addedCollegeNames.length ? `Colleges: ${addedCollegeNames.join(", ")}` : "",
-                ].filter(Boolean),
-              });
-
               // Only update local approverFlow; persistence happens when configuration is saved
               setApproverFlow((prev) => [
                 ...prev,
@@ -1292,6 +1310,24 @@ export default function CISOCollegeOfficeConfiguration() {
                 }
               );
 
+              try {
+                await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "created_department",
+                    details: [
+                      created?.name ? `Department: ${created.name}` : "",
+                      selectedCollegeName ? `College: ${selectedCollegeName}` : "",
+                    ].filter(Boolean),
+                    user_role: "CISO",
+                  }),
+                });
+              } catch {
+                // ignore
+              }
+
               postCISOActivityLog({
                 event_type: "created_department",
                 details: [
@@ -1318,6 +1354,21 @@ export default function CISOCollegeOfficeConfiguration() {
                   body: JSON.stringify({ name: payload.name, short: payload.short }),
                 }
               );
+
+              try {
+                await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "created_office",
+                    details: created?.name ? [`Office: ${created.name}`] : [],
+                    user_role: "CISO",
+                  }),
+                });
+              } catch {
+                // ignore
+              }
 
               postCISOActivityLog({
                 event_type: "created_office",
@@ -1355,6 +1406,24 @@ export default function CISOCollegeOfficeConfiguration() {
                   body: JSON.stringify({ name: payload.name, short: payload.short }),
                 }
               );
+
+              try {
+                await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "edited_college",
+                    details: [
+                      previousName ? `Previous: ${previousName}` : "",
+                      updated.name ? `Updated: ${updated.name}` : "",
+                    ].filter(Boolean),
+                    user_role: "CISO",
+                  }),
+                });
+              } catch {
+                // ignore
+              }
 
               postCISOActivityLog({
                 event_type: "edited_college",
@@ -1396,6 +1465,25 @@ export default function CISOCollegeOfficeConfiguration() {
                 }
               );
 
+              try {
+                await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "edited_department",
+                    details: [
+                      prevDeptName ? `Previous: ${prevDeptName}` : "",
+                      prevCollegeName ? `College: ${prevCollegeName}` : "",
+                      updated.name ? `Updated: ${updated.name}` : "",
+                    ].filter(Boolean),
+                    user_role: "CISO",
+                  }),
+                });
+              } catch {
+                // ignore
+              }
+
               postCISOActivityLog({
                 event_type: "edited_department",
                 details: [
@@ -1436,6 +1524,24 @@ export default function CISOCollegeOfficeConfiguration() {
                   body: JSON.stringify({ name: payload.name, short: payload.short }),
                 }
               );
+
+              try {
+                await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "edited_office",
+                    details: [
+                      prevOfficeName ? `Previous: ${prevOfficeName}` : "",
+                      updated.name ? `Updated: ${updated.name}` : "",
+                    ].filter(Boolean),
+                    user_role: "CISO",
+                  }),
+                });
+              } catch {
+                // ignore
+              }
 
               postCISOActivityLog({
                 event_type: "edited_office",
@@ -1481,14 +1587,24 @@ export default function CISOCollegeOfficeConfiguration() {
                 }
               );
 
-              postCISOActivityLog({
-                event_type: "edited_approver_flow",
-                details: [
-                  prevCategory ? `Previous: ${prevCategory}` : "",
-                  payload.category ? `Updated: ${payload.category}` : "",
-                  editedCollegeNames.length ? `Colleges: ${editedCollegeNames.join(", ")}` : "",
-                ].filter(Boolean),
-              });
+              try {
+                await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "edited_approver",
+                    details: [
+                      prevCategory ? `Previous: ${prevCategory}` : "",
+                      payload.category ? `Updated: ${payload.category}` : "",
+                      editedCollegeNames.length ? `Colleges: ${editedCollegeNames.join(", ")}` : "",
+                    ].filter(Boolean),
+                    user_role: "CISO",
+                  }),
+                });
+              } catch {
+                // ignore
+              }
               setApproverFlow((prev) => prev.map((a) => (a.id === editingApproverId ? updated : a)));
             })();
           }}
@@ -1509,10 +1625,25 @@ export default function CISOCollegeOfficeConfiguration() {
                 }
               );
 
-              postCISOActivityLog({
-                event_type: "edited_approver_flow",
-                details: ["Updated approver flow."],
-              });
+              try {
+                const details = next.map((step, idx) => {
+                  const orderNum = idx + 1;
+                  const categoryName = step.category || "Unknown";
+                  return `${orderNum} ${categoryName}`;
+                });
+                await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "edited_approver_flow",
+                    details,
+                    user_role: "CISO",
+                  }),
+                });
+              } catch {
+                // ignore
+              }
             })();
           }}
         />
@@ -1569,24 +1700,53 @@ export default function CISOCollegeOfficeConfiguration() {
 
                     if (confirmDelete.type === "department") {
                       (async () => {
-                        postCISOActivityLog({
-                          event_type: "deleted_department",
-                          details: confirmDelete.label ? [`Department: ${confirmDelete.label}`] : [],
-                        });
+                        const dept = departments.find((d) => d.id === confirmDelete.id);
+                        const collegeName = colleges.find((c) => c.id === dept?.collegeId)?.name ?? "";
+                        const details = [
+                          confirmDelete.label ? `Department: ${confirmDelete.label}` : "",
+                          collegeName ? `College: ${collegeName}` : "",
+                        ].filter(Boolean);
+
+                        try {
+                          await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                            method: "POST",
+                            credentials: "include",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              event_type: "deleted_department",
+                              details,
+                              user_role: "CISO",
+                            }),
+                          });
+                        } catch {
+                          // ignore
+                        }
+
                         await apiJson(
                           `/admin/xu-faculty-clearance/api/ciso/departments/${confirmDelete.id}`,
                           { method: "DELETE" }
                         );
-                        queueOVPHEActivityLog({
-                          event_type: "deleted_department",
-                          details: confirmDelete.label ? [`Department: ${confirmDelete.label}`] : [],
-                        });
                         setDepartments((prev) => prev.filter((d) => d.id !== confirmDelete.id));
                       })();
                     }
 
                     if (confirmDelete.type === "office") {
                       (async () => {
+                        try {
+                          await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                            method: "POST",
+                            credentials: "include",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              event_type: "deleted_office",
+                              details: confirmDelete.label ? [`Office: ${confirmDelete.label}`] : [],
+                              user_role: "CISO",
+                            }),
+                          });
+                        } catch {
+                          // ignore
+                        }
+
                         postCISOActivityLog({
                           event_type: "deleted_office",
                           details: confirmDelete.label ? [`Office: ${confirmDelete.label}`] : [],
@@ -1600,12 +1760,40 @@ export default function CISOCollegeOfficeConfiguration() {
                     }
 
                     if (confirmDelete.type === "approver") {
-                      postCISOActivityLog({
-                        event_type: "DELETED_APPROVER_FLOW_STEP",
-                        details: confirmDelete.label ? [`Approver: ${confirmDelete.label}`] : [],
-                      });
-                      // Only update local approverFlow; persistence happens when configuration is saved
-                      setApproverFlow((prev) => prev.filter((a) => a.id !== confirmDelete.id));
+                      (async () => {
+                        const step = approverFlow.find((a) => a.id === confirmDelete.id);
+                        const isAll = !step || step.collegeIds.length === 0 || step.collegeIds.length === colleges.length;
+                        const collegeTitles = isAll
+                          ? ["ALL"]
+                          : (step.collegeIds
+                              .map((id) => colleges.find((c) => c.id === id)?.name)
+                              .filter(Boolean) as string[]);
+                        const details = [
+                          step?.category ? `Department/Office Name = ("${step.category}")` : "",
+                          `College : ${collegeTitles.length ? collegeTitles.join(", ") : ""}`,
+                        ].filter((d) => {
+                          const t = String(d ?? "").trim();
+                          return !!t && t !== "College :";
+                        });
+
+                        try {
+                          await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                            method: "POST",
+                            credentials: "include",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              event_type: "removed_from_approver_flow",
+                              details,
+                              user_role: "CISO",
+                            }),
+                          });
+                        } catch {
+                          // ignore
+                        }
+
+                        // Only update local approverFlow; persistence happens when configuration is saved
+                        setApproverFlow((prev) => prev.filter((a) => a.id !== confirmDelete.id));
+                      })();
                     }
 
                     setConfirmDelete({ open: false });

@@ -156,6 +156,48 @@ export default function RequirementList() {
     if (pendingChanges.length === 0) return;
 
     try {
+      const createdTitles = pendingChanges
+        .filter((c) => c.type === "create")
+        .map((c) => (c?.data?.title ? String(c.data.title) : ""))
+        .filter((t) => t.trim() !== "");
+
+      const updatedTitles = pendingChanges
+        .filter((c) => c.type === "update")
+        .map((c) => {
+          const direct = c?.data?.title ? String(c.data.title) : "";
+          if (direct.trim()) return direct;
+          const fallback = requirements.find((r) => r.id === c?.id)?.title;
+          return fallback ? String(fallback) : "";
+        })
+        .filter((t) => t.trim() !== "");
+
+      const deletedTitles = pendingChanges
+        .filter((c) => c.type === "delete")
+        .map((c) => (c?.data?.title ? String(c.data.title) : ""))
+        .filter((t) => t.trim() !== "");
+
+      const details = [
+        "Edited Multiple Requirements",
+        createdTitles.length ? `Created: ${createdTitles.join(", ")}` : "",
+        updatedTitles.length ? `Updated: ${updatedTitles.join(", ")}` : "",
+        deletedTitles.length ? `Deleted: ${deletedTitles.join(", ")}` : "",
+      ].filter(Boolean);
+
+      try {
+        await fetch("/admin/xu-faculty-clearance/api/approver/activity-logs", {
+          method: "POST",
+          credentials: "include",
+          keepalive: true,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event_type: "edited_requirement",
+            user_role: "Approver",
+            details,
+          }),
+        });
+      } catch {
+      }
+
       // Process each pending change
       for (const change of pendingChanges) {
         if (change.type === 'create') {

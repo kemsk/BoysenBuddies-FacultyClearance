@@ -59,8 +59,16 @@ function postOVPHEActivityLog(payload: { event_type: string; details?: string[] 
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  }).catch(() => {});
+    body: JSON.stringify({ ...payload, user_role: "OVPHE" }),
+  })
+    .then(async (r) => {
+      if (r.ok) return;
+      const text = await r.text().catch(() => "");
+      console.error("[OVPHE] activity log POST failed:", r.status, text);
+    })
+    .catch((e) => {
+      console.error("[OVPHE] activity log POST error:", e);
+    });
 }
 
 function GuidelinesToggle({

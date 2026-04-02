@@ -1,10 +1,10 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-
+ 
 import { cn } from "../../components/lib/utils"
-
+ 
 import { Button } from "./button"
-
+ 
 const alertVariants = cva(
   "relative w-full rounded-lg border px-4 py-3 text-sm [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg~*]:pl-7",
   {
@@ -22,7 +22,7 @@ const alertVariants = cva(
     },
   }
 )
-
+ 
 const Alert = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & 
@@ -38,7 +38,7 @@ const Alert = React.forwardRef<
   // Editable title and description - change these values here!
   const alertTitle = title || "Confirm Status Change";
   const alertDescription = description || "Are you sure you want to deactivate this timeline?";
-  
+ 
   return (
     <div
       ref={ref}
@@ -73,7 +73,7 @@ const Alert = React.forwardRef<
   )
 })
 Alert.displayName = "Alert"
-
+ 
 const AlertTitle = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLHeadingElement>
@@ -85,7 +85,7 @@ const AlertTitle = React.forwardRef<
   />
 ))
 AlertTitle.displayName = "AlertTitle"
-
+ 
 const AlertDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
@@ -97,13 +97,16 @@ const AlertDescription = React.forwardRef<
   />
 ))
 AlertDescription.displayName = "AlertDescription"
-
+ 
 export { Alert, AlertTitle, AlertDescription }
-
+ 
 export const DeactivateAlert = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLDivElement> & {
+    onDelete?: () => void;
+    onCancel?: () => void;
+  }
+>(({ className, onDelete, onCancel, ...props }, ref) => (
   <div
     ref={ref}
     role="alert"
@@ -121,22 +124,25 @@ export const DeactivateAlert = React.forwardRef<
     <div className="mb-4 text-lg text-center text-black font-bold">
       Do you wish to continue?
     </div>
-
+ 
     <div className="flex flex-col gap-3 justify-end">
-      <Button variant="destructive" onClick={() => console.log("Deactivate confirmed")} className="w-full font-bold">
+      <Button variant="destructive" onClick={onDelete || (() => console.log("Deactivate confirmed"))} className="w-full font-bold">
         DEACTIVATE
       </Button>
-      <Button variant="cancel" onClick={() => console.log("Cancel Deactivate")} className="w-full">
+      <Button variant="cancel" onClick={onCancel || (() => console.log("Cancel Deactivate"))} className="w-full">
         CANCEL
       </Button>
     </div>
   </div>
 ))
-
+ 
 export const ActivateAlert = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLDivElement> & {
+    onDelete?: () => void;
+    onCancel?: () => void;
+  }
+>(({ className, onDelete, onCancel, ...props }, ref) => (
   <div
     ref={ref}
     role="alert"
@@ -154,22 +160,25 @@ export const ActivateAlert = React.forwardRef<
     <div className="mb-4 text-lg text-center text-black font-bold">
       Do you wish to continue?
     </div>
-
+ 
     <div className="flex flex-col gap-3 justify-end">
-      <Button variant="default" onClick={() => console.log("Activate confirmed")} className="w-full font-bold">
+      <Button variant="default" onClick={onDelete || (() => console.log("Activate confirmed"))} className="w-full font-bold">
         ACTIVATE
       </Button>
-      <Button variant="cancel" onClick={() => console.log("Cancel Activate")} className="w-full">
+      <Button variant="cancel" onClick={onCancel || (() => console.log("Cancel Activate"))} className="w-full">
         CANCEL
       </Button>
     </div>
   </div>
 ))
-
+ 
 export const ArchiveAlert = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLDivElement> & {
+    onDelete?: () => void;
+    onCancel?: () => void;
+  }
+>(({ className, onDelete, onCancel, ...props }, ref) => (
   <div
     ref={ref}
     role="alert"
@@ -187,7 +196,7 @@ export const ArchiveAlert = React.forwardRef<
     <div className="mb-4 text-lg text-center text-black font-bold">
       Do you wish to continue?
     </div>
-
+ 
     <div className="flex flex-col gap-3 justify-end">
       <Button variant="default" onClick={() => console.log("Activate confirmed")} className="w-full font-bold">
         ARCHIVE
@@ -198,7 +207,7 @@ export const ArchiveAlert = React.forwardRef<
     </div>
   </div>
 ))
-
+ 
 export const DeleteAlert = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & {
@@ -224,7 +233,7 @@ export const DeleteAlert = React.forwardRef<
     <div className="mb-4 text-lg text-center text-black font-bold">
       Do you wish to continue?
     </div>
-
+ 
     <div className="flex flex-col gap-3 justify-end">
       <Button variant="destructive" onClick={onDelete} className="w-full font-bold">
         DELETE
