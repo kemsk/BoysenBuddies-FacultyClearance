@@ -7,8 +7,6 @@ import {
   Navigate,
 } from "react-router-dom";
 
-import PWAInstallPrompt from "./components/PWAInstallPrompt";
-
 import Login from "./pages/login/login";
 import LoginPrompt from "./pages/login/login-prompt";
 import LoginInput from "./pages/login/login-input";
@@ -278,7 +276,6 @@ function App() {
   return (
     <Router>
       <HeartbeatManager />
-      <PWAInstallPrompt />
       <Routes>
         <Route path="/" element={<LoginInput />} />
         

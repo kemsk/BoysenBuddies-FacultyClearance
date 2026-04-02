@@ -501,7 +501,7 @@ def google_oauth_callback(request):
         _login(request, user)
         
         # Redirect to login page with JWT token for role selection
-        login_url = f"http://localhost:8001/login?token={jwt_token}"
+        login_url = f"https://localhost:4433/login?token={jwt_token}"
         print(f"GOOGLE OAUTH: No role selected, redirecting to role selection: {login_url}")
         return HttpResponseRedirect(login_url)
     
