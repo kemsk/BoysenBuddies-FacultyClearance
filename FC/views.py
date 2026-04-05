@@ -5586,6 +5586,56 @@ def faculty_dashboard_api(request):
         status = "Completed"
     elif approved_reqs > 0:
         status = "In Progress"
+    # Calculate progress based on fully approved approver steps, not individual requirements
+    total_steps = 0
+    approved_steps = 0
+    
+    if timeline:
+        # Get clearance requests grouped by approver category/office
+        clearance_requests = timeline_requests.select_related('requirement')
+        
+        # Get approver flow configuration from active timeline
+        approver_flow_config = timeline.approver_flow_configs.first()
+        
+        if approver_flow_config:
+            # Use dynamic approver flow from timeline configuration
+            flow_steps = approver_flow_config.steps.order_by('order').prefetch_related('colleges')
+            
+            for flow_step in flow_steps:
+                # Check if this step applies to the faculty's college
+                step_colleges = list(flow_step.colleges.all())
+                if step_colleges and faculty.college and faculty.college not in step_colleges:
+                    continue
+                
+                # Find all requirements for this step
+                step_requirements = Requirement.objects.filter(
+                    approver_flow_step=flow_step,
+                    clearance_timeline=timeline,
+                    is_active=True
+                )
+                
+                # Filter requirements that apply to this faculty
+                applicable_requirements = []
+                for req in step_requirements:
+                    if _requirement_applies_to_faculty(req, faculty):
+                        applicable_requirements.append(req)
+                
+                if applicable_requirements:
+                    total_steps += 1
+                    
+                    # Check if all requirements for this step are approved
+                    all_approved = True
+                    for req in applicable_requirements:
+                        request_exists = clearance_requests.filter(requirement=req).first()
+                        if not request_exists or request_exists.status != ClearanceRequest.Status.APPROVED:
+                            all_approved = False
+                            break
+                    
+                    if all_approved:
+                        approved_steps += 1
+    
+    total_reqs = total_steps
+    approved_reqs = approved_steps
 
     # Generate steps data for frontend
     steps = []
