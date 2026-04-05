@@ -30,9 +30,10 @@ function postOVPHENotification(payload: {
   title: string;
   body: string;
   details: string[];
-  status: null;
-  is_read: 0;
-  user_roles: string[];
+  status?: string | null;
+  is_read?: number | boolean;
+  user_roles?: string[];
+  user_ids?: number[];
   created_by_id?: string | number | null;
   approver_id?: string | number | null;
   clearance_period_start_date?: string | null;
@@ -444,7 +445,7 @@ export default function OVPHEAnnouncements() {
                     details: [`Announcement = "${title}"`],
                     status: null,
                     is_read: 0,
-                    user_roles: ["APPROVER", "CISO", "OVPHE", "ASSISTANT_APPROVER"],
+                    user_roles: ["Approver", "CISO", "OVPHE", "Assistant"],
                     created_by_id: null,
                     approver_id: null,
                     clearance_period_start_date: null,
@@ -472,7 +473,7 @@ export default function OVPHEAnnouncements() {
                   details: [`Announcement = "${title}"`],
                   status: null,
                   is_read: 0,
-                  user_roles: ["APPROVER", "CISO", "OVPHE", "ASSISTANT_APPROVER"],
+                  user_roles: ["Approver", "CISO", "OVPHE", "Assistant"],
                   created_by_id: null,
                   approver_id: null,
                   clearance_period_start_date: null,

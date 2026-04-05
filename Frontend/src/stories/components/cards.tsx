@@ -270,8 +270,10 @@ export type RequirementListItem = {
   physicalSubmission?: boolean;
   lastUpdated?: string;
   submissionDeadline?: string;
-
-
+  Recipients?: string;
+  ClearanceTimeline?: string;
+  CreatedBy?: string;
+};
 
 export type StudentAssistantItem = {
 
@@ -708,7 +710,14 @@ export function ClearanceRequestsCard({
     
     setLoading(true);
     try {
-      const response = await fetch("/admin/xu-faculty-clearance/api/approver/action", {
+      // Check if current user is an assistant approver by checking the current URL
+      const isAssistantApprover = window.location.pathname.includes('/assistant-approver');
+      console.log("[DEBUG] Is assistant approver:", isAssistantApprover);
+      
+      // Use appropriate endpoint based on user type
+      const actionEndpoint = isAssistantApprover ? "/admin/xu-faculty-clearance/api/assistant-approver/clearance" : "/admin/xu-faculty-clearance/api/approver/action";
+      
+      const response = await fetch(actionEndpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -735,6 +744,11 @@ export function ClearanceRequestsCard({
 
       const result = await response.json();
       console.log("Bulk approve successful:", result);
+      
+      if (isAssistantApprover) {
+        window.location.reload();
+        return;
+      }
       
       // Log activity for each approved request
       try {
@@ -765,7 +779,9 @@ export function ClearanceRequestsCard({
             // Use session user's office (approver's office)
             const userOffice = userProfile?.roles_payload?.[0]?.office || null;
             
-            // Always use regular event types, add assistant info to details if needed
+            // Always use regular event types for now until we fix the backend
+            const eventType = "approved_clearance";
+            
             let details = [
               `Faculty Member: ${requestItem.name}`,
               `Employee ID: ${facultyEmployeeId}`,
@@ -784,17 +800,19 @@ export function ClearanceRequestsCard({
               userOffice,
               userProfileExists: !!userProfile,
               profileRoles: userProfile?.roles_payload,
-              isAssistantApprover
+              isAssistantApprover,
+              eventType
             });
             
             const activityPayload = {
-              event_type: "approved_clearance",
+              event_type: eventType,
               details: details,
               department: facultyDepartment,
               college: facultyCollege,
               office: userOffice,
               university_id: facultyEmployeeId,
-              request_id: requestId
+              request_id: requestId,
+              user_role: "Approver",
             };
             
             console.log("[DEBUG] Activity payload:", activityPayload);
@@ -838,7 +856,14 @@ export function ClearanceRequestsCard({
     
     setLoading(true);
     try {
-      const response = await fetch("/admin/xu-faculty-clearance/api/approver/action", {
+      // Check if current user is an assistant approver by checking the current URL
+      const isAssistantApprover = window.location.pathname.includes('/assistant-approver');
+      console.log("[DEBUG] Is assistant approver:", isAssistantApprover);
+      
+      // Use appropriate endpoint based on user type
+      const actionEndpoint = isAssistantApprover ? "/admin/xu-faculty-clearance/api/assistant-approver/clearance" : "/admin/xu-faculty-clearance/api/approver/action";
+      
+      const response = await fetch(actionEndpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -865,6 +890,11 @@ export function ClearanceRequestsCard({
 
       const result = await response.json();
       console.log("Bulk reject successful:", result);
+      
+      if (isAssistantApprover) {
+        window.location.reload();
+        return;
+      }
       
       // Log activity for each rejected request
       try {
@@ -893,7 +923,7 @@ export function ClearanceRequestsCard({
             const userOffice = userProfile?.roles_payload?.[0]?.office || null;
             
             // Determine event type based on whether user is assistant approver
-            const eventType = isAssistantApprover ? "assistant_rejected_clearance" : "rejected_clearance";
+            const eventType = "rejected_clearance";
             
             console.log("[DEBUG] Extracted data (reject):", {
               facultyDepartment,
@@ -925,7 +955,8 @@ export function ClearanceRequestsCard({
                 college: facultyCollege,
                 office: userOffice,
                 university_id: facultyEmployeeId,
-                request_id: requestId
+                request_id: requestId,
+                user_role: "Approver",
               }),
             });
           }

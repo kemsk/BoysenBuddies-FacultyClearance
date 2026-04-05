@@ -21,6 +21,7 @@ urlpatterns = [
     path('api/ciso/announcements', views.ciso_announcements_api, name='CISOAnnouncements'),
     path('api/ciso/announcements/<int:announcement_id>', views.ciso_announcement_detail_api, name='CISOAnnouncementDetail'),
     path('api/ciso/notifications', views.ciso_notifications_api, name='CISONotifications'),
+    path('api/ciso/users-by-role', views.ciso_users_by_role_api, name='CISOUsersByRole'),
     path('api/ciso/activity-logs', views.ciso_activity_logs_api, name='CISOActivityLogs'),
     path('api/ciso/system-users', views.ciso_system_users_api, name='CISOSystemUsers'),
     path('api/ciso/system-users/<int:user_id>', views.ciso_system_user_detail_api, name='CISOSystemUserDetail'),

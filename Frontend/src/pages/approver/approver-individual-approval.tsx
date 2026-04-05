@@ -67,6 +67,10 @@ export default function ApproverIndividualApproval() {
         return res.json();
       })
       .then((data) => {
+        console.log("[DEBUG] Raw API response:", data);
+        console.log("[DEBUG] College value:", data.item.college);
+        console.log("[DEBUG] Department value:", data.item.department);
+        console.log("[DEBUG] Employee ID value:", data.item.employeeId);
         setRequest(data);
         setStatus(data.item.status.toLowerCase() as "approved" | "rejected" | "pending");
         setRemarks(data.item.remarks || "");
@@ -104,6 +108,26 @@ export default function ApproverIndividualApproval() {
     setSaving(true);
     setError(null);
 
+    // Store the data we need for activity logging BEFORE any API calls
+    // Use the same item data that RequestCard uses (which is working)
+    // No fallbacks - use only real data to see what's actually available
+    console.log("[DEBUG] Raw item data for employee ID:", {
+      employeeId: item.employeeId,
+      schoolId: item.schoolId,
+      fullName: item.fullName,
+      name: item.name
+    });
+    
+    const facultyData = {
+      fullName: item.fullName || item.name,
+      employeeId: item.employeeId,
+      requestId: item.requestId,
+      department: item.department,
+      college: item.college
+    };
+    
+    console.log("[DEBUG] Individual approval - Final faculty data:", facultyData);
+
     try {
       const response = await fetch("/admin/xu-faculty-clearance/api/approver/individual-approval", {
         method: "POST",
@@ -125,35 +149,7 @@ export default function ApproverIndividualApproval() {
       const result = await response.json();
       console.log("Save successful:", result);
       
-      // Log activity for approval/rejection
-      try {
-        const eventType = status === "approved" ? "individual_approved_clearance" : "individual_rejected_clearance";
-        const userDepartment = userProfile?.roles_payload?.[0]?.department || null;
-        const userCollege = userProfile?.roles_payload?.[0]?.college || null;
-        const userOffice = userProfile?.roles_payload?.[0]?.office || null;
-        const userUniversityId = userProfile?.university_id || "N/A";
-        
-        await fetch("/admin/xu-faculty-clearance/api/approver/activity-logs", {
-          method: "POST",
-          credentials: "include",
-          keepalive: true,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            event_type: eventType,
-            details: [
-              `Faculty Member: ${item.name}`,
-              `Remarks: ${remarks || "No remarks"}`
-            ],
-            department: userDepartment,
-            college: userCollege,
-            office: userOffice,
-            university_id: userUniversityId,
-            request_id: request.item.requestId
-          }),
-        });
-      } catch (logError) {
-        console.error("Failed to log activity:", logError);
-      }
+      // Activity log is now created by the backend with complete data
       
       // Navigate back to clearance list
       navigate("/approver-clearance");

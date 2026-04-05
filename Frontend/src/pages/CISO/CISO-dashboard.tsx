@@ -56,7 +56,7 @@ export default function CISODashboard() {
   }, [announcementItems]);
 
   React.useEffect(() => {
-    fetch("/admin/xu-faculty-clearance/api/me")
+    fetch("/admin/xu-faculty-clearance/api/me", { credentials: "include" })
       .then((res) => {
         if (!res.ok) throw new Error("Failed to load profile");
         return res.json();
