@@ -269,6 +269,11 @@ function TimelineCard(props: {
   onToggleActive: (item: StoredClearanceTimelineItem, next: boolean) => void;
 }) {
   const { term, item, isSubmitting, onAdd, onEdit, onArchive, onToggleActive } = props;
+  const editDisabled = isSubmitting || Boolean(item?.setAsActive);
+  const handleEditClick = React.useCallback(() => {
+    if (!item || editDisabled) return;
+    onEdit(item);
+  }, [editDisabled, item, onEdit]);
 
   return (
     <div className="p-3">
@@ -312,10 +317,10 @@ function TimelineCard(props: {
             <Button
               variant="back"
               className="flex-1 font-bold"
-              disabled={isSubmitting}
-              onClick={() => onEdit(item)}
+              disabled={editDisabled}
+              onClick={handleEditClick}
             >
-              EDIT
+              {item.setAsActive ? "EDIT BLOCKED" : "EDIT"}
             </Button>
           </div>
         ) : (
@@ -715,6 +720,10 @@ export default function CISOClearanceTimeline() {
                   setCreateOpen(true);
                 }}
                 onEdit={(selected) => {
+                  if (selected.setAsActive) {
+                    setTimelineError("Active timelines cannot be edited. Deactivate the timeline first.");
+                    return;
+                  }
                   setEditingItemId(selected.id);
                   setEditOpen(true);
                 }}

@@ -6229,6 +6229,28 @@ def _clearance_timelines_api(request, admin_getter, not_found_detail: str):
 
 
 
+    is_status_only_update = (
+
+        start_year == t.academic_year_start
+
+        and end_year == t.academic_year_end
+
+        and term == t.term
+
+        and clearance_start_date == t.clearance_start_date
+
+        and clearance_end_date == t.clearance_end_date
+
+    )
+
+
+
+    if t.is_active and not is_status_only_update:
+
+        return JsonResponse({"detail": "Active timelines cannot be edited. Deactivate the timeline first."}, status=403)
+
+
+
     if set_as_active:
 
         prev_active = list(ClearanceTimeline.objects.exclude(id=t.id).filter(is_active=True))
