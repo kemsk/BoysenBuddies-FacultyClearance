@@ -12,6 +12,22 @@ interface UserRole {
   icon_white: string;
 }
 
+const getAppOrigin = (): string => {
+  const { protocol, hostname, origin, port } = window.location;
+
+  if ((hostname === 'localhost' || hostname === '127.0.0.1') && port !== '4433') {
+    return 'https://localhost:4433';
+  }
+
+  if ((hostname === 'localhost' || hostname === '127.0.0.1') && protocol !== 'https:') {
+    return 'https://localhost:4433';
+  }
+
+  return origin;
+};
+
+const buildAppUrl = (path: string): string => new URL(path, getAppOrigin()).toString();
+
 export default function Login() {
   const [error, setError] = useState<string>("");
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
@@ -66,7 +82,7 @@ export default function Login() {
         
         if (!authStatus.authenticated || !authStatus.user_info) {
           // User not authenticated, redirect to login input
-          window.location.replace('/');
+          window.location.replace(buildAppUrl('/'));
           return;
         }
 
@@ -180,7 +196,7 @@ export default function Login() {
       console.log('LOGIN: Redirecting to dashboard:', target);
       
       // Redirect to the appropriate dashboard
-      window.location.replace(`${target}`);
+      window.location.replace(buildAppUrl(target));
       
     } catch (error) {
       console.error('LOGIN: Error updating selected role:', error);

@@ -29,9 +29,10 @@ function postCISONotification(payload: {
   title: string;
   body: string;
   details: string[];
-  status: null;
-  is_read: 0;
-  user_roles: string[];
+  status?: string | null;
+  is_read?: number | boolean;
+  user_roles?: string[];
+  user_ids?: number[];
   created_by_id?: string | number | null;
   approver_id?: string | number | null;
   clearance_period_start_date?: string | null;
@@ -336,7 +337,7 @@ export default function CISOSystemGuideline() {
                             ).then(() => {
                               // POST Inactive notification only when deactivating
                               if (!nextEnabled) {
-                                  postCISONotification({
+                                postCISONotification({
                                     title: "Content Archived",
                                     body: `"${title}" has been moved to archives by [User Name].`,
                                     details: [`Guidelines title = "${title}"`],
@@ -346,7 +347,7 @@ export default function CISOSystemGuideline() {
                                     created_by_id: null,
                                     approver_id: null,
                                     clearance_period_start_date: null,
-                                    clearance_period_end_date: null,                                    
+                                    clearance_period_end_date: null,                                  
                                   });
                                 
                                 postCISONotification({
@@ -416,7 +417,7 @@ export default function CISOSystemGuideline() {
                     details: [`Guideline  = "${title}"`],
                     status: null,
                     is_read: 0,
-                    user_roles: ["APPROVER", "CISO", "OVPHE", "ASSISTANT_APPROVER"],
+                    user_roles: ["Approver", "CISO", "OVPHE", "Assistant"],
                     created_by_id: null,
                     approver_id: null,
                     clearance_period_start_date: null,
@@ -453,7 +454,7 @@ export default function CISOSystemGuideline() {
                   details: [`Guideline = "${title}"`],
                   status: null,
                   is_read: 0,
-                  user_roles: ["APPROVER", "CISO", "OVPHE", "ASSISTANT_APPROVER"],
+                  user_roles: ["Approver", "CISO", "OVPHE", "Assistant"],
                   created_by_id: null,
                   approver_id: null,
                   clearance_period_start_date: null,

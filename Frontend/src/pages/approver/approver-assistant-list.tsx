@@ -500,6 +500,65 @@ export default function ApproverAssistantList() {
                 return;
               }
 
+              // POST Role Updated notification for the created assistant
+              try {
+                const deptTitle = payload.department || "";
+                const collegeTitle = payload.college || "";
+                const officeTitle = payload.office || "";
+                const scopeLabel = officeTitle || deptTitle || "";
+                const notifResponse = await fetch("/admin/xu-faculty-clearance/api/faculty/notifications", {
+                  method: "POST",
+                  credentials: "include",
+                  keepalive: true,
+                  headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken"),
+                  },
+                  body: JSON.stringify({
+                    title: "Role Updated",
+                    status: null,
+                    body: `You have been added as an Assistant Approver for ${scopeLabel}.`,
+                    details: [
+                      `Department = ${deptTitle}`,
+                      `College = ${collegeTitle}`,
+                      `Office = ${officeTitle}`,
+                    ],
+                    user_role: "Assistant",
+                    is_read: false,
+                  }),
+                });
+                if (!notifResponse.ok) {
+                  console.warn("[notification] Role Updated POST failed:", notifResponse.status, await notifResponse.text());
+                } else {
+                  console.log("[notification] Role Updated created successfully");
+                }
+              } catch (e) {
+                console.warn("[notification] Role Updated POST error:", e);
+              }
+
+              // Added Assistant Approver activity log
+              try {
+                await fetch("/admin/xu-faculty-clearance/api/approver/activity-logs", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "added_assistant_approver",
+                    details: [
+                      `Assistant: ${payload.firstName} ${payload.lastName}`,
+                      `Email: ${payload.email}`,
+                      `Department: ${payload.department || "N/A"}`,
+                      `College: ${payload.college || "N/A"}`
+                    ],
+                    department: payload.department || null,
+                    office: payload.office || null,
+                    college: payload.college || null
+                  })
+                });
+              } catch (logError) {
+                console.error("Failed to log activity:", logError);
+              }
+
               setAddOpen(false);
               await fetchUsers();
               window.alert("Assistant created successfully!");
@@ -529,7 +588,7 @@ export default function ApproverAssistantList() {
               // Derive assistantType based on selected department/office
               const selected = payload.department;
               const isOffice = adminOffices.includes(selected || "");
-              let assistantType: "college_admin" | "dept_chair" | "office_admin" | "admin_secondment" | "admin_representative" = "college_admin";
+              let assistantType: "college_admin" | "dept_chair" | "office_admin" | "admin_secondment" | "student_assistant" = "college_admin";
               if (isOffice) {
                 assistantType = "office_admin";
               } else {
@@ -548,6 +607,7 @@ export default function ApproverAssistantList() {
                   isActive: payload.isActive,
                   college: payload.college,
                   department: isOffice ? undefined : selected,
+                  office: isOffice ? selected : undefined,
                   assistantType,
                 }),
               });
@@ -555,6 +615,66 @@ export default function ApproverAssistantList() {
               if (!r.ok) {
                 window.alert(await readErrorDetail(r));
                 return;
+              }
+
+              // POST Role Updated notification for the created admin
+              try {
+                const deptTitle = isOffice ? "" : (selected || "");
+                const collegeTitle = payload.college || "";
+                const officeTitle = isOffice ? (selected || "") : "";
+                const scopeLabel = officeTitle || deptTitle || "";
+                const notifResponse = await fetch("/admin/xu-faculty-clearance/api/faculty/notifications", {
+                  method: "POST",
+                  credentials: "include",
+                  keepalive: true,
+                  headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken"),
+                  },
+                  body: JSON.stringify({
+                    title: "Role Updated",
+                    status: null,
+                    body: `You have been added as an Assistant Approver for ${scopeLabel}.`,
+                    details: [
+                      `Department = ${deptTitle}`,
+                      `College = ${collegeTitle}`,
+                      `Office = ${officeTitle}`,
+                    ],
+                    user_role: "Assistant",
+                    is_read: false,
+                  }),
+                });
+                if (!notifResponse.ok) {
+                  console.warn("[notification] Role Updated POST failed:", notifResponse.status, await notifResponse.text());
+                } else {
+                  console.log("[notification] Role Updated created successfully");
+                }
+              } catch (e) {
+                console.warn("[notification] Role Updated POST error:", e);
+              }
+
+              // Added Assistant Admin activity log
+              try {
+                await fetch("/admin/xu-faculty-clearance/api/approver/activity-logs", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "added_assistant_admin",
+                    details: [
+                      `Assistant: ${payload.firstName} ${payload.lastName}`,
+                      `Email: ${payload.email}`,
+                      `Department: ${isOffice ? "N/A" : selected}`,
+                      `College: ${payload.college || "N/A"}`,
+                      `Type: ${assistantType}`
+                    ],
+                    department: isOffice ? null : selected,
+                    office: isOffice ? selected : null,
+                    college: payload.college || null
+                  })
+                });
+              } catch (logError) {
+                console.error("Failed to log activity:", logError);
               }
 
               setAddAdminOpen(false);
@@ -606,8 +726,9 @@ export default function ApproverAssistantList() {
                   universityId: payload.universityId,
                   email: activeAssistant.email,
                   isActive: payload.isActive,
-                  college: payload.college,
-                  department: payload.department,
+                  college: payload.college === "N/A" ? "" : payload.college,
+                  department: payload.department === "N/A" ? "" : payload.department,
+                  office: payload.office === "N/A" ? "" : payload.office,
                   assistantType: activeAssistant.assistantType,
                 }),
               });
@@ -615,6 +736,29 @@ export default function ApproverAssistantList() {
               if (!r.ok) {
                 window.alert(await readErrorDetail(r));
                 return;
+              }
+
+              // Updated Assistant Approver activity log
+              try {
+                await fetch("/admin/xu-faculty-clearance/api/approver/activity-logs", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "updated_assistant_approver",
+                    details: [
+                      `Assistant: ${payload.firstName} ${payload.lastName}`,
+                      `Email: ${activeAssistant.email}`,
+                      `Department: ${payload.department || "N/A"}`,
+                      `College: ${payload.college || "N/A"}`
+                    ],
+                    department: payload.department || null,
+                    office: payload.office || null,
+                    college: payload.college || null
+                  })
+                });
+              } catch (logError) {
+                console.error("Failed to log activity:", logError);
               }
 
               setEditOpen(false);
@@ -647,6 +791,59 @@ export default function ApproverAssistantList() {
                 return;
               }
 
+              // POST Team Update notification for the removed assistant
+              try {
+                const notifResponse = await fetch("/admin/xu-faculty-clearance/api/faculty/notifications", {
+                  method: "POST",
+                  credentials: "include",
+                  keepalive: true,
+                  headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken"),
+                  },
+                  body: JSON.stringify({
+                    title: "Team Update",
+                    status: null,
+                    body: `${activeAssistant.name} is no longer an Assistant Approver for your department.`,
+                    details: [`Assistant Name = "${activeAssistant.name}"`],
+                    user_role: "Approver",
+                    is_read: false,
+                  }),
+                });
+                if (!notifResponse.ok) {
+                  console.warn(
+                    "[notification] Team Update POST failed:",
+                    notifResponse.status,
+                    await notifResponse.text(),
+                  );
+                }
+              } catch (e) {
+                console.warn("[notification] Team Update POST error:", e);
+              }
+
+              // Removed Assistant Approver activity log
+              try {
+                await fetch("/admin/xu-faculty-clearance/api/approver/activity-logs", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event_type: "removed_assistant_approver",
+                    details: [
+                      `Assistant: ${activeAssistant.name}`,
+                      `Email: ${activeAssistant.email}`,
+                      `Department: ${activeAssistant.department || "N/A"}`,
+                      `College: ${activeAssistant.college || "N/A"}`
+                    ],
+                    department: activeAssistant.department || null,
+                    office: activeAssistant.office || null,
+                    college: activeAssistant.college || null
+                  })
+                });
+              } catch (logError) {
+                console.error("Failed to log activity:", logError);
+              }
+
               setRemoveOpen(false);
               setActiveAssistantId(null);
               await fetchUsers();
@@ -659,4 +856,20 @@ export default function ApproverAssistantList() {
       </main>
     </div>
   );
+
+  // Helper function to get CSRF token
+  function getCookie(name: string): string {
+    let cookieValue = "";
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + "=")) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
 }

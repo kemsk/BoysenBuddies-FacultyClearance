@@ -3,6 +3,22 @@ import "../../index.css"; // ensure index.css is accessible from src
 import { Progress } from "../../stories/components/progress";
 import { authService } from "../../services/authService";
 
+const getAppOrigin = (): string => {
+  const { protocol, hostname, origin, port } = window.location;
+
+  if ((hostname === 'localhost' || hostname === '127.0.0.1') && port !== '4433') {
+    return 'https://localhost:4433';
+  }
+
+  if ((hostname === 'localhost' || hostname === '127.0.0.1') && protocol !== 'https:') {
+    return 'https://localhost:4433';
+  }
+
+  return origin;
+};
+
+const buildAppUrl = (path: string): string => new URL(path, getAppOrigin()).toString();
+
 export default function LoginPrompt() {
   const [progress, setProgress] = useState(0);
 
@@ -28,7 +44,7 @@ export default function LoginPrompt() {
         
         if (!authStatus.authenticated || !authStatus.user_info) {
           console.log('LOGIN_PROMPT: No valid authentication, redirecting to login');
-          window.location.replace('/');
+          window.location.replace(buildAppUrl('/'));
           return;
         }
         
@@ -36,7 +52,7 @@ export default function LoginPrompt() {
         const selectedRoleStr = sessionStorage.getItem('selected_role');
         if (!selectedRoleStr) {
           console.log('LOGIN_PROMPT: No selected role found, redirecting to role selection');
-          window.location.replace('/login');
+          window.location.replace(buildAppUrl('/login'));
           return;
         }
         
@@ -70,7 +86,7 @@ export default function LoginPrompt() {
           console.log('LOGIN_PROMPT: Available roles:', userRoleValues);
           console.log('LOGIN_PROMPT: Selected role:', selectedRole.value);
           sessionStorage.removeItem('selected_role');
-          window.location.replace('/login?error=role_mismatch');
+          window.location.replace(buildAppUrl('/login?error=role_mismatch'));
           return;
         }
         
@@ -92,11 +108,11 @@ export default function LoginPrompt() {
         // Clear selected role from session storage
         sessionStorage.removeItem('selected_role');
         
-        window.location.replace(target);
+        window.location.replace(buildAppUrl(target));
         
       } catch (error) {
         console.error('LOGIN_PROMPT: Error during authentication:', error);
-        window.location.replace('/');
+        window.location.replace(buildAppUrl('/'));
       }
     };
 

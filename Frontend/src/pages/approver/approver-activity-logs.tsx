@@ -23,12 +23,29 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useEffect, useMemo, useState } from "react";
 
+function normalizeDetailsToArray(raw: any): string[] {
+  if (Array.isArray(raw)) return raw.map((d) => String(d ?? "")).filter(Boolean);
+  if (raw && typeof raw === "object") {
+    return Object.entries(raw).map(([k, v]) => `${k}: ${String(v ?? "")}`);
+  }
+  if (raw == null) return [];
+  const s = String(raw ?? "");
+  return s ? [s] : [];
+}
+
 function mapEventNameToVariant(eventName: string): ActivityLogVariant {
   const eventMapping: Record<string, ActivityLogVariant> = {
     approved_clearance: "approved_clearance",
     rejected_clearance: "rejected_clearance",
+    individual_approved_clearance: "individual_approved_clearance",
+    individual_rejected_clearance: "individual_rejected_clearance",
+    assistant_approved_clearance: "assistant_approved_clearance",
+    assistant_rejected_clearance: "assistant_rejected_clearance",
+    assistant_individual_approved_clearance: "assistant_individual_approved_clearance",
+    assistant_individual_rejected_clearance: "assistant_individual_rejected_clearance",
     create_request: "create_request",
     edited_requirements: "edited_requirements",
+    edited_requirement: "edited_requirement",
     created_requirements: "created_requirements",
     deleted_requirements: "deleted_requirements",
     added_assistant_approver: "added_assistant_approver",
@@ -41,7 +58,6 @@ function mapEventNameToVariant(eventName: string): ActivityLogVariant {
     created_guideline: "created_guideline",
     edited_guideline: "edited_guideline",
     delete_guideline: "delete_guideline",
-    deleted_guideline: "deleted_guideline",
     enabled_guideline: "enabled_guideline",
     disabled_guideline: "disabled_guideline",
     archived_guideline: "archived_guideline",
@@ -54,8 +70,6 @@ function mapEventNameToVariant(eventName: string): ActivityLogVariant {
     set_announcement_status_inactive: "set_announcement_status_inactive",
     created_timeline: "created_timeline",
     edited_timeline: "edited_timeline",
-    set_timeline_status_active: "set_timeline_status_active",
-    set_timeline_status_inactive: "set_timeline_status_inactive",
     created_approver: "created_approver",
     edited_approver: "edited_approver",
     removed_approver: "removed_approver",
@@ -74,6 +88,20 @@ export default function ApproverActivityLogs() {
 
   const [items, setItems] = useState<ActivityLogItem[]>([]);
 
+  const [sessionUserId, setSessionUserId] = useState<string>("");
+
+  useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/approver/profile", {
+      credentials: "include",
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: any) => {
+        const id = String(data?.id ?? "").trim();
+        setSessionUserId(id);
+      })
+      .catch(() => setSessionUserId(""));
+  }, []);
+
   useEffect(() => {
     const params = new URLSearchParams();
     if (query.trim()) params.set("query", query.trim());
@@ -83,15 +111,20 @@ export default function ApproverActivityLogs() {
     fetch(`/admin/xu-faculty-clearance/api/approver/activity-logs?${params.toString()}`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: { items: ActivityLogItem[] }) => {
-        const allowedRoles = new Set(["approver", "assistant"]);
-        const onlyApproverAndAssistant = (data.items ?? []).filter((it) => {
-          const role = String((it as any).actorRole ?? "").trim().toLowerCase();
-          if (!role) return false;
-          const head = role.split(/\s|-/)[0];
-          return allowedRoles.has(head);
+        // Filter only Approver and Assistant roles
+        const allowedRoles = new Set(["Approver", "Assistant"]);
+        const filteredItems = (data.items ?? []).filter((it) => {
+          const userRole = String((it as any).userRole ?? "").trim();
+          if (!allowedRoles.has(userRole)) return false;
+
+          if (!sessionUserId) return false;
+
+          const actorId = String((it as any).actorId ?? "").trim();
+          const supervisorId = String((it as any).supervisorId ?? "").trim();
+          return actorId === sessionUserId || supervisorId === sessionUserId;
         });
 
-        const mappedItems = onlyApproverAndAssistant.map((it) => {
+        const mappedItems = filteredItems.map((it) => {
           const evt = String((it as any).event_type ?? "").trim();
           const raw = evt || String((it as any).variant ?? "").trim() || String((it as any).title ?? "").trim();
           const variant = mapEventNameToVariant(raw);
@@ -105,12 +138,13 @@ export default function ApproverActivityLogs() {
         setItems(mappedItems);
       })
       .catch(() => setItems([]));
-  }, [query]);
+  }, [query, sessionUserId]);
 
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return items;
     return items.filter((it) => {
+      const detailsArr = normalizeDetailsToArray((it as any).details);
       const haystack = [
         it.title,
         it.description,
@@ -125,7 +159,7 @@ export default function ApproverActivityLogs() {
         it.requestId,
         it.dateLabel,
         it.timeLabel,
-        ...it.details,
+        ...detailsArr,
       ]
         .join(" ")
         .toLowerCase();
@@ -255,9 +289,12 @@ export default function ApproverActivityLogs() {
           </BreadcrumbList>
         </Breadcrumb>
         
+
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" onClick={() => navigate("/approver-action")}> 
-            <img src="BlackArrowIcon.png" alt="back" />Back
+          <Button variant="back" size="back" onClick={() => navigate("/approver-action")}>
+            <div className="flex items-center gap-2">
+              <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
+            </div>
           </Button>
         </div>
 

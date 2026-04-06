@@ -2,6 +2,22 @@ const API_BASE_URL = '/admin/xu-faculty-clearance';
 const AUTH_API_BASE_URL = `${API_BASE_URL}/api/auth`;
 const AUTH_ME_URL = `${API_BASE_URL}/api/me`;
 
+const getAppOrigin = (): string => {
+  const { protocol, hostname, origin, port } = window.location;
+
+  if ((hostname === 'localhost' || hostname === '127.0.0.1') && port !== '4433') {
+    return 'https://localhost:4433';
+  }
+
+  if ((hostname === 'localhost' || hostname === '127.0.0.1') && protocol !== 'https:') {
+    return 'https://localhost:4433';
+  }
+
+  return origin;
+};
+
+const buildAppUrl = (path: string): string => new URL(path, getAppOrigin()).toString();
+
 
 
 export interface LoginResponse {
@@ -307,7 +323,7 @@ class AuthService {
 
       // Direct redirect to Google OAuth endpoint
 
-      window.location.href = `/accounts/login/google/`;
+      window.location.href = buildAppUrl('/accounts/login/google/');
 
     } catch (error) {
 

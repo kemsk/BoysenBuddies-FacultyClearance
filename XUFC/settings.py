@@ -27,13 +27,23 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return str(raw).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
+def _env_json_list(*names: str) -> list[str]:
+    for name in names:
+        raw = os.environ.get(name)
+        if raw:
+            return json.loads(raw)
+    return []
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-as&5jz2$03*p=rtk#v1efq7o0&vp#k-=1^w6i8ifn-qvmyq$ii'
 
-CSRF_TRUSTED_ORIGINS = json.loads(os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '[]'))
+CSRF_TRUSTED_ORIGINS = _env_json_list('DJANGO_CSRF_TRUSTED_ORIGINS', 'CSRF_TRUSTED_ORIGINS')
+
+CORS_ALLOWED_ORIGINS = _env_json_list('CORS_ALLOWED_ORIGINS')
 
 GOOGLE_OAUTH_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID', '')
 
@@ -42,6 +52,10 @@ DEBUG = _env_bool("DEBUG", default=True)
 
 _allowed_hosts_env = os.environ.get("ALLOWED_HOSTS", "").strip()
 ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(",") if h.strip()] if _allowed_hosts_env else ["*"]
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+USE_X_FORWARDED_HOST = True
 
 
 # Application definition

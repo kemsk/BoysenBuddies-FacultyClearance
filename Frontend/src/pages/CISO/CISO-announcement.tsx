@@ -30,11 +30,12 @@ function postCISONotification(payload: {
   title: string;
   body: string;
   details: string[];
-  status: null;
-  is_read: 0;
-  user_roles: string[];
-  created_by_id?: string | number | null;
-  approver_id?: string | number | null;
+  status?: string | null;
+  is_read?: number | boolean;
+  user_roles?: string[];
+  user_ids?: number[];
+  created_by_id?: number | null;
+  approver_id?: number | null;
   clearance_period_start_date?: string | null;
   clearance_period_end_date?: string | null;
 }) {
@@ -390,8 +391,8 @@ export default function CISOAnnouncements() {
                                     created_by_id: null,
                                     approver_id: null,
                                     clearance_period_start_date: null,
-                                    clearance_period_end_date: null,                                    
-                                  });                                  
+                                    clearance_period_end_date: null,                                  
+                                  });
                                 postCISONotification({
                                   title: "Notice",
                                   body: `The announcement "${title}" has been set to Inactive and is no longer visible to the approvers and their approver assistants.`,
@@ -469,13 +470,14 @@ export default function CISOAnnouncements() {
                   setEditingIndex(null);
                   refresh().catch(() => null);
                   // POST Edit notifications
+                  // Still send to other roles as role-based notifications
                   postCISONotification({
                     title: "Update",
                     body: `The announcement "${title}" has been updated by the System Admin.`,
                     details: [`Announcement = "${title}"`],
                     status: null,
                     is_read: 0,
-                    user_roles: ["APPROVER", "CISO", "OVPHE", "ASSISTANT_APPROVER"],
+                    user_roles: ["Approver", "CISO", "OVPHE", "Assistant"],
                     created_by_id: null,
                     approver_id: null,
                     clearance_period_start_date: null,
@@ -510,13 +512,14 @@ export default function CISOAnnouncements() {
               }).finally(() => {
                 refresh().catch(() => null);
                 // POST Create notifications
+                // Still send to other roles as role-based notifications
                 postCISONotification({
                   title: "New Announcement",
                   body: `${title}. Check announcements section for more details.`,
                   details: [`Announcement = "${title}"`],
                   status: null,
                   is_read: 0,
-                  user_roles: ["APPROVER", "CISO", "OVPHE", "ASSISTANT_APPROVER"],
+                  user_roles: ["Approver", "CISO", "OVPHE", "Assistant"],
                   created_by_id: null,
                   approver_id: null,
                   clearance_period_start_date: null,

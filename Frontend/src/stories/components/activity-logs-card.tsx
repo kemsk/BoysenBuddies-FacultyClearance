@@ -19,8 +19,15 @@ import { cn } from "../../components/lib/utils";
 export type ActivityLogVariant =
   | "approved_clearance"
   | "rejected_clearance"
+  | "individual_approved_clearance"
+  | "individual_rejected_clearance"
+  | "assistant_approved_clearance"
+  | "assistant_rejected_clearance"
+  | "assistant_individual_approved_clearance"
+  | "assistant_individual_rejected_clearance"  
   | "create_request"
   | "edited_requirements"
+  | "edited_requirement"
   | "created_requirements"
   | "deleted_requirements"
   | "added_assistant_approver"
@@ -87,7 +94,7 @@ export type ActivityLogItem = {
   facultyDepartment?: string;
   universityId?: string;
   requestId?: string;
-  details: string[];
+  details: any;
   schoolYear?: string;
   semester?: string;
   guidelineTitle?: string;
@@ -139,13 +146,17 @@ function getArchivedGuidelineIcon() {
 }
 
 function getActivityIcon(variant: ActivityLogVariant) {
-  if (variant === "approved_clearance") {
+  if (variant === "approved_clearance" ||
+    variant === "individual_approved_clearance" ||
+    variant === "assistant_approved_clearance" ||
+    variant === "assistant_individual_approved_clearance" ) {
     return (
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-success p-0.2">
         <Check strokeWidth={4} className="h-3 w-3 text-white transform translate-y-[0.5px]" />
       </div>
     );
   }
+
 
   if (variant === "archived_guideline") {
     return getArchivedGuidelineIcon();
@@ -157,7 +168,10 @@ function getActivityIcon(variant: ActivityLogVariant) {
     variant === "set_announcement_status_inactive" ||
     variant === "disabled_announcement" ||
     variant === "disabled_timeline" ||
-    variant === "disabled_guideline" 
+    variant === "disabled_guideline" ||
+    variant === "individual_rejected_clearance" ||
+    variant === "assistant_individual_rejected_clearance" ||
+    variant === "assistant_rejected_clearance"
   ) {
     return (
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-[hsl(var(--destructive))] p-0.5">
@@ -367,12 +381,28 @@ function formatActivityLogText(item: ActivityLogItem): {
   const collegeName = item.collegeName?.trim();
   const departmentName = item.departmentName?.trim();
 
+  const getApproverScopeLabel = (it: any): string => {
+    const office = String(it?.approverOffice ?? it?.office ?? "").trim();
+    const college = String(it?.approverCollege ?? it?.college ?? "").trim();
+    const department = String(it?.approverDept ?? it?.department ?? "").trim();
+    const fallback = String(it?.approverDepartment ?? "").trim();
+
+    if (office && college && department) return `${office} of ${college}: ${department}`;
+    if (office && college) return `${office} of ${college}`;
+    if (college && department) return `${college}: ${department}`;
+    if (department) return department;
+    if (college) return college;
+    if (office) return office;
+    return fallback;
+  };
+
   if (item.variant === "exported_clearance_results") {
     const title = "Exported Clearance Results";
     const firstName = actorFirstName || userName;
-    const schoolYearTail = schoolYear ? ` for ${schoolYear}` : "";
-    const semesterTail = semester ? ` for ${semester}.` : ".";
-    const description = `User ${firstName} exported clearance results${schoolYearTail}${semesterTail}`;
+    const college = collegeName || "All Colleges";
+    const schoolYearText = schoolYear || "Active";
+    const semesterText = semester || "Active";
+    const description = `User ${firstName}, exported clearance analytics of ${college} for ${schoolYearText} for ${semesterText}.`;
     return { title, description };
   }
 
@@ -841,9 +871,48 @@ function formatActivityLogText(item: ActivityLogItem): {
     return { title, description };
   }
 
-  if (item.variant === "edited_requirements") {
-    const title = "Edited Requirements";
-    const description = `User ${userName} edited requirement${requirementTail}${deptTail}`;
+  if (item.variant === "edited_requirement") {
+    const title = "Edited Multiple Requirements";
+    const details = (item as any).details || [];
+    
+    // Parse details to extract created, updated, deleted requirements
+    // Actual format: ['Edited Multiple Requirements', 'Created: test 1, test 2, test 3', 'Deleted: x, test, xx']
+    const createdLine = details.find((d: string) => d.includes("Created:"));
+    const updatedLine = details.find((d: string) => d.includes("Updated:"));
+    const deletedLine = details.find((d: string) => d.includes("Deleted:"));
+    
+    let description = `User ${actorName} performed the following changes on the Office/Departmental requirement list:<br><br>`;
+    
+    if (createdLine) {
+      const createdReqs = createdLine.replace(/.*?Created:\s*/, "").split(",").map((req: string) => req.trim()).filter((req: string) => req);
+      if (createdReqs.length > 0) {
+        description += "Created:<br>";
+        createdReqs.forEach((req: string) => {
+          description += `- ${req}<br>`;
+        });
+      }
+    }
+    
+    if (updatedLine) {
+      const updatedReqs = updatedLine.replace(/.*?Updated:\s*/, "").split(",").map((req: string) => req.trim()).filter((req: string) => req);
+      if (updatedReqs.length > 0) {
+        description += "<br>Updated:<br>";
+        updatedReqs.forEach((req: string) => {
+          description += `- ${req}<br>`;
+        });
+      }
+    }
+    
+    if (deletedLine) {
+      const deletedReqs = deletedLine.replace(/.*?Deleted:\s*/, "").split(",").map((req: string) => req.trim()).filter((req: string) => req);
+      if (deletedReqs.length > 0) {
+        description += "<br>Deleted:<br>";
+        deletedReqs.forEach((req: string) => {
+          description += `- ${req}<br>`;
+        });
+      }
+    }
+    
     return { title, description };
   }
 
@@ -874,23 +943,324 @@ function formatActivityLogText(item: ActivityLogItem): {
     return { title, description };
   }
 
-  if (item.variant === "deleted_guideline") {
-    const title = "Deleted Guideline";
-    const details = (item as any).details || [];
-    const guidelineName = details.find((d: string) => d.includes("Guideline:"))?.replace("Guideline: ", "").trim() || "";
-    const description = `User ${actorName} deleted guideline${guidelineName ? `: ${guidelineName}` : ""}.`;
-    return { title, description };
-  }
-
   if (item.variant === "create_request") {
     const title = "Create Request";
     const description = `Faculty Member ${facultyName || actorName} from ${facultyCollegeDepartment}, requested for clearance.`;
     return { title, description };
   }
 
+  
   if (item.variant === "approved_clearance") {
     const title = "Approved Clearance";
-    const description = `User ${actorName} of Department/Office ${item.approverDepartment || ""}, approved clearance for faculty member ${facultyName}.`;
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const details = (item as any).details || [];
+    const facultyFromDetails =
+      (item as any).facultyName ||
+      details
+        .find((d: string) => String(d || "").includes("Faculty Member:"))
+        ?.toString()
+        .replace("Faculty Member:", "")
+        .trim() ||
+      "";
+    const employeeFromDetails =
+      (item as any).facultyEmployeeId ||
+      details
+        .find((d: string) => String(d || "").includes("Employee ID:"))
+        ?.toString()
+        .replace("Employee ID:", "")
+        .trim() ||
+      "";
+    const requestId =
+      (item as any).facultyRequestId ||
+      (item as any).request_id ||
+      "";
+    const approverScopeLabel = getApproverScopeLabel(item as any);
+    const remarksRaw =
+      details
+        .find((d: string) => String(d || "").includes("Remarks:"))
+        ?.toString()
+        .replace("Remarks:", "")
+        .trim() ||
+      "";
+    const remarks =
+      String(remarksRaw).trim().toLowerCase() === "bulk approval" ? "" : remarksRaw;
+    
+    const actorLabel = fullName;
+    const deptOfficeTail = String(approverScopeLabel || "").trim()
+      ? ` of ${String(approverScopeLabel).trim()}`
+      : "";
+    let description = `User ${actorLabel}${deptOfficeTail}, approved clearance for 1 faculty member:<br><br>`;
+    description += `${facultyFromDetails}<br>`;
+    description += `Employee ID: ${employeeFromDetails}<br>`;
+    description += `Request ID: ${requestId}`;
+    if (remarks) {
+      description += `<br>Remarks: ${remarks}`;
+    }
+    
+    return { title, description };
+  }
+
+  if (item.variant === "individual_approved_clearance") {
+    const title = "Individual Approved Clearance";
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const details = (item as any).details || [];
+    const facultyMember =
+      (item as any).facultyName ||
+      details
+        .find((d: string) => String(d || "").includes("Faculty Member:"))
+        ?.toString()
+        .replace("Faculty Member:", "")
+        .trim() ||
+      "";
+    const employeeId =
+      (item as any).universityId ||
+      (item as any).university_id ||
+      (item as any).facultyEmployeeId ||
+      "";
+    const requestId = (item as any).requestId || (item as any).request_id || "";
+    const approverScopeLabel = getApproverScopeLabel(item as any);
+    const remarksRaw =
+      details
+        .find((d: string) => String(d || "").includes("Remarks:"))
+        ?.toString()
+        .replace("Remarks:", "")
+        .trim() ||
+      "";
+    const remarks =
+      String(remarksRaw).trim().toLowerCase() === "bulk approval" ? "" : remarksRaw;
+
+    const deptOfficeTail = String(approverScopeLabel || "").trim()
+      ? ` of ${String(approverScopeLabel).trim()}`
+      : "";
+
+    let description = `User ${fullName}${deptOfficeTail}, approved clearance for 1 faculty member:<br><br>`;
+    description += `${facultyMember}<br>`;
+    description += `Employee ID: ${employeeId}<br>`;
+    description += `Request ID: ${requestId}`;
+    if (remarks) {
+      description += `<br>Remarks: ${remarks}`;
+    }
+    
+    return { title, description };
+  }
+
+  if (item.variant === "assistant_approved_clearance") {
+    const title = "Assistant Approved Clearance";
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const approverScopeLabel = getApproverScopeLabel(item as any);
+
+    const rawDetails = (item as any).details;
+    const detailsObj = rawDetails && typeof rawDetails === "object" && !Array.isArray(rawDetails) ? rawDetails : null;
+
+    const facultyMember =
+      String((item as any).facultyName || "").trim() ||
+      String(detailsObj?.faculty_member || "").trim();
+
+    const employeeId =
+      String((item as any).universityId || (item as any).university_id || (item as any).facultyEmployeeId || "").trim();
+
+    const requestId =
+      String((item as any).requestId || (item as any).request_id || (item as any).facultyRequestId || "").trim();
+
+    const remarksRaw = String(detailsObj?.remarks || "").trim();
+    const remarks = String(remarksRaw).trim().toLowerCase() === "bulk approval" ? "" : remarksRaw;
+
+    const deptOfficeTail = String(approverScopeLabel || "").trim()
+      ? ` of ${String(approverScopeLabel).trim()}`
+      : "";
+
+    let description = `Assistant ${fullName}${deptOfficeTail}, approved clearance for 1 faculty member:<br><br>`;
+    description += `${facultyMember}<br>`;
+    description += `Employee ID: ${employeeId}<br>`;
+    description += `Request ID: ${requestId}`;
+    if (remarks) {
+      description += `<br>Remarks: ${remarks}`;
+    }
+
+    return { title, description };
+  }
+
+  if (item.variant === "assistant_rejected_clearance") {
+    const title = "Assistant Rejected Clearance";
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const approverScopeLabel = getApproverScopeLabel(item as any);
+
+    const rawDetails = (item as any).details;
+    const detailsObj = rawDetails && typeof rawDetails === "object" && !Array.isArray(rawDetails) ? rawDetails : null;
+
+    const facultyMember =
+      String((item as any).facultyName || "").trim() ||
+      String(detailsObj?.faculty_member || "").trim();
+
+    const employeeId =
+      String((item as any).universityId || (item as any).university_id || (item as any).facultyEmployeeId || "").trim();
+
+    const requestId =
+      String((item as any).requestId || (item as any).request_id || (item as any).facultyRequestId || "").trim();
+
+    const remarksRaw = String(detailsObj?.remarks || "").trim();
+    const remarks = String(remarksRaw).trim().toLowerCase() === "bulk approval" ? "" : remarksRaw;
+
+    const deptOfficeTail = String(approverScopeLabel || "").trim()
+      ? ` of ${String(approverScopeLabel).trim()}`
+      : "";
+
+    let description = `Assistant ${fullName}${deptOfficeTail}, rejected clearance for 1 faculty member:<br><br>`;
+    description += `${facultyMember}<br>`;
+    description += `Employee ID: ${employeeId}<br>`;
+    description += `Request ID: ${requestId}`;
+    if (remarks) {
+      description += `<br>Remarks: ${remarks}`;
+    }
+
+    return { title, description };
+  }
+
+  if (item.variant === "assistant_individual_approved_clearance") {
+    const title = "Assistant Individual Approved Clearance";
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const approverScopeLabel = getApproverScopeLabel(item as any);
+
+    const rawDetails = (item as any).details;
+    const detailsObj = rawDetails && typeof rawDetails === "object" && !Array.isArray(rawDetails) ? rawDetails : null;
+
+    const facultyMember =
+      String((item as any).facultyName || "").trim() ||
+      String(detailsObj?.faculty_member || "").trim();
+
+    const employeeId =
+      String((item as any).universityId || (item as any).university_id || (item as any).facultyEmployeeId || "").trim();
+
+    const requestId =
+      String((item as any).requestId || (item as any).request_id || (item as any).facultyRequestId || "").trim();
+
+    const remarksRaw = String(detailsObj?.remarks || "").trim();
+    const remarks = String(remarksRaw).trim().toLowerCase() === "bulk approval" ? "" : remarksRaw;
+
+    const deptOfficeTail = String(approverScopeLabel || "").trim()
+      ? ` of ${String(approverScopeLabel).trim()}`
+      : "";
+
+    let description = `Assistant ${fullName}${deptOfficeTail}, approved clearance for 1 faculty member:<br><br>`;
+    description += `${facultyMember}<br>`;
+    description += `Employee ID: ${employeeId}<br>`;
+    description += `Request ID: ${requestId}`;
+    if (remarks) {
+      description += `<br>Remarks: ${remarks}`;
+    }
+
+    return { title, description };
+  }
+
+  if (item.variant === "assistant_individual_rejected_clearance") {
+    const title = "Assistant Individual Rejected Clearance";
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const approverScopeLabel = getApproverScopeLabel(item as any);
+
+    const rawDetails = (item as any).details;
+    const detailsObj = rawDetails && typeof rawDetails === "object" && !Array.isArray(rawDetails) ? rawDetails : null;
+
+    const facultyMember =
+      String((item as any).facultyName || "").trim() ||
+      String(detailsObj?.faculty_member || "").trim();
+
+    const employeeId =
+      String((item as any).universityId || (item as any).university_id || (item as any).facultyEmployeeId || "").trim();
+
+    const requestId =
+      String((item as any).requestId || (item as any).request_id || (item as any).facultyRequestId || "").trim();
+
+    const remarksRaw = String(detailsObj?.remarks || "").trim();
+    const remarks = String(remarksRaw).trim().toLowerCase() === "bulk approval" ? "" : remarksRaw;
+
+    const deptOfficeTail = String(approverScopeLabel || "").trim()
+      ? ` of ${String(approverScopeLabel).trim()}`
+      : "";
+
+    let description = `Assistant ${fullName}${deptOfficeTail}, rejected clearance for 1 faculty member:<br><br>`;
+    description += `${facultyMember}<br>`;
+    description += `Employee ID: ${employeeId}<br>`;
+    description += `Request ID: ${requestId}`;
+    if (remarks) {
+      description += `<br>Remarks: ${remarks}`;
+    }
+
+    return { title, description };
+  }
+
+  if (item.variant === "individual_rejected_clearance") {
+    const title = "Individual Rejected Clearance";
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const details = (item as any).details || [];
+    const facultyMember =
+      (item as any).facultyName ||
+      details
+        .find((d: string) => String(d || "").includes("Faculty Member:"))
+        ?.toString()
+        .replace("Faculty Member:", "")
+        .trim() ||
+      "";
+    const employeeId =
+      (item as any).universityId ||
+      (item as any).university_id ||
+      (item as any).facultyEmployeeId ||
+      "";
+    const requestId = (item as any).requestId || (item as any).request_id || "";
+    const approverScopeLabel = getApproverScopeLabel(item as any);
+    const remarksRaw =
+      details
+        .find((d: string) => String(d || "").includes("Remarks:"))
+        ?.toString()
+        .replace("Remarks:", "")
+        .trim() ||
+      "";
+    const remarks =
+      String(remarksRaw).trim().toLowerCase() === "bulk approval" ? "" : remarksRaw;
+
+    const deptOfficeTail = String(approverScopeLabel || "").trim()
+      ? ` of ${String(approverScopeLabel).trim()}`
+      : "";
+
+    let description = `User ${fullName}${deptOfficeTail}, rejected clearance for 1 faculty member:<br><br>`;
+    description += `${facultyMember}<br>`;
+    description += `Employee ID: ${employeeId}<br>`;
+    description += `Request ID: ${requestId}`;
+    if (remarks) {
+      description += `<br>Remarks: ${remarks}`;
+    }
+    
+    return { title, description };
+  }
+
+  if (item.variant === "rejected_clearance") {
+    const title = "Rejected Clearance";
+    const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
+    const details = (item as any).details || [];
+    const facultyMember = details.find((d: string) => d.includes("Faculty Member:"))?.replace("Faculty Member: ", "") || "";
+    const universityId = (item as any).facultyEmployeeId || "";
+    const requestId = (item as any).facultyRequestId || "";
+    const approverScopeLabel = getApproverScopeLabel(item as any);
+    const remarksRaw =
+      details
+        .find((d: string) => String(d || "").includes("Remarks:"))
+        ?.toString()
+        .replace("Remarks:", "")
+        .trim() ||
+      "";
+    const remarks =
+      String(remarksRaw).trim().toLowerCase() === "bulk approval" ? "" : remarksRaw;
+    
+    const deptOfficeTail = String(approverScopeLabel || "").trim()
+      ? ` of ${String(approverScopeLabel).trim()}`
+      : "";
+    let description = `User ${fullName}${deptOfficeTail}, rejected clearance for 1 faculty member:<br><br>`;
+    description += `${facultyMember}<br>`;
+    description += `Employee ID: ${universityId}<br>`;
+    description += `Request ID: ${requestId}`;
+    if (remarks) {
+      description += `<br>Remarks: ${remarks}`;
+    }
+    
     return { title, description };
   }
 
@@ -1109,7 +1479,16 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
                           item.description === item.title ||
                           item.description === item.variant ||
                           (evt && item.description === evt) ||
-                          /\[[^\]]+\]/.test(item.description);
+                          /\[[^\]]+\]/.test(item.description) ||
+                          ((item.variant === "approved_clearance" ||
+                            item.variant === "rejected_clearance" ||
+                            item.variant === "individual_approved_clearance" ||
+                            item.variant === "individual_rejected_clearance" ||
+                            item.variant === "assistant_approved_clearance" ||
+                            item.variant === "assistant_rejected_clearance" ||
+                            item.variant === "assistant_individual_approved_clearance" ||
+                            item.variant === "assistant_individual_rejected_clearance") &&
+                            /^request:\s*\S+\s*$/i.test(String(item.description || "").trim()));
 
                         const title = shouldUseAutoTitle ? autoText.title : item.title;
                         const description =

@@ -40,6 +40,7 @@ export default function ApproverIndividualApproval() {
   const [status, setStatus] = React.useState<"approved" | "rejected" | "pending">("pending");
   const [remarks, setRemarks] = React.useState("");
   const [saving, setSaving] = React.useState(false);
+  const [userProfile, setUserProfile] = React.useState<any>(null);
 
   React.useEffect(() => {
     if (!requestId) {
@@ -48,7 +49,17 @@ export default function ApproverIndividualApproval() {
       return;
     }
 
-    fetch(`/admin/xu-faculty-clearance/api/approver/individual-approval?request_id=${requestId}`)
+    // Fetch user profile first
+    fetch("/admin/xu-faculty-clearance/api/approver/profile", {
+      credentials: "include",
+    })
+      .then((res) => res.json())
+      .then((profileData) => {
+        setUserProfile(profileData);
+        
+        // Then fetch the request
+        return fetch(`/admin/xu-faculty-clearance/api/approver/individual-approval?request_id=${requestId}`);
+      })
       .then((res) => {
         if (!res.ok) {
           throw new Error(`Failed to load request: ${res.statusText}`);
@@ -56,14 +67,19 @@ export default function ApproverIndividualApproval() {
         return res.json();
       })
       .then((data) => {
+        console.log("[DEBUG] Raw API response:", data);
+        console.log("[DEBUG] College value:", data.item.college);
+        console.log("[DEBUG] Department value:", data.item.department);
+        console.log("[DEBUG] Employee ID value:", data.item.employeeId);
         setRequest(data);
-        setStatus(data.item.status);
+        setStatus(data.item.status.toLowerCase() as "approved" | "rejected" | "pending");
         setRemarks(data.item.remarks || "");
-        setLoading(false);
       })
       .catch((err) => {
-        console.error("Error loading request:", err);
-        setError(err.message || "Failed to load request");
+        console.error("Error loading data:", err);
+        setError(err instanceof Error ? err.message : "Failed to load request");
+      })
+      .finally(() => {
         setLoading(false);
       });
   }, [requestId]);
@@ -76,6 +92,8 @@ export default function ApproverIndividualApproval() {
       setError("Please select Approved or Rejected");
       return;
     }
+
+    const { item } = request;
 
     // Prevent saving if request is already processed
     if (isProcessed) {
@@ -92,9 +110,30 @@ export default function ApproverIndividualApproval() {
     setSaving(true);
     setError(null);
 
+    // Store the data we need for activity logging BEFORE any API calls
+    // Use the same item data that RequestCard uses (which is working)
+    // No fallbacks - use only real data to see what's actually available
+    console.log("[DEBUG] Raw item data for employee ID:", {
+      employeeId: item.employeeId,
+      schoolId: item.schoolId,
+      fullName: item.fullName,
+      name: item.name
+    });
+    
+    const facultyData = {
+      fullName: item.fullName || item.name,
+      employeeId: item.employeeId,
+      requestId: item.requestId,
+      department: item.department,
+      college: item.college
+    };
+    
+    console.log("[DEBUG] Individual approval - Final faculty data:", facultyData);
+
     try {
       const response = await fetch("/admin/xu-faculty-clearance/api/approver/individual-approval", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           "X-CSRFToken": getCookie("csrftoken"),
@@ -112,6 +151,49 @@ export default function ApproverIndividualApproval() {
 
       const result = await response.json();
       console.log("Save successful:", result);
+
+      if (status === "rejected") {
+        try {
+          const requirementTitle = request.item.requirementName || "";
+          const trimmedRemarks = String(remarks || "").trim();
+
+          const notifResponse = await fetch("/admin/xu-faculty-clearance/api/faculty/notifications", {
+            method: "POST",
+            credentials: "include",
+            keepalive: true,
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
+            body: JSON.stringify({
+              title: "Submission Rejected",
+              status: "rejected",
+              body: (
+                "Your submission has been REJECTED.\n\n" +
+                `Submission of ${requirementTitle}\n\n` +
+                "Remarks:\n" +
+                `${trimmedRemarks}`
+              ),
+              details: [
+                `Requirement = "${requirementTitle}"`,
+                `Remarks = ${trimmedRemarks}`,
+              ],
+              user_role: "Approver",
+              is_read: false,
+            }),
+          });
+
+          if (!notifResponse.ok) {
+            console.warn("[notification] Submission Rejected POST failed:", notifResponse.status, await notifResponse.text());
+          } else {
+            console.log("[notification] Submission Rejected created successfully");
+          }
+        } catch (e) {
+          console.warn("[notification] Submission Rejected POST error:", e);
+        }
+      }
+      
+      // Activity log is now created by the backend with complete data
       
       // Navigate back to clearance list
       navigate("/approver-clearance");

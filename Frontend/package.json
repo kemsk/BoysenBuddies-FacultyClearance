@@ -34,8 +34,9 @@
     "react-router-dom": "^7.10.1",
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
-    "vite-plugin-pwa": "^1.2.0",
-    "workbox-window": "^7.4.0"
+    "vite-plugin-pwa": "1.2.0",
+    "workbox-build": "7.4.0",
+    "workbox-window": "7.4.0"
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^4.1.3",

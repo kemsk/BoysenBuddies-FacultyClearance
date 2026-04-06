@@ -2,7 +2,19 @@ from django.db import models
 
 
 
+
+
+
+
 from django.utils import timezone
+
+
+
+
+
+
+
+
 
 
 
@@ -22,7 +34,23 @@ from django.utils import timezone
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 class User(models.Model):
+
+
+
+
 
 
 
@@ -30,7 +58,15 @@ class User(models.Model):
 
 
 
+
+
+
+
     university_id = models.CharField(max_length=50, unique=True)
+
+
+
+
 
 
 
@@ -38,11 +74,23 @@ class User(models.Model):
 
 
 
+
+
+
+
     middle_name = models.CharField(max_length=100, null=True, blank=True)
 
 
 
+
+
+
+
     last_name = models.CharField(max_length=100, null=True, blank=True)
+
+
+
+
 
 
 
@@ -54,7 +102,19 @@ class User(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     def __str__(self):
+
+
+
+
 
 
 
@@ -62,7 +122,15 @@ class User(models.Model):
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -70,7 +138,15 @@ class User(models.Model):
 
 
 
+
+
+
+
         """Get all active roles for this user"""
+
+
+
+
 
 
 
@@ -78,7 +154,15 @@ class User(models.Model):
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -86,7 +170,15 @@ class User(models.Model):
 
 
 
+
+
+
+
         """Check if user is approver for specific context"""
+
+
+
+
 
 
 
@@ -94,11 +186,23 @@ class User(models.Model):
 
 
 
+
+
+
+
             role__name='Approver',
 
 
 
+
+
+
+
             is_active=True
+
+
+
+
 
 
 
@@ -106,7 +210,15 @@ class User(models.Model):
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -114,7 +226,15 @@ class User(models.Model):
 
 
 
+
+
+
+
             queryset = queryset.filter(college=college)
+
+
+
+
 
 
 
@@ -122,7 +242,15 @@ class User(models.Model):
 
 
 
+
+
+
+
             queryset = queryset.filter(department=department)
+
+
+
+
 
 
 
@@ -130,7 +258,15 @@ class User(models.Model):
 
 
 
+
+
+
+
             queryset = queryset.filter(office=office)
+
+
+
+
 
 
 
@@ -138,11 +274,23 @@ class User(models.Model):
 
 
 
+
+
+
+
         return queryset.exists()
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -150,11 +298,23 @@ class User(models.Model):
 
 
 
+
+
+
+
         """Check if user is CISO admin"""
 
 
 
+
+
+
+
         return self.userrole_set.filter(
+
+
+
+
 
 
 
@@ -162,11 +322,23 @@ class User(models.Model):
 
 
 
+
+
+
+
             is_active=True
 
 
 
+
+
+
+
         ).exists()
+
+
+
+
 
 
 
@@ -174,7 +346,15 @@ class User(models.Model):
 
 
 
+
+
+
+
     def is_ovphe_admin(self):
+
+
+
+
 
 
 
@@ -182,7 +362,15 @@ class User(models.Model):
 
 
 
+
+
+
+
         return self.userrole_set.filter(
+
+
+
+
 
 
 
@@ -190,11 +378,31 @@ class User(models.Model):
 
 
 
+
+
+
+
             is_active=True
 
 
 
+
+
+
+
         ).exists()
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -210,7 +418,15 @@ class Office(models.Model):
 
 
 
+
+
+
+
     name = models.CharField(max_length=150)
+
+
+
+
 
 
 
@@ -218,7 +434,15 @@ class Office(models.Model):
 
 
 
+
+
+
+
     is_active = models.BooleanField(default=True)
+
+
+
+
 
 
 
@@ -230,11 +454,35 @@ class Office(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     def __str__(self):
 
 
 
+
+
+
+
         return self.name
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -250,11 +498,23 @@ class College(models.Model):
 
 
 
+
+
+
+
     name = models.CharField(max_length=150)
 
 
 
+
+
+
+
     abbreviation = models.CharField(max_length=20, null=True, blank=True)
+
+
+
+
 
 
 
@@ -266,11 +526,35 @@ class College(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     def __str__(self):
 
 
 
+
+
+
+
         return self.name
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -286,7 +570,15 @@ class Department(models.Model):
 
 
 
+
+
+
+
     college = models.ForeignKey(College, on_delete=models.CASCADE, related_name="departments")
+
+
+
+
 
 
 
@@ -294,7 +586,15 @@ class Department(models.Model):
 
 
 
+
+
+
+
     abbreviation = models.CharField(max_length=20, null=True, blank=True)
+
+
+
+
 
 
 
@@ -306,11 +606,35 @@ class Department(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     def __str__(self):
 
 
 
+
+
+
+
         return self.name
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -326,7 +650,15 @@ class Role(models.Model):
 
 
 
+
+
+
+
     name = models.CharField(max_length=100, unique=True)
+
+
+
+
 
 
 
@@ -334,7 +666,15 @@ class Role(models.Model):
 
 
 
+
+
+
+
     is_system_role = models.BooleanField(default=False)
+
+
+
+
 
 
 
@@ -346,11 +686,35 @@ class Role(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     def __str__(self):
 
 
 
+
+
+
+
         return self.name
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -366,7 +730,15 @@ class UserRole(models.Model):
 
 
 
+
+
+
+
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+
+
+
+
 
 
 
@@ -374,7 +746,15 @@ class UserRole(models.Model):
 
 
 
+
+
+
+
     college = models.ForeignKey(College, on_delete=models.SET_NULL, null=True, blank=True)
+
+
+
+
 
 
 
@@ -382,7 +762,15 @@ class UserRole(models.Model):
 
 
 
+
+
+
+
     office = models.ForeignKey(Office, on_delete=models.SET_NULL, null=True, blank=True)
+
+
+
+
 
 
 
@@ -390,7 +778,15 @@ class UserRole(models.Model):
 
 
 
+
+
+
+
     assigned_date = models.DateTimeField(auto_now_add=True)
+
+
+
+
 
 
 
@@ -398,11 +794,23 @@ class UserRole(models.Model):
 
 
 
+
+
+
+
     
 
 
 
+
+
+
+
     class Meta:
+
+
+
+
 
 
 
@@ -414,7 +822,19 @@ class UserRole(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     def __str__(self):
+
+
+
+
 
 
 
@@ -430,7 +850,23 @@ class UserRole(models.Model):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 class Faculty(models.Model):
+
+
+
+
 
 
 
@@ -438,7 +874,15 @@ class Faculty(models.Model):
 
 
 
+
+
+
+
     employee_id = models.CharField(max_length=50, unique=True)
+
+
+
+
 
 
 
@@ -446,7 +890,15 @@ class Faculty(models.Model):
 
 
 
+
+
+
+
     middle_name = models.CharField(max_length=100, null=True, blank=True)
+
+
+
+
 
 
 
@@ -454,7 +906,15 @@ class Faculty(models.Model):
 
 
 
+
+
+
+
     faculty_type = models.CharField(max_length=50, null=True, blank=True)
+
+
+
+
 
 
 
@@ -462,11 +922,23 @@ class Faculty(models.Model):
 
 
 
+
+
+
+
     office = models.ForeignKey(Office, on_delete=models.SET_NULL, null=True, blank=True, related_name="faculty")
 
 
 
+
+
+
+
     college = models.ForeignKey(College, on_delete=models.SET_NULL, null=True, blank=True, related_name="faculty")
+
+
+
+
 
 
 
@@ -478,7 +950,19 @@ class Faculty(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     def __str__(self):
+
+
+
+
 
 
 
@@ -494,7 +978,23 @@ class Faculty(models.Model):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 class Approver(models.Model):
+
+
+
+
 
 
 
@@ -502,7 +1002,15 @@ class Approver(models.Model):
 
 
 
+
+
+
+
     approver_type = models.CharField(max_length=50, null=True, blank=True)
+
+
+
+
 
 
 
@@ -510,7 +1018,15 @@ class Approver(models.Model):
 
 
 
+
+
+
+
     college = models.ForeignKey(College, on_delete=models.SET_NULL, null=True, blank=True, related_name="approvers")
+
+
+
+
 
 
 
@@ -522,11 +1038,35 @@ class Approver(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     def __str__(self):
 
 
 
+
+
+
+
         return str(self.user_id)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -542,7 +1082,15 @@ class StudentAssistant(models.Model):
 
 
 
+
+
+
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="assistant_profile")
+
+
+
+
 
 
 
@@ -550,7 +1098,15 @@ class StudentAssistant(models.Model):
 
 
 
+
+
+
+
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name="assistants")
+
+
+
+
 
 
 
@@ -558,7 +1114,15 @@ class StudentAssistant(models.Model):
 
 
 
+
+
+
+
         User,
+
+
+
+
 
 
 
@@ -566,7 +1130,15 @@ class StudentAssistant(models.Model):
 
 
 
+
+
+
+
         null=True,
+
+
+
+
 
 
 
@@ -574,7 +1146,15 @@ class StudentAssistant(models.Model):
 
 
 
+
+
+
+
         related_name="supervised_assistants",
+
+
+
+
 
 
 
@@ -586,7 +1166,19 @@ class StudentAssistant(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     def __str__(self):
+
+
+
+
 
 
 
@@ -602,7 +1194,23 @@ class StudentAssistant(models.Model):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 class Clearance(models.Model):
+
+
+
+
 
 
 
@@ -610,7 +1218,15 @@ class Clearance(models.Model):
 
 
 
+
+
+
+
         PENDING = "PENDING", "PENDING"
+
+
+
+
 
 
 
@@ -618,7 +1234,15 @@ class Clearance(models.Model):
 
 
 
+
+
+
+
         COMPLETED = "COMPLETED", "COMPLETED"
+
+
+
+
 
 
 
@@ -630,7 +1254,19 @@ class Clearance(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     class Term(models.TextChoices):
+
+
+
+
 
 
 
@@ -638,7 +1274,15 @@ class Clearance(models.Model):
 
 
 
+
+
+
+
         SECOND = "2ND", "2ND"
+
+
+
+
 
 
 
@@ -650,7 +1294,19 @@ class Clearance(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE, related_name="clearances")
+
+
+
+
 
 
 
@@ -658,7 +1314,15 @@ class Clearance(models.Model):
 
 
 
+
+
+
+
     term = models.CharField(max_length=20, choices=Term.choices)
+
+
+
+
 
 
 
@@ -666,7 +1330,15 @@ class Clearance(models.Model):
 
 
 
+
+
+
+
     submitted_date = models.DateTimeField(null=True, blank=True)
+
+
+
+
 
 
 
@@ -678,7 +1350,19 @@ class Clearance(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     class Meta:
+
+
+
+
 
 
 
@@ -686,11 +1370,23 @@ class Clearance(models.Model):
 
 
 
+
+
+
+
             models.Index(fields=["academic_year", "term"]),
 
 
 
+
+
+
+
             models.Index(fields=["faculty", "academic_year", "term"]),
+
+
+
+
 
 
 
@@ -702,7 +1398,19 @@ class Clearance(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     def __str__(self):
+
+
+
+
 
 
 
@@ -718,7 +1426,23 @@ class Clearance(models.Model):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 class ClearanceTimeline(models.Model):
+
+
+
+
 
 
 
@@ -726,7 +1450,15 @@ class ClearanceTimeline(models.Model):
 
 
 
+
+
+
+
     academic_year_start = models.IntegerField()
+
+
+
+
 
 
 
@@ -734,7 +1466,15 @@ class ClearanceTimeline(models.Model):
 
 
 
+
+
+
+
     term = models.CharField(max_length=20, choices=Clearance.Term.choices)
+
+
+
+
 
 
 
@@ -742,7 +1482,15 @@ class ClearanceTimeline(models.Model):
 
 
 
+
+
+
+
     clearance_end_date = models.DateTimeField()
+
+
+
+
 
 
 
@@ -750,7 +1498,15 @@ class ClearanceTimeline(models.Model):
 
 
 
+
+
+
+
     archive_date = models.DateTimeField(null=True, blank=True)
+
+
+
+
 
 
 
@@ -758,7 +1514,15 @@ class ClearanceTimeline(models.Model):
 
 
 
+
+
+
+
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+
+
 
 
 
@@ -766,7 +1530,15 @@ class ClearanceTimeline(models.Model):
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -774,7 +1546,15 @@ class ClearanceTimeline(models.Model):
 
 
 
+
+
+
+
         indexes = [
+
+
+
+
 
 
 
@@ -782,11 +1562,23 @@ class ClearanceTimeline(models.Model):
 
 
 
+
+
+
+
             models.Index(fields=["academic_year_start", "id"]),
 
 
 
+
+
+
+
             models.Index(fields=["term"]),
+
+
+
+
 
 
 
@@ -798,7 +1590,19 @@ class ClearanceTimeline(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     def __str__(self):
+
+
+
+
 
 
 
@@ -814,7 +1618,23 @@ class ClearanceTimeline(models.Model):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 class Requirement(models.Model):
+
+
+
+
 
 
 
@@ -822,7 +1642,15 @@ class Requirement(models.Model):
 
 
 
+
+
+
+
     description = models.TextField(null=True, blank=True)
+
+
+
+
 
 
 
@@ -830,7 +1658,15 @@ class Requirement(models.Model):
 
 
 
+
+
+
+
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+
+
+
 
 
 
@@ -838,35 +1674,71 @@ class Requirement(models.Model):
 
 
 
+
+
+
+
     last_updated = models.DateTimeField(auto_now=True)
+
+
+
+
 
 
 
     is_active = models.BooleanField(default=True)
 
+
+
     
+
+
 
     # Link to approver flow step - replaces title-based matching
 
+
+
     approver_flow_step = models.ForeignKey(
+
+
 
         'ApproverFlowStep',
 
+
+
         on_delete=models.SET_NULL,
+
+
 
         null=True,
 
+
+
         blank=True,
+
+
 
         related_name="requirements",
 
+
+
         help_text="Select which approver flow step this requirement belongs to"
+
+
 
     )
 
+
+
     
 
+
+
     recipient_scope = models.CharField(
+
+
+
+
 
 
 
@@ -874,7 +1746,15 @@ class Requirement(models.Model):
 
 
 
+
+
+
+
         choices=[
+
+
+
+
 
 
 
@@ -882,7 +1762,15 @@ class Requirement(models.Model):
 
 
 
+
+
+
+
             ('college', 'By College'),
+
+
+
+
 
 
 
@@ -890,7 +1778,15 @@ class Requirement(models.Model):
 
 
 
+
+
+
+
             ('office', 'By Office'),
+
+
+
+
 
 
 
@@ -898,7 +1794,15 @@ class Requirement(models.Model):
 
 
 
+
+
+
+
         ]
+
+
+
+
 
 
 
@@ -906,7 +1810,15 @@ class Requirement(models.Model):
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -914,7 +1826,15 @@ class Requirement(models.Model):
 
 
 
+
+
+
+
     target_colleges = models.ManyToManyField(College, blank=True)
+
+
+
+
 
 
 
@@ -922,7 +1842,15 @@ class Requirement(models.Model):
 
 
 
+
+
+
+
     target_offices = models.ManyToManyField(Office, blank=True)
+
+
+
+
 
 
 
@@ -934,27 +1862,67 @@ class Requirement(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     def __str__(self):
+
+
 
         return f"{self.title} ({self.approver_flow_step.category if self.approver_flow_step else 'No Step'})"
 
+
+
     
+
+
 
     @property
 
+
+
     def step_category(self):
+
+
 
         """Get the category of the associated approver flow step"""
 
+
+
         return self.approver_flow_step.category if self.approver_flow_step else None
+
+
 
     
 
+
+
     def get_step_title(self):
+
+
 
         """Get the display title of the associated approver flow step"""
 
+
+
         return self.approver_flow_step.category if self.approver_flow_step else "Unassigned"
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -970,7 +1938,15 @@ class ClearanceRequest(models.Model):
 
 
 
+
+
+
+
     class Status(models.TextChoices):
+
+
+
+
 
 
 
@@ -978,7 +1954,15 @@ class ClearanceRequest(models.Model):
 
 
 
+
+
+
+
         APPROVED = "APPROVED", "APPROVED"
+
+
+
+
 
 
 
@@ -990,7 +1974,19 @@ class ClearanceRequest(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     request_id = models.CharField(max_length=50, unique=True)  # e.g., "2526-001"
+
+
+
+
 
 
 
@@ -998,7 +1994,15 @@ class ClearanceRequest(models.Model):
 
 
 
+
+
+
+
     requirement = models.ForeignKey(Requirement, on_delete=models.CASCADE, related_name="clearance_requests")
+
+
+
+
 
 
 
@@ -1006,7 +2010,15 @@ class ClearanceRequest(models.Model):
 
 
 
+
+
+
+
     submission_notes = models.TextField(blank=True)
+
+
+
+
 
 
 
@@ -1014,7 +2026,15 @@ class ClearanceRequest(models.Model):
 
 
 
+
+
+
+
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+
+
+
+
 
 
 
@@ -1022,7 +2042,15 @@ class ClearanceRequest(models.Model):
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -1030,11 +2058,23 @@ class ClearanceRequest(models.Model):
 
 
 
+
+
+
+
     approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='approved_requests')
 
 
 
+
+
+
+
     approved_date = models.DateTimeField(null=True, blank=True)
+
+
+
+
 
 
 
@@ -1046,7 +2086,19 @@ class ClearanceRequest(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     class Meta:
+
+
+
+
 
 
 
@@ -1054,11 +2106,23 @@ class ClearanceRequest(models.Model):
 
 
 
+
+
+
+
             models.UniqueConstraint(fields=["request_id"], name="uniq_request_id")
 
 
 
+
+
+
+
         ]
+
+
+
+
 
 
 
@@ -1066,7 +2130,15 @@ class ClearanceRequest(models.Model):
 
 
 
+
+
+
+
             models.Index(fields=["clearance_timeline"]),
+
+
+
+
 
 
 
@@ -1074,7 +2146,19 @@ class ClearanceRequest(models.Model):
 
 
 
+
+
+
+
         ]
+
+
+
+
+
+
+
+
 
 
 
@@ -1083,6 +2167,10 @@ class ClearanceRequest(models.Model):
 
 
     def __str__(self):
+
+
+
+
 
 
 
@@ -1098,7 +2186,23 @@ class ClearanceRequest(models.Model):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 class Announcement(models.Model):
+
+
+
+
 
 
 
@@ -1106,7 +2210,15 @@ class Announcement(models.Model):
 
 
 
+
+
+
+
     body = models.TextField(null=True, blank=True)
+
+
+
+
 
 
 
@@ -1114,7 +2226,15 @@ class Announcement(models.Model):
 
 
 
+
+
+
+
         User,
+
+
+
+
 
 
 
@@ -1122,7 +2242,15 @@ class Announcement(models.Model):
 
 
 
+
+
+
+
         null=True,
+
+
+
+
 
 
 
@@ -1130,7 +2258,15 @@ class Announcement(models.Model):
 
 
 
+
+
+
+
         related_name="announcements",
+
+
+
+
 
 
 
@@ -1138,7 +2274,15 @@ class Announcement(models.Model):
 
 
 
+
+
+
+
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+
+
 
 
 
@@ -1146,11 +2290,23 @@ class Announcement(models.Model):
 
 
 
+
+
+
+
     is_active = models.BooleanField(default=True)
 
 
 
+
+
+
+
     start_date = models.DateTimeField(null=True, blank=True)
+
+
+
+
 
 
 
@@ -1162,11 +2318,35 @@ class Announcement(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     def __str__(self):
 
 
 
+
+
+
+
         return self.title or str(self.pk)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1182,7 +2362,15 @@ class ApproverFlowConfig(models.Model):
 
 
 
+
+
+
+
     clearance_timeline = models.ForeignKey(
+
+
+
+
 
 
 
@@ -1190,7 +2378,15 @@ class ApproverFlowConfig(models.Model):
 
 
 
+
+
+
+
         on_delete=models.CASCADE,
+
+
+
+
 
 
 
@@ -1198,7 +2394,15 @@ class ApproverFlowConfig(models.Model):
 
 
 
+
+
+
+
         blank=True,
+
+
+
+
 
 
 
@@ -1206,7 +2410,15 @@ class ApproverFlowConfig(models.Model):
 
 
 
+
+
+
+
     )
+
+
+
+
 
 
 
@@ -1214,7 +2426,15 @@ class ApproverFlowConfig(models.Model):
 
 
 
+
+
+
+
         User,
+
+
+
+
 
 
 
@@ -1222,7 +2442,15 @@ class ApproverFlowConfig(models.Model):
 
 
 
+
+
+
+
         null=True,
+
+
+
+
 
 
 
@@ -1230,7 +2458,15 @@ class ApproverFlowConfig(models.Model):
 
 
 
+
+
+
+
         related_name="approver_flow_configs",
+
+
+
+
 
 
 
@@ -1238,7 +2474,15 @@ class ApproverFlowConfig(models.Model):
 
 
 
+
+
+
+
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+
+
 
 
 
@@ -1250,11 +2494,35 @@ class ApproverFlowConfig(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     def __str__(self):
 
 
 
+
+
+
+
         return str(self.pk)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1270,7 +2538,15 @@ class ApproverFlowStep(models.Model):
 
 
 
+
+
+
+
     config = models.ForeignKey(
+
+
+
+
 
 
 
@@ -1278,7 +2554,15 @@ class ApproverFlowStep(models.Model):
 
 
 
+
+
+
+
         on_delete=models.CASCADE,
+
+
+
+
 
 
 
@@ -1286,7 +2570,15 @@ class ApproverFlowStep(models.Model):
 
 
 
+
+
+
+
     )
+
+
+
+
 
 
 
@@ -1294,7 +2586,15 @@ class ApproverFlowStep(models.Model):
 
 
 
+
+
+
+
     category = models.CharField(max_length=150)
+
+
+
+
 
 
 
@@ -1302,7 +2602,15 @@ class ApproverFlowStep(models.Model):
 
 
 
+
+
+
+
         Office,
+
+
+
+
 
 
 
@@ -1310,7 +2618,15 @@ class ApproverFlowStep(models.Model):
 
 
 
+
+
+
+
         null=True,
+
+
+
+
 
 
 
@@ -1318,11 +2634,23 @@ class ApproverFlowStep(models.Model):
 
 
 
+
+
+
+
         related_name="approver_flow_steps",
 
 
 
+
+
+
+
     )
+
+
+
+
 
 
 
@@ -1334,7 +2662,19 @@ class ApproverFlowStep(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     class Meta:
+
+
+
+
 
 
 
@@ -1346,7 +2686,19 @@ class ApproverFlowStep(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     def __str__(self):
+
+
+
+
 
 
 
@@ -1362,55 +2714,133 @@ class ApproverFlowStep(models.Model):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 class ActivityLog(models.Model):
+
+
+
+
 
 
 
     class EventType(models.TextChoices):
 
 
-
         APPROVED_CLEARANCE = "approved_clearance", "approved_clearance"
+
 
         REJECTED_CLEARANCE = "rejected_clearance", "rejected_clearance"
 
+
+        INDIVIDUAL_APPROVED_CLEARANCE = "individual_approved_clearance", "individual_approved_clearance"
+
+
+        INDIVIDUAL_REJECTED_CLEARANCE = "individual_rejected_clearance", "individual_rejected_clearance"
+
+
+        ASSISTANT_APPROVED_CLEARANCE = "assistant_approved_clearance", "assistant_approved_clearance"
+
+
+        ASSISTANT_REJECTED_CLEARANCE = "assistant_rejected_clearance", "assistant_rejected_clearance"
+
+
+
+        ASSISTANT_INDIVIDUAL_APPROVED_CLEARANCE = "assistant_individual_approved_clearance", "assistant_individual_approved_clearance"
+
+
+
+        ASSISTANT_INDIVIDUAL_REJECTED_CLEARANCE = "assistant_individual_rejected_clearance", "assistant_individual_rejected_clearance"
+
+
+
         CREATE_REQUEST = "create_request", "create_request"
+
+
 
         CREATED_REQUIREMENTS = "created_requirements", "created_requirements"
 
+
+
         EDITED_REQUIREMENTS = "edited_requirements", "edited_requirements"
+
+
 
         EDITED_REQUIREMENT = "edited_requirement", "edited_requirement"
 
+
+
         DELETED_REQUIREMENTS = "deleted_requirements", "deleted_requirements"
+
+
 
         EDITED_ANNOUNCEMENT = "edited_announcement", "edited_announcement"
 
+
+
         USER_LOGIN = "user_login", "user_login"
+
+
 
         USER_LOGOUT = "user_logout", "user_logout"
 
+
+
         ADDED_ASSISTANT_APPROVER = "added_assistant_approver", "added_assistant_approver"
 
+
+
         UPDATED_ASSISTANT_APPROVER = "updated_assistant_approver", "updated_assistant_approver"
+
+
 
         REMOVED_ASSISTANT_APPROVER = "removed_assistant_approver", "removed_assistant_approver"
 
 
 
+
+
+
+
         # Guidelines
+
+
 
         CREATED_GUIDELINE = "created_guideline", "created_guideline"
 
+
+
         EDITED_GUIDELINE = "edited_guideline", "edited_guideline"
+
+
 
         ENABLED_GUIDELINE = "enabled_guideline", "enabled_guideline"
 
+
+
         DISABLED_GUIDELINE = "disabled_guideline", "disabled_guideline"
+
+
 
         DELETE_GUIDELINE = "delete_guideline", "delete_guideline"
 
+
+
         ARCHIVED_GUIDELINE = "archived_guideline", "archived_guideline"
+
+
+
+
 
 
 
@@ -1418,13 +2848,27 @@ class ActivityLog(models.Model):
 
 
 
+
+
+
+
         CREATED_ANNOUNCEMENT = "created_announcement", "created_announcement"
+
+
 
         ENABLED_ANNOUNCEMENT = "enabled_announcement", "enabled_announcement"
 
+
+
         DISABLED_ANNOUNCEMENT = "disabled_announcement", "disabled_announcement"
 
+
+
         DELETED_ANNOUNCEMENT = "deleted_announcement", "deleted_announcement"
+
+
+
+
 
 
 
@@ -1432,19 +2876,39 @@ class ActivityLog(models.Model):
 
 
 
+
+
+
+
         CREATED_TIMELINE = "created_timeline", "created_timeline"
+
+
 
         EDITED_TIMELINE = "edited_timeline", "edited_timeline"
 
+
+
         ARCHIVED_TIMELINE = "archived_timeline", "archived_timeline"
+
+
 
         ENABLED_TIMELINE = "enabled_timeline", "enabled_timeline"
 
+
+
         DISABLED_TIMELINE = "disabled_timeline", "disabled_timeline"
+
+
 
         ACTIVE_TIMELINE = "active_timeline", "active_timeline"
 
+
+
         INACTIVE_TIMELINE = "inactive_timeline", "inactive_timeline"
+
+
+
+
 
 
 
@@ -1452,23 +2916,47 @@ class ActivityLog(models.Model):
 
 
 
+
+
+
+
         CREATED_COLLEGE = "created_college", "created_college"
+
+
 
         EDITED_COLLEGE = "edited_college", "edited_college"
 
+
+
         DELETED_COLLEGE = "deleted_college", "deleted_college"
+
+
 
         CREATED_DEPARTMENT = "created_department", "created_department"
 
+
+
         EDITED_DEPARTMENT = "edited_department", "edited_department"
+
+
 
         DELETED_DEPARTMENT = "deleted_department", "deleted_department"
 
+
+
         CREATED_OFFICE = "created_office", "created_office"
+
+
 
         EDITED_OFFICE = "edited_office", "edited_office"
 
+
+
         DELETED_OFFICE = "deleted_office", "deleted_office"
+
+
+
+
 
 
 
@@ -1476,11 +2964,23 @@ class ActivityLog(models.Model):
 
 
 
+
+
+
+
         ADDED_TO_APPROVER_FLOW = "added_to_approver_flow", "added_to_approver_flow"
+
+
 
         EDITED_APPROVER_FLOW = "edited_approver_flow", "edited_approver_flow"
 
+
+
         REMOVED_FROM_APPROVER_FLOW = "removed_from_approver_flow", "removed_from_approver_flow"
+
+
+
+
 
 
 
@@ -1488,11 +2988,33 @@ class ActivityLog(models.Model):
 
 
 
+
+
+
+
         FACULTY_DATA_DUMP_UPLOAD = "faculty_data_dump_upload", "faculty_data_dump_upload"
+
+
 
         FACULTY_DATA_DUMP_REMOVED = "faculty_data_dump_removed", "faculty_data_dump_removed"
 
+
+
         FACULTY_DATA_DUMP_ERROR = "faculty_data_dump_error", "faculty_data_dump_error"
+
+
+
+        # OVPHE Analytics
+
+        EXPORTED_CLEARANCE_RESULTS = "exported_clearance_results", "exported_clearance_results"
+
+
+
+
+
+
+
+
 
 
 
@@ -1504,7 +3026,143 @@ class ActivityLog(models.Model):
 
 
 
+
+
+
+
     user = models.ForeignKey(
+
+
+
+        User,
+
+
+
+        on_delete=models.SET_NULL,
+
+
+
+        null=True,
+
+
+
+        blank=True,
+
+
+
+        related_name="activity_logs",
+
+
+
+    )
+
+
+
+
+
+
+
+    faculty = models.ForeignKey(
+
+
+
+        Faculty,
+
+
+
+        on_delete=models.SET_NULL,
+
+
+
+        null=True,
+
+
+
+        blank=True,
+
+
+
+        related_name="activity_logs",
+
+
+
+    )
+
+
+
+
+
+
+
+    requirement = models.ForeignKey(
+
+
+
+        Requirement,
+
+
+
+        on_delete=models.SET_NULL,
+
+
+
+        null=True,
+
+
+
+        blank=True,
+
+
+
+        related_name="activity_logs",
+
+
+
+    )
+
+
+
+
+
+
+
+    approver_department = models.CharField(max_length=150, null=True, blank=True)
+
+
+
+    university_id = models.CharField(max_length=50, null=True, blank=True)
+
+
+
+    request_id = models.CharField(max_length=50, null=True, blank=True)
+
+
+
+    is_superadmin = models.BooleanField(default=False)
+
+
+
+    is_staff = models.BooleanField(default=False)
+
+
+
+    user_role = models.CharField(max_length=100, null=True, blank=True)
+
+
+
+    department = models.CharField(max_length=150, null=True, blank=True)
+
+
+
+    office = models.CharField(max_length=150, null=True, blank=True)
+
+
+
+    college = models.CharField(max_length=150, null=True, blank=True)
+
+
+
+    supervisor = models.ForeignKey(
 
         User,
 
@@ -1514,71 +3172,53 @@ class ActivityLog(models.Model):
 
         blank=True,
 
-        related_name="activity_logs",
+        related_name="supervised_activity_logs",
 
     )
 
 
-
-    faculty = models.ForeignKey(
-
-        Faculty,
-
-        on_delete=models.SET_NULL,
-
-        null=True,
-
-        blank=True,
-
-        related_name="activity_logs",
-
-    )
-
-
-
-    requirement = models.ForeignKey(
-
-        Requirement,
-
-        on_delete=models.SET_NULL,
-
-        null=True,
-
-        blank=True,
-
-        related_name="activity_logs",
-
-    )
-
-
-
-    approver_department = models.CharField(max_length=150, null=True, blank=True)
-
-    university_id = models.CharField(max_length=50, null=True, blank=True)
-
-    request_id = models.CharField(max_length=50, null=True, blank=True)
-
-    is_superadmin = models.BooleanField(default=False)
-
-    is_staff = models.BooleanField(default=False)
-
-    user_role = models.CharField(max_length=100, null=True, blank=True)
 
     details = models.JSONField(default=list, blank=True)
+
+
 
     created_at = models.DateTimeField(auto_now_add=True)
 
 
 
+
+
+
+
     class Meta:
+
+
 
         ordering = ["-created_at", "-id"]
 
 
 
+
+
+
+
     def __str__(self):
 
+
+
         return f"{self.event_type} ({self.created_at})"
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1594,11 +3234,23 @@ class ArchivedClearance(models.Model):
 
 
 
+
+
+
+
     class Status(models.TextChoices):
 
 
 
+
+
+
+
         COMPLETED = "COMPLETED", "COMPLETED"
+
+
+
+
 
 
 
@@ -1610,7 +3262,19 @@ class ArchivedClearance(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     faculty = models.ForeignKey('Faculty', on_delete=models.CASCADE)
+
+
+
+
 
 
 
@@ -1618,7 +3282,15 @@ class ArchivedClearance(models.Model):
 
 
 
+
+
+
+
     academic_year = models.CharField(max_length=20)
+
+
+
+
 
 
 
@@ -1626,7 +3298,15 @@ class ArchivedClearance(models.Model):
 
 
 
+
+
+
+
     status = models.CharField(max_length=20, choices=Status.choices)
+
+
+
+
 
 
 
@@ -1634,7 +3314,15 @@ class ArchivedClearance(models.Model):
 
 
 
+
+
+
+
     clearance_period_end = models.DateField()
+
+
+
+
 
 
 
@@ -1642,7 +3330,15 @@ class ArchivedClearance(models.Model):
 
 
 
+
+
+
+
     archived_date = models.DateTimeField(auto_now_add=True)
+
+
+
+
 
 
 
@@ -1650,7 +3346,15 @@ class ArchivedClearance(models.Model):
 
 
 
+
+
+
+
     csv_dump_size = models.CharField(max_length=50, blank=True)
+
+
+
+
 
 
 
@@ -1662,7 +3366,19 @@ class ArchivedClearance(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     def __str__(self):
+
+
+
+
 
 
 
@@ -1678,7 +3394,23 @@ class ArchivedClearance(models.Model):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 class ApproverAssistant(models.Model):
+
+
+
+
 
 
 
@@ -1686,7 +3418,15 @@ class ApproverAssistant(models.Model):
 
 
 
+
+
+
+
     supervisor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='approver_supervised_assistants')
+
+
+
+
 
 
 
@@ -1694,7 +3434,15 @@ class ApproverAssistant(models.Model):
 
 
 
+
+
+
+
         max_length=20,
+
+
+
+
 
 
 
@@ -1702,7 +3450,15 @@ class ApproverAssistant(models.Model):
 
 
 
+
+
+
+
             ('college_admin', 'College Admin'),
+
+
+
+
 
 
 
@@ -1710,7 +3466,15 @@ class ApproverAssistant(models.Model):
 
 
 
+
+
+
+
             ('office_admin', 'Office Admin'),
+
+
+
+
 
 
 
@@ -1718,7 +3482,15 @@ class ApproverAssistant(models.Model):
 
 
 
+
+
+
+
             ('student_assistant', 'Student Assistant')
+
+
+
+
 
 
 
@@ -1726,7 +3498,15 @@ class ApproverAssistant(models.Model):
 
 
 
+
+
+
+
     )
+
+
+
+
 
 
 
@@ -1734,7 +3514,15 @@ class ApproverAssistant(models.Model):
 
 
 
+
+
+
+
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
+
+
+
+
 
 
 
@@ -1742,7 +3530,15 @@ class ApproverAssistant(models.Model):
 
 
 
+
+
+
+
     is_active = models.BooleanField(default=True)
+
+
+
+
 
 
 
@@ -1750,7 +3546,15 @@ class ApproverAssistant(models.Model):
 
 
 
+
+
+
+
     assigned_date = models.DateTimeField(auto_now_add=True)
+
+
+
+
 
 
 
@@ -1758,7 +3562,15 @@ class ApproverAssistant(models.Model):
 
 
 
+
+
+
+
     class Meta:
+
+
+
+
 
 
 
@@ -1770,7 +3582,19 @@ class ApproverAssistant(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     def __str__(self):
+
+
+
+
 
 
 
@@ -1786,7 +3610,23 @@ class ApproverAssistant(models.Model):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 class AdministrativeSecondment(models.Model):
+
+
+
+
 
 
 
@@ -1794,7 +3634,15 @@ class AdministrativeSecondment(models.Model):
 
 
 
+
+
+
+
     secondment_approver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='secondment_assignments')
+
+
+
+
 
 
 
@@ -1802,7 +3650,15 @@ class AdministrativeSecondment(models.Model):
 
 
 
+
+
+
+
     office = models.ForeignKey(Office, on_delete=models.CASCADE, null=True, blank=True)
+
+
+
+
 
 
 
@@ -1810,7 +3666,15 @@ class AdministrativeSecondment(models.Model):
 
 
 
+
+
+
+
     start_date = models.DateTimeField()
+
+
+
+
 
 
 
@@ -1818,7 +3682,15 @@ class AdministrativeSecondment(models.Model):
 
 
 
+
+
+
+
     assigned_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
+
+
+
 
 
 
@@ -1826,7 +3698,15 @@ class AdministrativeSecondment(models.Model):
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -1834,7 +3714,15 @@ class AdministrativeSecondment(models.Model):
 
 
 
+
+
+
+
         unique_together = ['primary_approver', 'secondment_approver', 'department', 'office']
+
+
+
+
 
 
 
@@ -1842,7 +3730,15 @@ class AdministrativeSecondment(models.Model):
 
 
 
+
+
+
+
     def __str__(self):
+
+
+
+
 
 
 
@@ -1850,7 +3746,15 @@ class AdministrativeSecondment(models.Model):
 
 
 
+
+
+
+
             return f"2nd Dept Chair - {self.department.name}"
+
+
+
+
 
 
 
@@ -1858,11 +3762,31 @@ class AdministrativeSecondment(models.Model):
 
 
 
+
+
+
+
             return f"2nd Office Admin - {self.office.name}"
 
 
 
+
+
+
+
         return str(self.pk)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1878,7 +3802,15 @@ class SystemGuideline(models.Model):
 
 
 
+
+
+
+
     title = models.CharField(max_length=200, null=True, blank=True)
+
+
+
+
 
 
 
@@ -1886,7 +3818,15 @@ class SystemGuideline(models.Model):
 
 
 
+
+
+
+
     created_by = models.ForeignKey(
+
+
+
+
 
 
 
@@ -1894,7 +3834,15 @@ class SystemGuideline(models.Model):
 
 
 
+
+
+
+
         on_delete=models.SET_NULL,
+
+
+
+
 
 
 
@@ -1902,7 +3850,15 @@ class SystemGuideline(models.Model):
 
 
 
+
+
+
+
         blank=True,
+
+
+
+
 
 
 
@@ -1910,11 +3866,23 @@ class SystemGuideline(models.Model):
 
 
 
+
+
+
+
     )
 
 
 
+
+
+
+
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+
+
 
 
 
@@ -1926,11 +3894,35 @@ class SystemGuideline(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     def __str__(self):
 
 
 
+
+
+
+
         return self.title or str(self.pk)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1946,7 +3938,15 @@ class SystemAnalytics(models.Model):
 
 
 
+
+
+
+
     clearance_timeline = models.ForeignKey(ClearanceTimeline, on_delete=models.CASCADE)
+
+
+
+
 
 
 
@@ -1954,7 +3954,15 @@ class SystemAnalytics(models.Model):
 
 
 
+
+
+
+
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name="analytics")
+
+
+
+
 
 
 
@@ -1962,7 +3970,15 @@ class SystemAnalytics(models.Model):
 
 
 
+
+
+
+
     completed_clearances = models.IntegerField(default=0)
+
+
+
+
 
 
 
@@ -1970,7 +3986,15 @@ class SystemAnalytics(models.Model):
 
 
 
+
+
+
+
     completion_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+
+
+
+
 
 
 
@@ -1978,7 +4002,15 @@ class SystemAnalytics(models.Model):
 
 
 
+
+
+
+
     generated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
+
+
+
 
 
 
@@ -1986,7 +4018,15 @@ class SystemAnalytics(models.Model):
 
 
 
+
+
+
+
     class Meta:
+
+
+
+
 
 
 
@@ -1998,7 +4038,19 @@ class SystemAnalytics(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     def __str__(self):
+
+
+
+
 
 
 
@@ -2008,35 +4060,75 @@ class SystemAnalytics(models.Model):
 
 
 
+
+
+
+
+
+
 class FacultyDumpArchive(models.Model):
+
+
 
     clearance_timeline = models.ForeignKey(ClearanceTimeline, on_delete=models.CASCADE, related_name="faculty_dumps")
 
+
+
     academic_year_start = models.IntegerField()
+
+
 
     academic_year_end = models.IntegerField()
 
+
+
     term = models.CharField(max_length=20, choices=Clearance.Term.choices)
+
+
 
     dump_file_path = models.CharField(max_length=500)
 
+
+
     dump_file_size = models.CharField(max_length=50, blank=True)
 
+
+
     created_at = models.DateTimeField(auto_now_add=True)
+
+
 
     updated_at = models.DateTimeField(auto_now=True)
 
 
 
+
+
+
+
     class Meta:
+
+
 
         ordering = ["-created_at", "-id"]
 
 
 
+
+
+
+
     def __str__(self):
 
+
+
         return f"Faculty dump {self.academic_year_start}-{self.academic_year_end} {self.term}"
+
+
+
+
+
+
 
 
 
@@ -2046,7 +4138,15 @@ class Notification(models.Model):
 
 
 
+
+
+
+
     class Status(models.TextChoices):
+
+
+
+
 
 
 
@@ -2054,7 +4154,15 @@ class Notification(models.Model):
 
 
 
+
+
+
+
         REJECTED = "rejected", "rejected"
+
+
+
+
 
 
 
@@ -2066,24 +4174,53 @@ class Notification(models.Model):
 
 
 
+
+
+
+
+
+
+
+
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="notifications")
+
     created_by = models.ForeignKey(
+
         User,
+
         on_delete=models.SET_NULL,
+
         null=True,
+
         blank=True,
+
         related_name="created_notifications",
+
     )
+
     approver = models.ForeignKey(
+
         User,
+
         on_delete=models.SET_NULL,
+
         null=True,
+
         blank=True,
+
         related_name="approver_notifications",
+
     )
+
     title = models.CharField(max_length=200, null=True, blank=True)
+
     status = models.CharField(max_length=20, choices=Status.choices, null=True, blank=True, default=None)
+
     body = models.TextField(null=True, blank=True)
+
+
+
+
 
 
 
@@ -2091,11 +4228,27 @@ class Notification(models.Model):
 
 
 
+
+
+
+
     is_read = models.BooleanField(default=False)
+
     user_role = models.CharField(max_length=100, blank=True, default="") # Store list of role names this notification targets
+
     clearance_period_start_date = models.DateField(null=True, blank=True)
+
     clearance_period_end_date = models.DateField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+
+
+
+
+
+
 
 
 
@@ -2107,7 +4260,15 @@ class Notification(models.Model):
 
 
 
+
+
+
+
         return self.title or str(self.pk)
+
+
+
+
 
 
 

@@ -346,9 +346,15 @@ export default function SystemAnalytics() {
                     postOVPHEActivityLog({
                       event_type: "exported_clearance_results",
                       details: [
+                        `User: ${localStorage.getItem('firstName') || 'Unknown'} ${localStorage.getItem('lastName') || ''}`,
                         selectedCollege !== "College" ? `College: ${selectedCollege}` : "",
-                        selectedClearance !== "All Clearances" ? `School Year: ${selectedClearance}` : "",
-                        selectedTerm !== "Term" ? `Term: ${selectedTerm}` : "",
+                        selectedClearance !== "All Clearances" && selectedTerm !== "Term" 
+                          ? `Details: (${selectedClearance} ${selectedTerm})`
+                          : selectedClearance !== "All Clearances" 
+                            ? `Details: (${selectedClearance})`
+                            : selectedTerm !== "Term"
+                              ? `Details: (${selectedTerm})`
+                              : ""
                       ].filter(Boolean),
                     });
                     const params = buildAnalyticsParams();
