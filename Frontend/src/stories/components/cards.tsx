@@ -680,6 +680,7 @@ export type ClearanceRequestItem = {
   college: string;
   department: string;
   facultyType: string;
+  requirementName?: string;
   status: ClearanceRequestStatus;
 };
 
@@ -719,6 +720,7 @@ export function ClearanceRequestsCard({
       
       const response = await fetch(actionEndpoint, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           "X-CSRFToken": getCookie("csrftoken") || "",
@@ -865,6 +867,7 @@ export function ClearanceRequestsCard({
       
       const response = await fetch(actionEndpoint, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           "X-CSRFToken": getCookie("csrftoken") || "",
@@ -891,6 +894,64 @@ export function ClearanceRequestsCard({
       const result = await response.json();
       console.log("Bulk reject successful:", result);
       
+      try {
+        console.log("[notification] Creating bulk Submission Rejected notifications:", {
+          selectedCount: selectedIds.size,
+          reason,
+          actor: isAssistantApprover ? "assistant" : "approver",
+        });
+        const notificationPromises = Array.from(selectedIds).map(async (requestId) => {
+          const requestItem = items.find((item) => item.id === requestId);
+          if (!requestItem) return null;
+
+          const requirementTitle = String(requestItem.requirementName || "");
+          const trimmedRemarks = String(reason || "").trim();
+          const userRole = isAssistantApprover ? "Assistant" : "Approver";
+
+          const notifResponse = await fetch("/admin/xu-faculty-clearance/api/faculty/notifications", {
+            method: "POST",
+            credentials: "include",
+            keepalive: true,
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
+            body: JSON.stringify({
+              title: "Submission Rejected",
+              status: "rejected",
+              body: (
+                "Your submission has been REJECTED.\n\n" +
+                `Submission of ${requirementTitle}\n\n` +
+                "Remarks:\n" +
+                `${trimmedRemarks}`
+              ),
+              details: [
+                `Requirement = \"${requirementTitle}\"`,
+                `Remarks = ${trimmedRemarks}`,
+              ],
+              user_role: userRole,
+              is_read: false,
+            }),
+          });
+
+          if (!notifResponse.ok) {
+            console.warn(
+              "[notification] Submission Rejected POST failed:",
+              notifResponse.status,
+              await notifResponse.text(),
+            );
+          } else {
+            console.log("[notification] Submission Rejected created successfully");
+          }
+
+          return notifResponse;
+        });
+
+        await Promise.all(notificationPromises);
+      } catch (e) {
+        console.warn("[notification] Bulk Submission Rejected POST error:", e);
+      }
+
       if (isAssistantApprover) {
         window.location.reload();
         return;
@@ -1730,6 +1791,8 @@ export type NotificationItemStatus = "approved" | "rejected" | "submitted";
 
 export type NotificationItem = {
 
+  id?: string;
+
   title: string;
 
   status?: NotificationItemStatus;
@@ -1762,6 +1825,8 @@ export type NotificationsCardProps = {
 
   onReadAllChange?: (readAll: boolean) => void;
 
+  onItemClick?: (item: NotificationItem) => void;
+
 };
 
 
@@ -1779,18 +1844,13 @@ function statusText(status: NotificationItemStatus) {
 
 
 export function NotificationsCard({
-
   items,
-
   className,
-
   pageSize = 10,
-
   showMarkAsReadButton = true,
-
   readAll: readAllProp,
-
   onReadAllChange,
+  onItemClick,
 
 }: NotificationsCardProps) {
 
@@ -1847,68 +1907,46 @@ export function NotificationsCard({
       <CardContent className="p-0">
 
         {showMarkAsReadButton ? (
-
           <div className="flex items-center justify-end px-6 pt-4">
-
             <Button
-
               className="h-8 px-3 text-xs"
-
               variant="default"
-
               type="button"
-
               onClick={() => setReadAll(true)}
-
             >
-
-              Mark as Read
-
+              Mark as Read .//
             </Button>
-
           </div>
-
         ) : null}
 
-
-
         {pagedItems.map((item, index) => (
-
           <div key={`${item.title}-${start + index}`}>
 
-            <div className="px-6 py-4">
-
+            <button
+              type="button"
+              className={cn(
+                "block w-full px-6 py-4 text-left",
+                onItemClick ? "cursor-pointer" : "cursor-default",
+              )}
+              onClick={() => onItemClick?.(item)}
+              disabled={!onItemClick}
+            >
               <div className="flex items-start justify-between gap-3">
-
                 <div className="min-w-0">
-
                   <div className="text-base font-bold text-gray-900">{item.title}</div>
 
                   <div className="mt-1 text-sm text-gray-900">
-
                     {item.description?.trim()
-
                       ? item.description
-
-                      : item.status
-
+                      : item.status                   
                         ? (
-
                             <>
-
                               Your submission has been <span className="font-bold">{statusText(item.status)}.</span>
-
                             </>
-
                           )
-
                         : null}
-
                   </div>
-
                 </div>
-
-
 
                 {!readAll && !item.is_read ? (
 
@@ -1921,83 +1959,51 @@ export function NotificationsCard({
 
 
               {item.details.length ? (
-
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-gray-900">
-
                   {item.details.map((d) => (
-
                     <li key={d}>{d}</li>
-
                   ))}
-
                 </ul>
-
               ) : null}
 
               <div className="mt-3 text-xs italic text-muted-foreground">{item.timestamp}</div>
-
-            </div>
-
+            </button>
             {index < pagedItems.length - 1 ? (
               <div className="h-px w-full bg-[hsl(var(--gray-border))]" />
             ) : null}
-
           </div>
-
         ))}
 
         <div className="px-6 pb-4">
-
           <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-
             <span>Page</span>
 
+            
             <button
-
               type="button"
-
               className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-background text-gray-900 disabled:opacity-50"
-
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-
               disabled={safePage <= 1}
-
             >
-
               <ChevronLeft className="h-4 w-4" />
-
             </button>
 
 
 
             <select
-
               className="h-9 rounded-md border border-input bg-background px-3 text-sm text-gray-900"
-
               value={safePage}
-
               onChange={(e) => setPage(Number(e.target.value))}
-
             >
-
               {Array.from({ length: totalPages }).map((_, i) => (
-
                 <option key={i + 1} value={i + 1}>
-
                   {i + 1}
-
                 </option>
-
               ))}
-
             </select>
 
-
-
             <button
-
               type="button"
-
               className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-background text-gray-900 disabled:opacity-50"
 
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
@@ -3823,6 +3829,7 @@ export function ExpandableClearanceStepCard({
                   try {
                     const response = await fetch('/admin/xu-faculty-clearance/api/faculty/submit-requirement', {
                       method: 'POST',
+                      credentials: 'include',
                       headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.getAttribute('value') || ''
@@ -3832,7 +3839,7 @@ export function ExpandableClearanceStepCard({
                         comment: pendingComment
                       })
                     });
-                    
+
                     if (!response.ok) {
                       const errorData = await response.json();
                       console.error('Failed to submit requirement:', errorData.detail || 'Unknown error');
@@ -3840,19 +3847,61 @@ export function ExpandableClearanceStepCard({
                       // Don't update state if submission failed
                       setShowConfirmDialog(null);
                       setPendingComment("");
-                    } else {
-                      const result = await response.json();
-                      console.log('Requirement submitted successfully:', result);
-                      // Only update state after successful submission
-                      setSavedComments(prev => ({ ...prev, [showConfirmDialog]: pendingComment }));
-                      setCheckboxStates(prev => ({ ...prev, [showConfirmDialog]: true }));
-                      setShowConfirmDialog(null);
-                      setPendingComment("");
-                      // Show success message with request ID
-                      alert(`Requirement submitted successfully!\nRequest ID: ${result.requestId}`);
-                      // Optionally refresh the page to get updated state
-                      window.location.reload();
+                      return;
                     }
+
+                    const result = await response.json();
+                    console.log('Requirement submitted successfully:', result);
+
+                    try {
+                      console.log('[DEBUG] Creating submission notification...');
+                      const notifRes = await fetch('/admin/xu-faculty-clearance/api/faculty/notifications', {
+                        method: 'POST',
+                        credentials: 'include',
+                        keepalive: true,
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.getAttribute('value') || ''
+                        },
+                        body: JSON.stringify({
+                          title: 'Submission Submitted',
+                          status: 'submitted',
+                          body: `Your submission has been SUBMITTED.\n\nSubmission of ${showConfirmDialog}\nRemarks:\n${pendingComment}`,
+                          details: [
+                            `Requirement = "${showConfirmDialog}"`,
+                            `Remark = "${pendingComment}"`,
+                          ],
+                          is_read: false,
+                          user_role: 'Faculty',
+                          created_by_id: null,
+                          approver_id: result?.approverId ?? null,
+                        })
+                      });
+
+                      if (!notifRes.ok) {
+                        let errDetail = '';
+                        try {
+                          errDetail = await notifRes.text();
+                        } catch {
+                          errDetail = '';
+                        }
+                        console.error('Failed to create submission notification:', notifRes.status, errDetail);
+                      } else {
+                        console.log('[DEBUG] Submission notification created.');
+                      }
+                    } catch (e) {
+                      console.error('Failed to create submission notification:', e);
+                    }
+
+                    // Only update state after successful submission
+                    setSavedComments(prev => ({ ...prev, [showConfirmDialog]: pendingComment }));
+                    setCheckboxStates(prev => ({ ...prev, [showConfirmDialog]: true }));
+                    setShowConfirmDialog(null);
+                    setPendingComment("");
+                    // Show success message with request ID
+                    alert(`Requirement submitted successfully!\nRequest ID: ${result.requestId}`);
+                    // Optionally refresh the page to get updated state
+                    window.location.reload();
                   } catch (error) {
                     console.error('Error submitting requirement:', error);
                     alert('Error submitting requirement. Please try again.');

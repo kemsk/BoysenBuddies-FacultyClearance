@@ -1671,6 +1671,8 @@ def me_api(request):
 
         {
 
+            "id": user.id,
+
             "email": user.email,
 
             "university_id": user.university_id,
@@ -1680,6 +1682,10 @@ def me_api(request):
             "middle_name": user.middle_name,
 
             "last_name": user.last_name,
+
+            "firstName": user.first_name,
+
+            "lastName": user.last_name,
 
             "role_value": request.session.get("user_role_value"),
 
@@ -1694,7 +1700,41 @@ def me_api(request):
     )
 
 
+@csrf_exempt
 
+def user_by_email_api(request):
+
+    if request.method != "GET":
+
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    email = request.GET.get("email")
+
+    if not email:
+
+        return JsonResponse({"detail": "Email query parameter required"}, status=400)
+
+    user = _get_authenticated_user(request)
+
+    if not user:
+
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    try:
+
+        target_user = User.objects.get(email=email)
+
+        return JsonResponse({
+
+            "firstName": target_user.first_name,
+
+            "lastName": target_user.last_name,
+
+        })
+
+    except User.DoesNotExist:
+
+        return JsonResponse({"detail": "User not found"}, status=404)
 
 
 @csrf_exempt
@@ -1819,15 +1859,7 @@ def unread_notifications_count_api(request):
 
 
 
-    filters = (
-
-        Q(user=user)
-
-        | Q(approver=user)
-
-        | (Q(user__isnull=True) & Q(user_role__in=list(role_names)))
-
-    )
+    filters = Q(user=user)
 
 
 
@@ -2590,6 +2622,11 @@ def _system_guideline_detail_api(request, role: str, guideline_id: int):
         if not title:
 
             return JsonResponse({"detail": "title is required"}, status=400)
+
+        if details is None:
+            details = []
+        if not isinstance(details, list):
+            return JsonResponse({"detail": "details must be a list"}, status=400)
 
 
 
@@ -6521,6 +6558,32 @@ def _legacy_faculty_dashboard_api_v1(request):
 
 def faculty_notifications_api(request):
 
+    session_user = _get_authenticated_user(request)
+
+    if not session_user:
+
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    if request.method == "PUT":
+
+        payload = _json_body(request)
+
+        if payload is None:
+
+            payload = {}
+
+        ids = payload.get("ids")
+
+        qs = Notification.objects.filter(user=session_user)
+
+        if isinstance(ids, list) and ids:
+
+            qs = qs.filter(id__in=ids)
+
+        updated = qs.filter(is_read=False).update(is_read=True)
+
+        return JsonResponse({"ok": True, "updated": int(updated)})
+
     if request.method == "POST":
 
         payload = _json_body(request)
@@ -6545,25 +6608,47 @@ def faculty_notifications_api(request):
 
         status = payload.get("status")  # Can be None
 
+        created_by_id_raw = payload.get("created_by_id")
+        approver_id_raw = payload.get("approver_id")
+
 
 
         if not title:
 
             return JsonResponse({"detail": "title is required"}, status=400)
 
+        if details is None:
+            details = []
+        if not isinstance(details, list):
+            return JsonResponse({"detail": "details must be a list"}, status=400)
 
 
-        # Get session user like other notification functions
 
-        session_user = _get_authenticated_user(request)
+        created_by_user = session_user
+        try:
+            if created_by_id_raw not in (None, ""):
+                created_by_candidate = User.objects.filter(id=int(created_by_id_raw)).first()
+                if created_by_candidate:
+                    created_by_user = created_by_candidate
+        except Exception:
+            created_by_user = session_user
 
-        notification_user_id = session_user.id if session_user else None
+        approver_user = None
+        try:
+            if approver_id_raw not in (None, ""):
+                approver_user = User.objects.filter(id=int(approver_id_raw)).first()
+        except Exception:
+            approver_user = None
 
 
 
         notification = Notification.objects.create(
 
             user=session_user,  # Use user field, not user_id
+
+            created_by=created_by_user,
+
+            approver=approver_user,
 
             user_role=user_role,
 
@@ -6579,6 +6664,7 @@ def faculty_notifications_api(request):
 
         )
 
+
         return JsonResponse({"item": {"id": notification.id}})
 
 
@@ -6589,39 +6675,7 @@ def faculty_notifications_api(request):
 
 
 
-    email = (request.GET.get("email") or "").strip()
-
-    university_id = (request.GET.get("university_id") or "").strip()
-
-
-
-    if not email and not university_id:
-
-        email = "faculty.seed@xu.edu.ph"
-
-
-
-    qs = User.objects.filter(is_active=True, user_type=User.UserType.FACULTY)
-
-    if email:
-
-        qs = qs.filter(email=email)
-
-    if university_id:
-
-        qs = qs.filter(university_id=university_id)
-
-
-
-    user = qs.order_by("id").first()
-
-    if not user:
-
-        return JsonResponse({"detail": "Faculty user not found"}, status=404)
-
-
-
-    notifications = Notification.objects.filter(user=user).order_by("-created_at", "-id")
+    notifications = Notification.objects.filter(user=session_user).order_by("-created_at", "-id")
 
     items = []
 
@@ -6633,6 +6687,10 @@ def faculty_notifications_api(request):
 
                 "id": str(n.id),
 
+                "user_id": int(n.user_id) if n.user_id is not None else None,
+
+                "userId": int(n.user_id) if n.user_id is not None else None,
+
                 "title": n.title or "",
 
                 "description": n.body or "",
@@ -6640,6 +6698,8 @@ def faculty_notifications_api(request):
                 "status": n.status,
 
                 "details": list(n.details or []),
+
+                "user_role": n.user_role or "",
 
                 "timestamp": _format_timestamp(n.created_at),
 
@@ -8559,6 +8619,28 @@ def ovphe_notifications_api(request):
 
 
 
+    if request.method == "PUT":
+
+        payload = _json_body(request)
+
+        if payload is None:
+
+            payload = {}
+
+        ids = payload.get("ids")
+
+        qs = Notification.objects.filter(user=admin)
+
+        if isinstance(ids, list) and ids:
+
+            qs = qs.filter(id__in=ids)
+
+        updated = qs.filter(is_read=False).update(is_read=True)
+
+        return JsonResponse({"ok": True, "updated": int(updated)})
+
+
+
     if request.method == "POST":
 
         payload = _json_body(request)
@@ -8580,6 +8662,8 @@ def ovphe_notifications_api(request):
         is_read = bool(payload.get("is_read"))
 
         user_roles = payload.get("user_roles")
+
+        user_ids = payload.get("user_ids")
 
 
 
@@ -8605,9 +8689,14 @@ def ovphe_notifications_api(request):
 
             user_roles = []
 
-        if not isinstance(user_roles, list) or not user_roles:
+        if user_ids is None:
 
-            return JsonResponse({"detail": "user_roles must be a non-empty list"}, status=400)
+            user_ids = []
+
+        # Validate: either user_roles OR user_ids must be provided
+        if (not isinstance(user_roles, list) or not user_roles) and (not isinstance(user_ids, list) or not user_ids):
+
+            return JsonResponse({"detail": "user_roles or user_ids must be a non-empty list"}, status=400)
 
 
 
@@ -8643,37 +8732,62 @@ def ovphe_notifications_api(request):
 
         try:
 
-            Notification.objects.bulk_create(
+            # Resolve target users
+            target_users = []
+            roles_by_user_id = {}
 
-                [
-
-                    Notification(
-
-                        user=session_user,
-
-                        user_role=str(role_value),
-
-                        title=title,
-
-                        status=status,
-
-                        body=body,
-
-                        details=details,
-
-                        is_read=is_read,
-
+            if isinstance(user_ids, list) and user_ids:
+                target_users = list(User.objects.filter(id__in=user_ids, is_active=True).order_by("id"))
+            else:
+                # Expand roles -> users
+                target_users = list(
+                    User.objects.filter(
+                        is_active=True,
+                        userrole__is_active=True,
+                        userrole__role__name__in=[str(r) for r in user_roles],
                     )
+                    .distinct()
+                    .order_by("id")
+                )
 
-                    for role_value in user_roles
+                role_order = [str(r) for r in user_roles]
+                for u in target_users:
+                    try:
+                        active_role_names = list(
+                            u.get_active_roles().values_list("role__name", flat=True)
+                        )
+                    except Exception:
+                        active_role_names = []
 
-                ]
+                    chosen = ""
+                    for r in role_order:
+                        if r in active_role_names:
+                            chosen = r
+                            break
+                    roles_by_user_id[int(u.id)] = chosen
 
-            )
+            notifications_to_create = []
+            for u in target_users:
+                role_value = roles_by_user_id.get(int(u.id)) if roles_by_user_id else (str(user_roles[0]) if isinstance(user_roles, list) and len(user_roles) == 1 else "")
+                notifications_to_create.append(
+                    Notification(
+                        user=u,
+                        user_role=str(role_value or ""),
+                        title=title,
+                        status=status,
+                        body=body,
+                        details=details,
+                        is_read=is_read,
+                        created_by=session_user,
+                    )
+                )
+
+            Notification.objects.bulk_create(notifications_to_create)
 
         except Exception:
 
             return JsonResponse({"detail": "Failed to create notifications"}, status=500)
+
 
 
 
@@ -8687,11 +8801,7 @@ def ovphe_notifications_api(request):
 
 
 
-    qs = Notification.objects.filter(
-
-        models.Q(user=admin.user) | models.Q(user_role__istartswith="CISO")
-
-    ).order_by("-created_at", "-id")
+    qs = Notification.objects.filter(user=admin).order_by("-created_at", "-id")
 
     items = []
 
@@ -8703,6 +8813,10 @@ def ovphe_notifications_api(request):
 
                 "id": str(n.id),
 
+                "user_id": int(n.user_id) if n.user_id is not None else None,
+
+                "userId": int(n.user_id) if n.user_id is not None else None,
+
                 "title": n.title or "",
 
                 "description": n.body or "",
@@ -8710,6 +8824,8 @@ def ovphe_notifications_api(request):
                 "status": n.status,
 
                 "details": list(n.details or []),
+
+                "user_role": n.user_role or "",
 
                 "timestamp": _format_timestamp(n.created_at),
 
@@ -9596,6 +9712,22 @@ def ciso_notifications_api(request):
 
  
 
+    if request.method == "PUT":
+
+        payload = _json_body(request)
+        if payload is None:
+            payload = {}
+
+        ids = payload.get("ids")
+
+        qs = Notification.objects.filter(user=admin)
+        if isinstance(ids, list) and ids:
+            qs = qs.filter(id__in=ids)
+
+        updated = qs.filter(is_read=False).update(is_read=True)
+        return JsonResponse({"ok": True, "updated": int(updated)})
+
+
     if request.method == "POST":
 
         payload = _json_body(request)
@@ -9864,7 +9996,7 @@ def ciso_notifications_api(request):
 
  
 
-    qs = Notification.objects.filter(user=admin.user).order_by("-created_at", "-id")
+    qs = Notification.objects.filter(user=admin).order_by("-created_at", "-id")
 
     items = []
 
@@ -9876,6 +10008,10 @@ def ciso_notifications_api(request):
 
                 "id": str(n.id),
 
+                "user_id": int(n.user_id) if n.user_id is not None else None,
+
+                "userId": int(n.user_id) if n.user_id is not None else None,
+
                 "title": n.title or "",
 
                 "description": n.body or "",
@@ -9883,6 +10019,8 @@ def ciso_notifications_api(request):
                 "status": n.status,
 
                 "details": list(n.details or []),
+
+                "user_role": n.user_role or "",
 
                 "timestamp": _format_timestamp(n.created_at),
 
@@ -11042,7 +11180,7 @@ def _legacy_faculty_dashboard_api_v2(request):
 
 
 
-def faculty_notifications_api(request):
+def faculty_notifications_api_legacy(request):
 
     if request.method != "GET":
 
@@ -11552,7 +11690,7 @@ def faculty_dashboard_api(request):
 
 
 
-def faculty_notifications_api(request):
+def faculty_notifications_api_legacy2(request):
 
     if request.method != "GET":
 
@@ -11760,13 +11898,78 @@ def faculty_submit_requirement_api(request):
 
             
 
-            return JsonResponse({
+            approver_id_value = None
+            try:
+                if existing_request.requirement and getattr(existing_request.requirement, "created_by_id", None):
+                    approver_id_value = int(existing_request.requirement.created_by_id)
+            except Exception:
+                approver_id_value = None
 
-                "detail": "Requirement resubmitted successfully",
+            # Create New Clearance Request notifications for approver + assistants
+            try:
+                if approver_id_value:
+                    approver_user = None
+                    try:
+                        approver_user = User.objects.filter(id=approver_id_value).first()
+                    except Exception:
+                        approver_user = None
 
-                "requestId": existing_request.request_id
+                    faculty_name_parts = [
+                        (authenticated_user.first_name or "").strip(),
+                        (authenticated_user.last_name or "").strip(),
+                    ]
+                    faculty_name = " ".join([p for p in faculty_name_parts if p]) or authenticated_user.email
+                    dept_name = faculty.department.name if faculty.department else ""
 
-            })
+                    # Approver notification
+                    Notification.objects.create(
+                        user_id=approver_id_value,
+                        created_by=authenticated_user,
+                        approver=approver_user,
+                        user_role="Approver",
+                        title="New Clearance Request",
+                        status=Notification.Status.SUBMITTED,
+                        body=f"{faculty_name} has requested clearance for {dept_name}",
+                        details=[
+                            f"Faculty Name = \"{faculty_name}\"",
+                            f"Department = {dept_name}",
+                        ],
+                        is_read=False,
+                    )
+
+                    # Assistant notifications (admin assistants)
+                    assistant_ids = set(
+                        ApproverAssistant.objects.filter(supervisor_id=approver_id_value).values_list("assistant_id", flat=True)
+                    )
+                    # Student assistants
+                    assistant_ids.update(
+                        StudentAssistant.objects.filter(supervisor_approver_id=approver_id_value).values_list("user_id", flat=True)
+                    )
+                    for assistant_id in assistant_ids:
+                        Notification.objects.create(
+                            user_id=assistant_id,
+                            created_by=authenticated_user,
+                            approver=approver_user,
+                            user_role="Assistant",
+                            title="New Clearance Request",
+                            status=Notification.Status.SUBMITTED,
+                            body=f"{faculty_name} has requested clearance for {dept_name}",
+                            details=[
+                                f"Faculty Name = \"{faculty_name}\"",
+                                f"Department = {dept_name}",
+                            ],
+                            is_read=False,
+                        )
+            except Exception as e:
+                print(f"[notification] Failed creating New Clearance Request notifications (resubmit): {e}")
+
+            return JsonResponse(
+                {
+                    "detail": "Requirement resubmitted successfully",
+                    "requestId": existing_request.request_id,
+                    "approverId": approver_id_value,
+                }
+            )
 
         else:
 
@@ -11910,21 +12113,82 @@ def faculty_submit_requirement_api(request):
 
 
 
-    return JsonResponse({
+    approver_id_value = None
+    try:
+        if requirement and getattr(requirement, "created_by_id", None):
+            approver_id_value = int(requirement.created_by_id)
+    except Exception:
+        approver_id_value = None
 
-        "id": str(clearance_request.id),
+    # Create New Clearance Request notifications for approver + assistants
+    try:
+        if approver_id_value:
+            approver_user = None
+            try:
+                approver_user = User.objects.filter(id=approver_id_value).first()
+            except Exception:
+                approver_user = None
 
-        "requestId": clearance_request.request_id,
+            faculty_name_parts = [
+                (authenticated_user.first_name or "").strip(),
+                (authenticated_user.last_name or "").strip(),
+            ]
+            faculty_name = " ".join([p for p in faculty_name_parts if p]) or authenticated_user.email
+            dept_name = faculty.department.name if faculty.department else ""
 
-        "requirementTitle": requirement_title,
+            # Approver notification
+            Notification.objects.create(
+                user_id=approver_id_value,
+                created_by=authenticated_user,
+                approver=approver_user,
+                user_role="Approver",
+                title="New Clearance Request",
+                status=Notification.Status.SUBMITTED,
+                body=f"{faculty_name} has requested clearance for {dept_name}",
+                details=[
+                    f"Faculty Name = \"{faculty_name}\"",
+                    f"Department = {dept_name}",
+                ],
+                is_read=False,
+            )
 
-        "comment": comment,
+            # Assistant notifications (admin assistants)
+            assistant_ids = set(
+                ApproverAssistant.objects.filter(supervisor_id=approver_id_value).values_list("assistant_id", flat=True)
+            )
+            # Student assistants
+            assistant_ids.update(
+                StudentAssistant.objects.filter(supervisor_approver_id=approver_id_value).values_list("user_id", flat=True)
+            )
+            for assistant_id in assistant_ids:
+                Notification.objects.create(
+                    user_id=assistant_id,
+                    created_by=authenticated_user,
+                    approver=approver_user,
+                    user_role="Assistant",
+                    title="New Clearance Request",
+                    status=Notification.Status.SUBMITTED,
+                    body=f"{faculty_name} has requested clearance for {dept_name}",
+                    details=[
+                        f"Faculty Name = \"{faculty_name}\"",
+                        f"Department = {dept_name}",
+                    ],
+                    is_read=False,
+                )
+    except Exception as e:
+        print(f"[notification] Failed creating New Clearance Request notifications: {e}")
 
-        "status": "pending",
-
-        "submittedDate": clearance_request.submitted_date.isoformat()
-
-    })
+    return JsonResponse(
+        {
+            "id": str(clearance_request.id),
+            "requestId": clearance_request.request_id,
+            "requirementTitle": requirement_title,
+            "comment": comment,
+            "status": "pending",
+            "submittedDate": clearance_request.submitted_date.isoformat(),
+            "approverId": approver_id_value,
+        }
+    )
 
 
 
@@ -15352,6 +15616,46 @@ def approver_action_api(request):
 
             clearance_request.save()
 
+            if action == "approve":
+                try:
+                    faculty_user = None
+                    try:
+                        if clearance_request.faculty and clearance_request.faculty.user:
+                            faculty_user = clearance_request.faculty.user
+                    except Exception:
+                        faculty_user = None
+
+                    requirement_title = ""
+                    try:
+                        if clearance_request.requirement and clearance_request.requirement.title:
+                            requirement_title = str(clearance_request.requirement.title)
+                    except Exception:
+                        requirement_title = ""
+
+                    remarks_text = str(remarks or "")
+
+                    if faculty_user:
+                        Notification.objects.create(
+                            user=faculty_user,
+                            created_by=user,
+                            approver=user,
+                            user_role="Faculty",
+                            title="Submission Approved",
+                            status=Notification.Status.APPROVED,
+                            body=(
+                                "Your submission has been APPROVED.\n\n"
+                                f"Submission of {requirement_title}\n"
+                                f"Remarks: {remarks_text}"
+                            ),
+                            details=[
+                                f"Requirement = \"{requirement_title}\"",
+                                f"Remarks = {remarks_text}",
+                            ],
+                            is_read=False,
+                        )
+                except Exception:
+                    pass
+
 
 
             # Activity log is now created by the frontend with complete data and user_role
@@ -15913,19 +16217,38 @@ def approver_activity_logs_api(request):
 
 
 
+@csrf_exempt
 def approver_notifications_api(request):
-
-    if request.method != "GET":
-
-        return JsonResponse({"detail": "Method not allowed"}, status=405)
-
-
 
     user = _get_authenticated_user(request)
 
     if not user:
 
         return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    if request.method == "PUT":
+
+        payload = _json_body(request)
+
+        if payload is None:
+
+            payload = {}
+
+        ids = payload.get("ids")
+
+        qs = Notification.objects.filter(user=user)
+
+        if isinstance(ids, list) and ids:
+
+            qs = qs.filter(id__in=ids)
+
+        updated = qs.filter(is_read=False).update(is_read=True)
+
+        return JsonResponse({"ok": True, "updated": int(updated)})
+
+    if request.method != "GET":
+
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
 
 
 
@@ -15941,11 +16264,21 @@ def approver_notifications_api(request):
 
                 "id": str(n.id),
 
+                "user_id": int(n.user_id) if n.user_id is not None else None,
+
+                "userId": int(n.user_id) if n.user_id is not None else None,
+
                 "title": n.title or "",
 
-                "body": n.body or "",
+                "description": n.body or "",
 
                 "status": n.status,
+
+                "details": list(n.details or []),
+
+                "user_role": n.user_role or "",
+
+                "timestamp": _format_timestamp(n.created_at),
 
                 "is_read": bool(n.is_read),
 
@@ -16534,6 +16867,47 @@ def approver_individual_approval_api(request):
 
             )
 
+            # Create a faculty notification for approvals
+            if action == "approve":
+                try:
+                    faculty_user = None
+                    try:
+                        if clearance_request.faculty and clearance_request.faculty.user:
+                            faculty_user = clearance_request.faculty.user
+                    except Exception:
+                        faculty_user = None
+
+                    requirement_title = ""
+                    try:
+                        if clearance_request.requirement and clearance_request.requirement.title:
+                            requirement_title = str(clearance_request.requirement.title)
+                    except Exception:
+                        requirement_title = ""
+
+                    remarks_text = str(remarks or "")
+
+                    if faculty_user:
+                        Notification.objects.create(
+                            user=faculty_user,
+                            created_by=user,
+                            approver=user,
+                            user_role="Faculty",
+                            title="Submission Approved",
+                            status=Notification.Status.APPROVED,
+                            body=(
+                                "Your submission has been APPROVED.\n\n"
+                                f"Submission of {requirement_title}\n"
+                                f"Remarks: {remarks_text}"
+                            ),
+                            details=[
+                                f"Requirement = \"{requirement_title}\"",
+                                f"Remarks = {remarks_text}",
+                            ],
+                            is_read=False,
+                        )
+                except Exception:
+                    pass
+
         
 
         return JsonResponse({
@@ -16794,6 +17168,10 @@ def assistant_approver_clearance_api(request):
 
             except Exception:
 
+                supervisor = None
+
+            if not supervisor:
+
                 supervisor = user  # Fallback to session user
 
             
@@ -16817,6 +17195,47 @@ def assistant_approver_clearance_api(request):
                 clearance_request.remarks = remarks
 
                 clearance_request.save()
+
+                if action == "approve":
+                    try:
+                        faculty_user = None
+                        try:
+                            if clearance_request.faculty and clearance_request.faculty.user:
+                                faculty_user = clearance_request.faculty.user
+                        except Exception:
+                            faculty_user = None
+
+                        requirement_title = ""
+                        try:
+                            if clearance_request.requirement and clearance_request.requirement.title:
+                                requirement_title = str(clearance_request.requirement.title)
+                        except Exception:
+                            requirement_title = ""
+
+                        actor_user = supervisor
+                        remarks_text = str(remarks or "")
+
+                        if faculty_user and actor_user:
+                            Notification.objects.create(
+                                user=faculty_user,
+                                created_by=actor_user,
+                                approver=actor_user,
+                                user_role="Assistant",
+                                title="Submission Approved",
+                                status=Notification.Status.APPROVED,
+                                body=(
+                                    "Your submission has been APPROVED.\n\n"
+                                    f"Submission of {requirement_title}\n"
+                                    f"Remarks: {remarks_text}"
+                                ),
+                                details=[
+                                    f"Requirement = \"{requirement_title}\"",
+                                    f"Remarks = {remarks_text}",
+                                ],
+                                is_read=False,
+                            )
+                    except Exception:
+                        pass
 
 
 
@@ -16900,19 +17319,29 @@ def assistant_approver_clearance_api(request):
 
 def assistant_approver_notifications_api(request):
 
-    if request.method != "GET":
-
-        return JsonResponse({"detail": "Method not allowed"}, status=405)
-
-
-
     user = _get_authenticated_user(request)
 
     if not user:
 
         return JsonResponse({"detail": "Authentication required"}, status=401)
 
+    if request.method == "PUT":
 
+        payload = _json_body(request)
+        if payload is None:
+            payload = {}
+
+        ids = payload.get("ids")
+        qs = Notification.objects.filter(user=user)
+        if isinstance(ids, list) and ids:
+            qs = qs.filter(id__in=ids)
+
+        updated = qs.filter(is_read=False).update(is_read=True)
+        return JsonResponse({"ok": True, "updated": int(updated)})
+
+    if request.method != "GET":
+
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
 
     notifications = Notification.objects.filter(user=user).order_by("-created_at", "-id")
 
@@ -16926,11 +17355,21 @@ def assistant_approver_notifications_api(request):
 
                 "id": str(n.id),
 
+                "user_id": int(n.user_id) if n.user_id is not None else None,
+
+                "userId": int(n.user_id) if n.user_id is not None else None,
+
                 "title": n.title or "",
 
-                "body": n.body or "",
+                "description": n.body or "",
 
                 "status": n.status,
+
+                "details": list(n.details or []),
+
+                "user_role": n.user_role or "",
+
+                "timestamp": _format_timestamp(n.created_at),
 
                 "is_read": bool(n.is_read),
 
@@ -17157,6 +17596,89 @@ def assistant_approver_individual_approval_api(request):
         supervisor=supervisor  # Get supervisor from FC_approverassistant table
 
     )
+
+    # Create a faculty notification for approvals (assistant acting on behalf of supervisor approver)
+    if action == "approve":
+        try:
+            faculty_user = None
+            try:
+                if req.faculty and req.faculty.user:
+                    faculty_user = req.faculty.user
+            except Exception:
+                faculty_user = None
+
+            requirement_title = ""
+            try:
+                if req.requirement and req.requirement.title:
+                    requirement_title = str(req.requirement.title)
+            except Exception:
+                requirement_title = ""
+
+            actor_user = supervisor if supervisor else user
+
+            if faculty_user and actor_user:
+                Notification.objects.create(
+                    user=faculty_user,
+                    created_by=actor_user,
+                    approver=actor_user,
+                    user_role="Faculty",
+                    title="Submission Approved",
+                    status=Notification.Status.APPROVED,
+                    body=(
+                        "Your submission has been APPROVED.\n\n"
+                        f"Submission of {requirement_title}\n"
+                        f"Remarks: {remarks}"
+                    ),
+                    details=[
+                        f"Requirement = \"{requirement_title}\"",
+                        f"Remarks = {remarks}",
+                    ],
+                    is_read=False,
+                )
+        except Exception:
+            pass
+
+    # Create a faculty notification for rejections (assistant acting on behalf of supervisor approver)
+    if action == "reject":
+        try:
+            faculty_user = None
+            try:
+                if req.faculty and req.faculty.user:
+                    faculty_user = req.faculty.user
+            except Exception:
+                faculty_user = None
+
+            requirement_title = ""
+            try:
+                if req.requirement and req.requirement.title:
+                    requirement_title = str(req.requirement.title)
+            except Exception:
+                requirement_title = ""
+
+            actor_user = supervisor if supervisor else user
+
+            if faculty_user and actor_user:
+                Notification.objects.create(
+                    user=faculty_user,
+                    created_by=actor_user,
+                    approver=actor_user,
+                    user_role="Assistant",
+                    title="Submission Rejected",
+                    status=Notification.Status.REJECTED,
+                    body=(
+                        "Your submission has been REJECTED.\n\n"
+                        f"Submission of {requirement_title}\n"
+                        "Remarks:\n"
+                        f"{remarks}"
+                    ),
+                    details=[
+                        f"Requirement = \"{requirement_title}\"",
+                        f"Remarks = {remarks}",
+                    ],
+                    is_read=False,
+                )
+        except Exception:
+            pass
 
 
 

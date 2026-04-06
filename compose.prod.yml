@@ -23,6 +23,7 @@ services:
     build: .
     container_name: "XU_FC_Web"
     restart: on-failure:3
+    entrypoint: ["/bin/bash", "-lc", "sed -i 's/\\r$//' /app/entrypoint.sh && chmod +x /app/entrypoint.sh && /app/entrypoint.sh"]
     env_file:
       - .env
     environment:
@@ -32,6 +33,7 @@ services:
       db:
         condition: service_healthy
     volumes:
+      - ./:/app
       - ./static:/app/staticfiles
 
   nginx:

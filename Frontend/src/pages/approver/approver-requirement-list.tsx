@@ -47,6 +47,29 @@ export default function RequirementList() {
   const [loading, setLoading] = React.useState(true);
   const [editingRequirement, setEditingRequirement] = React.useState<Requirement | null>(null);
   const [pendingChanges, setPendingChanges] = React.useState<any[]>([]);
+  const [approverName, setApproverName] = React.useState<string>("");
+  const [currentUserId, setCurrentUserId] = React.useState<number | null>(null);
+
+  // Fetch current approver name and user ID
+  React.useEffect(() => {
+    const fetchApprover = async () => {
+      try {
+        const r = await fetch("/admin/xu-faculty-clearance/api/me", { credentials: "include" });
+        if (r.ok) {
+          const data = await r.json();
+          const email = data.email;
+          const idValue = typeof data.id === "string" ? parseInt(data.id, 10) : data.id;
+          if (Number.isFinite(idValue)) setCurrentUserId(idValue);
+
+          const name = [data.firstName, data.lastName].filter(Boolean).join(" ");
+          setApproverName(name || email || "Approver");
+        }
+      } catch {
+        setApproverName("Approver");
+      }
+    };
+    fetchApprover();
+  }, []);
 
   // Fetch requirements from API
   const fetchRequirements = React.useCallback(async () => {
@@ -203,22 +226,102 @@ export default function RequirementList() {
         if (change.type === 'create') {
           await fetch("/admin/xu-faculty-clearance/api/approver/requirement-list", {
             method: "POST",
+            credentials: "include",
             headers: {
               "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken"),
             },
             body: JSON.stringify(change.data),
           });
+
+          // POST Requirement Edited notification for the created requirement
+          try {
+            const deptTitle = change.data.targetDepartments?.length ? change.data.targetDepartments.join(", ") : "";
+            const collegeTitle = change.data.targetColleges?.length ? change.data.targetColleges.join(", ") : "";
+            const officeTitle = change.data.targetOffices?.length ? change.data.targetOffices.join(", ") : "";
+            const scopeLabel = officeTitle || deptTitle || "";
+            const requirementTitle = change.data.title || "Requirement";
+
+            // Helper to create a notification for a specific user
+            const createNotifForUser = async (
+              userId: number | null,
+              userRole: "Approver" | "Assistant",
+            ) => {
+              const notifResponse = await fetch("/admin/xu-faculty-clearance/api/faculty/notifications", {
+                method: "POST",
+                credentials: "include",
+                keepalive: true,
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRFToken": getCookie("csrftoken"),
+                },
+                body: JSON.stringify({
+                  ...(userId ? { user: userId } : {}),
+                  title: "Requirement Edited",
+                  status: null,
+                  body: `${approverName} edited the requirement "${requirementTitle}" for ${scopeLabel}.`,
+                  details: [
+                    `Approver Name = ${approverName}`,
+                    `Requirement Title = ${requirementTitle}`,
+                    `Department = ${deptTitle}`,
+                    `College = ${collegeTitle}`,
+                    `Office = ${officeTitle}`,
+                  ],
+                  user_role: userRole,
+                  is_read: false,
+                }),
+              });
+              if (!notifResponse.ok) {
+                console.warn(`[notification] Requirement Edited POST failed for user ${userId}:`, notifResponse.status, await notifResponse.text());
+              } else {
+                console.log(`[notification] Requirement Edited created successfully for user ${userId}`);
+              }
+            };
+
+            // 1. Notification for session user (approver)
+            await createNotifForUser(currentUserId, "Approver");
+
+            // 2. If we have a current user ID, fetch assistants under this supervisor and notify them
+            if (currentUserId) {
+              try {
+                const assistantsRes = await fetch(`/admin/xu-faculty-clearance/api/approver/assistant-approvers`, {
+                  credentials: "include",
+                });
+                if (assistantsRes.ok) {
+                  const assistantsData = await assistantsRes.json();
+                  const items = Array.isArray(assistantsData.items) ? assistantsData.items : [];
+                  for (const assistant of items) {
+                    const assistantIdRaw = assistant?.id;
+                    const assistantId = typeof assistantIdRaw === "string" ? parseInt(assistantIdRaw, 10) : assistantIdRaw;
+                    if (Number.isFinite(assistantId)) {
+                      await createNotifForUser(assistantId, "Assistant");
+                    }
+                  }
+                }
+              } catch (e) {
+                console.warn("[notification] Failed to fetch assistants for supervisor:", e);
+              }
+            }
+          } catch (e) {
+            console.warn("[notification] Requirement Edited POST error:", e);
+          }
         } else if (change.type === 'update') {
           await fetch(`/admin/xu-faculty-clearance/api/approver/requirement-list/${change.id}`, {
             method: "PUT",
+            credentials: "include",
             headers: {
               "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken"),
             },
             body: JSON.stringify(change.data),
           });
         } else if (change.type === 'delete') {
           await fetch(`/admin/xu-faculty-clearance/api/approver/requirement-list/${change.id}`, {
             method: "DELETE",
+            credentials: "include",
+            headers: {
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
           });
         }
       }
@@ -233,6 +336,22 @@ export default function RequirementList() {
       // Error handling without JavaScript alert
     }
   };
+
+  // Helper function to get CSRF token
+  function getCookie(name: string): string {
+    let cookieValue = "";
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + "=")) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">

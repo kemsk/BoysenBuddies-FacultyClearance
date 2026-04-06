@@ -93,6 +93,8 @@ export default function ApproverIndividualApproval() {
       return;
     }
 
+    const { item } = request;
+
     // Prevent saving if request is already processed
     if (isProcessed) {
       setError("This request has already been processed and cannot be modified");
@@ -131,6 +133,7 @@ export default function ApproverIndividualApproval() {
     try {
       const response = await fetch("/admin/xu-faculty-clearance/api/approver/individual-approval", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           "X-CSRFToken": getCookie("csrftoken"),
@@ -148,6 +151,47 @@ export default function ApproverIndividualApproval() {
 
       const result = await response.json();
       console.log("Save successful:", result);
+
+      if (status === "rejected") {
+        try {
+          const requirementTitle = request.item.requirementName || "";
+          const trimmedRemarks = String(remarks || "").trim();
+
+          const notifResponse = await fetch("/admin/xu-faculty-clearance/api/faculty/notifications", {
+            method: "POST",
+            credentials: "include",
+            keepalive: true,
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
+            body: JSON.stringify({
+              title: "Submission Rejected",
+              status: "rejected",
+              body: (
+                "Your submission has been REJECTED.\n\n" +
+                `Submission of ${requirementTitle}\n\n` +
+                "Remarks:\n" +
+                `${trimmedRemarks}`
+              ),
+              details: [
+                `Requirement = "${requirementTitle}"`,
+                `Remarks = ${trimmedRemarks}`,
+              ],
+              user_role: "Approver",
+              is_read: false,
+            }),
+          });
+
+          if (!notifResponse.ok) {
+            console.warn("[notification] Submission Rejected POST failed:", notifResponse.status, await notifResponse.text());
+          } else {
+            console.log("[notification] Submission Rejected created successfully");
+          }
+        } catch (e) {
+          console.warn("[notification] Submission Rejected POST error:", e);
+        }
+      }
       
       // Activity log is now created by the backend with complete data
       

@@ -7,12 +7,47 @@ import {
   NotificationsCard,
   type NotificationItem,
 } from "../../stories/components/cards";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../stories/components/select";
 
 
 export default function CISONotification() {
   const [readAll, setReadAll] = React.useState(false);
 
-  const [items, setItems] = React.useState<NotificationItem[]>([]);
+  type NotificationItemWithRole = NotificationItem & { user_role?: string };
+
+  const [items, setItems] = React.useState<NotificationItemWithRole[]>([]);
+
+  const [selectedRole, setSelectedRole] = React.useState<string>("all");
+
+  const markAllAsRead = React.useCallback(async () => {
+    try {
+      const r = await fetch("/admin/xu-faculty-clearance/api/ciso/notifications", {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      });
+
+      const text = await r.text();
+      if (!r.ok) {
+        console.error("CISO notifications mark-as-read failed", r.status, text);
+        return;
+      }
+
+      setItems((prev) => prev.map((it) => ({ ...it, is_read: true })));
+      setReadAll(true);
+    } catch (e) {
+      console.error("CISO notifications mark-as-read threw", e);
+    }
+  }, []);
 
   React.useEffect(() => {
     const load = async () => {
@@ -30,7 +65,13 @@ export default function CISONotification() {
 
         try {
           const data = JSON.parse(text) as { items?: NotificationItem[] };
-          setItems(data.items ?? []);
+          const nextItems = (data.items ?? []) as NotificationItemWithRole[];
+          setItems(nextItems);
+          try {
+            const roles = Array.from(new Set(nextItems.map((it) => String((it as any).user_role || "")).filter(Boolean)));
+            console.log("[CISO notifications] roles from API:", roles);
+          } catch {
+          }
         } catch (e) {
           console.error("CISO notifications response was not JSON", r.status, text);
           setItems([]);
@@ -43,6 +84,33 @@ export default function CISONotification() {
 
     void load();
   }, []);
+
+  const filteredItems = React.useMemo(() => {
+    if (selectedRole === "all") return items;
+    const roleGroups: Record<string, string[]> = {
+      Approver: ["Approver", "APPROVER"],
+      Faculty: ["Faculty", "FACULTY"],
+      CISO: ["CISO"],
+      Assistant: ["Assistant"],
+      OVPHE: ["OVPHE"],
+      System: ["System"],
+    };
+    const selected = String(selectedRole || "").trim();
+    const normalizedSelectedKey =
+      Object.keys(roleGroups).find((k) => k.toLowerCase() === selected.toLowerCase()) ?? selected;
+    const allowed = new Set(roleGroups[normalizedSelectedKey] ?? [selected]);
+    return items.filter((it) => allowed.has(String((it as any).user_role || "").trim()));
+  }, [items, selectedRole]);
+
+  React.useEffect(() => {
+    try {
+      const roles = Array.from(new Set(items.map((it) => String((it as any).user_role || "").trim()).filter(Boolean)));
+      console.log("[CISO notifications] selectedRole=", selectedRole);
+      console.log("[CISO notifications] items roles=", roles);
+      console.log("[CISO notifications] filtered count=", filteredItems.length, "of", items.length);
+    } catch {
+    }
+  }, [items, selectedRole, filteredItems.length]);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -58,19 +126,37 @@ export default function CISONotification() {
           <h1 className="text-2xl font-bold text-primary">Notifications</h1>
         </div>
 
+        <div className="mt-3 space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Select value={selectedRole} onValueChange={setSelectedRole}>
+              <SelectTrigger variant="pill" className="w-full sm:w-[170px] gap-2 rounded-full border-0 bg-[#7c83d6] text-white shadow-none hover:bg-[#6f76cb]">
+                <SelectValue placeholder="Role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Roles</SelectItem>
+                <SelectItem value="Approver">Approver</SelectItem>
+                <SelectItem value="Faculty">Faculty</SelectItem>
+                <SelectItem value="CISO">CISO</SelectItem>
+                <SelectItem value="Assistant">Assistant</SelectItem>
+                <SelectItem value="OVPHE">OVPHE</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         <div className="flex items-center justify-end">
           <Button
             className="h-8 px-3 text-xs"
             variant="default"
             type="button"
-            onClick={() => setReadAll(true)}
+            onClick={() => void markAllAsRead()}
           >
-            Mark as Read
+            Mark as Read 
           </Button>
         </div>
         <div className="mt-4">
           <NotificationsCard
-            items={items}
+            items={filteredItems}
             showMarkAsReadButton={false}
             readAll={readAll}
             onReadAllChange={setReadAll}
