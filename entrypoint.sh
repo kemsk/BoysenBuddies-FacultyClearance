@@ -616,6 +616,11 @@ WHERE NOT EXISTS (
 INSERT INTO FC_department (college_id, name, abbreviation, is_active)
 SELECT * FROM (
     SELECT @sbm_id AS college_id, 'Business and Administration' AS name, 'BUSADMIN' AS abbreviation, 1 AS is_active
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
 -- Seed Departments for School of Education (SOE)
 INSERT INTO FC_department (college_id, name, abbreviation, is_active)
 SELECT * FROM (
@@ -641,6 +646,8 @@ SELECT * FROM (
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_department d WHERE d.college_id = v.college_id AND d.abbreviation = v.abbreviation
+);
+
 SET @cs_id = (SELECT id FROM FC_department WHERE abbreviation = 'CS' AND college_id = @ccs_id LIMIT 1);
 SET @it_id = (SELECT id FROM FC_department WHERE abbreviation = 'IT' AND college_id = @ccs_id LIMIT 1);
 SET @cas_dean_id = (SELECT id FROM FC_department WHERE abbreviation = 'CAS_DEAN' AND college_id = @cas_id LIMIT 1);
@@ -742,6 +749,14 @@ WHERE NOT EXISTS (
 INSERT INTO FC_faculty (user_id, employee_id, first_name, last_name, college_id, department_id)
 SELECT * FROM (
     SELECT @farrah_user_id AS user_id, 'EMP-201131134' AS employee_id, 'Farrah' AS first_name, 'Apag' AS last_name, @ccs_id AS college_id, @it_id AS department_id
+) AS v
+WHERE NOT EXISTS (
+    SELECT 1 FROM FC_faculty f WHERE f.user_id = v.user_id
+);
+
+-- Get faculty ID for clearance seeding
+SET @faculty_id = (SELECT id FROM FC_faculty WHERE user_id = @faculty_user_id LIMIT 1);
+
 INSERT INTO FC_clearance (faculty_id, academic_year, term, status, submitted_date, completed_date)
 SELECT * FROM (
     SELECT @faculty_id AS faculty_id, YEAR(NOW()) AS academic_year, '1ST' AS term, 'COMPLETED' AS status, NOW() AS submitted_date, NOW() AS completed_date
@@ -774,7 +789,9 @@ SET @latest_timeline_id = (SELECT id FROM FC_clearancetimeline ORDER BY id DESC 
 
 -- Seed ApproverFlowConfig
 INSERT INTO FC_approverflowconfig (created_by_id, clearance_timeline_id, created_at, updated_at)
-VALUES (@ovphe_user_id, @latest_timeline_id, NOW(), NOW())
+SELECT * FROM (
+    SELECT @ovphe_user_id AS created_by_id, @latest_timeline_id AS clearance_timeline_id, NOW() AS created_at, NOW() AS updated_at
+) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowconfig
 );
