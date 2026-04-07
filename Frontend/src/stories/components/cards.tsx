@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { Check, ChevronLeft, ChevronRight, Download, Eye, Pencil, Plus, Trash2, Upload, X, ArrowBigLeft, ArrowBigRight, UserCheck, UserMinus, UserPlus } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Download, Pencil, Plus, Trash2, Upload, X, ArrowBigLeft, ArrowBigRight, UserCheck, UserMinus, UserPlus } from "lucide-react";
 
 import { Link } from "react-router-dom";
 import { cn } from "../../components/lib/utils";
@@ -8,7 +8,6 @@ import { Badge } from "./badge";
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";
 import { ApproveConfirmDialog, RejectAlertDialog } from "./clearance-action-dialogs";
-import { AddRequirementDialog, type AddRequirementPayload } from "./add-requirement-dialog";
 import { Divider } from "./divider";
 import { DeactivateAlert, ActivateAlert, DeleteAlert } from "./alert";
 import {
@@ -32,9 +31,8 @@ import {
   CardHeader,
   CardTitle,
 } from "./card";
-import { RadioGroup, RadioGroupItem } from "./radio-group";
-import { InputGroup, InputGroupInput, InputGroupWithAddon } from "./input-group";
 
+import { InputGroupWithAddon } from "./input-group";
 import {
   Select,
   SelectContent,
@@ -85,7 +83,7 @@ export function GuidelinesToggle({
             : "relative h-6 w-12 rounded-full bg-muted-foreground/30 pointer-events-auto z-10 cursor-pointer"
         }
         onClick={handleToggle}
-        onMouseDown={(e) => {
+        onMouseDown={() => {
           console.log("Mouse down on toggle");
         }}
       >
