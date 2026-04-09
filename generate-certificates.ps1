@@ -23,11 +23,43 @@ if (-not $openssl) {
     exit 1
 }
 
-# Generate the certificates
+# Create a config file for SAN extensions
+$config = @"
+[req]
+distinguished_name = req_distinguished_name
+x509_extensions = v3_req
+prompt = no
+
+[req_distinguished_name]
+C = PH
+ST = Manila
+L = Quezon City
+O = Xavier University
+CN = localhost
+
+[v3_req]
+keyUsage = digitalSignature, keyEncipherment, dataEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = localhost
+DNS.2 = 127.0.0.1
+IP.1 = 127.0.0.1
+IP.2 = ::1
+"@
+
+$config | Out-File -FilePath openssl.conf -Encoding UTF8
+
+# Generate the certificates with SAN
 & $openssl req -x509 -nodes -days 365 -newkey rsa:2048 `
     -keyout key.pem `
     -out cert.pem `
-    -subj "/C=PH/ST=Manila/L=Quezon City/O=Xavier University/CN=localhost"
+    -config openssl.conf `
+    -extensions v3_req
+
+# Clean up config file
+Remove-Item openssl.conf -Force
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "SSL certificates generated successfully!"

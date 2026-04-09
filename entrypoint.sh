@@ -150,6 +150,19 @@ SELECT
     1 AS is_active
 FROM FC_user u
 CROSS JOIN FC_role r
+WHERE u.email = '20190016375@my.xu.edu.ph' AND r.name = 'Approver'
+ON DUPLICATE KEY UPDATE
+    is_active = VALUES(is_active);
+
+INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
+SELECT 
+    u.id AS user_id, 
+    r.id AS role_id,
+    u.id AS assigned_by_id,
+    NOW() AS assigned_date,
+    1 AS is_active
+FROM FC_user u
+CROSS JOIN FC_role r
 WHERE u.email = '20220024573@my.xu.edu.ph' AND r.name = 'OVPHE'
 ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
@@ -862,39 +875,6 @@ CROSS JOIN FC_college c
 WHERE afs.config_id = @config_id 
 AND c.abbreviation IN ('CCS', 'CAS');
 
--- Seed Announcements
-INSERT INTO FC_announcement (title, body, created_by_id, pin_announcement, is_active, start_date, created_at)
-SELECT * FROM (
-    SELECT 'System Maintenance Notice' AS title, 'This is seeded announcement data.' AS body, @ovphe_user_id AS created_by_id, 1 AS pin_announcement, 1 AS is_active, NOW() AS start_date, NOW() AS created_at
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_announcement a WHERE a.title = v.title
-);
-
-INSERT INTO FC_announcement (title, body, created_by_id, pin_announcement, is_active, start_date, created_at)
-SELECT * FROM (
-    SELECT 'Welcome OVPHE' AS title, 'Welcome! This is seeded announcement data.' AS body, @ovphe_user_id AS created_by_id, 0 AS pin_announcement, 1 AS is_active, NOW() AS start_date, NOW() AS created_at
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_announcement a WHERE a.title = v.title
-);
-
--- Seed SystemGuidelines
-INSERT INTO FC_systemguideline (title, body, created_by_id, is_active, created_at)
-SELECT * FROM (
-    SELECT 'General Safety Guidelines' AS title, 'This is seeded guideline data.' AS body, @ovphe_user_id AS created_by_id, 1 AS is_active, NOW() AS created_at
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_systemguideline sg WHERE sg.title = v.title
-);
-
-INSERT INTO FC_systemguideline (title, body, created_by_id, is_active, created_at)
-SELECT * FROM (
-    SELECT 'Clearance Reminders' AS title, 'This is seeded guideline data.' AS body, @ovphe_user_id AS created_by_id, 1 AS is_active, NOW() AS created_at
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_systemguideline sg WHERE sg.title = v.title
-);
 
 EOF
 

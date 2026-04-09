@@ -1498,7 +1498,7 @@ def _system_guideline_detail_api(request, role: str, guideline_id: int):
 @csrf_exempt
 def _announcements_api(request, role: str):
     if request.method == "GET":
-        announcements = Announcement.objects.order_by("-created_at", "-id")
+        announcements = Announcement.objects.order_by("-pin_announcement", "-created_at", "-id")
         return JsonResponse({"items": [_serialize_announcement(a) for a in announcements]})
 
     if request.method != "POST":
