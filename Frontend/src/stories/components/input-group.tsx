@@ -151,8 +151,8 @@ function InputGroupWithAddon({
   React.useEffect(() => {
     if (!editorRef.current) return;
     const next = value ?? "";
-    if (editorRef.current.textContent === next) return;
-    editorRef.current.textContent = next;
+    if (editorRef.current.innerHTML === next) return;
+    editorRef.current.innerHTML = next;
   }, [value]);
 
   const syncToolbarState = React.useCallback(() => {
@@ -300,7 +300,7 @@ function InputGroupWithAddon({
         )}
         onInput={() => {
           syncToolbarState();
-          onValueChange?.(editorRef.current?.textContent ?? "");
+          onValueChange?.(editorRef.current?.innerHTML ?? "");
         }}
         onKeyUp={() => {
           syncToolbarState();

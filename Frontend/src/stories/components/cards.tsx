@@ -523,7 +523,10 @@ export function RequirementEditCard({
 
           <div className="grid grid-cols-2 gap-2 pt-1">
             <div className="text-md font-bold text-gray-900 pt-1">Description</div>
-            <div className="text-sm text-gray-900 text-left break-words">{description}</div>
+            <div 
+              className="text-sm text-gray-900 text-left break-words"
+              dangerouslySetInnerHTML={{ __html: description || "" }}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1">
@@ -646,7 +649,10 @@ export function RequirementListCard({
 
           <div className="grid grid-cols-2 gap-2 pt-1">
             <div className="text-md font-bold text-gray-900 pt-1">Description</div>
-            <div className="text-sm text-gray-900 text-left break-words">{description}</div>
+            <div 
+              className="text-sm text-gray-900 text-left break-words"
+              dangerouslySetInnerHTML={{ __html: description || "" }}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1">
@@ -1292,7 +1298,10 @@ export function RequirementApprovalCard({
           
           <div>
             <div className="text-md font-bold text-gray-900">Submission Notes</div>
-            <div className="text-sm text-gray-900 mt-3 p-3 border border-foreground rounded-md pb-">{submissionNotes}</div>
+            <div 
+              className="text-sm text-gray-900 mt-3 p-3 border border-foreground rounded-md pb-"
+              dangerouslySetInnerHTML={{ __html: submissionNotes }}
+            />
           </div>
           
           <div>
@@ -3774,11 +3783,15 @@ export function ExpandableClearanceStepCard({
                           </Badge>
                         )}
                       </div>
-                      <div className="mt-1 text-sm text-gray-900 whitespace-pre-line">{req.description}</div>
+                      <div 
+                      className="mt-1 text-sm text-gray-900 whitespace-pre-line"
+                      dangerouslySetInnerHTML={{ __html: req.description }}
+                    />
                       {hasSavedComment && !req.rejected ? (
-                        <div className="bg-white p-4 border border-black rounded-md mt-3">
-                          {savedComment}
-                        </div>
+                        <div 
+                          className="bg-white p-4 border border-black rounded-md mt-3"
+                          dangerouslySetInnerHTML={{ __html: savedComment }}
+                        />
                       ) : null}
                     </div>
                   </div>
