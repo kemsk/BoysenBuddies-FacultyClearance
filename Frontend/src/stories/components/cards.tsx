@@ -117,13 +117,15 @@ export function GuidelinesToggle({
   );
 }
 
-type DashboardBadgeVariant = "default" | "success" | "warning" | "muted";
+type DashboardBadgeVariant = "default" | "success" | "warning" | "muted" | "destructive";
 
 function getBadgeVariant(variant: DashboardBadgeVariant | undefined) {
 
   if (variant === "warning") return "warning" as const;
 
   if (variant === "muted") return "secondary" as const;
+
+  if (variant === "destructive") return "destructive" as const;
 
   return "default" as const;
 
@@ -3823,18 +3825,20 @@ export function ExpandableClearanceStepCard({
       {/* Confirmation Dialog */}
       {showConfirmDialog && (
         <AlertDialog open={true} onOpenChange={(open) => !open && setShowConfirmDialog(null)}>
-          <AlertDialogContent className="max-w-md">
+          <AlertDialogContent className="max-w-md items-center gap-4 mb-3">
             <AlertDialogHeader>
-              <AlertDialogTitle>Confirm Submission</AlertDialogTitle>
+              <div className="p-4 flex items-center justify-center">
+                <img src="/RedAlertIcon.png" width="50" height="50" />
+                  </div>             
               <AlertDialogDescription>
                 You are about to SUBMIT '{showConfirmDialog}'. Do you wish to continue?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setShowConfirmDialog(null)}>
+              <Button variant="back" onClick={() => setShowConfirmDialog(null)}>
                 Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
+              </Button>
+              <Button variant="default"
                 onClick={async () => {
                   // Make API call to submit ClearanceRequest first
                   try {
@@ -3923,7 +3927,7 @@ export function ExpandableClearanceStepCard({
                 }}
               >
                 Submit
-              </AlertDialogAction>
+              </Button>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

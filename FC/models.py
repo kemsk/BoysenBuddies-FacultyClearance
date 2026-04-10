@@ -139,7 +139,7 @@ class StudentAssistant(models.Model):
 class Clearance(models.Model):
     class Status(models.TextChoices):
         PENDING = "PENDING", "PENDING"
-        IN_PROGRESS = "IN_PROGRESS", "IN_PROGRESS"
+        IN_PROGRESS = "IN PROGRESS", "IN PROGRESS"
         COMPLETED = "COMPLETED", "COMPLETED"
         REJECTED = "REJECTED", "REJECTED"
 

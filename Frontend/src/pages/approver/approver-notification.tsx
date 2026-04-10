@@ -137,7 +137,7 @@ export default function ApproverNotification() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4">
+      <main className="dashboard p-4 w-full lg:max-w-4xl lg:mx-auto lg:p-8">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-primary">Notifications</h1>
         </div>

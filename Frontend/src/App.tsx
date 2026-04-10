@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactElement } from "react";
+import { useThemeFavicon } from "./hooks/useThemeFavicon";
 import {
   BrowserRouter as Router,
   Routes,
@@ -273,6 +274,8 @@ function HeartbeatManager() {
 }
 
 function App() {
+  useThemeFavicon();
+  
   return (
     <Router>
       <HeartbeatManager />

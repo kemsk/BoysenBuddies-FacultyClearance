@@ -12,7 +12,7 @@ export default function CISOTools() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4">
+      <main className="dashboard p-4 lg:max-w-4xl lg:mx-auto lg:p-8">
 
         <div className="mt-0 grid gap-4">
 

@@ -231,7 +231,7 @@ export default function Login() {
       
 
       {/* Login Form */}
-      <div className="mt-5 p-8 w-full max-w-md">
+      <div className="mt-5 p-10 w-3/10 max-w-md lg:max-w-none lg:px-20">
 
         {isLoading ? (
           <div className="text-white text-center">Loading your roles...</div>
@@ -247,7 +247,7 @@ export default function Login() {
               type="button"
               variant="white"
               alignment="left"
-              className="group"
+              className="group w-full"
               size="mobileXL"
               onClick={() => handleRoleSelection(role)}
             >

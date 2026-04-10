@@ -23,6 +23,7 @@ import {
 import { Divider } from "./divider";
 
 import { authService } from "../../services/authService";
+import { ThemeLogo } from "../../components/ThemeLogo";
 
 type HeaderVariantProps = {
   sheetTitle?: string;
@@ -39,10 +40,9 @@ function HeaderVariant({ sheetTitle, sheetDescription, children }: HeaderVariant
         <div className="flex items-center gap-2">
           {/* Mobile logo + label (use flexible container so text doesn't get clipped) */}
 
-            <img
-              src="/Pen Swish Dark Blue_FacultyClearTrack.png"
-              alt="Faculty ClearTrack"
+            <ThemeLogo
               className="h-9 w-auto object-contain"
+              alt="Faculty ClearTrack"
             />
 
             <span className="text-primary font-bold leading-[1.1] text-[clamp(1rem,3.5vw,1.4rem)]">
@@ -148,10 +148,9 @@ export function FacultyHeader() {
         <div className="flex flex-col gap-4">
 
           <div className="flex items-center gap-4">
-            <img
-              src="/Pen Swish Dark Blue_FacultyClearTrack.png"
-              alt="Faculty ClearTrack"
+            <ThemeLogo
               className="h-10 w-auto object-contain"
+              alt="Faculty ClearTrack"
             />
 
             <span className="text-primary font-bold leading-[1.1] text-[clamp(1rem,3.5vw,1.4rem)]">
@@ -340,10 +339,9 @@ export function ApprovalHeader() {
         <div className="flex flex-col gap-4">
 
           <div className="flex items-center gap-4">
-            <img
-              src="/Pen Swish Dark Blue_FacultyClearTrack.png"
-              alt="Faculty ClearTrack"
+            <ThemeLogo
               className="h-10 w-auto object-contain"
+              alt="Faculty ClearTrack"
             />
 
             <span className="text-primary font-bold leading-[1.1] text-[clamp(1rem,3.5vw,1.4rem)]">
@@ -619,10 +617,9 @@ export function HROHeader() {
         <div className="flex flex-col gap-4">
 
           <div className="flex items-center gap-4">
-            <img
-              src="/Pen Swish Dark Blue_FacultyClearTrack.png"
-              alt="Faculty ClearTrack"
+            <ThemeLogo
               className="h-10 w-auto object-contain"
+              alt="Faculty ClearTrack"
             />
 
             <span className="text-primary font-bold leading-[1.1] text-[clamp(1rem,3.5vw,1.4rem)]">
@@ -875,10 +872,9 @@ export function CISOHeader() {
         <div className="flex flex-col gap-4 flex-1 min-h-0">
 
           <div className="flex items-center gap-4">
-            <img
-              src="/Pen Swish Dark Blue_FacultyClearTrack.png"
-              alt="Faculty ClearTrack"
+            <ThemeLogo
               className="h-10 w-auto object-contain"
+              alt="Faculty ClearTrack"
             />
 
             <span className="text-primary font-bold leading-[1.1] text-[clamp(1rem,3.5vw,1.4rem)]">
@@ -1175,10 +1171,9 @@ export function OVPHEHeader() {
         <div className="flex flex-col gap-4">
 
           <div className="flex items-center gap-4">
-            <img
-              src="/Pen Swish Dark Blue_FacultyClearTrack.png"
-              alt="Faculty ClearTrack"
+            <ThemeLogo
               className="h-10 w-auto object-contain"
+              alt="Faculty ClearTrack"
             />
 
             <span className="text-primary font-bold leading-[1.1] text-[clamp(1rem,3.5vw,1.4rem)]">
@@ -1439,10 +1434,9 @@ export function AssistantApproverHeader() {
         <div className="flex flex-col gap-4">
 
           <div className="flex items-center gap-4">
-            <img
-              src="/Pen Swish Dark Blue_FacultyClearTrack.png"
-              alt="Faculty ClearTrack"
+            <ThemeLogo
               className="h-10 w-auto object-contain"
+              alt="Faculty ClearTrack"
             />
 
             <span className="text-primary font-bold leading-[1.1] text-[clamp(1rem,3.5vw,1.4rem)]">

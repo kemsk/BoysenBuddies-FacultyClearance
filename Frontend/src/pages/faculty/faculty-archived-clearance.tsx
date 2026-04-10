@@ -5,8 +5,16 @@ import { FacultyHeader } from "../../stories/components/header";
 import { useNavigate } from "react-router-dom";
 import { SearchInputGroup } from "../../stories/components/input-group";
 import { useState } from "react";
+import { Divider } from "../../stories/components/divider";
+import { Badge } from "../../stories/components/badge";
 
-
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../stories/components/select";
 
 type ArchivedTimelineItem = {
   id: string;
@@ -21,6 +29,10 @@ type ArchivedTimelineItem = {
 
 export default function FacultyArchiveClearance() {
   const navigate = useNavigate();
+  const [selectedYear, setSelectedYear] = useState("all");
+  const [selectedTerm, setSelectedTerm] = useState("all");
+  const [selectedStatus, setSelectedStatus] = useState("all");
+
   const [query, setQuery] = useState("");
   const [timelines, setTimelines] = React.useState<ArchivedTimelineItem[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -41,6 +53,16 @@ export default function FacultyArchiveClearance() {
   React.useEffect(() => {
     loadTimelines();
   }, [loadTimelines]);
+
+  const yearOptions = React.useMemo(() => {
+    const years = [...new Set(timelines.map(t => t.academicYear))];
+    return years.sort();
+  }, [timelines]);
+
+  const termOptions = React.useMemo(() => {
+    const terms = [...new Set(timelines.map(t => t.semester))];
+    return terms.sort();
+  }, [timelines]);
 
   const filteredTimelines = React.useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -70,7 +92,7 @@ export default function FacultyArchiveClearance() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4 mt-2 space-y-3">
+      <main className="dashboard p-4 w-full lg:max-w-4xl lg:mx-auto lg:p-8">
 
         <h1 className="text-2xl text-left text-primary font-bold">View Archived Clearance</h1>
 
@@ -84,53 +106,94 @@ export default function FacultyArchiveClearance() {
               placeholder="Search by name, ID, or email..."
             />
           </div>
+
+          <div className="mt-3 space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <SelectTrigger variant="pill" className="w-max gap-2 rounded-full border-0 bg-[#7c83d6] text-white shadow-none hover:bg-[#6f76cb]">
+                <SelectValue placeholder="School Year" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">School Year</SelectItem>
+                {yearOptions.map((year) => (
+                  <SelectItem key={year} value={year}>{year}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedTerm} onValueChange={setSelectedTerm}>
+              <SelectTrigger variant="pill" className="w-max gap-2 rounded-full border-0 bg-[#7c83d6] text-white shadow-none hover:bg-[#6f76cb]">
+                <SelectValue placeholder="Term" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Term</SelectItem>
+                {termOptions.map((term) => (
+                  <SelectItem key={term} value={term}>{term}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+              <Select>
+                <SelectTrigger variant="pill" className="w-max gap-2">
+                  <label>Status:</label>
+                  <SelectValue/> 
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="incomplete">Incomplete</SelectItem>
+                  <SelectItem value="complete">Complete</SelectItem>
+                </SelectContent>
+              </Select>
+          </div>          
         </div>
 
-        <div className="mt-3 space-y-4">
+        <div className=" space-y-4">
           <div className="space-y-3">
             {filteredTimelines.map((timeline) => (
               <div
                 key={timeline.id}
-                className="cursor-pointer rounded-2xl border border-[#D5DBEB] bg-white px-4 py-3 shadow-sm transition-shadow hover:shadow-md"
+                className="cursor-pointer rounded-xl border border-[#D5DBEB] bg-white  shadow-sm transition-shadow hover:shadow-md"
                 onClick={() => navigate(`/faculty-view-clearance?timelineId=${timeline.id}`)}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-foreground">{timeline.name}</h3>
-                    <div className="mt-5 grid grid-cols-[max-content_1fr] gap-x-8 gap-y-2 text-sm text-foreground">
-                      <div className="font-semibold">Academic Year</div>
-                      <div>{timeline.academicYear}</div>
-                      <div className="font-semibold">Semester</div>
-                      <div>{timeline.semester}</div>
-                      <div className="font-semibold">Clearance Period</div>
-                      <div>{timeline.clearancePeriodStart} - {timeline.clearancePeriodEnd}</div>
-                      <div className="font-semibold">Last Update</div>
-                      <div>{timeline.lastUpdated}</div>
-                      <div className="font-semibold">Archived</div>
-                      <div>{timeline.archivedDate}</div>
-                    </div>
+                <div className="flex items-start justify-between gap-4 px-4 py-3">
+                  <h3 className="text-lg font-bold text-foreground">{timeline.name}</h3>
+
+                  <div className="flex items-center gap-2">
+                  <Badge variant="success">COMPLETED</Badge>
+                  <div className=" text-xl font-semibold text-foreground">{'>'}</div>
                   </div>
-                  <div className="pt-1 text-xl font-semibold text-foreground">
-                    ›
-                  </div>
+                </div>
+
+                <Divider className="w-[calc(100)] -mx-px m-0" />
+
+                <div className="px-4 py-3  grid grid-cols-[max-content_1fr] gap-x-8 gap-y-2 text-sm text-foreground">
+                  <div className="font-semibold">Academic Year</div>
+                  <div>{timeline.academicYear}</div>
+                  <div className="font-semibold">Semester</div>
+                  <div>{timeline.semester}</div>
+                  <div className="font-semibold">Clearance Period</div>
+                  <div>{timeline.clearancePeriodStart} - {timeline.clearancePeriodEnd}</div>
+                  <div className="font-semibold">Last Update</div>
+                  <div>{timeline.lastUpdated}</div>
+                  <div className="font-semibold">Archived</div>
+                  <div>{timeline.archivedDate}</div>
                 </div>
               </div>
             ))}
             {filteredTimelines.length === 0 && !loading && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 px-4 ">
                 No archived timelines found.
               </div>
             )}
             {loading && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 px-4">
                 Loading...
               </div>
             )}
           </div>
         </div>
-
+        </div>       
       </main>
-
     </div>
   );
 }

@@ -108,7 +108,7 @@ export default function Facultydashboard() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4">
+      <main className="dashboard p-4 mt-2 space-y-3 w-full lg:max-w-4xl lg:mx-auto lg:p-8">
         <WelcomeAcademicCard
           name={displayName}
           topLeft={{ label: "Academic Year", value: timeline?.academicYear || "" }}
@@ -119,9 +119,15 @@ export default function Facultydashboard() {
             { label: "Faculty Type", value: facultyTypeLabel },
           ]}
           afterRows={
-          <ClearanceStatusCard statusLabel={statusLabel}
-          statusVariant="warning" className="mb-6"
-/>}
+          <ClearanceStatusCard 
+            statusLabel={statusLabel}
+            statusVariant={
+              statusLabel === "Completed" ? "success" : 
+              statusLabel === "Rejected" ? "destructive" : 
+              "warning"
+            } 
+            className="mb-6"
+          />}
         />
         
         <div className="mt-5">

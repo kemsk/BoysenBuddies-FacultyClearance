@@ -112,7 +112,7 @@ export default function Approverdashboard() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4 mt-2 space-y-3">
+      <main className="dashboard p-4 mt-2 space-y-3 w-full lg:max-w-4xl lg:mx-auto lg:p-8">
         <WelcomeAcademicCard
           name={displayName}
           topLeft={{ label: "Academic Year", value: timeline?.academicYear || "" }}

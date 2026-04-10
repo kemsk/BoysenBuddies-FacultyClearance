@@ -266,7 +266,7 @@ export default function ApproverIndividualApproval() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4">
+      <main className="dashboard p-4 w-full lg:max-w-4xl lg:mx-auto lg:p-8 ">
 
         <div className="mb-3 mt-2 flex items-center justify-end">
           <Button variant="back" size="back" onClick={handleCancel}> 

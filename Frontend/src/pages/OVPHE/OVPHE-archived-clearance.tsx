@@ -199,7 +199,7 @@ export default function OVPHEArchiveClearance() {
           <OVPHEHeader />
         </div>
 
-        <main className="dashboard p-4 mt-2 space-y-3">
+        <main className="dashboard p-4 mt-2 space-y-3 w-full lg:max-w-4xl lg:mx-auto lg:p-8">
           <h1 className="text-2xl text-left text-primary font-bold">{selectedTimeline.name}</h1>
 
           <Breadcrumb className="mt-2">

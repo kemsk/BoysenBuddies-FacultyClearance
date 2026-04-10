@@ -66,7 +66,7 @@ const buttonVariants = cva(
         lg: "",
         icon: "",
         mobileLarge: "",
-        mobileXL: "w-full max-w-[320px] min-h-12 pl-6 pr-6 py-3 flex items-start",
+        mobileXL: "w-full min-h-12 pl-6 pr-6 py-3 flex items-start",
         back: "",
       },
     },

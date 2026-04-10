@@ -81,7 +81,7 @@ export default function CISOFacultyDataDump() {
       </div>a
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4">
+      <main className="dashboard p-4 lg:max-w-4xl lg:mx-auto lg:p-8">
         
         <h1 className="text-2xl text-left text-primary font-bold">Faculty Data Dump</h1>
 

@@ -19,7 +19,6 @@ import {
 
 import {
   EditSystemGuidelinesDialog,
-  loadSystemGuidelinesItems,
 } from "../../stories/components/edit-system-guidelines-dialog";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
@@ -142,7 +141,7 @@ export default function OVPHESystemGuideline() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4 mt-2 space-y-3">
+      <main className="dashboard p-4 mt-2 space-y-3 w-full lg:max-w-4xl lg:mx-auto lg:p-8">
 
         <h1 className="text-2xl text-left text-primary font-bold">System Guidelines</h1>
 

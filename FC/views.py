@@ -6186,7 +6186,7 @@ def faculty_dashboard_api(request):
                         status_variant = "success"
                         collapsed_type = "status"
                     elif submitted_count > 0:
-                        status_label = "IN_PROGRESS"
+                        status_label = "IN PROGRESS"
                         status_variant = "warning"
                         collapsed_type = "status"
                     else:

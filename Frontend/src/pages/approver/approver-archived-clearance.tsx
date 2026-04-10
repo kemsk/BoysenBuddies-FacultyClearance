@@ -118,7 +118,7 @@ export default function ApproverAchivedClearance() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4 mt-2 space-y-3">
+      <main className="dashboard p-4 mt-2 space-y-3 w-full lg:max-w-4xl lg:mx-auto lg:p-8">
 
         <h1 className="text-2xl text-left text-primary font-bold">View Archived Clearance</h1>
 
@@ -178,6 +178,15 @@ export default function ApproverAchivedClearance() {
                 {termOptions.map((term) => (
                   <SelectItem key={term} value={term}>{term}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+
+            <Select>
+              <SelectTrigger variant="pill" className="w-full sm:w-[150px] gap-2 rounded-full border-0 bg-[#7c83d6] text-white shadow-none hover:bg-[#6f76cb]">
+                <SelectValue placeholder="Term" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Status</SelectItem>
               </SelectContent>
             </Select>
           </div>
