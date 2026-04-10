@@ -6060,7 +6060,7 @@ def faculty_dashboard_api(request):
         clearance_requests = timeline_requests.select_related('requirement')
         
         # Get approver flow configuration from active timeline
-        approver_flow_config = timeline.approver_flow_configs.first()
+        approver_flow_config = timeline.approverflowconfig_set.first()
         
         if approver_flow_config:
             # Use dynamic approver flow from timeline configuration
@@ -6110,7 +6110,7 @@ def faculty_dashboard_api(request):
         clearance_requests = timeline_requests.select_related('requirement')
         
         # Get approver flow configuration from active timeline
-        approver_flow_config = timeline.approver_flow_configs.first()
+        approver_flow_config = timeline.approverflowconfig_set.first()
         
         if approver_flow_config:
             # Use dynamic approver flow from timeline configuration
@@ -7748,7 +7748,7 @@ def _get_approver_flow_step_for_user(user):
 
     # Get approver flow config for the active timeline
 
-    config = timeline.approver_flow_configs.first()
+    config = timeline.approverflowconfig_set.first()
 
     if not config:
         return None

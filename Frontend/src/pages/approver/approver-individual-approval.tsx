@@ -307,9 +307,10 @@ export default function ApproverIndividualApproval() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-900">Submission Notes</label>
-                    <div className="mt-1 p-3 bg-white border rounded text-sm text-gray-900">
-                      {item.submissionNotes || "No notes provided"}
-                    </div>
+                    <div 
+                      className="mt-1 p-3 bg-white border rounded text-sm text-gray-900"
+                      dangerouslySetInnerHTML={{ __html: item.submissionNotes || "No notes provided" }}
+                    />
                   </div>
                   {item.submissionLink && (
                     <div className="mt-2">
