@@ -7748,7 +7748,7 @@ def _get_approver_flow_step_for_user(user):
 
     # Get approver flow config for the active timeline
 
-    config = timeline.approver_flow_configs.first()
+    config = timeline.approverflowconfig_set.first()
 
     if not config:
         return None
