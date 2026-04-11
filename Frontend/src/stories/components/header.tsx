@@ -9,9 +9,10 @@ import {
   SheetDescription,
   SheetClose,
 } from "./sheet"
+
+import { Button } from "../../stories/components/button";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogFooter,
@@ -23,7 +24,6 @@ import {
 import { Divider } from "./divider";
 
 import { authService } from "../../services/authService";
-import { ThemeLogo } from "../../components/ThemeLogo";
 
 type HeaderVariantProps = {
   sheetTitle?: string;
@@ -40,7 +40,8 @@ function HeaderVariant({ sheetTitle, sheetDescription, children }: HeaderVariant
         <div className="flex items-center gap-2">
           {/* Mobile logo + label (use flexible container so text doesn't get clipped) */}
 
-            <ThemeLogo
+            <img 
+              src="Pen Swish Dark Blue_FacultyClearTrack.png"
               className="h-9 w-auto object-contain"
               alt="Faculty ClearTrack"
             />
@@ -148,7 +149,8 @@ export function FacultyHeader() {
         <div className="flex flex-col gap-4">
 
           <div className="flex items-center gap-4">
-            <ThemeLogo
+            <img
+              src="Pen Swish Dark Blue_FacultyClearTrack.png"
               className="h-10 w-auto object-contain"
               alt="Faculty ClearTrack"
             />
@@ -248,13 +250,18 @@ export function FacultyHeader() {
               </AlertDialogHeader>
 
               <AlertDialogFooter className="mt-2 flex flex-col gap-2 sm:flex-col sm:space-x-0">
-                <AlertDialogAction
+                <Button
                   className="w-full"
+                  variant="destructive"
                   onClick={handleLogout}
                 >                 
                   Logout
-                </AlertDialogAction>
-                <AlertDialogCancel className="w-full">Cancel</AlertDialogCancel>
+                </Button>
+                <AlertDialogCancel asChild>
+                  <Button variant="back"className="w-full">
+                    Cancel
+                  </Button>
+                </AlertDialogCancel>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -339,7 +346,8 @@ export function ApprovalHeader() {
         <div className="flex flex-col gap-4">
 
           <div className="flex items-center gap-4">
-            <ThemeLogo
+            <img  
+              src="Pen Swish Dark Blue_FacultyClearTrack.png"
               className="h-10 w-auto object-contain"
               alt="Faculty ClearTrack"
             />
@@ -514,7 +522,7 @@ export function ApprovalHeader() {
               </AlertDialogHeader>
 
               <AlertDialogFooter className="mt-2 flex flex-col gap-2 sm:flex-col sm:space-x-0">
-                <AlertDialogAction
+                <Button
                   className="w-full"
                   onClick={async () => {
                     try {
@@ -539,8 +547,12 @@ export function ApprovalHeader() {
                   }}
                 >
                   Logout
-                </AlertDialogAction>
-                <AlertDialogCancel className="w-full">Cancel</AlertDialogCancel>
+                </Button>
+                <AlertDialogCancel asChild>
+                  <Button variant="back"className="w-full">
+                    Cancel
+                  </Button>
+                </AlertDialogCancel>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -617,7 +629,8 @@ export function HROHeader() {
         <div className="flex flex-col gap-4">
 
           <div className="flex items-center gap-4">
-            <ThemeLogo
+            <img
+              src="Pen Swish Dark Blue_FacultyClearTrack.png"
               className="h-10 w-auto object-contain"
               alt="Faculty ClearTrack"
             />
@@ -790,13 +803,18 @@ export function HROHeader() {
               </AlertDialogHeader>
 
               <AlertDialogFooter className="mt-2 flex flex-col gap-2 sm:flex-col sm:space-x-0">
-                <AlertDialogAction
+                <Button 
+                  variant="destructive"
                   className="w-full"
                   onClick={handleLogout}
                 >
                   Logout
-                </AlertDialogAction>
-                <AlertDialogCancel className="w-full">Cancel</AlertDialogCancel>
+                </Button>
+                <AlertDialogCancel asChild>
+                  <Button variant="back" className="w-full">
+                    Cancel
+                  </Button>
+                </AlertDialogCancel>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -872,7 +890,8 @@ export function CISOHeader() {
         <div className="flex flex-col gap-4 flex-1 min-h-0">
 
           <div className="flex items-center gap-4">
-            <ThemeLogo
+            <img
+              src="Pen Swish Dark Blue_FacultyClearTrack.png"
               className="h-10 w-auto object-contain"
               alt="Faculty ClearTrack"
             />
@@ -1069,7 +1088,8 @@ export function CISOHeader() {
               </AlertDialogHeader>
 
               <AlertDialogFooter className="mt-2 flex flex-col gap-2 sm:flex-col sm:space-x-0">
-                <AlertDialogAction
+                <Button
+                variant="destructive"
                   className="w-full"
                   onClick={async () => {
                     try {
@@ -1094,8 +1114,12 @@ export function CISOHeader() {
                   }}
                 >
                   Logout
-                </AlertDialogAction>
-                <AlertDialogCancel className="w-full">Cancel</AlertDialogCancel>
+                </Button>
+                <AlertDialogCancel asChild>
+                  <Button variant="back" className="w-full">
+                    Cancel
+                  </Button>
+                </AlertDialogCancel>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -1171,7 +1195,8 @@ export function OVPHEHeader() {
         <div className="flex flex-col gap-4">
 
           <div className="flex items-center gap-4">
-            <ThemeLogo
+            <img
+              src="Pen Swish Dark Blue_FacultyClearTrack.png"
               className="h-10 w-auto object-contain"
               alt="Faculty ClearTrack"
             />
@@ -1332,7 +1357,8 @@ export function OVPHEHeader() {
               </AlertDialogHeader>
 
               <AlertDialogFooter className="mt-2 flex flex-col gap-2 sm:flex-col sm:space-x-0">
-                <AlertDialogAction
+                <Button
+                  variant="destructive"
                   className="w-full" 
                   onClick={async () => {
                     try {
@@ -1357,8 +1383,8 @@ export function OVPHEHeader() {
                   }}
                 >
                   Logout
-                </AlertDialogAction>
-                <AlertDialogCancel className="w-full">Cancel</AlertDialogCancel>
+                </Button>
+                <Button variant="back" className="w-full">Cancel</Button>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -1434,7 +1460,8 @@ export function AssistantApproverHeader() {
         <div className="flex flex-col gap-4">
 
           <div className="flex items-center gap-4">
-            <ThemeLogo
+            <img
+              src="Pen Swish Dark Blue_FacultyClearTrack.png"
               className="h-10 w-auto object-contain"
               alt="Faculty ClearTrack"
             />
@@ -1550,7 +1577,8 @@ export function AssistantApproverHeader() {
         <div className="pt-4">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <button
+              <Button
+                variant="destructive"
                 type="button"
                 className="flex w-full items-center gap-3 text-left text-xl font-semibold text-primary"
               >
@@ -1560,7 +1588,7 @@ export function AssistantApproverHeader() {
                   className="h-5 w-5 object-contain"
                 />
                 <span>Logout</span>
-              </button>
+              </Button>
             </AlertDialogTrigger>
 
             <AlertDialogContent className="max-w-xs">
@@ -1577,7 +1605,8 @@ export function AssistantApproverHeader() {
               </AlertDialogHeader>
 
               <AlertDialogFooter className="mt-2 flex flex-col gap-2 sm:flex-col sm:space-x-0">
-                <AlertDialogAction
+                <Button
+                variant="destructive"
                   className="w-full"
                   onClick={async () => {
                     try {
@@ -1605,8 +1634,8 @@ export function AssistantApproverHeader() {
                   }}
                 >
                   Logout
-                </AlertDialogAction>
-                <AlertDialogCancel className="w-full">Cancel</AlertDialogCancel>
+                </Button>
+                <Button variant="back" className="w-full">Cancel</Button>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

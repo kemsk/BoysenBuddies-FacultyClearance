@@ -15,9 +15,6 @@ import {
   SelectValue,
 } from "../../stories/components/select";
 
-import {
-  loadAnnouncementsItems,
-} from "../../stories/components/edit-announcements-dialog";
 import { useNavigate } from "react-router-dom";
 import { SearchInputGroup } from "../../stories/components/input-group";
 import { useState } from "react";
@@ -78,16 +75,12 @@ export default function AssistantApproverAchivedClearance() {
     loadTimelines();
   }, [loadTimelines]);
 
-  React.useEffect(() => {
-    refresh()
-      .catch(() => {
-        const initial = loadAnnouncementsItems().map((item) => ({
-          ...item,
-          enabled: item.enabled ?? true,
-        }));
-        setItems(initial as AnnouncementApiItem[]);
-      });
-  }, [refresh]);
+React.useEffect(() => {
+  refresh()
+    .catch(() => {
+      setItems([]); // Show empty state when API fails
+    });
+}, [refresh]);
 
   const yearOptions = React.useMemo(() => {
     return Array.from(new Set(timelines.map((timeline) => timeline.academicYear))).filter(Boolean);

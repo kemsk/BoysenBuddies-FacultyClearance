@@ -1967,13 +1967,7 @@ export function NotificationsCard({
 
 
 
-              {item.details.length ? (
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-gray-900">
-                  {item.details.map((d) => (
-                    <li key={d}>{d}</li>
-                  ))}
-                </ul>
-              ) : null}
+              {null}
 
               <div className="mt-3 text-xs italic text-muted-foreground">{item.timestamp}</div>
             </button>

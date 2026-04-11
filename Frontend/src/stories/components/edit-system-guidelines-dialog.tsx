@@ -7,33 +7,11 @@ import {
   DialogTrigger,
 } from "./dialog";
 import { Input } from "./input";
-import { Textarea } from "./textarea";
 
 import type { SystemGuidlinesItem } from "./cards";
+import { InputGroupWithAddon } from "./input-group";
 
 const SYSTEM_GUIDELINES_STORAGE_KEY = "system_guidelines_items_v1";
-
-export const DEFAULT_SYSTEM_GUIDELINES_ITEMS: SystemGuidlinesItem[] = [
-  {
-    title: "General Safety Guidelines",
-    description:
-      "All personnel must adhere to the following safety protocols:\n\n1. Ensure that all System User Details are in correct format\n2. Ensure that the Clearance Period has been properly set and configured:\n   a. Academic Year\n   b. Semester\n   c. Clearance Period Start\n   d. Clearance Period End\n3. Ensure that all departments have their requirements set\n4. Contact Support if error occurs",
-    email: "ciso@xu.edu.ph",
-    timestamp: "December 1, 2025, 12:00 PM",
-  },
-];
-
-export function loadSystemGuidelinesItems(): SystemGuidlinesItem[] {
-  try {
-    const raw = localStorage.getItem(SYSTEM_GUIDELINES_STORAGE_KEY);
-    if (!raw) return DEFAULT_SYSTEM_GUIDELINES_ITEMS;
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return DEFAULT_SYSTEM_GUIDELINES_ITEMS;
-    return parsed as SystemGuidlinesItem[];
-  } catch {
-    return DEFAULT_SYSTEM_GUIDELINES_ITEMS;
-  }
-}
 
 export function saveSystemGuidelinesItems(items: SystemGuidlinesItem[]) {
   localStorage.setItem(SYSTEM_GUIDELINES_STORAGE_KEY, JSON.stringify(items));
@@ -84,7 +62,7 @@ export function EditSystemGuidelinesDialog({
         <div className="rounded-xl bg-background">
           <div className="px-6 pb-4 pt-6">
             <div className="text-center text-base font-bold text-foreground">
-              Edit System Guidelines
+              {initialValues ? "Edit System Guidelines" : "Create System Guidelines"}
             </div>
 
             <div className="mt-4 space-y-3">
@@ -95,12 +73,12 @@ export function EditSystemGuidelinesDialog({
                 placeholder="Title"
               />
 
-              <Textarea
-              placeholder="Description"
+              <InputGroupWithAddon
+                placeholder="Description"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="min-h-[160px]"
-              />
+                onValueChange={(value) => setDescription(value)}
+            />
+            
             </div>
           </div>
 
@@ -118,10 +96,12 @@ export function EditSystemGuidelinesDialog({
               <Button
                 type="button"
                 className="h-11 w-full rounded-md"
-                onClick={() => {
-                  onSave?.({ title, description });
-                  setOpen(false);
-                }}
+                  onClick={() => {
+                    const plainDescription = description.replace(/<[^>]*>/g, '');
+  console.log('Sending:', { title, description: plainDescription });
+  onSave?.({ title, description: plainDescription });
+  setOpen(false);
+}}
               >
                 Save
               </Button>

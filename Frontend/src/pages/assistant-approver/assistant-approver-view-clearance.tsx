@@ -19,9 +19,7 @@ import {
   SelectValue,
 } from "../../stories/components/select";
 
-import {
-  loadAnnouncementsItems,
-} from "../../stories/components/edit-announcements-dialog";
+
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
 import { SearchInputGroup } from "../../stories/components/input-group";
@@ -56,16 +54,12 @@ export default function AssistantApproverViewClearance() {
       });
   }, []);
 
-  React.useEffect(() => {
-    refresh()
-      .catch(() => {
-        const initial = loadAnnouncementsItems().map((item) => ({
-          ...item,
-          enabled: item.enabled ?? true,
-        }));
-        setItems(initial as AnnouncementApiItem[]);
-      });
-  }, [refresh]);
+React.useEffect(() => {
+  refresh()
+    .catch(() => {
+      setItems([]); // Show empty state when API fails
+    });
+}, [refresh]);
 
   React.useEffect(() => {
     if (!timelineId) {

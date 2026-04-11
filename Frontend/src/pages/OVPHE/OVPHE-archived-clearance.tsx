@@ -17,9 +17,7 @@ import {
   SelectValue,
 } from "../../stories/components/select";
 
-import {
-  loadAnnouncementsItems,
-} from "../../stories/components/edit-announcements-dialog";
+
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
 import { SearchInputGroup } from "../../stories/components/input-group";
@@ -38,6 +36,7 @@ type ArchivedTimelineItem = {
 
 type ArchivedFacultyItem = {
   id: string;
+  requestId?: string;
   employeeId: string;
   name: string;
   college: string;
@@ -63,6 +62,7 @@ export default function OVPHEArchiveClearance() {
   const [selectedYear, setSelectedYear] = useState("all");
   const [selectedTerm, setSelectedTerm] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
+  const [sortBy, setSortBy] = useState("academicYear");
   const [selectedTimeline, setSelectedTimeline] = React.useState<ArchivedTimelineItem | null>(null);
 
   type AnnouncementApiItem = AnnouncementItem & { id: number; email?: string };
@@ -160,16 +160,12 @@ export default function OVPHEArchiveClearance() {
     loadTimelines();
   }, [loadTimelines]);
 
-  React.useEffect(() => {
-    refresh()
-      .catch(() => {
-        const initial = loadAnnouncementsItems().map((item) => ({
-          ...item,
-          enabled: item.enabled ?? true,
-        }));
-        setItems(initial as AnnouncementApiItem[]);
-      });
-  }, [refresh]);
+React.useEffect(() => {
+  refresh()
+    .catch(() => {
+      setItems([]); // Show empty state when API fails
+    });
+}, [refresh]);
 
   const yearOptions = React.useMemo(() => {
     return Array.from(new Set(timelines.map((timeline) => timeline.academicYear))).filter(Boolean);
@@ -181,7 +177,7 @@ export default function OVPHEArchiveClearance() {
 
   const filteredTimelines = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    return timelines.filter((timeline) => {
+    const next = timelines.filter((timeline) => {
       const matchesQuery =
         !normalizedQuery ||
         timeline.name.toLowerCase().includes(normalizedQuery) ||
@@ -190,7 +186,15 @@ export default function OVPHEArchiveClearance() {
       const matchesTerm = selectedTerm === "all" || timeline.semester === selectedTerm;
       return matchesQuery && matchesYear && matchesTerm;
     });
-  }, [query, selectedTerm, selectedYear, timelines]);
+
+    const sortKey = sortBy;
+    return next.slice().sort((a, b) => {
+      if (sortKey === "semester") return a.semester.localeCompare(b.semester);
+      if (sortKey === "lastUpdated") return b.lastUpdated.localeCompare(a.lastUpdated);
+      if (sortKey === "name") return a.name.localeCompare(b.name);
+      return b.academicYear.localeCompare(a.academicYear);
+    });
+  }, [query, selectedTerm, selectedYear, sortBy, timelines]);
 
   if (selectedTimeline) {
     return (
@@ -199,7 +203,7 @@ export default function OVPHEArchiveClearance() {
           <OVPHEHeader />
         </div>
 
-        <main className="dashboard p-4 mt-2 space-y-3 w-full lg:max-w-4xl lg:mx-auto lg:p-8">
+        <main className="dashboard p-4 mt-2 space-y-3 w-full lg:max-w-6xl lg:mx-auto lg:p-8">
           <h1 className="text-2xl text-left text-primary font-bold">{selectedTimeline.name}</h1>
 
           <Breadcrumb className="mt-2">
@@ -217,14 +221,15 @@ export default function OVPHEArchiveClearance() {
           </Breadcrumb>
 
           <div className="mb-3 mt-2 flex items-center justify-between">
+            <Button variant="default" onClick={handleExport} disabled={faculty.length === 0}>
+              <div className="flex items-center gap-2">
+                <img src="/WhiteDownloadIcon.png"></img>
+                <span> Export Current View</span>
+              </div>
+            </Button>            
             <Button variant="back" size="back" onClick={() => setSelectedTimeline(null)}>
               <div className="flex items-center gap-2">
                 <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
-              </div>
-            </Button>
-            <Button variant="default" onClick={handleExport} disabled={faculty.length === 0}>
-              <div className="flex items-center gap-2">
-                <span>📥 Export Current View</span>
               </div>
             </Button>
           </div>
@@ -241,11 +246,12 @@ export default function OVPHEArchiveClearance() {
           </div>
 
           <div className="mt-3 space-y-4">
-            <div className="w-full flex flex-col sm:flex-row gap-3 justify-start mt-5">
-              <div className="flex gap-3">
+            <div className="w-full mt-5">
+              <div className="flex flex-wrap items-center gap-3">
                 <Select value={selectedStatus} onValueChange={handleStatusChange}>
-                  <SelectTrigger variant="pill" className="w-max gap-2">
+                  <SelectTrigger variant="pill" className="w-full gap-2 sm:w-max">
                     <SelectValue placeholder="Status" />
+                      <label>Status:</label>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All</SelectItem>
@@ -253,29 +259,110 @@ export default function OVPHEArchiveClearance() {
                     <SelectItem value="incomplete">Incomplete</SelectItem>
                   </SelectContent>
                 </Select>
+
+                <Select>
+                <SelectTrigger variant="pill" className="w-full gap-2 sm:w-[180px]">
+                  <label>Sort by:</label>
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">Name</SelectItem>
+                  <SelectItem value="requestId">Request ID</SelectItem>
+                  <SelectItem value="universityId">University ID</SelectItem>
+                  <SelectItem value="college">College</SelectItem>
+                  <SelectItem value="facultyType">Faculty Type</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select>
+                <SelectTrigger variant="pill" className="w-full gap-2 sm:w-[180px]">
+                  <label>College:</label>
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2022-2023">2022-2023</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select>
+                <SelectTrigger variant="pill" className="w-full gap-2 sm:w-[180px]">
+                  <label>Department:</label>
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2022-2023">2022-2023</SelectItem>
+                </SelectContent>
+              </Select>                
               </div>
             </div>
 
             <div className="mt-3 space-y-3">
-              {faculty.map((f) => (
-                <div key={f.id} className="border rounded-lg p-4 bg-white">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-primary">{f.name}</h3>
-                      <p className="text-sm text-gray-600">Employee ID: {f.employeeId}</p>
-                      <p className="text-sm text-gray-600">College: {f.college}</p>
-                      <p className="text-sm text-gray-600">Department: {f.department}</p>
-                      <p className="text-sm text-gray-600">Faculty Type: {f.facultyType}</p>
-                      {f.missingApproval && <p className="text-sm text-gray-600">Missing Approval: {f.missingApproval}</p>}
-                    </div>
-                    <div className="ml-4">
-                      <span className={`px-3 py-1 rounded-full text-white text-sm font-semibold ${f.status === 'COMPLETED' ? 'bg-green-500' : 'bg-yellow-500'}`}>
-                        {f.status === 'COMPLETED' ? 'COMPLETE' : 'INCOMPLETE'}
-                      </span>
-                    </div>
+              <div className="hidden lg:block">
+                <div className="overflow-hidden rounded-lg border border-[#d9dde7] bg-white shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-left text-sm text-black">
+                      <thead className="bg-white">
+                        <tr className="border-b border-[#d9dde7]">
+                          <th className="px-4 py-3 font-semibold">Name</th>
+                          <th className="px-4 py-3 font-semibold">Request ID</th>
+                          <th className="px-4 py-3 font-semibold">Employee ID</th>
+                          <th className="px-4 py-3 font-semibold">College</th>
+                          <th className="px-4 py-3 font-semibold">Department</th>
+                          <th className="px-4 py-3 font-semibold">Faculty Type</th>
+                          <th className="px-4 py-3 font-semibold">Missing Approval</th>
+                          <th className="px-4 py-3 font-semibold">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {faculty.map((f) => (
+                          <tr key={f.id} className="border-b border-[#d9dde7] last:border-b-0">
+                            <td className="px-4 py-4 font-semibold text-primary">{f.name}</td>
+                            <td className="px-4 py-4">{f.requestId || f.id}</td>
+                            <td className="px-4 py-4">{f.employeeId}</td>
+                            <td className="px-4 py-4">{f.college}</td>
+                            <td className="px-4 py-4">{f.department}</td>
+                            <td className="px-4 py-4">{f.facultyType}</td>
+                            <td className="px-4 py-4">{f.missingApproval || "None"}</td>
+                            <td className="px-4 py-4">
+                              <span
+                                className={
+                                  f.status === "COMPLETED"
+                                    ? "inline-flex rounded-full bg-green-600 px-3 py-1 text-xs font-bold text-white"
+                                    : "inline-flex rounded-full bg-yellow-500 px-3 py-1 text-xs font-bold text-white"
+                                }
+                              >
+                                {f.status === "COMPLETED" ? "COMPLETE" : "INCOMPLETE"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-              ))}
+              </div>
+
+              <div className="lg:hidden">
+                {faculty.map((f) => (
+                  <div key={f.id} className="border rounded-lg p-4 bg-white">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold text-primary">{f.name}</h3>
+                        <p className="text-sm text-gray-600">Employee ID: {f.employeeId}</p>
+                        <p className="text-sm text-gray-600">College: {f.college}</p>
+                        <p className="text-sm text-gray-600">Department: {f.department}</p>
+                        <p className="text-sm text-gray-600">Faculty Type: {f.facultyType}</p>
+                        {f.missingApproval && <p className="text-sm text-gray-600">Missing Approval: {f.missingApproval}</p>}
+                      </div>
+                      <div className="ml-4">
+                        <span className={`px-3 py-1 rounded-full text-white text-sm font-semibold ${f.status === 'COMPLETED' ? 'bg-green-500' : 'bg-yellow-500'}`}>
+                          {f.status === 'COMPLETED' ? 'COMPLETE' : 'INCOMPLETE'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
               {faculty.length === 0 && !loading && (
                 <div className="text-center py-8 text-gray-500">
                   No faculty records found for this timeline.
@@ -302,7 +389,7 @@ export default function OVPHEArchiveClearance() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4 mt-2 space-y-3">
+      <main className="dashboard p-4 mt-2 space-y-3 lg:max-w-4xl lg:mx-auto lg:p-8">
 
         <h1 className="text-2xl text-left text-primary font-bold">View Archived Clearance</h1>
 
@@ -340,7 +427,19 @@ export default function OVPHEArchiveClearance() {
         </div>
 
         <div className="mt-3 space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex flex-wrap items-center gap-3">
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger variant="pill" className="w-full sm:w-[170px] gap-2 rounded-full border-0 bg-[#7c83d6] text-white shadow-none hover:bg-[#6f76cb]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="academicYear">Academic Year</SelectItem>
+                <SelectItem value="semester">Term</SelectItem>
+                <SelectItem value="lastUpdated">Last Updated</SelectItem>
+                <SelectItem value="name">Name</SelectItem>
+              </SelectContent>
+            </Select>
+
             <Select value={selectedYear} onValueChange={setSelectedYear}>
               <SelectTrigger variant="pill" className="w-full sm:w-[170px] gap-2 rounded-full border-0 bg-[#7c83d6] text-white shadow-none hover:bg-[#6f76cb]">
                 <SelectValue placeholder="School Year" />
@@ -362,6 +461,17 @@ export default function OVPHEArchiveClearance() {
                 {termOptions.map((term) => (
                   <SelectItem key={term} value={term}>{term}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <SelectTrigger variant="pill" className="w-full sm:w-[170px] gap-2 rounded-full border-0 bg-[#7c83d6] text-white shadow-none hover:bg-[#6f76cb]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Status</SelectItem>
+                <SelectItem value="complete">Complete</SelectItem>
+                <SelectItem value="incomplete">Incomplete</SelectItem>
               </SelectContent>
             </Select>
           </div>

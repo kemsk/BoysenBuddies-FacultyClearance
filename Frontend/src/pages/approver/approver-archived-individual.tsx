@@ -163,72 +163,165 @@ export default function ApproverArchivedIndividualApproval() {
                 status={item.status}
               />
 
-              {item.requests.map((request) => (
-                <div key={request.id} className="rounded-xl border border-muted-foreground/20 bg-card p-6 shadow">
-                  <div className="text-xl text-center text-black font-bold mt-1">{request.requirementName || request.requestId}</div>
-
-                  <div className="mt-6">
-                    <div className="text-md font-bold text-foreground">Submission Notes</div>
-                    <div className="mt-3 rounded-md border border-foreground p-3 text-sm text-black">
-                      {request.submissionNotes || "No submission notes provided."}
-                    </div>
-                  </div>
-
-                  {request.submissionLink ? (
-                    <div className="mt-4">
-                      <div className="text-md font-bold text-foreground">Submission Link</div>
-                      <a className="mt-2 block break-all text-sm text-primary underline" href={request.submissionLink} target="_blank" rel="noreferrer">
-                        {request.submissionLink}
-                      </a>
-                    </div>
-                  ) : null}
-
-                  <div className="mt-4 grid gap-2 text-sm text-black">
-                    <div><span className="font-bold">Status:</span> {request.status.toUpperCase()}</div>
-                    {request.submittedDate ? <div><span className="font-bold">Submitted On:</span> {request.submittedDate}</div> : null}
-                    {request.approvedBy ? <div><span className="font-bold">Processed By:</span> {request.approvedBy}</div> : null}
-                    {request.approvedDate ? <div><span className="font-bold">Processed On:</span> {request.approvedDate}</div> : null}
-                    {request.remarks ? <div><span className="font-bold">Remarks:</span> {request.remarks}</div> : null}
-                  </div>
-
-                  <div className="mt-4 space-y-3">
-                    <div>
-                      <div className="text-md font-bold text-foreground">Remarks</div>
-                      <textarea
-                        className="mt-2 min-h-[88px] w-full rounded-md border border-foreground p-3 text-sm text-black"
-                        value={remarksByRequest[request.id] ?? ""}
-                        onChange={(event) =>
-                          setRemarksByRequest((prev) => ({
-                            ...prev,
-                            [request.id]: event.target.value,
-                          }))
-                        }
-                        placeholder="Input your remarks here"
-                      />
-                    </div>
-
-                    <div className="flex gap-3">
-                      <Button
-                        type="button"
-                        className="h-10 rounded-md px-5"
-                        onClick={() => void handleArchivedAction(request.requestId, "approve")}
-                        disabled={submittingRequestId === request.requestId}
-                      >
-                        {submittingRequestId === request.requestId ? "Processing..." : "Approve"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="cancel"
-                        className="h-10 rounded-md px-5"
-                        onClick={() => void handleArchivedAction(request.requestId, "reject")}
-                        disabled={submittingRequestId === request.requestId}
-                      >
-                        {submittingRequestId === request.requestId ? "Processing..." : "Reject"}
-                      </Button>
-                    </div>
+              <div className="hidden lg:block">
+                <div className="overflow-hidden rounded-xl border border-muted-foreground/20 bg-card shadow">
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-left text-sm text-black">
+                      <thead className="bg-white">
+                        <tr className="border-b border-muted-foreground/20">
+                          <th className="px-4 py-3 font-semibold">Requirement</th>
+                          <th className="px-4 py-3 font-semibold">Submission Notes</th>
+                          <th className="px-4 py-3 font-semibold">Submission Link</th>
+                          <th className="px-4 py-3 font-semibold">Status</th>
+                          <th className="px-4 py-3 font-semibold">Processed By</th>
+                          <th className="px-4 py-3 font-semibold">Processed On</th>
+                          <th className="px-4 py-3 font-semibold">Remarks</th>
+                          <th className="px-4 py-3 font-semibold">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {item.requests.map((request) => (
+                          <tr key={request.id} className="border-b border-muted-foreground/20 last:border-b-0">
+                            <td className="px-4 py-4 align-top font-semibold">
+                              {request.requirementName || request.requestId}
+                            </td>
+                            <td className="px-4 py-4 align-top">
+                              <div className="max-w-[360px] whitespace-pre-wrap">
+                                {request.submissionNotes || "No submission notes provided."}
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 align-top">
+                              {request.submissionLink ? (
+                                <a
+                                  className="block max-w-[320px] break-all text-primary underline"
+                                  href={request.submissionLink}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  {request.submissionLink}
+                                </a>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-4 align-top">
+                              <div className="font-semibold">{request.status.toUpperCase()}</div>
+                              {request.submittedDate ? (
+                                <div className="mt-1 text-xs text-muted-foreground">Submitted: {request.submittedDate}</div>
+                              ) : null}
+                            </td>
+                            <td className="px-4 py-4 align-top">{request.approvedBy || "-"}</td>
+                            <td className="px-4 py-4 align-top">{request.approvedDate || "-"}</td>
+                            <td className="px-4 py-4 align-top">
+                              <textarea
+                                className="min-h-[88px] w-[260px] rounded-md border border-foreground p-3 text-sm text-black"
+                                value={remarksByRequest[request.id] ?? ""}
+                                onChange={(event) =>
+                                  setRemarksByRequest((prev) => ({
+                                    ...prev,
+                                    [request.id]: event.target.value,
+                                  }))
+                                }
+                                placeholder="Input your remarks here"
+                              />
+                            </td>
+                            <td className="px-4 py-4 align-top">
+                              <div className="flex flex-col gap-2">
+                                <Button
+                                  type="button"
+                                  className="h-10 rounded-md px-5"
+                                  onClick={() => void handleArchivedAction(request.requestId, "approve")}
+                                  disabled={submittingRequestId === request.requestId}
+                                >
+                                  {submittingRequestId === request.requestId ? "Processing..." : "Approve"}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="cancel"
+                                  className="h-10 rounded-md px-5"
+                                  onClick={() => void handleArchivedAction(request.requestId, "reject")}
+                                  disabled={submittingRequestId === request.requestId}
+                                >
+                                  {submittingRequestId === request.requestId ? "Processing..." : "Reject"}
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-              ))}
+              </div>
+
+              <div className="lg:hidden">
+                {item.requests.map((request) => (
+                  <div key={request.id} className="rounded-xl border border-muted-foreground/20 bg-card p-6 shadow">
+                    <div className="text-xl text-center text-black font-bold mt-1">{request.requirementName || request.requestId}</div>
+
+                    <div className="mt-6">
+                      <div className="text-md font-bold text-foreground">Submission Notes</div>
+                      <div className="mt-3 rounded-md border border-foreground p-3 text-sm text-black">
+                        {request.submissionNotes || "No submission notes provided."}
+                      </div>
+                    </div>
+
+                    {request.submissionLink ? (
+                      <div className="mt-4">
+                        <div className="text-md font-bold text-foreground">Submission Link</div>
+                        <a className="mt-2 block break-all text-sm text-primary underline" href={request.submissionLink} target="_blank" rel="noreferrer">
+                          {request.submissionLink}
+                        </a>
+                      </div>
+                    ) : null}
+
+                    <div className="mt-4 grid gap-2 text-sm text-black">
+                      <div><span className="font-bold">Status:</span> {request.status.toUpperCase()}</div>
+                      {request.submittedDate ? <div><span className="font-bold">Submitted On:</span> {request.submittedDate}</div> : null}
+                      {request.approvedBy ? <div><span className="font-bold">Processed By:</span> {request.approvedBy}</div> : null}
+                      {request.approvedDate ? <div><span className="font-bold">Processed On:</span> {request.approvedDate}</div> : null}
+                      {request.remarks ? <div><span className="font-bold">Remarks:</span> {request.remarks}</div> : null}
+                    </div>
+
+                    <div className="mt-4 space-y-3">
+                      <div>
+                        <div className="text-md font-bold text-foreground">Remarks</div>
+                        <textarea
+                          className="mt-2 min-h-[88px] w-full rounded-md border border-foreground p-3 text-sm text-black"
+                          value={remarksByRequest[request.id] ?? ""}
+                          onChange={(event) =>
+                            setRemarksByRequest((prev) => ({
+                              ...prev,
+                              [request.id]: event.target.value,
+                            }))
+                          }
+                          placeholder="Input your remarks here"
+                        />
+                      </div>
+
+                      <div className="flex gap-3">
+                        <Button
+                          type="button"
+                          className="h-10 rounded-md px-5"
+                          onClick={() => void handleArchivedAction(request.requestId, "approve")}
+                          disabled={submittingRequestId === request.requestId}
+                        >
+                          {submittingRequestId === request.requestId ? "Processing..." : "Approve"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="cancel"
+                          className="h-10 rounded-md px-5"
+                          onClick={() => void handleArchivedAction(request.requestId, "reject")}
+                          disabled={submittingRequestId === request.requestId}
+                        >
+                          {submittingRequestId === request.requestId ? "Processing..." : "Reject"}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
 
               {!item.requests.length ? (
                 <div className="rounded-xl border border-muted-foreground/20 bg-card p-6 text-black">

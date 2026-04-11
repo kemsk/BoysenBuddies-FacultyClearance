@@ -19,9 +19,6 @@ import {
   SelectValue,
 } from "../../stories/components/select";
 
-import {
-  loadAnnouncementsItems,
-} from "../../stories/components/edit-announcements-dialog";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
 import { SearchInputGroup } from "../../stories/components/input-group";
@@ -117,16 +114,7 @@ export default function OVPHEViewClearance() {
       });
   }, []);
 
-  React.useEffect(() => {
-    refresh()
-      .catch(() => {
-        const initial = loadAnnouncementsItems().map((item) => ({
-          ...item,
-          enabled: item.enabled ?? true,
-        }));
-        setItems(initial as AnnouncementApiItem[]);
-      });
-  }, [refresh]);
+
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -161,10 +149,17 @@ export default function OVPHEViewClearance() {
           </BreadcrumbList>
         </Breadcrumb>
 
-        <div className="mb-3 mt-2 flex items-center justify-end">
+        <div className="mb-3 mt-2 flex flex-wrap items-center gap-3">
           <Button variant="back" size="back" onClick={() => navigate("/OVPHE-archived-clearance")}> 
             <div className="flex items-center gap-2">
               <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
+            </div>
+          </Button>
+
+          <Button variant="default" className="ml-auto font-bold whitespace-nowrap"> 
+            <div className="flex items-center justify-center gap-2">
+              <img src="/WhiteDownloadIcon.png" alt="export" className="w-6 h-6" />
+              <span>Export Current View</span>
             </div>
           </Button>
         </div>
@@ -180,13 +175,13 @@ export default function OVPHEViewClearance() {
           </div>
         </div>
 
-        <div className="mt-3 space-y-4">
-          <div className="w-full flex flex-col sm:flex-row gap-3 justify-start mt-5" style={{ marginLeft: '0', paddingLeft: '0' }}>
-              <div className="flex flex-wrap gap-3">
+          <div className="mt-3 space-y-4">
+            <div className="w-full mt-5">
+              <div className="flex flex-wrap items-center gap-3">
                 <Select>
-                <SelectTrigger variant="pill" className="w-max gap-2">
+                <SelectTrigger variant="pill" className="w-full gap-2 sm:w-[180px]">
                   <label>Sort by:</label>
-                  <SelectValue/> 
+                  <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="name">Name</SelectItem>
@@ -198,9 +193,9 @@ export default function OVPHEViewClearance() {
               </Select>
             
               <Select>
-                <SelectTrigger variant="pill" className="w-max gap-2">
+                <SelectTrigger variant="pill" className="w-full gap-2 sm:w-[160px]">
                   <label>Status:</label>
-                  <SelectValue/> 
+                  <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
@@ -210,9 +205,9 @@ export default function OVPHEViewClearance() {
               </Select>
 
               <Select>
-                <SelectTrigger variant="pill" className="w-max gap-2">
+                <SelectTrigger variant="pill" className="w-full gap-2 sm:w-[180px]">
                   <label>College:</label>
-                  <SelectValue/> 
+                  <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="2022-2023">2022-2023</SelectItem>
@@ -220,24 +215,15 @@ export default function OVPHEViewClearance() {
               </Select>
               
               <Select>
-                <SelectTrigger variant="pill" className="w-max gap-2">
+                <SelectTrigger variant="pill" className="w-full gap-2 sm:w-[180px]">
                   <label>Department:</label>
-                  <SelectValue/> 
+                  <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="2022-2023">2022-2023</SelectItem>
                 </SelectContent>
               </Select>
               </div>
-          </div>
-
-          <div className="flex justify-between gap-3 mt-4">
-            <Button variant="default" className="w-full font-bold whitespace-nowrap" > 
-              <div className="flex items-center justify-center gap-2">
-                <img src="/WhiteDownloadIcon.png" alt="export" className="w-6 h-6" />
-                <span>Export Current View</span>
-              </div>  
-            </Button>
           </div>
           
           <div className="mt-3">

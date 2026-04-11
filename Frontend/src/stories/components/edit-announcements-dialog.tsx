@@ -4,34 +4,15 @@ import { Button } from "./button";
 import { Dialog, DialogContent, DialogTrigger } from "./dialog";
 import { Checkbox } from "./checkbox";
 import { Input } from "./input";
-import { Textarea } from "./textarea";
+
+import { InputGroupWithAddon } from "./input-group";
 
 import type { AnnouncementItem } from "./cards";
 
 export const ANNOUNCEMENTS_STORAGE_KEY = "system_announcements_items_v1";
 
-const DEFAULT_ANNOUNCEMENTS_ITEMS: AnnouncementItem[] = [
-  {
-    pinned: true,
-    title: "System Maintenance Notice",
-    description:
-      "The faculty clearance portal will be unavailable this Saturday from 8:00 AM to 12:00 NN for scheduled maintenance",
-    timestamp: "December 1, 2025, 12:00 PM",
-    enabled: true,
-  },
-];
 
-export function loadAnnouncementsItems(): AnnouncementItem[] {
-  try {
-    const raw = localStorage.getItem(ANNOUNCEMENTS_STORAGE_KEY);
-    if (!raw) return DEFAULT_ANNOUNCEMENTS_ITEMS;
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return DEFAULT_ANNOUNCEMENTS_ITEMS;
-    return parsed as AnnouncementItem[];
-  } catch {
-    return DEFAULT_ANNOUNCEMENTS_ITEMS;
-  }
-}
+
 
 export function saveAnnouncementsItems(items: AnnouncementItem[]) {
   localStorage.setItem(ANNOUNCEMENTS_STORAGE_KEY, JSON.stringify(items));
@@ -84,7 +65,8 @@ export function EditAnnouncementsDialog({
       <DialogContent className="w-[420px] max-w-[calc(100vw-3rem)] rounded-xl p-0">
         <div className="rounded-xl bg-background">
           <div className="px-6 pb-4 pt-6">
-            <div className="text-center text-base font-bold text-foreground">Edit Announcements</div>
+            <div className="text-center text-base font-bold text-foreground"> {initialValues ? "Edit Announcements" : "Create Announcements"}
+            </div>
 
             <div className="mt-4 space-y-3">
               <Input
@@ -94,12 +76,11 @@ export function EditAnnouncementsDialog({
                 placeholder="Title"
               />
 
-              <Textarea
+              <InputGroupWithAddon
                 placeholder="Description"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="min-h-[160px]"
-              />
+                onValueChange={(value) => setDescription(value)}
+            />
 
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <Checkbox

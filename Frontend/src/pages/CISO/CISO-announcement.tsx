@@ -20,7 +20,6 @@ import {
 
 import {
   EditAnnouncementsDialog,
-  loadAnnouncementsItems,
 } from "../../stories/components/edit-announcements-dialog";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
@@ -113,12 +112,8 @@ export default function CISOAnnouncements() {
   React.useEffect(() => {
     refresh()
       .catch(() => {
-        const initial = loadAnnouncementsItems().map((item) => ({
-          ...item,
-          enabled: item.enabled ?? true,
-        }));
-        setItems(initial as AnnouncementApiItem[]);
-      });
+         setItems([]); // Show empty state when API fails
+    })
   }, [refresh]);
 
   return (

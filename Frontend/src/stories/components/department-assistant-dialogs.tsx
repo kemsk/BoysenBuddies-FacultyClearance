@@ -197,81 +197,144 @@ export function AddDepartmentAssistantDialog({
             <div className="text-center text-base font-bold text-foreground">{mode === "admin" ? "Add Admin" : "Add Assistant"}</div>
 
             <div className="mt-5 space-y-3">
-              <div className="space-y-1.5">
-                <div className="text-xs font-semibold text-foreground">First Name</div>
-                <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} size="sm" />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="text-xs font-semibold text-foreground">Middle Name (Optional)</div>
-                <Input value={middleName} onChange={(e) => setMiddleName(e.target.value)} size="sm" />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="text-xs font-semibold text-foreground">Last Name</div>
-                <Input value={lastName} onChange={(e) => setLastName(e.target.value)} size="sm" />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="text-xs font-semibold text-foreground">University ID</div>
-                <Input
-                  value={universityId}
-                  onChange={(e) => setUniversityId(e.target.value.replace(/\D/g, ""))}
-                  size="sm"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="text-xs font-semibold text-foreground">Email (@XU.EDU.PH)</div>
-                <Input value={email} onChange={(e) => setEmail(e.target.value)} size="sm" />
-                <div className="text-muted-foreground text-sm">{emailHelpText}</div>
-              </div>
-
-              {/* Show approver type selection for assistant mode - always show like CISO */}
-              {mode === "assistant" && (
-                <RadioRow
-                  label="Approver Type"
-                  value={approverType}
-                  onChange={(value) => setApproverType(value as "College" | "Office")}
-                  options={[
-                    { 
-                      value: "College", 
-                      label: "College",
-                      disabled: approverLevel === "office"
-                    }, 
-                    { 
-                      value: "Office", 
-                      label: "Office",
-                      disabled: approverLevel === "dean" || approverLevel === "chair"
-                    }
-                  ]}
-                />
-              )}
-
-              {/* Department or Office dropdown - shown for both admin and assistant modes */}
               {mode === "admin" ? (
-                <div className="space-y-1.5">
-                  <div className="text-xs font-semibold text-foreground">Department or Office</div>
-                  <Select value={departmentOrOffice} onValueChange={setDepartmentOrOffice}>
-                    <SelectTrigger className="h-10 w-full">
-                      <SelectValue placeholder="Choose from dropdown" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {adminDepartments.map((d) => (
-                        <SelectItem key={d} value={d}>
-                          {d}
-                        </SelectItem>
-                      ))}
-                      {adminOffices.map((o) => (
-                        <SelectItem key={o} value={o}>
-                          {o}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <>
+                  {/* Two-column grid layout for admin mode on desktop only */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-semibold text-foreground">First Name</div>
+                      <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} size="sm" />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-semibold text-foreground">Middle Name (Optional)</div>
+                      <Input value={middleName} onChange={(e) => setMiddleName(e.target.value)} size="sm" />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-semibold text-foreground">Last Name</div>
+                      <Input value={lastName} onChange={(e) => setLastName(e.target.value)} size="sm" />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-semibold text-foreground">University ID</div>
+                      <Input
+                        value={universityId}
+                        onChange={(e) => setUniversityId(e.target.value.replace(/\D/g, ""))}
+                        size="sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-semibold text-foreground">Email (@XU.EDU.PH)</div>
+                    <Input 
+                      value={email} 
+                      onChange={(e) => setEmail(e.target.value)} 
+                      size="sm" 
+                      placeholder="username@xu.edu.ph"
+                    />
+                    <div className="text-muted-foreground text-sm">{emailHelpText}</div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-semibold text-foreground">Department or Office</div>
+                    <Select value={departmentOrOffice} onValueChange={setDepartmentOrOffice}>
+                      <SelectTrigger className="h-10 w-full">
+                        <SelectValue placeholder="Choose from dropdown" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {adminDepartments.map((d) => (
+                          <SelectItem key={d} value={d}>
+                            {d}
+                          </SelectItem>
+                        ))}
+                        {adminOffices.map((o) => (
+                          <SelectItem key={o} value={o}>
+                            {o}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-start space-x-2 pt-2">
+                    <Checkbox
+                      id="terms"
+                      checked={termsAccepted}
+                      onCheckedChange={(checked: boolean | "indeterminate") => setTermsAccepted(checked === true)}
+                    />
+                    <div className="flex-1 text-xs text-foreground">
+                      <label htmlFor="terms" className="block">
+                        <span className="font-semibold">I understand</span>{" "}
+                        <span>
+                          that creating this user means they have access to the following features:
+                        </span>
+                      </label>
+                      <ul className="mt-1 list-disc pl-5 space-y-0.5 text-[11px]">
+                        <li>Set Requirements</li>
+                        <li>Approve and Reject Clearance Requests</li>
+                        <li>Create Departmental Requirements</li>
+                        <li>Create Approver Assistant</li>
+                        <li>See Activity Logs</li>
+                      </ul>
+                    </div>
+                  </div>
+                </>
               ) : (
                 <>
+                  {/* Two-column grid layout for assistant mode on desktop only */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-semibold text-foreground">First Name</div>
+                      <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} size="sm" />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-semibold text-foreground">Middle Name (Optional)</div>
+                      <Input value={middleName} onChange={(e) => setMiddleName(e.target.value)} size="sm" />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-semibold text-foreground">Last Name</div>
+                      <Input value={lastName} onChange={(e) => setLastName(e.target.value)} size="sm" />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-semibold text-foreground">University ID</div>
+                      <Input
+                        value={universityId}
+                        onChange={(e) => setUniversityId(e.target.value.replace(/\D/g, ""))}
+                        size="sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-semibold text-foreground">Email (@XU.EDU.PH)</div>
+                    <Input value={email} onChange={(e) => setEmail(e.target.value)} size="sm" />
+                    <div className="text-muted-foreground text-sm">{emailHelpText}</div>
+                  </div>
+
+                  {/* Show approver type selection for assistant mode - always show like CISO */}
+                  <RadioRow
+                    label="Approver Type"
+                    value={approverType}
+                    onChange={(value) => setApproverType(value as "College" | "Office")}
+                    options={[
+                      { 
+                        value: "College", 
+                        label: "College",
+                        disabled: approverLevel === "office"
+                      }, 
+                      { 
+                        value: "Office", 
+                        label: "Office",
+                        disabled: approverLevel === "dean" || approverLevel === "chair"
+                      }
+                    ]}
+                  />
+
                   <div className="space-y-1.5">
                     <div className="text-xs font-semibold text-foreground">Select College</div>
                     <Select value={college} onValueChange={setCollege} disabled={approverType !== "College"}>
@@ -321,33 +384,6 @@ export function AddDepartmentAssistantDialog({
                   </div>
                 </>
               )}
-
-              
-              {mode === "admin" && (
-                <div className="flex items-start space-x-2 pt-2">
-                  <Checkbox
-                    id="terms"
-                    checked={termsAccepted}
-                    onCheckedChange={(checked: boolean | "indeterminate") => setTermsAccepted(checked === true)}
-                  />
-                  <div className="flex-1 text-xs text-foreground">
-                    <label htmlFor="terms" className="block">
-                      <span className="font-semibold">I understand</span>{" "}
-                      <span>
-                        that creating this user means they have access to the following features:
-                      </span>
-                    </label>
-                    <ul className="mt-1 list-disc pl-5 space-y-0.5 text-[11px]">
-                      <li>Set Requirements</li>
-                      <li>Approve and Reject Clearance Requests</li>
-                      <li>Create Departmental Requirements</li>
-                      <li>Create Approver Assistant</li>
-                      <li>See Activity Logs</li>
-                    </ul>
-                  </div>
-                </div>
-              )}
-
             </div>
           </div>
 
@@ -503,29 +539,32 @@ export function EditDepartmentAssistantDialog({
             <div className="text-center text-base font-bold text-foreground">Edit Assistant</div>
 
             <div className="mt-5 space-y-3">
-              <div className="space-y-1.5">
-                <div className="text-xs font-semibold text-foreground">First Name</div>
-                <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} size="sm" />
-              </div>
+              {/* Two-column grid layout for edit dialog on desktop only */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <div className="text-xs font-semibold text-foreground">First Name</div>
+                  <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} size="sm" />
+                </div>
 
-              <div className="space-y-1.5">
-                <div className="text-xs font-semibold text-foreground">Middle Name (Optional)</div>
-                <Input value={middleName} onChange={(e) => setMiddleName(e.target.value)} size="sm" />
-              </div>
+                <div className="space-y-1.5">
+                  <div className="text-xs font-semibold text-foreground">Middle Name (Optional)</div>
+                  <Input value={middleName} onChange={(e) => setMiddleName(e.target.value)} size="sm" />
+                </div>
 
-              <div className="space-y-1.5">
-                <div className="text-xs font-semibold text-foreground">Last Name</div>
-                <Input value={lastName} onChange={(e) => setLastName(e.target.value)} size="sm" />
-              </div>
+                <div className="space-y-1.5">
+                  <div className="text-xs font-semibold text-foreground">Last Name</div>
+                  <Input value={lastName} onChange={(e) => setLastName(e.target.value)} size="sm" />
+                </div>
 
-              <div className="space-y-1.5">
-                <div className="text-xs font-semibold text-foreground">University ID</div>
-                <Input
-                  value={universityId}
-                  onChange={(e) => setUniversityId(e.target.value.replace(/\D/g, ""))}
-                  size="sm"
-                  placeholder="Numbers only"
-                />
+                <div className="space-y-1.5">
+                  <div className="text-xs font-semibold text-foreground">University ID</div>
+                  <Input
+                    value={universityId}
+                    onChange={(e) => setUniversityId(e.target.value.replace(/\D/g, ""))}
+                    size="sm"
+                    placeholder="Numbers only"
+                  />
+                </div>
               </div>
 
               <div className="space-y-1.5">

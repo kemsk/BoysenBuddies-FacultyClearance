@@ -823,7 +823,7 @@ export default function CISOCollegeOfficeConfiguration() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4">
+      <main className="dashboard p-4 ">
         
         <h1 className="text-2xl text-left text-primary font-bold">College & Office Configuration</h1>
 
@@ -849,8 +849,8 @@ export default function CISOCollegeOfficeConfiguration() {
           </Button>
         </div>
 
-        <div className="mt-4 space-y-5">
-          
+        {/* MOBILE LAYOUT */}
+        <div className="mt-4 space-y-5 lg:hidden">
           <div className="w-full bg-white rounded-lg border border-gray-200 p-6">
             <div className="text-black font-bold">Choose Semester</div>
             <div className="mt-3">
@@ -888,7 +888,7 @@ export default function CISOCollegeOfficeConfiguration() {
               </div>
             )}
           </div>
-          
+
           <div className="w-full space-y-5">
             
             <SectionListCard
@@ -913,7 +913,7 @@ export default function CISOCollegeOfficeConfiguration() {
                           type="button"
                           variant="secondary"
                           size="icon"
-                          className="h-8 w-8 rounded-md bg-muted-foreground/20 text-foreground hover:bg-muted-foreground/20"
+                          className="flex h-8 w-8 items-center justify-center rounded-md bg-muted-foreground/20 p-0 text-foreground hover:bg-muted-foreground/20"
                           onClick={() => {
                             setEditingCollegeId(c.id);
                             setEditCollegeOpen(true);
@@ -926,7 +926,7 @@ export default function CISOCollegeOfficeConfiguration() {
                           type="button"
                           variant="destructive"
                           size="icon"
-                          className="h-8 w-8 rounded-md"
+                          className="flex h-8 w-8 items-center justify-center rounded-md p-0"
                           onClick={() => {
                             setConfirmDelete({
                               open: true,
@@ -985,7 +985,7 @@ export default function CISOCollegeOfficeConfiguration() {
                           type="button"
                           variant="secondary"
                           size="icon"
-                          className="h-8 w-8 rounded-md bg-muted-foreground/20 text-foreground hover:bg-muted-foreground/20"
+                          className="flex h-8 w-8 items-center justify-center rounded-md bg-muted-foreground/20 p-0 text-foreground hover:bg-muted-foreground/20"
                           onClick={() => {
                             setEditingDepartmentId(d.id);
                             setEditDepartmentOpen(true);
@@ -998,7 +998,7 @@ export default function CISOCollegeOfficeConfiguration() {
                           type="button"
                           variant="destructive"
                           size="icon"
-                          className="h-8 w-8 rounded-md"
+                          className="flex h-8 w-8 items-center justify-center rounded-md p-0"
                           onClick={() => {
                             setConfirmDelete({
                               open: true,
@@ -1039,7 +1039,7 @@ export default function CISOCollegeOfficeConfiguration() {
                           type="button"
                           variant="secondary"
                           size="icon"
-                          className="h-8 w-8 rounded-md bg-muted-foreground/20 text-foreground hover:bg-muted-foreground/20"
+                          className="flex h-8 w-8 items-center justify-center rounded-md bg-muted-foreground/20 p-0 text-foreground hover:bg-muted-foreground/20"
                           onClick={() => {
                             setEditingOfficeId(o.id);
                             setEditOfficeOpen(true);
@@ -1052,7 +1052,7 @@ export default function CISOCollegeOfficeConfiguration() {
                           type="button"
                           variant="destructive"
                           size="icon"
-                          className="h-8 w-8 rounded-md"
+                          className="flex h-8 w-8 items-center justify-center rounded-md p-0"
                           onClick={() => {
                             setConfirmDelete({
                               open: true,
@@ -1071,6 +1071,141 @@ export default function CISOCollegeOfficeConfiguration() {
               </div>
             </SectionListCard>
 
+            <SectionListCard
+              title="Approver Flow"
+              headerActions={
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="icon"
+                    size="icon"
+                    className="text-primary-foreground"
+                    onClick={() => setEditApproverFlowOpen(true)}
+                  >
+                    <img src="/WhiteDirectionIcon.png" alt="List Ordered" className="h-5 w-5 object-contain" />
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="icon"
+                    size="icon"
+                    className="text-primary-foreground"
+                    onClick={() => setAddApproverOpen(true)}
+                  >
+                    <img src="/WhitePlusIcon.png" alt="Add" className="h-6 w-6 object-contain" />
+                  </Button>
+                </div>
+              }
+            >
+              <div className="p-4">
+                <div className="space-y-2">
+                  {approverFlow.map((a, idx) => {
+                    const isAll = a.collegeIds.length === 0 || a.collegeIds.length === colleges.length;
+                    const badges = isAll
+                      ? ["ALL"]
+                      : a.collegeIds
+                          .map((id) => colleges.find((c) => c.id === id)?.short)
+                          .filter((v): v is string => !!v);
+
+                    return (
+                      <div
+                        key={a.id}
+                        className="flex items-center justify-between rounded-md bg-muted px-4 py-3"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-foreground">
+                            {idx + 1}. {a.category}
+                          </div>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            {badges.map((b) => (
+                              <Badge key={b} className="h-5 rounded-full px-2 text-[10px]">
+                                {b}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="icon"
+                            className="flex h-8 w-8 items-center justify-center rounded-md bg-muted-foreground/20 p-0 text-foreground hover:bg-muted-foreground/20"
+                            onClick={() => {
+                              setEditingApproverId(a.id);
+                              setEditApproverOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="flex h-8 w-8 items-center justify-center rounded-md p-0"
+                            onClick={() => {
+                              setConfirmDelete({
+                                open: true,
+                                type: "approver",
+                                id: a.id,
+                                label: a.category,
+                              });
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </SectionListCard>
+          </div>
+
+          <div className="w-full bg-white rounded-lg border border-gray-200 p-6">
+            <div className="space-y-3">
+              <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
+                <Checkbox 
+                  variant="gray" 
+                  checked={checkbox1Checked}
+                  onCheckedChange={(checked) => setCheckbox1Checked(checked === true)}
+                  disabled={isConfigurationLocked}
+                /> 
+                <label htmlFor="checkbox1" className="text-sm text-gray-700"><span className="font-bold">I agree</span> that all Colleges, Departments, and Offices that are necessary to the Faculty Clearance Process are present and are readily configured in this page.</label>
+              </div>
+              <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
+                <Checkbox 
+                  variant="gray" 
+                  checked={checkbox2Checked}
+                  onCheckedChange={(checked) => setCheckbox2Checked(checked === true)}
+                  disabled={isConfigurationLocked}
+                /> 
+                <label htmlFor="checkbox2" className="text-sm text-gray-700"><span className="font-bold">I understand</span> that once a Clearance Timeline is in an "Active" state, I cannot make any changes to the configuration.</label>
+              </div>
+            </div>
+            <div className="mt-3">
+              <Button 
+                variant="default" 
+                className="w-full font-bold"
+                disabled={!checkbox1Checked || !checkbox2Checked || isSaving || isConfigurationLocked}
+                onClick={handleSaveConfiguration}
+              >
+                {isSaving ? 'Saving...' : 'I Agree and Understand'}
+              </Button>
+              {isConfigurationLocked && (
+                <div className="mt-2 text-sm text-red-600 text-center">
+                  Configuration is locked because the timeline is active.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* DESKTOP LAYOUT */}
+        <div className="hidden lg:grid lg:grid-cols-4 lg:gap-5 lg:items-start mt-4">
+          <div className="lg:col-span-1 space-y-5">
             <SectionListCard
               title="Approver Flow"
               headerActions={
@@ -1159,6 +1294,268 @@ export default function CISOCollegeOfficeConfiguration() {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            </SectionListCard>
+
+            <div className="w-full bg-white rounded-lg border border-gray-200 p-6">
+              <div className="text-black font-bold">Choose Semester</div>
+              <div className="mt-3">
+                <Select value={selectedTimelineId} onValueChange={(value) => {
+                  setSelectedTimelineId(value);
+                  localStorage.setItem('ciso-selected-timeline', value);
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select clearance timeline" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timelines.map((timeline) => (
+                      <SelectItem key={timeline.id} value={timeline.id}>
+                        {timeline.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedTimelineId && (
+                <div className="mt-2">
+                  {(() => {
+                    const timeline = timelines.find(t => t.id === selectedTimelineId);
+                    if (!timeline) return null;
+                    return (
+                      <div className="text-sm text-gray-600">
+                        <div>Academic Year: {timeline.academicYearStart}-{timeline.academicYearEnd}</div>
+                        <div>Clearance Period: {timeline.clearanceStartDate} to {timeline.clearanceEndDate}</div>
+                        <div className={`mt-1 font-semibold ${timeline.setAsActive ? 'text-red-600' : 'text-green-600'}`}>
+                          Status: {timeline.setAsActive ? 'Active (Configuration Locked)' : 'Inactive'}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+
+            <div className="w-full bg-white rounded-lg border border-gray-200 p-6">
+              <div className="space-y-3">
+                <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
+                  <Checkbox 
+                    variant="gray" 
+                    checked={checkbox1Checked}
+                    onCheckedChange={(checked) => setCheckbox1Checked(checked === true)}
+                    disabled={isConfigurationLocked}
+                  /> 
+                  <label htmlFor="checkbox1" className="text-sm text-gray-700"><span className="font-bold">I agree</span> that all Colleges, Departments, and Offices that are necessary to the Faculty Clearance Process are present and are readily configured in this page.</label>
+                </div>
+                <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
+                  <Checkbox 
+                    variant="gray" 
+                    checked={checkbox2Checked}
+                    onCheckedChange={(checked) => setCheckbox2Checked(checked === true)}
+                    disabled={isConfigurationLocked}
+                  /> 
+                  <label htmlFor="checkbox2" className="text-sm text-gray-700"><span className="font-bold">I understand</span> that once a Clearance Timeline is in an "Active" state, I cannot make any changes to the configuration.</label>
+                </div>
+              </div>
+              <div className="mt-3">
+                <Button 
+                  variant="default" 
+                  className="w-full font-bold"
+                  disabled={!checkbox1Checked || !checkbox2Checked || isSaving || isConfigurationLocked}
+                  onClick={handleSaveConfiguration}
+                >
+                  {isSaving ? 'Saving...' : 'I Agree and Understand'}
+                </Button>
+                {isConfigurationLocked && (
+                  <div className="mt-2 text-sm text-red-600 text-center">
+                    Configuration is locked because the timeline is active.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-1">
+            <SectionListCard
+              title="Colleges"
+              headerActionImgAlt="Add"
+              headerActionImgSrc="/WhitePlusIcon.png"
+              headerActionOnClick={() => setAddCollegeOpen(true)}
+            >
+              <div className="p-4">
+                <div className="space-y-2">
+                  {colleges.map((c, idx) => (
+                    <div
+                      key={c.id}
+                      className="flex items-center justify-between rounded-md bg-muted px-4 py-3"
+                    >
+                      <div className="min-w-0 text-sm font-semibold text-foreground">
+                        {idx + 1}. {c.name} ({c.short})
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="icon"
+                          className="h-8 w-8 rounded-md bg-muted-foreground/20 text-foreground hover:bg-muted-foreground/20"
+                          onClick={() => {
+                            setEditingCollegeId(c.id);
+                            setEditCollegeOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="h-8 w-8 rounded-md"
+                          onClick={() => {
+                            setConfirmDelete({
+                              open: true,
+                              type: "college",
+                              id: c.id,
+                              label: c.name,
+                            });
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </SectionListCard>
+          </div>
+
+          <div className="lg:col-span-1">
+            <SectionListCard
+              title="College Departments"
+              headerActionImgAlt="Add"
+              headerActionImgSrc="/WhitePlusIcon.png"
+              headerActionOnClick={() => setAddDepartmentOpen(true)}
+            >
+              <div className="p-4">
+                <div className="text-xs font-semibold text-muted-foreground">Filter by College</div>
+                <div className="mt-2">
+                  <Select value={selectedCollegeId} onValueChange={setSelectedCollegeId}>
+                    <SelectTrigger className="h-10 w-full">
+                      <SelectValue placeholder="Choose from dropdown" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {colleges.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Divider className="my-4 border-[hsl(var(--gray-border))]" />
+
+                <div className="space-y-2">
+                  {filteredDepartments.map((d, idx) => (
+                    <div
+                      key={d.id}
+                      className="flex items-center justify-between rounded-md bg-muted px-4 py-3"
+                    >
+                      <div className="min-w-0 text-sm font-semibold text-foreground">
+                        {idx + 1}. {d.name} ({d.short})
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="icon"
+                          className="h-8 w-8 rounded-md bg-muted-foreground/20 text-foreground hover:bg-muted-foreground/20"
+                          onClick={() => {
+                            setEditingDepartmentId(d.id);
+                            setEditDepartmentOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="h-8 w-8 rounded-md"
+                          onClick={() => {
+                            setConfirmDelete({
+                              open: true,
+                              type: "department",
+                              id: d.id,
+                              label: d.name,
+                            });
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </SectionListCard>
+          </div>
+
+          <div className="lg:col-span-1">
+            <SectionListCard
+              title="Offices"
+              headerActionImgAlt="Add"
+              headerActionImgSrc="/WhitePlusIcon.png"
+              headerActionOnClick={() => setAddOfficeOpen(true)}
+            >
+              <div className="p-4">
+                <div className="space-y-2">
+                  {offices.map((o, idx) => (
+                    <div
+                      key={o.id}
+                      className="flex items-center justify-between rounded-md bg-muted px-4 py-3"
+                    >
+                      <div className="min-w-0 text-sm font-semibold text-foreground">
+                        {idx + 1}. {o.name} ({o.short})
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="icon"
+                          className="h-8 w-8 rounded-md bg-muted-foreground/20 text-foreground hover:bg-muted-foreground/20"
+                          onClick={() => {
+                            setEditingOfficeId(o.id);
+                            setEditOfficeOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="h-8 w-8 rounded-md"
+                          onClick={() => {
+                            setConfirmDelete({
+                              open: true,
+                              type: "office",
+                              id: o.id,
+                              label: o.name,
+                            });
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </SectionListCard>
@@ -1812,48 +2209,6 @@ export default function CISOCollegeOfficeConfiguration() {
             </div>
           </AlertDialogContent>
         </AlertDialog>
-
-        <div className="mt-4 space-y-5">
-          <div className="w-full bg-white rounded-lg border border-gray-200 p-6">
-
-            <div className="space-y-3">
-              <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
-                <Checkbox 
-                  variant="gray" 
-                  checked={checkbox1Checked}
-                  onCheckedChange={(checked) => setCheckbox1Checked(checked === true)}
-                  disabled={isConfigurationLocked}
-                /> 
-                <label htmlFor="checkbox1" className="text-sm text-gray-700"><span className="font-bold">I agree</span> that all Colleges, Departments, and Offices that are necessary to the Faculty Clearance Process are present and are readily configured in this page.</label>
-              </div>
-              <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
-                <Checkbox 
-                  variant="gray" 
-                  checked={checkbox2Checked}
-                  onCheckedChange={(checked) => setCheckbox2Checked(checked === true)}
-                  disabled={isConfigurationLocked}
-                /> 
-                <label htmlFor="checkbox2" className="text-sm text-gray-700"><span className="font-bold">I understand</span> that once a Clearance Timeline is in an "Active" state, I cannot make any changes to the configuration.</label>
-              </div>
-            </div>
-            <div className="mt-3">
-              <Button 
-                variant="default" 
-                className="w-full font-bold"
-                disabled={!checkbox1Checked || !checkbox2Checked || isSaving || isConfigurationLocked}
-                onClick={handleSaveConfiguration}
-              >
-                {isSaving ? 'Saving...' : 'I Agree and Understand'}
-              </Button>
-              {isConfigurationLocked && (
-                <div className="mt-2 text-sm text-red-600 text-center">
-                  Configuration is locked because the timeline is active.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
       </main>
 
     </div>

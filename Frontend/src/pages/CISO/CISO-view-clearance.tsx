@@ -20,9 +20,6 @@ import {
   SelectValue,
 } from "../../stories/components/select";
 
-import {
-  loadAnnouncementsItems,
-} from "../../stories/components/edit-announcements-dialog";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
 import { SearchInputGroup } from "../../stories/components/input-group";
@@ -122,16 +119,12 @@ export default function CISOViewClearance() {
       });
   }, []);
 
-  React.useEffect(() => {
-    refresh()
-      .catch(() => {
-        const initial = loadAnnouncementsItems().map((item) => ({
-          ...item,
-          enabled: item.enabled ?? true,
-        }));
-        setItems(initial as AnnouncementApiItem[]);
-      });
-  }, [refresh]);
+React.useEffect(() => {
+  refresh()
+    .catch(() => {
+      setItems([]); // Show empty state when API fails
+    });
+}, [refresh]);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -142,7 +135,7 @@ export default function CISOViewClearance() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4 mt-2 space-y-3">
+        <main className="dashboard p-4 mt-2 space-y-3 lg:max-w-4xl lg:mx-auto lg:p-8">
 
         <h1 className="text-2xl text-left text-primary font-bold">2501 Faculty Clearance</h1>
 

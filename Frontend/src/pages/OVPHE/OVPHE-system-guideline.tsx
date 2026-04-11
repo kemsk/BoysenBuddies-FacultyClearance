@@ -117,17 +117,12 @@ export default function OVPHESystemGuideline() {
       });
   }, []);
 
-  React.useEffect(() => {
-    refresh()
-      .catch(() => {
-        const initial = loadSystemGuidelinesItems().map((item) => ({
-          ...item,
-          enabled: item.enabled ?? true,
-        }));
-        setItems(initial as GuidelineApiItem[]);
-      });
-  }, [refresh]);
-
+React.useEffect(() => {
+  refresh()
+    .catch(() => {
+      setItems([]); // Show empty state when API fails
+    });
+}, [refresh]);
 
 
 

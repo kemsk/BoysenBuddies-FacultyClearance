@@ -19,7 +19,6 @@ import {
 
 import {
   EditSystemGuidelinesDialog,
-  loadSystemGuidelinesItems,
 } from "../../stories/components/edit-system-guidelines-dialog";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
@@ -109,16 +108,12 @@ export default function CISOSystemGuideline() {
       });
   }, []);
 
-  React.useEffect(() => {
-    refresh()
-      .catch(() => {
-        const initial = loadSystemGuidelinesItems().map((item) => ({
-          ...item,
-          enabled: item.enabled ?? true,
-        }));
-        setItems(initial as GuidelineApiItem[]);
-      });
-  }, [refresh]);
+React.useEffect(() => {
+  refresh()
+    .catch(() => {
+      setItems([]); // Show empty state when API fails
+    });
+}, [refresh]);
 
 
 

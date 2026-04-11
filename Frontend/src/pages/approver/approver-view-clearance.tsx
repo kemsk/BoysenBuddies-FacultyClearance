@@ -9,6 +9,10 @@ import {
 } from "../../stories/components/cards";
 
 import { Button } from "../../stories/components/button";
+import { Badge } from "../../stories/components/badge";
+import { Checkbox } from "../../stories/components/checkbox";
+import { ApproveConfirmDialog, RejectAlertDialog } from "../../stories/components/clearance-action-dialogs";
+import { Check } from "lucide-react";
 
 import {
   Select,
@@ -31,6 +35,8 @@ export default function ApproverViewClearance() {
   }, []);
 
   const [requests, setRequests] = React.useState<ClearanceRequestItem[]>([]);
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set());
+  const [bulkLoading, setBulkLoading] = React.useState(false);
 
   React.useEffect(() => {
     if (!timelineId) {
@@ -70,6 +76,93 @@ export default function ApproverViewClearance() {
       return hay.includes(q);
     });
   }, [query, requests]);
+
+  React.useEffect(() => {
+    setSelectedIds(new Set());
+  }, [filteredRequests]);
+
+  function getCookie(name: string): string {
+    let cookieValue = "";
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === name + "=") {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  function getClearanceStatusBadgeVariant(status: ClearanceRequestItem["status"]) {
+    if (status === "approved") return "success" as const;
+    if (status === "rejected") return "destructive" as const;
+    return "warning" as const;
+  }
+
+  const handleBulkApprove = React.useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    setBulkLoading(true);
+    try {
+      const response = await fetch("/admin/xu-faculty-clearance/api/approver/action", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken") || "",
+        },
+        body: JSON.stringify({
+          request_ids: Array.from(selectedIds),
+          action: "approve",
+          remarks: "",
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error((data && (data.detail || data.message)) || `Failed to approve: ${response.statusText}`);
+      }
+
+      window.location.reload();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Failed to approve requests");
+    } finally {
+      setBulkLoading(false);
+    }
+  }, [selectedIds]);
+
+  const handleBulkReject = React.useCallback(async (reason: string) => {
+    if (selectedIds.size === 0) return;
+    setBulkLoading(true);
+    try {
+      const response = await fetch("/admin/xu-faculty-clearance/api/approver/action", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken") || "",
+        },
+        body: JSON.stringify({
+          request_ids: Array.from(selectedIds),
+          action: "reject",
+          remarks: reason,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error((data && (data.detail || data.message)) || `Failed to reject: ${response.statusText}`);
+      }
+
+      window.location.reload();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Failed to reject requests");
+    } finally {
+      setBulkLoading(false);
+    }
+  }, [selectedIds]);
 
   const handleExport = React.useCallback(() => {
     if (!timelineId || filteredRequests.length === 0) return;
@@ -190,10 +283,129 @@ export default function ApproverViewClearance() {
           
           <div className="mt-3">
             <div className="mt-6">
-              <ClearanceRequestsCard
-                items={filteredRequests}
-                getItemHref={(item) => `/approver-archived-individual?timelineId=${encodeURIComponent(timelineId)}&archivedId=${encodeURIComponent(item.id)}`}
-              />
+              <div className="hidden lg:block">
+                <div className="overflow-hidden rounded-xl border border-muted-foreground/20 bg-card shadow">
+                  <div className="overflow-x-auto">
+                    <div className="flex items-center gap-3 border-b border-muted-foreground/20 px-4 py-4 text-black">
+                      <Checkbox
+                        variant="primary"
+                        checked={filteredRequests.length > 0 && selectedIds.size === filteredRequests.length}
+                        onCheckedChange={(v) => {
+                          if (v) {
+                            setSelectedIds(new Set(filteredRequests.map((i) => i.id)));
+                          } else {
+                            setSelectedIds(new Set());
+                          }
+                        }}
+                      />
+                      <div className="text-sm font-bold text-primary">Select All</div>
+                      {selectedIds.size > 0 ? (
+                        <div className="ml-auto flex items-center gap-2">
+                          <RejectAlertDialog
+                            count={selectedIds.size}
+                            trigger={
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                className="h-8 rounded-md px-4 text-sm font-semibold"
+                                disabled={bulkLoading}
+                              >
+                                Reject
+                              </Button>
+                            }
+                            onReject={handleBulkReject}
+                          />
+                          <ApproveConfirmDialog
+                            count={selectedIds.size}
+                            trigger={
+                              <Button
+                                type="button"
+                                className="h-8 rounded-md bg-[hsl(var(--success))] px-4 text-sm font-semibold text-white hover:bg-[hsl(var(--success))]/90"
+                                disabled={bulkLoading}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <Check className="h-4 w-4" /> Approve
+                                </div>
+                              </Button>
+                            }
+                            onApprove={handleBulkApprove}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <table className="w-full border-collapse text-left text-sm text-black">
+                      <thead className="bg-white">
+                        <tr className="border-b border-muted-foreground/20">
+                          <th className="w-12 px-4 py-3 font-semibold" />
+                          <th className="px-4 py-3 font-semibold">Name</th>
+                          <th className="px-4 py-3 font-semibold">Request ID</th>
+                          <th className="px-4 py-3 font-semibold">Employee ID</th>
+                          <th className="px-4 py-3 font-semibold">College</th>
+                          <th className="px-4 py-3 font-semibold">Department</th>
+                          <th className="px-4 py-3 font-semibold">Requirement</th>
+                          <th className="px-4 py-3 font-semibold">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredRequests.map((item) => (
+                          <tr key={item.id} className="border-b border-muted-foreground/20 last:border-b-0">
+                            <td className="px-4 py-4 align-top">
+                              <Checkbox
+                                variant="primary"
+                                checked={selectedIds.has(item.id)}
+                                onCheckedChange={() => {
+                                  setSelectedIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(item.id)) next.delete(item.id);
+                                    else next.add(item.id);
+                                    return next;
+                                  });
+                                }}
+                              />
+                            </td>
+                            <td className="px-4 py-4 align-top font-semibold text-primary">
+                              <Link
+                                to={`/approver-archived-individual?timelineId=${encodeURIComponent(timelineId)}&archivedId=${encodeURIComponent(item.id)}`}
+                                className="block max-w-[220px] truncate"
+                                title={item.name}
+                              >
+                                {item.name}
+                              </Link>
+                            </td>
+                            <td className="px-4 py-4 align-top">{item.requestId}</td>
+                            <td className="px-4 py-4 align-top">{item.employeeId}</td>
+                            <td className="px-4 py-4 align-top">
+                              <div className="max-w-[220px] whitespace-pre-wrap">{item.college}</div>
+                            </td>
+                            <td className="px-4 py-4 align-top">
+                              <div className="max-w-[220px] whitespace-pre-wrap">{item.department}</div>
+                            </td>
+                            <td className="px-4 py-4 align-top">
+                              <div className="max-w-[220px] whitespace-pre-wrap">{item.requirementName || "-"}</div>
+                            </td>
+                            <td className="px-4 py-4 align-top">
+                              <Badge
+                                variant={getClearanceStatusBadgeVariant(item.status)}
+                                className="px-3 py-1 text-xs font-bold"
+                              >
+                                {item.status.toUpperCase()}
+                              </Badge>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:hidden">
+                <ClearanceRequestsCard
+                  items={filteredRequests}
+                  getItemHref={(item) => `/approver-archived-individual?timelineId=${encodeURIComponent(timelineId)}&archivedId=${encodeURIComponent(item.id)}`}
+                />
+              </div>
             </div>
           </div>
         </div>
