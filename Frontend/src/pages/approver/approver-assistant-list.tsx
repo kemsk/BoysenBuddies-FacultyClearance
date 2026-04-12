@@ -188,6 +188,7 @@ export default function ApproverAssistantList() {
     fetchApproverEmail();
   }, [fetchUsers, fetchOrgStructure, fetchApproverEmail]);
 
+  
   const [addOpen, setAddOpen] = useState(false);
   const [addAdminOpen, setAddAdminOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -232,6 +233,7 @@ export default function ApproverAssistantList() {
   // Get current approver's user ID for supervisor linking
   const supervisorApproverId = approverEmail;
 
+  
   // Determine approver type restrictions
   const allowedApproverType = React.useMemo(() => {
     if (approverLevel === "office") {
@@ -323,12 +325,34 @@ export default function ApproverAssistantList() {
 
   // Prepare filtered options for admin mode based on approver level
   const adminDepartments = React.useMemo(() => {
+    if (approverLevel === "office") {
+      // Office approvers: show no departments for admin mode, only offices
+      return [];
+    }
     return visibleDepartments;
-  }, [visibleDepartments]);
+  }, [visibleDepartments, approverLevel]);
 
   const adminOffices = React.useMemo(() => {
+    if (approverLevel === "office") {
+      // Office approvers: show only their own offices for admin mode
+      // If myOffices is empty, fall back to all offices but filter by approver's office assignment
+      console.log("DEBUG: approverRoles =", approverRoles);
+      console.log("DEBUG: myOffices =", myOffices);
+      console.log("DEBUG: visibleOffices =", visibleOffices);
+      
+      if (myOffices.length > 0) {
+        console.log("DEBUG: Using myOffices");
+        return myOffices;
+      }
+      // Fallback: filter visibleOffices to only include offices that match the approver's role
+      const filtered = visibleOffices.filter(office => 
+        approverRoles.some(role => role.office === office)
+      );
+      console.log("DEBUG: Filtered offices =", filtered);
+      return filtered;
+    }
     return visibleOffices;
-  }, [visibleOffices]);
+  }, [visibleOffices, approverLevel, myOffices, approverRoles]);
 
   // Derived list based on current mode and search query
   const filteredItems = items
@@ -586,13 +610,16 @@ export default function ApproverAssistantList() {
                 return;
               }
               // Derive assistantType based on selected department/office
-              const selected = payload.department;
+              const selected = payload.department || payload.office;
               const isOffice = adminOffices.includes(selected || "");
               let assistantType: "college_admin" | "dept_chair" | "office_admin" | "admin_secondment" | "student_assistant" = "college_admin";
               if (isOffice) {
                 assistantType = "office_admin";
-              } else {
+              } else if (selected) {
                 assistantType = "dept_chair";
+              } else {
+                // Default to office_admin for office approvers when nothing selected
+                assistantType = approverLevel === "office" ? "office_admin" : "dept_chair";
               }
               const r = await fetch(apiBase, {
                 method: "POST",

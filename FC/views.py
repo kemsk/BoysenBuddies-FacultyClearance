@@ -6680,9 +6680,7 @@ def approver_assistant_approvers_api(request):
             
             try:
                 current_approver = Approver.objects.get(user=user)
-                print(f"DEBUG: Found approver profile: {current_approver.approver_type}, dept: {current_approver.department}, college: {current_approver.department.college if current_approver.department else None}")
             except Approver.DoesNotExist:
-                print(f"DEBUG: No approver profile found for user {user.email} (ID: {user.id})")
                 return JsonResponse({"detail": "Approver profile not found"}, status=400)
 
             # Check if this is a College Dean (department with "Dean" in title)
@@ -6756,22 +6754,14 @@ def approver_assistant_approvers_api(request):
 
             elif current_approver.approver_type == "Department":
                 # Department Chair logic
-                print(f"DEBUG: Department Chair validation - checking profile")
-
                 if not current_approver.department or not current_approver.department.college:
-                    print(f"DEBUG: Department Chair missing department or college")
                     return JsonResponse({"detail": "Department Chair must have an assigned department and college"}, status=400)
-
-                print(f"DEBUG: Department Chair - assigned dept: {current_approver.department.name}, college: {current_approver.department.college.name}")
-                print(f"DEBUG: Requested college: '{college_name}', dept: '{dept_name}'")
 
                 # For Department Chair, restrict to their assigned department and college
                 if college_name and college_name.lower() != current_approver.department.college.name.lower():
-                    print(f"DEBUG: College mismatch - requested: {college_name}, assigned: {current_approver.department.college.name}")
                     return JsonResponse({"detail": f"College must be {current_approver.department.college.name}"}, status=400)
 
                 if dept_name and dept_name.lower() != current_approver.department.name.lower():
-                    print(f"DEBUG: Department mismatch - requested: {dept_name}, assigned: {current_approver.department.name}")
                     return JsonResponse({"detail": f"Department must be {current_approver.department.name}"}, status=400)
 
                 # Set college and department to Department Chair's assigned ones
@@ -6779,10 +6769,9 @@ def approver_assistant_approvers_api(request):
                 dept_name = current_approver.department.name
                 college = current_approver.department.college
                 department = current_approver.department
-                print(f"DEBUG: Set college: {college_name}, dept: {dept_name}")
 
             elif current_approver.approver_type == "Office":
-                # Office Admin logic (existing logic should work)  
+                # Office Admin logic
                 pass
 
             else:
@@ -6790,12 +6779,17 @@ def approver_assistant_approvers_api(request):
 
             # Original validation logic for non-College Dean types
             if assistant_type == "student_assistant":
-                # Student assistant: need both college and department
-                if not college_name:
-                    return JsonResponse({"detail": "College is required"}, status=400)
+                # Student assistant: need college and department OR office (for office approvers)
+                if office_name:
+                    # Office-type student assistant: college/department are optional
+                    pass  # No validation needed for college/department when office is provided
+                else:
+                    # College-type student assistant: need both college and department
+                    if not college_name:
+                        return JsonResponse({"detail": "College is required"}, status=400)
 
-                if not dept_name:
-                    return JsonResponse({"detail": "Department is required"}, status=400)
+                    if not dept_name:
+                        return JsonResponse({"detail": "Department is required"}, status=400)
 
             else:
                 # Admin assistant: only need department OR office

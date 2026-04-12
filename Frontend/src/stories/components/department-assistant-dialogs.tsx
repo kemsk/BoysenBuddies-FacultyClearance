@@ -227,7 +227,7 @@ export function AddDepartmentAssistantDialog({
                   </div>
 
                   <div className="space-y-1.5">
-                    <div className="text-xs font-semibold text-foreground">Email (@XU.EDU.PH)</div>
+                    <div className="text-xs font-semibold text-foreground">Email</div>
                     <Input 
                       value={email} 
                       onChange={(e) => setEmail(e.target.value)} 
@@ -311,7 +311,7 @@ export function AddDepartmentAssistantDialog({
                   </div>
 
                   <div className="space-y-1.5">
-                    <div className="text-xs font-semibold text-foreground">Email (@XU.EDU.PH)</div>
+                    <div className="text-xs font-semibold text-foreground">Email</div>
                     <Input value={email} onChange={(e) => setEmail(e.target.value)} size="sm" />
                     <div className="text-muted-foreground text-sm">{emailHelpText}</div>
                   </div>
@@ -325,7 +325,7 @@ export function AddDepartmentAssistantDialog({
                       { 
                         value: "College", 
                         label: "College",
-                        disabled: approverLevel === "office"
+                        disabled: approverLevel === "dean" || approverLevel === "chair"
                       }, 
                       { 
                         value: "Office", 
@@ -409,17 +409,33 @@ export function AddDepartmentAssistantDialog({
                     // For admin mode, derive assistantType and set department/office appropriately
                     const selected = departmentOrOffice;
                     const isOffice = adminOffices.includes(selected);
-                    onCreate?.({
+                    
+                    // Create payload ensuring at least one of department/office is included
+                    const payload: DepartmentAssistantPayload = {
                       firstName,
                       middleName: middleName.trim() ? middleName : undefined,
                       lastName,
                       universityId,
-                      college,
-                      department: isOffice ? undefined : (selected ?? undefined),
-                      office: isOffice ? selected : undefined,
                       email,
                       isActive,
-                    });
+                    };
+                    
+                    if (isOffice && selected) {
+                      payload.office = selected;
+                    } else if (selected) {
+                      payload.department = selected;
+                    } else {
+                      // Nothing selected - default to first available office or leave empty
+                      if (adminOffices.length > 0) {
+                        payload.office = adminOffices[0];
+                      }
+                    }
+                    
+                    // Only include college if it's not an office admin
+                    if (!isOffice && college) {
+                      payload.college = college;
+                    }
+                    onCreate?.(payload);
                   } else {
                     // For assistant mode, handle approver type logic
                     const payload: DepartmentAssistantPayload = {
