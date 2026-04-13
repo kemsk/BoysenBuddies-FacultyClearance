@@ -298,6 +298,25 @@ function InputGroupWithAddon({
           "[&:empty:before]:content-[attr(data-placeholder)] [&:empty:before]:text-muted-foreground",
           className
         )}
+        onPaste={(e) => {
+          e.preventDefault();
+          const html = e.clipboardData.getData("text/html");
+          if (html) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, "text/html");
+            doc.body.querySelectorAll("*").forEach((el) => {
+              el.removeAttribute("style");
+              el.removeAttribute("class");
+              el.removeAttribute("id");
+            });
+            document.execCommand("insertHTML", false, doc.body.innerHTML);
+          } else {
+            const text = e.clipboardData.getData("text/plain");
+            document.execCommand("insertText", false, text);
+          }
+          syncToolbarState();
+          onValueChange?.(editorRef.current?.innerHTML ?? "");
+        }}
         onInput={() => {
           syncToolbarState();
           onValueChange?.(editorRef.current?.innerHTML ?? "");

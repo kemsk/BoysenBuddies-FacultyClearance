@@ -527,7 +527,7 @@ export function RequirementEditCard({
             <div className="text-md font-bold text-gray-900 pt-1">Description</div>
             <div 
               className="text-sm text-gray-900 text-left break-words"
-              dangerouslySetInnerHTML={{ __html: description || "" }}
+              dangerouslySetInnerHTML={{ __html: applyRichTextStyles(description || "") }}
             />
           </div>
 
@@ -653,7 +653,7 @@ export function RequirementListCard({
             <div className="text-md font-bold text-gray-900 pt-1">Description</div>
             <div 
               className="text-sm text-gray-900 text-left break-words"
-              dangerouslySetInnerHTML={{ __html: description || "" }}
+              dangerouslySetInnerHTML={{ __html: applyRichTextStyles(description || "") }}
             />
           </div>
 
@@ -1302,7 +1302,7 @@ export function RequirementApprovalCard({
             <div className="text-md font-bold text-gray-900">Submission Notes</div>
             <div 
               className="text-sm text-gray-900 mt-3 p-3 border border-foreground rounded-md pb-"
-              dangerouslySetInnerHTML={{ __html: submissionNotes }}
+              dangerouslySetInnerHTML={{ __html: applyRichTextStyles(submissionNotes) }}
             />
           </div>
           
@@ -1534,6 +1534,15 @@ export function ExportArchiveClearanceCard({
 
 
 
+function applyRichTextStyles(html: string): string {
+  return html
+    .replace(/<ul>/g, '<ul style="list-style-type:disc;padding-left:1.5rem;margin:0.25rem 0;">')
+    .replace(/<ol>/g, '<ol style="list-style-type:decimal;padding-left:1.5rem;margin:0.25rem 0;">')
+    .replace(/<li>/g, '<li style="display:list-item;margin:0.1rem 0;">')
+    .replace(/<a /g, '<a style="color:#2563eb;text-decoration:underline;" ')
+    .replace(/<a>/g, '<a style="color:#2563eb;text-decoration:underline;">');
+}
+
 export type RequirementsListCardProps = {
 
   items: RequirementListItem[];
@@ -1635,7 +1644,10 @@ export function RequirementsListCard({
                           <Badge variant="warning">PHYSICAL SUBMISSION</Badge>
                         </div>
                       ) : null}
-                      <div className="mt-4 text-md text-gray-900">{item.description}</div>
+                      <div 
+                        className="mt-4 text-md text-gray-900"
+                        dangerouslySetInnerHTML={{ __html: applyRichTextStyles(item.description || "") }}
+                      />
                       <div className="mt-7 text-sm text-muted-foreground italic">{item.lastUpdated}</div>
                     </div>
                   
@@ -1778,7 +1790,11 @@ export function AnnouncementsCard({
 
                   <div className="text-sm font-bold text-gray-900 mt-2">{item.title}</div>
 
-                  <div className="mt-1 text-sm text-muted-foreground">{item.description}</div>
+                  <div className="mt-1 text-sm text-muted-foreground">
+                    <span
+                      dangerouslySetInnerHTML={{ __html: applyRichTextStyles(item.description || "") }}
+                    />
+                  </div>
                   <div className="mt-3 text-xs text-muted-foreground">{item.timestamp}</div>
                 </div>
               </div>
@@ -1946,7 +1962,11 @@ export function NotificationsCard({
 
                   <div className="mt-1 text-sm text-gray-900">
                     {item.description?.trim()
-                      ? item.description
+                      ? (
+                          <span
+                            dangerouslySetInnerHTML={{ __html: applyRichTextStyles(item.description || "") }}
+                          />
+                        )
                       : item.status                   
                         ? (
                             <>
@@ -3112,7 +3132,7 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
 
                               className="mt-2 text-md text-gray-900 text-justify"
 
-                              dangerouslySetInnerHTML={{ __html: description }}
+                              dangerouslySetInnerHTML={{ __html: applyRichTextStyles(description) }}
 
                             />
 
@@ -3781,7 +3801,7 @@ export function ExpandableClearanceStepCard({
                       </div>
                       <div 
                       className="mt-1 text-sm text-gray-900 whitespace-pre-line"
-                      dangerouslySetInnerHTML={{ __html: req.description }}
+                      dangerouslySetInnerHTML={{ __html: applyRichTextStyles(req.description) }}
                     />
                       {hasSavedComment && !req.rejected ? (
                         <div 

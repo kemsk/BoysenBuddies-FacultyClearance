@@ -186,9 +186,10 @@ export default function ApproverArchivedIndividualApproval() {
                               {request.requirementName || request.requestId}
                             </td>
                             <td className="px-4 py-4 align-top">
-                              <div className="max-w-[360px] whitespace-pre-wrap">
-                                {request.submissionNotes || "No submission notes provided."}
-                              </div>
+                              <div
+                                className="max-w-[360px]"
+                                dangerouslySetInnerHTML={{ __html: request.submissionNotes || "No submission notes provided." }}
+                              />
                             </td>
                             <td className="px-4 py-4 align-top">
                               {request.submissionLink ? (
@@ -261,9 +262,10 @@ export default function ApproverArchivedIndividualApproval() {
 
                     <div className="mt-6">
                       <div className="text-md font-bold text-foreground">Submission Notes</div>
-                      <div className="mt-3 rounded-md border border-foreground p-3 text-sm text-black">
-                        {request.submissionNotes || "No submission notes provided."}
-                      </div>
+                      <div
+                        className="mt-3 rounded-md border border-foreground p-3 text-sm text-black"
+                        dangerouslySetInnerHTML={{ __html: request.submissionNotes || "No submission notes provided." }}
+                      />
                     </div>
 
                     {request.submissionLink ? (
