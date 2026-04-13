@@ -4271,6 +4271,8 @@ export interface FacultyDataDumpCardProps {
   semesters?: { id: string; label: string }[];
   selectedSemesterId?: string;
   onSemesterChange?: (id: string) => void;
+  isFileReady?: boolean;
+  onClearFile?: () => void;
 }
 
 export function FacultyDataDumpCard({
@@ -4291,6 +4293,8 @@ export function FacultyDataDumpCard({
   semesters,
   selectedSemesterId,
   onSemesterChange,
+  isFileReady = false,
+  onClearFile,
 }: FacultyDataDumpCardProps) {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const [internalSemesterId, setInternalSemesterId] = React.useState("");
@@ -4387,7 +4391,14 @@ export function FacultyDataDumpCard({
                       <Check className="h-4 w-4 text-white" strokeWidth={4} />
                     </div>
                   ) : (
-                    <Button type="button" variant="icon" size="icon" onClick={onRemoveFile}>
+                    <Button type="button" variant="icon" size="icon" onClick={() => {
+                      setInternalFile(null);
+                      onRemoveFile?.();
+                      onClearFile?.();
+                      if (inputRef.current) {
+                        inputRef.current.value = '';
+                      }
+                    }}>
                       <X className="h-4 w-4" />
                     </Button>
                   )}
@@ -4399,23 +4410,49 @@ export function FacultyDataDumpCard({
                   <Button type="button" variant="secondary" disabled className="col-span-2 h-10 w-full rounded-md">
                     Cancel
                   </Button>
-                ) : uploadStatus === "success" ? (
+                ) : (uploadStatus === "success" || isFileReady) ? (
                   <>
                     <Button
                       type="button"
                       className="h-10 w-full rounded-md bg-destructive font-bold text-destructive-foreground hover:bg-destructive/90"
-                      onClick={onRemoveFile}
+                      onClick={() => {
+                        setInternalFile(null);
+                        onRemoveFile?.();
+                        onClearFile?.();
+                        if (inputRef.current) {
+                          inputRef.current.value = '';
+                        }
+                      }}
                     >
                       Remove File
                     </Button>
-                    <Button
-                      type="button"
-                      className="h-10 w-full rounded-md bg-primary font-bold text-primary-foreground hover:bg-primary/90"
-                      onClick={onActivate}
-                      disabled={activateDisabled || !onActivate}
-                    >
-                      Activate
-                    </Button>
+                    {uploadStatus === "success" ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="h-10 w-full rounded-md"
+                        onClick={() => {
+                          setInternalFile(null);
+                          onRemoveFile?.();
+                          onClearFile?.();
+                          if (inputRef.current) {
+                            inputRef.current.value = '';
+                          }
+                          inputRef.current?.click();
+                        }}
+                      >
+                        Choose another file
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        className="h-10 w-full rounded-md bg-primary font-bold text-primary-foreground hover:bg-primary/90"
+                        onClick={onActivate}
+                        disabled={activateDisabled || !onActivate}
+                      >
+                        Activate
+                      </Button>
+                    )}
                   </>
                 ) : (
                   <Button

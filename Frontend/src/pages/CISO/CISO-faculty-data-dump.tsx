@@ -24,6 +24,7 @@ export default function CISOFacultyDataDump() {
   const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = React.useState<"idle" | "uploading" | "success" | "error">("idle");
   const [uploadProgress, setUploadProgress] = React.useState(0);
+  const [isFileReady, setIsFileReady] = React.useState(false);
 
   const selectedTimelineLabel = React.useMemo(() => {
     const found = timelines.find((t) => t.id === selectedTimelineId);
@@ -120,12 +121,15 @@ export default function CISOFacultyDataDump() {
           selectedFile={uploadedFile}
           uploadStatus={uploadStatus}
           uploadProgress={uploadProgress}
+          isFileReady={isFileReady}
+          onClearFile={() => setIsFileReady(false)}
           onRemoveFile={async () => {
             const fileName = uploadedFile?.name;
             const timelineLabel = selectedTimelineLabel;
             setUploadedFile(null);
             setUploadStatus("idle");
             setUploadProgress(0);
+            setIsFileReady(false);
             if (fileName && timelineLabel) {
               try {
                 await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
@@ -145,23 +149,18 @@ export default function CISOFacultyDataDump() {
               }
             }
           }}
-          onActivate={() => {
-            // Placeholder for activation logic
-            alert("Activate placeholder");
-          }}
-          onFileSelected={async (file) => {
-            if (busy) return;
+          onActivate={async () => {
+            if (!uploadedFile || busy) return;
             if (!selectedTimelineId) {
               alert("Please select a semester based on an existing clearance timeline before importing the faculty CSV.");
               return;
             }
             setBusy(true);
-            setUploadedFile(file);
             setUploadStatus("uploading");
             setUploadProgress(0);
             try {
               const formData = new FormData();
-              formData.append("file", file);
+              formData.append("file", uploadedFile);
               formData.append("clearance_timeline_id", selectedTimelineId);
 
               const res = await fetch("/admin/xu-faculty-clearance/api/ciso/faculty-dump/import", {
@@ -182,7 +181,7 @@ export default function CISOFacultyDataDump() {
                     body: JSON.stringify({
                       event_type: "faculty_data_dump_error",
                       details: [
-                        `File name = ${file.name}`,
+                        `File name = ${uploadedFile.name}`,
                         `Timeline = ${selectedTimelineLabel}`,
                       ],
                     }),
@@ -201,7 +200,7 @@ export default function CISOFacultyDataDump() {
                   body: JSON.stringify({
                     event_type: "faculty_data_dump_upload",
                     details: [
-                      `File name = ${file.name}`,
+                      `File name = ${uploadedFile.name}`,
                       `Timeline = ${selectedTimelineLabel}`,
                     ],
                   }),
@@ -212,6 +211,7 @@ export default function CISOFacultyDataDump() {
 
               setUploadStatus("success");
               setUploadProgress(100);
+              setIsFileReady(false);
 
               const created = data?.created_count ?? 0;
               const updated = data?.updated_count ?? 0;
@@ -226,6 +226,18 @@ export default function CISOFacultyDataDump() {
             } finally {
               setBusy(false);
             }
+          }}
+          onFileSelected={async (file) => {
+            if (busy) return;
+            if (!selectedTimelineId) {
+              alert("Please select a semester based on an existing clearance timeline before importing the faculty CSV.");
+              return;
+            }
+            // Just store the file locally, don't upload yet
+            setUploadedFile(file);
+            setUploadStatus("idle");
+            setUploadProgress(0);
+            setIsFileReady(true);
           }}
           onDownloadTemplate={async () => {
             if (busy) return;
