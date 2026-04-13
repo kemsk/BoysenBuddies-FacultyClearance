@@ -131,6 +131,7 @@ class StudentAssistant(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="assistant_profile")
     college = models.ForeignKey(College, on_delete=models.SET_NULL, null=True, blank=True, related_name="assistants")
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name="assistants")
+    office = models.ForeignKey(Office, on_delete=models.SET_NULL, null=True, blank=True, related_name="assistants")
     supervisor_approver = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="supervised_assistants")
 
     def __str__(self):

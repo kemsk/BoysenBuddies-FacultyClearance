@@ -6600,7 +6600,7 @@ def approver_assistant_approvers_api(request):
 
             # Assistants supervised by this approver (student assistants)
             assistants = (
-                StudentAssistant.objects.select_related("user", "college", "department")
+                StudentAssistant.objects.select_related("user", "college", "department", "office")
                 .filter(supervisor_approver=user)
                 .order_by("id")
             )
@@ -6616,7 +6616,7 @@ def approver_assistant_approvers_api(request):
                         "universityId": u.university_id or "",
                         "college": sa.college.name if sa.college else "N/A",
                         "department": sa.department.name if sa.department else "N/A",
-                        "office": "",
+                        "office": sa.office.name if sa.office else "N/A",
                         "email": u.email,
                         "isActive": u.get_active_roles().exists(),
                     })
@@ -6898,8 +6898,9 @@ def approver_assistant_approvers_api(request):
                     sa, _ = StudentAssistant.objects.get_or_create(user=user_obj)
                     sa.college = college
                     sa.department = department
+                    sa.office = office if 'office' in locals() else None
                     sa.supervisor_approver = user
-                    sa.save(update_fields=["college", "department", "supervisor_approver"])
+                    sa.save(update_fields=["college", "department", "office", "supervisor_approver"])
 
                     from .models import Role, UserRole
                     student_role, _ = Role.objects.get_or_create(
@@ -7006,7 +7007,7 @@ def approver_assistant_approver_detail_api(request, user_id):
                     "universityId": target_user.university_id or "",
                     "college": assistant_profile.college.name if assistant_profile.college else "N/A",
                     "department": assistant_profile.department.name if assistant_profile.department else "N/A",
-                    "office": "",
+                    "office": assistant_profile.office.name if assistant_profile.office else "N/A",
                     "email": target_user.email,
                     "isActive": bool(target_user.is_active),
                 }

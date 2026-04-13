@@ -336,20 +336,13 @@ export default function ApproverAssistantList() {
     if (approverLevel === "office") {
       // Office approvers: show only their own offices for admin mode
       // If myOffices is empty, fall back to all offices but filter by approver's office assignment
-      console.log("DEBUG: approverRoles =", approverRoles);
-      console.log("DEBUG: myOffices =", myOffices);
-      console.log("DEBUG: visibleOffices =", visibleOffices);
-      
       if (myOffices.length > 0) {
-        console.log("DEBUG: Using myOffices");
         return myOffices;
       }
       // Fallback: filter visibleOffices to only include offices that match the approver's role
-      const filtered = visibleOffices.filter(office => 
+      return visibleOffices.filter(office => 
         approverRoles.some(role => role.office === office)
       );
-      console.log("DEBUG: Filtered offices =", filtered);
-      return filtered;
     }
     return visibleOffices;
   }, [visibleOffices, approverLevel, myOffices, approverRoles]);

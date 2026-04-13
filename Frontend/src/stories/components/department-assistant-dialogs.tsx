@@ -12,48 +12,6 @@ import {
 } from "./select";
 import { Checkbox } from "./checkbox";
 
-type RadioOption<T extends string> = {
-  value: T;
-  label: string;
-  disabled?: boolean;
-};
-
-function RadioRow<T extends string>({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: T;
-  onChange: (next: T) => void;
-  options: RadioOption<T>[];
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="text-xs font-semibold text-foreground">{label}</div>
-      <div className="flex items-center gap-6">
-        {options.map((opt) => (
-          <label 
-            key={opt.value} 
-            className={`flex items-center gap-2 text-sm ${
-              opt.disabled ? "text-muted-foreground opacity-50" : "text-muted-foreground"
-            }`}
-          >
-            <input
-              type="radio"
-              checked={value === opt.value}
-              onChange={() => onChange(opt.value)}
-              disabled={opt.disabled}
-            />
-            <span>{opt.label}</span>
-          </label>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export type DepartmentAssistantPayload = {
   firstName: string;
   middleName?: string;
@@ -127,9 +85,7 @@ export function AddDepartmentAssistantDialog({
   // Admin mode state
   const [departmentOrOffice, setDepartmentOrOffice] = React.useState("");
   const [termsAccepted, setTermsAccepted] = React.useState(false);
-  // Assistant mode approver type
-  const [approverType, setApproverType] = React.useState<"College" | "Office">("College");
-
+  
   React.useEffect(() => {
     if (!effectiveOpen) return;
     setFirstName("");
@@ -143,14 +99,6 @@ export function AddDepartmentAssistantDialog({
     setIsActive(true);
     setDepartmentOrOffice("");
     setTermsAccepted(false);
-    // Set default approver type based on restrictions
-    if (allowedApproverType === "College") {
-      setApproverType("College");
-    } else if (allowedApproverType === "Office") {
-      setApproverType("Office");
-    } else {
-      setApproverType("College");
-    }
   }, [effectiveOpen, allowedApproverType]);
 
   React.useEffect(() => {
@@ -165,28 +113,18 @@ export function AddDepartmentAssistantDialog({
   }, [college, collegeDepartmentsMap]);
 
   React.useEffect(() => {
-    if (mode !== "assistant" || approverType !== "College") return;
+    if (mode !== "assistant") return;
     if (colleges.length === 1 && !college) {
       setCollege(colleges[0]);
     }
-  }, [mode, approverType, colleges, college]);
+  }, [mode, colleges, college]);
 
   React.useEffect(() => {
-    if (mode !== "assistant" || approverType !== "College") return;
+    if (mode !== "assistant") return;
     if (filteredDepartments.length === 1 && !department) {
       setDepartment(filteredDepartments[0]);
     }
-  }, [mode, approverType, filteredDepartments, department]);
-
-  React.useEffect(() => {
-    // Reset dependent fields when approver type changes
-    if (approverType === "College") {
-      setOffice("");
-    } else {
-      setCollege("");
-      setDepartment("");
-    }
-  }, [approverType]);
+  }, [mode, filteredDepartments, department]);
 
   return (
     <Dialog open={effectiveOpen} onOpenChange={setOpen}>
@@ -316,28 +254,9 @@ export function AddDepartmentAssistantDialog({
                     <div className="text-muted-foreground text-sm">{emailHelpText}</div>
                   </div>
 
-                  {/* Show approver type selection for assistant mode - always show like CISO */}
-                  <RadioRow
-                    label="Approver Type"
-                    value={approverType}
-                    onChange={(value) => setApproverType(value as "College" | "Office")}
-                    options={[
-                      { 
-                        value: "College", 
-                        label: "College",
-                        disabled: approverLevel === "dean" || approverLevel === "chair"
-                      }, 
-                      { 
-                        value: "Office", 
-                        label: "Office",
-                        disabled: approverLevel === "dean" || approverLevel === "chair"
-                      }
-                    ]}
-                  />
-
                   <div className="space-y-1.5">
                     <div className="text-xs font-semibold text-foreground">Select College</div>
-                    <Select value={college} onValueChange={setCollege} disabled={approverType !== "College"}>
+                    <Select value={college} onValueChange={setCollege}>
                       <SelectTrigger className="h-10 w-full">
                         <SelectValue placeholder="Choose from dropdown" />
                       </SelectTrigger>
@@ -353,7 +272,7 @@ export function AddDepartmentAssistantDialog({
 
                   <div className="space-y-1.5">
                     <div className="text-xs font-semibold text-foreground">Select Department</div>
-                    <Select value={department} onValueChange={setDepartment} disabled={approverType !== "College"}>
+                    <Select value={department} onValueChange={setDepartment}>
                       <SelectTrigger className="h-10 w-full">
                         <SelectValue placeholder="Choose from dropdown" />
                       </SelectTrigger>
@@ -369,7 +288,7 @@ export function AddDepartmentAssistantDialog({
 
                   <div className="space-y-1.5">
                     <div className="text-xs font-semibold text-foreground">Select Office</div>
-                    <Select value={office} onValueChange={setOffice} disabled={approverType !== "Office"}>
+                    <Select value={office} onValueChange={setOffice} disabled={approverLevel === "dean" || approverLevel === "chair"}>
                       <SelectTrigger className="h-10 w-full">
                         <SelectValue placeholder="Choose from dropdown" />
                       </SelectTrigger>
@@ -437,7 +356,7 @@ export function AddDepartmentAssistantDialog({
                     }
                     onCreate?.(payload);
                   } else {
-                    // For assistant mode, handle approver type logic
+                    // For assistant mode, determine approver type based on what fields are filled
                     const payload: DepartmentAssistantPayload = {
                       firstName,
                       middleName: middleName.trim() ? middleName : undefined,
@@ -445,14 +364,11 @@ export function AddDepartmentAssistantDialog({
                       universityId,
                       email,
                       isActive,
-                      approverType,
                     };
 
-                    // Set college/department/office based on approver type
-                    if (approverType === "College") {
-                      payload.college = college;
-                      payload.department = department;
-                    } else if (approverType === "Office") {
+                    // Set approver type and fields based on what's provided
+                    if (office) {
+                      payload.approverType = "Office";
                       payload.office = office;
                       // For Office approvers, college/department are optional for the student assistant
                       if (college) payload.college = college;
@@ -461,6 +377,10 @@ export function AddDepartmentAssistantDialog({
                       if (approverEmail) {
                         payload.supervisorApproverId = approverEmail;
                       }
+                    } else if (college && department) {
+                      payload.approverType = "College";
+                      payload.college = college;
+                      payload.department = department;
                     }
 
                     onCreate?.(payload);

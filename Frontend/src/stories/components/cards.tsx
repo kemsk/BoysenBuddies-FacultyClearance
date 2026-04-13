@@ -426,6 +426,8 @@ export function StudentAssistantsCard({
                         <div className="text-gray-900">{item.college}</div>
                         <div className="font-bold text-gray-900">Department</div>
                         <div className="text-gray-900">{item.department}</div>
+                        <div className="font-bold text-gray-900">Office</div>
+                        <div className="text-gray-900">{item.office}</div>
                         <div className="font-bold text-gray-900">Email</div>
                         <div className="text-gray-900">{item.email}</div>
                       </div>
