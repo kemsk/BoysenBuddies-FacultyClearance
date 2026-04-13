@@ -881,13 +881,12 @@ WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
 );
 
--- Get step IDs and link colleges
+-- Get step IDs and link colleges to all approver flow steps
 INSERT IGNORE INTO FC_approverflowstep_colleges (approverflowstep_id, college_id)
 SELECT afs.id, c.id
 FROM FC_approverflowstep afs
 CROSS JOIN FC_college c
-WHERE afs.config_id = @config_id 
-AND c.abbreviation IN ('CCS', 'CAS');
+WHERE afs.config_id = @config_id;
 
 
 EOF

@@ -881,6 +881,13 @@ def me_api(request):
     except Approver.DoesNotExist:
         approver_profile = None
 
+    # Get faculty profile for Faculty roles
+    faculty_profile = None
+    try:
+        faculty_profile = Faculty.objects.get(user=user)
+    except Faculty.DoesNotExist:
+        faculty_profile = None
+
     assistant_scope = _assistant_scope(user)
     
     for ur in user.get_active_roles().select_related("role", "college", "department", "office"):
@@ -903,6 +910,12 @@ def me_api(request):
                 "college": assistant_scope["college"].name if assistant_scope.get("college") else "",
                 "department": assistant_scope["department"].name if assistant_scope.get("department") else "",
                 "office": assistant_scope["office"].name if assistant_scope.get("office") else "",
+            })
+        elif ur.role.name in {'Faculty', 'FACULTY'} and faculty_profile:
+            role_data.update({
+                "college": faculty_profile.college.name if faculty_profile.college else "",
+                "department": faculty_profile.department.name if faculty_profile.department else "",
+                "office": faculty_profile.office.name if faculty_profile.office else "",
             })
         
         roles_payload.append(role_data)
