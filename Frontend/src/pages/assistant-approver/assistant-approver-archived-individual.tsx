@@ -169,9 +169,10 @@ export default function AssistantApproverArchivedIndividualApproval() {
 
                   <div className="mt-6">
                     <div className="text-md font-bold text-foreground">Submission Notes</div>
-                    <div className="mt-3 rounded-md border border-foreground p-3 text-sm text-black">
-                      {request.submissionNotes || "No submission notes provided."}
-                    </div>
+                    <div
+                      className="mt-3 rounded-md border border-foreground p-3 text-sm text-black"
+                      dangerouslySetInnerHTML={{ __html: request.submissionNotes || "No submission notes provided." }}
+                    />
                   </div>
 
                   {request.submissionLink ? (

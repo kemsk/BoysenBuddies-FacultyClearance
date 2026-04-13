@@ -7,6 +7,10 @@ const dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(file
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    outDir: '../frontend_dist',
+    emptyOutDir: true,
+  },
   resolve: {
     alias: [
       {
