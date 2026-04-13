@@ -6916,7 +6916,7 @@ def approver_assistant_approvers_api(request):
 
                 else:
                     # Admin-type assistants are stored in ApproverAssistant and use the generic Approver role.
-                    from .models import Role, UserRole
+                    from .models import Role, UserRole, Approver
 
                     approver_role, _ = Role.objects.get_or_create(
                         name="Approver",
@@ -6939,6 +6939,43 @@ def approver_assistant_approvers_api(request):
                             "office": office,
                         },
                     )
+
+                    # Create Approver profile for admin-type assistants
+                    # Determine approver_type based on what's assigned
+                    approver_type = None
+                    if office:
+                        approver_type = "Office"
+                        Approver.objects.update_or_create(
+                            user=user_obj,
+                            defaults={
+                                "approver_type": approver_type,
+                                "office": office,
+                                "college": None,
+                                "department": None,
+                            },
+                        )
+                    elif department:
+                        approver_type = "Department"
+                        Approver.objects.update_or_create(
+                            user=user_obj,
+                            defaults={
+                                "approver_type": approver_type,
+                                "department": department,
+                                "college": department.college if department else None,
+                                "office": None,
+                            },
+                        )
+                    elif college:
+                        approver_type = "College"
+                        Approver.objects.update_or_create(
+                            user=user_obj,
+                            defaults={
+                                "approver_type": approver_type,
+                                "college": college,
+                                "department": None,
+                                "office": None,
+                            },
+                        )
             return JsonResponse({"ok": True, "id": str(user_obj.id)})
         else:
             return JsonResponse({"detail": "Method not allowed"}, status=405)
