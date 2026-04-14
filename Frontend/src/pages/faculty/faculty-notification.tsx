@@ -32,7 +32,7 @@ export default function Notification() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ role: selectedRole }),
       });
 
       const text = await r.text();
@@ -46,7 +46,7 @@ export default function Notification() {
     } catch (e) {
       console.error("Faculty notifications mark-as-read threw", e);
     }
-  }, []);
+  }, [selectedRole]);
 
   const markOneAsRead = React.useCallback(async (item: NotificationItemWithRole) => {
     const id = (item as any)?.id;
@@ -59,7 +59,7 @@ export default function Notification() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ ids: [id] }),
+        body: JSON.stringify({ ids: [id], role: selectedRole }),
       });
 
       const text = await r.text();

@@ -289,12 +289,12 @@ function InputGroupWithAddon({
         suppressContentEditableWarning
         data-placeholder={placeholder}
         className={cn(
-          "min-h-40 w-full px-3 py-2 bg-transparent outline-none",
+          "min-h-40 w-full px-3 py-2 bg-transparent outline-none break-words [overflow-wrap:anywhere]",
           "focus:outline-none focus:ring-0",
           "[&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-1",
           "[&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-1",
           "[&_li]:my-0.5",
-          "[&_a]:text-blue-600 [&_a]:underline [&_a]:underline-offset-2 [&_a]:cursor-pointer",
+          "[&_a]:text-blue-600 [&_a]:underline [&_a]:underline-offset-2 [&_a]:cursor-pointer [&_a]:break-all [&_a]:[overflow-wrap:anywhere]",
           "[&:empty:before]:content-[attr(data-placeholder)] [&:empty:before]:text-muted-foreground",
           className
         )}

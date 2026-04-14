@@ -3464,18 +3464,30 @@ def faculty_notifications_api(request):
 
     if request.method == "PUT":
         payload = _json_body(request)
-
         if payload is None:
             payload = {}
 
         ids = payload.get("ids")
+        role_filter = (payload.get("role") or "").strip()
+
         qs = Notification.objects.filter(user=session_user)
+
+        if role_filter and role_filter.lower() != "all":
+            role_groups = {
+                "approver": ["Approver", "APPROVER"],
+                "faculty": ["Faculty", "FACULTY"],
+                "ciso": ["CISO"],
+                "assistant": ["Assistant"],
+                "ovphe": ["OVPHE"],
+                "system": ["System"],
+            }   
+            allowed = role_groups.get(role_filter.lower(), [role_filter])
+            qs = qs.filter(user_role__in=allowed)
 
         if isinstance(ids, list) and ids:
             qs = qs.filter(id__in=ids)
 
         updated = qs.filter(is_read=False).update(is_read=True)
-
         return JsonResponse({"ok": True, "updated": int(updated)})
 
     if request.method == "POST":
@@ -5150,10 +5162,27 @@ def ciso_notifications_api(request):
         payload = _json_body(request)
         if payload is None:
             payload = {}
+
         ids = payload.get("ids")
-        qs = Notification.objects.filter(user=admin)
+        role_filter = (payload.get("role") or "").strip()
+
+        qs = Notification.objects.filter(user=session_user)
+
+        if role_filter and role_filter.lower() != "all":
+            role_groups = {
+                "approver": ["Approver", "APPROVER"],
+                "faculty": ["Faculty", "FACULTY"],
+                "ciso": ["CISO"],
+                "assistant": ["Assistant"],
+                "ovphe": ["OVPHE"],
+                "system": ["System"],
+            }   
+            allowed = role_groups.get(role_filter.lower(), [role_filter])
+            qs = qs.filter(user_role__in=allowed)
+
         if isinstance(ids, list) and ids:
             qs = qs.filter(id__in=ids)
+
         updated = qs.filter(is_read=False).update(is_read=True)
         return JsonResponse({"ok": True, "updated": int(updated)})
 
@@ -8789,13 +8818,30 @@ def approver_notifications_api(request):
         payload = _json_body(request)
         if payload is None:
             payload = {}
+
         ids = payload.get("ids")
-        qs = Notification.objects.filter(user=user)
+        role_filter = (payload.get("role") or "").strip()
+
+        qs = Notification.objects.filter(user=session_user)
+
+        if role_filter and role_filter.lower() != "all":
+            role_groups = {
+                "approver": ["Approver", "APPROVER"],
+                "faculty": ["Faculty", "FACULTY"],
+                "ciso": ["CISO"],
+                "assistant": ["Assistant"],
+                "ovphe": ["OVPHE"],
+                "system": ["System"],
+            }   
+            allowed = role_groups.get(role_filter.lower(), [role_filter])
+            qs = qs.filter(user_role__in=allowed)
+
         if isinstance(ids, list) and ids:
             qs = qs.filter(id__in=ids)
+
         updated = qs.filter(is_read=False).update(is_read=True)
         return JsonResponse({"ok": True, "updated": int(updated)})
-
+        
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
 
@@ -9403,7 +9449,22 @@ def assistant_approver_notifications_api(request):
             payload = {}
 
         ids = payload.get("ids")
-        qs = Notification.objects.filter(user=user)
+        role_filter = (payload.get("role") or "").strip()
+
+        qs = Notification.objects.filter(user=session_user)
+
+        if role_filter and role_filter.lower() != "all":
+            role_groups = {
+                "approver": ["Approver", "APPROVER"],
+                "faculty": ["Faculty", "FACULTY"],
+                "ciso": ["CISO"],
+                "assistant": ["Assistant"],
+                "ovphe": ["OVPHE"],
+                "system": ["System"],
+            }   
+            allowed = role_groups.get(role_filter.lower(), [role_filter])
+            qs = qs.filter(user_role__in=allowed)
+
         if isinstance(ids, list) and ids:
             qs = qs.filter(id__in=ids)
 

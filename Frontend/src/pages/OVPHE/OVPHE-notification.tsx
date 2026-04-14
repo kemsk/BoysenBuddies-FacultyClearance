@@ -31,7 +31,7 @@ export default function OVPHENotification() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ role: selectedRole }),
       });
 
       const text = await r.text();
@@ -45,7 +45,7 @@ export default function OVPHENotification() {
     } catch (e) {
       console.error("OVPHE notifications mark-as-read threw", e);
     }
-  }, []);
+  }, [selectedRole]);
 
   const markOneAsRead = React.useCallback(async (item: NotificationItemWithRole) => {
     const id = (item as any)?.id;
@@ -58,7 +58,7 @@ export default function OVPHENotification() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ ids: [id] }),
+        body: JSON.stringify({ ids: [id], role: selectedRole }),
       });
 
       const text = await r.text();

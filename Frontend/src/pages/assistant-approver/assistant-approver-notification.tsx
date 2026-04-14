@@ -31,7 +31,7 @@ export default function AssistantApproverNotification() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ role: selectedRole }),
       });
 
       const text = await r.text();
@@ -45,7 +45,7 @@ export default function AssistantApproverNotification() {
     } catch (e) {
       console.error("Assistant approver notifications mark-as-read threw", e);
     }
-  }, []);
+  }, [selectedRole]);
 
   React.useEffect(() => {
     const load = async () => {

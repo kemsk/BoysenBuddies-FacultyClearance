@@ -18,6 +18,7 @@ export function ThemeLogo({ className = "", alt = "Faculty ClearTrack" }: ThemeL
     <img
       src={logoSrc}
       alt={alt}
+      
       className={className}
       onError={(e) => {
         const img = e.currentTarget;

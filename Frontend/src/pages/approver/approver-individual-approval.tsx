@@ -266,151 +266,149 @@ export default function ApproverIndividualApproval() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4 w-full lg:max-w-4xl lg:mx-auto lg:p-8 ">
-
-        <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" size="back" onClick={handleCancel}> 
+      <main className="dashboard p-4 w-full lg:max-w-6xl lg:mx-auto lg:p-8 ">
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-2xl text-left text-primary font-bold">Clearance Requests</h1>
+          <Button variant="back" size="back" onClick={handleCancel}>
             <div className="flex items-center gap-2">
               <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
             </div>
           </Button>
         </div>
-       
-        <div className="mt-2 gap-3">
-          <RequestCard
-            requestId={item.requestId}
-            employeeId={item.employeeId}
-            SchoolID={item.schoolId}
-            FullName={item.name}
-            name={`Request No. ${item.requestId}`}
-            college={item.college}
-            department={item.department}
-            facultyType={item.facultyType}
-            SchoolEmail={item.schoolEmail}
-            status={status}
-            onApprove={() => console.log("Approved")}
-            onReject={() => console.log("Rejected")}
-            onViewDetails={() => console.log("View details")}
+
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
+          <div>
+            <RequestCard
+              requestId={item.requestId}
+              employeeId={item.employeeId}
+              SchoolID={item.schoolId}
+              FullName={item.name}
+              name={`Request No. ${item.requestId}`}
+              college={item.college}
+              department={item.department}
+              facultyType={item.facultyType}
+              SchoolEmail={item.schoolEmail}
+              status={status}
+              onApprove={() => console.log("Approved")}
+              onReject={() => console.log("Rejected")}
+              onViewDetails={() => console.log("View details")}
             />
-          
-          <div className="mt-5">
-            <div className="bg-white rounded-lg p-6 border">
-              <h2 className="text-xl font-semibold mb-4 text-gray-900">{item.requirementName}</h2>
-              
-              {/* Requirement Information */}
-              <div className="mb-6">
-                <h3 className="text-lg font-medium mb-3 text-gray-900">Requirement Details</h3>
-                <div className="bg-gray-50 p-4 rounded">
-                  <div className="mb-2">
-                    <label className="block text-sm font-medium text-gray-900">Requirement Name</label>
-                    <p className="mt-1 text-sm text-gray-900">{item.requirementName}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900">Submission Notes</label>
-                    <div 
-                      className="mt-1 p-3 bg-white border rounded text-sm text-gray-900"
-                      dangerouslySetInnerHTML={{ __html: item.submissionNotes || "No notes provided" }}
-                    />
-                  </div>
-                  {item.submissionLink && (
-                    <div className="mt-2">
-                      <label className="block text-sm font-medium text-gray-900">Submission Link</label>
-                      <a 
-                        href={item.submissionLink} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="mt-1 text-blue-600 hover:text-blue-800 text-sm underline"
-                      >
-                        {item.submissionLink}
-                      </a>
-                    </div>
-                  )}
-                </div>
+          </div>
+
+          <div className="rounded-xl border border-muted-foreground/20 bg-card shadow">
+            <div className="p-6">
+              <div className="text-xl text-center text-black font-bold mt-1">
+                {item.requirementName}
               </div>
 
-              {/* Status Selection */}
-              <div className="mb-6">
-                <h3 className="text-lg font-medium mb-3 text-gray-900">Status</h3>
-                <div className="flex gap-4">
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="status"
-                      value="approved"
-                      checked={status === "approved"}
-                      onChange={(e) => setStatus(e.target.value as "approved")}
-                      disabled={isDisabled}
-                      className="mr-2"
-                    />
-                    <span className="text-gray-900">Approved</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="status"
-                      value="rejected"
-                      checked={status === "rejected"}
-                      onChange={(e) => setStatus(e.target.value as "rejected")}
-                      disabled={isDisabled}
-                      className="mr-2"
-                    />
-                    <span className="text-gray-900">Rejected</span>
-                  </label>
-                </div>
-                {isProcessed && (
-                  <div className="mt-2 text-sm text-amber-600 bg-amber-50 p-2 rounded">
-                    This request has been processed and cannot be modified.
-                  </div>
-                )}
+              <div className="mt-6">
+                <div className="text-md font-bold text-foreground">Submission Notes</div>
+                <div
+                  className="mt-3 rounded-md border border-foreground p-3 text-sm text-black"
+                  dangerouslySetInnerHTML={{ __html: item.submissionNotes || "No notes provided" }}
+                />
               </div>
 
-              {/* Remarks */}
-              <div className="mb-6">
-                <h3 className="text-lg font-medium mb-3 text-gray-900">
-                  Remarks 
-                  {status === "rejected" && <span className="text-red-500 ml-1">*</span>}
-                </h3>
+              {item.submissionLink ? (
+                <div className="mt-4">
+                  <div className="text-md font-bold text-foreground">Submission Link</div>
+                  <a
+                    href={item.submissionLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 block break-all text-sm text-primary underline"
+                  >
+                    {item.submissionLink}
+                  </a>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="border-t" />
+
+            <div className="p-6">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="text-md font-bold text-foreground">Status</div>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="status"
+                    value="approved"
+                    checked={status === "approved"}
+                    onChange={(e) => setStatus(e.target.value as "approved")}
+                    disabled={isDisabled}
+                    className="mr-2"
+                  />
+                  <span className="text-black">Approved</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="status"
+                    value="rejected"
+                    checked={status === "rejected"}
+                    onChange={(e) => setStatus(e.target.value as "rejected")}
+                    disabled={isDisabled}
+                    className="mr-2"
+                  />
+                  <span className="text-black">Rejected</span>
+                </label>
+              </div>
+
+              {isProcessed ? (
+                <div className="mt-3 text-sm text-amber-600 bg-amber-50 p-2 rounded">
+                  This request has been processed and cannot be modified.
+                </div>
+              ) : null}
+
+              <div className="mt-6">
+                <div className="text-md font-bold text-foreground">
+                  Remarks
+                  {status === "rejected" ? <span className="text-red-500 ml-1">*</span> : null}
+                </div>
                 <Textarea
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
-                  className="min-h-[100px] text-gray-900 border-gray-900 placeholder:text-gray-400"
+                  className="mt-2 min-h-[140px] text-black border-foreground placeholder:text-gray-400"
                   disabled={isDisabled}
                 />
-                {status === "rejected" && !remarks.trim() && (
+                {status === "rejected" && !remarks.trim() ? (
                   <div className="mt-2 text-sm text-red-600">
                     Remarks are required when rejecting a clearance request
                   </div>
-                )}
-                {isProcessed && (
-                  <div className="mt-2 text-sm text-gray-900">
+                ) : null}
+                {isProcessed ? (
+                  <div className="mt-2 text-sm text-black">
                     Remarks cannot be modified for processed requests.
                   </div>
-                )}
+                ) : null}
               </div>
 
-              {/* Error Display */}
-              {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+              {error ? (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
                   {error}
                 </div>
-              )}
+              ) : null}
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 justify-end">
-                <Button variant="outline" className="text-gray-900 border-gray-900 hover:bg-gray-50" onClick={handleCancel}>
+              <div className="mt-6 flex items-center gap-3">
+                <Button
+                  variant="back"
+                  className="h-10 rounded-md px-4 text-sm font-bold flex-1"
+                  onClick={handleCancel}
+                >
                   Cancel
                 </Button>
-                <Button onClick={handleSave} disabled={saving || isDisabled}>
+                <Button
+                  onClick={handleSave}
+                  disabled={saving || isDisabled}
+                  className="h-10 rounded-md px-4 text-sm font-bold flex-1"
+                >
                   {saving ? "Saving..." : "Save"}
                 </Button>
               </div>
             </div>
           </div>
         </div>
-      
-
-        
-
       </main>
 
     </div>

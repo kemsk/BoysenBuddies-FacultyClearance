@@ -112,10 +112,6 @@ export default function LoginInput() {
             </span>
           </Button>
 
-          {error && (
-            <div className="text-sm text-red-200 text-center">{error}</div>
-          )}
-
         </div>
         
       </div>

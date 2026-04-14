@@ -8,6 +8,8 @@ import {
   SectionListCard,
 } from "../../stories/components/cards";
 
+import { applyRichTextStyles } from "../../stories/components/cards";
+
 import { Button } from "../../stories/components/button";
 import { Divider } from "../../stories/components/divider";
 import { Checkbox } from "../../stories/components/checkbox";
@@ -188,9 +190,10 @@ export default function CISOAnnouncements() {
                     <Divider color="border-[hsl(var(--white))]" />
 
                     <div className="bg-muted px-4 py-4">
-                      <p className="text-md text-foreground whitespace-pre-line">
-                        {descriptionText}
-                      </p>
+                      <div
+                        className="text-md text-foreground whitespace-pre-line"
+                        dangerouslySetInnerHTML={{ __html: applyRichTextStyles(descriptionText || "") }}
+                      />
 
                       <div className="mt-3 text-sm text-muted-foreground">
                         Last updated: {item.timestamp}

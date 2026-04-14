@@ -523,6 +523,7 @@ export function ApprovalHeader() {
 
               <AlertDialogFooter className="mt-2 flex flex-col gap-2 sm:flex-col sm:space-x-0">
                 <Button
+                  variant="destructive"
                   className="w-full"
                   onClick={async () => {
                     try {
@@ -1577,8 +1578,7 @@ export function AssistantApproverHeader() {
         <div className="pt-4">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button
-                variant="destructive"
+              <button
                 type="button"
                 className="flex w-full items-center gap-3 text-left text-xl font-semibold text-primary"
               >
@@ -1588,7 +1588,7 @@ export function AssistantApproverHeader() {
                   className="h-5 w-5 object-contain"
                 />
                 <span>Logout</span>
-              </Button>
+              </button>
             </AlertDialogTrigger>
 
             <AlertDialogContent className="max-w-xs">

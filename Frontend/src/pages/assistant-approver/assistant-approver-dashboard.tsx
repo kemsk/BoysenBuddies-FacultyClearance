@@ -52,6 +52,7 @@ export default function AssistantApproverDashboard() {
     const assistantRole = profile?.roles_payload?.find(
       (role) => role.role_name === "ASSISTANT_APPROVER" || role.role_name === "Student Assistant"
     );
+<<<<<<< HEAD
     // For student assistants, prioritize office over department/college to ensure they're considered office approvers
     return assistantRole?.office || assistantRole?.department || assistantRole?.college || "Not Assigned";
   }, [profile]);

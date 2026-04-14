@@ -714,6 +714,8 @@ export function ClearanceRequestsCard({
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set());
   const [loading, setLoading] = React.useState(false);
 
+  const allSelected = items.length > 0 && selectedIds.size === items.length;
+
   const handleBulkApprove = async () => {
     if (selectedIds.size === 0) return;
     
@@ -1066,65 +1068,75 @@ export function ClearanceRequestsCard({
   return (
     <Card className={cn("overflow-hidden", className)}>
       <CardContent className="p-0">
-        <div className="flex">
-          <Divider orientation="vertical" className="h-auto self-stretch " />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-3 border-b px-4 py-4">
-              <Checkbox
-                variant="primary"
-                checked={selectedIds.size === items.length}
-                onCheckedChange={(v) => {
-                  if (v) {
-                    setSelectedIds(new Set(items.map((i) => i.id)));
-                  } else {
-                    setSelectedIds(new Set());
+        <div className="hidden lg:block">
+          <div className="flex items-center gap-3 border-b px-4 py-4">
+            <Checkbox
+              variant="primary"
+              checked={allSelected}
+              onCheckedChange={(v) => {
+                if (v) {
+                  setSelectedIds(new Set(items.map((i) => i.id)));
+                } else {
+                  setSelectedIds(new Set());
+                }
+              }}
+            />
+
+            <div className="text-sm font-bold text-primary">Select All</div>
+
+            {selectedIds.size > 0 ? (
+              <div className="ml-auto flex items-center gap-2">
+                <RejectAlertDialog
+                  count={selectedIds.size}
+                  trigger={
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="h-8 rounded-md px-3 text-sm font-semibold"
+                      disabled={loading}
+                    >
+                      Reject
+                    </Button>
                   }
-                }}
-              />
+                  onReject={handleBulkReject}
+                />
+                <ApproveConfirmDialog
+                  count={selectedIds.size}
+                  trigger={
+                    <Button
+                      type="button"
+                      className="h-8 rounded-md bg-[hsl(var(--success))] px-3 text-sm font-semibold text-white hover:bg-[hsl(var(--success))]/90"
+                      disabled={loading}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4" /> Approve
+                      </div>
+                    </Button>
+                  }
+                  onApprove={handleBulkApprove}
+                />
+              </div>
+            ) : null}
+          </div>
 
-              <div className="text-sm font-bold text-primary">Select All</div>
-              {selectedIds.size > 0 ? (
-                <div className="ml-auto flex items-center gap-2">
-                  <RejectAlertDialog
-                    count={selectedIds.size}
-                    trigger={
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        className="h-7 rounded-md px-3 text-sm font-semibold"
-                        disabled={loading}
-                      >
-                        Reject
-                      </Button>
-                    }
-                    onReject={handleBulkReject}
-                  />
-                  <ApproveConfirmDialog
-                    count={selectedIds.size}
-                    trigger={
-                      <Button
-                        type="button"
-                        className="h-7 rounded-l bg-[hsl(var(--success))] px-2 text-sm font-semibold text-white hover:bg-[hsl(var(--success))]/90"
-                        disabled={loading}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Check className="h-4 w-4" /> Approve
-                        </div>
-                      </Button>
-                    }
-                    onApprove={handleBulkApprove}
-                  />
-                </div>
-              ) : null}
-            </div>
-
-            <Divider color="border-[hsl(var(--gray-border))]" />
-
-            <div>
-              {items.map((item, idx) => (
-                <React.Fragment key={item.id}>
-                  <div className="flex gap-3 px-4 py-6">
-                    <div className="pt-1">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b">
+                  <th className="w-12 px-4 py-3 text-left" />
+                  <th className="px-2 py-3 text-left text-sm font-bold text-primary">Name</th>
+                  <th className="px-2 py-3 text-left text-sm font-bold text-primary">Request ID</th>
+                  <th className="px-2 py-3 text-left text-sm font-bold text-primary">Employee ID</th>
+                  <th className="px-2 py-3 text-left text-sm font-bold text-primary">College</th>
+                  <th className="px-2 py-3 text-left text-sm font-bold text-primary">Department</th>
+                  <th className="px-2 py-3 text-left text-sm font-bold text-primary">Requirement</th>
+                  <th className="px-2 py-3 text-left text-sm font-bold text-primary">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.id} className="border-b last:border-b-0">
+                    <td className="w-12 px-4 py-4 align-top">
                       <Checkbox
                         variant="primary"
                         checked={selectedIds.has(item.id)}
@@ -1137,61 +1149,164 @@ export function ClearanceRequestsCard({
                           });
                         }}
                       />
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          {getItemHref ? (
-                            <Link
-                              to={getItemHref(item)}
-                              className="truncate text-left text-2xl font-bold text-primary"
-                            >
-                              {item.name}
-                            </Link>
-                          ) : (
-                            <div className="truncate text-left text-2xl font-bold text-primary">
-                              {item.name}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="shrink-0">
-                          <Badge
-                            variant={getClearanceStatusBadgeVariant(item.status)}
-                            className="px-3 py-1 text-xs font-bold"
-                          >
-                            {item.status.toUpperCase()}
-                          </Badge>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 grid grid-cols-[88px_1fr] gap-x-3 gap-y-1 text-sm">
-                        <div className="font-bold text-gray-900">Request ID</div>
-                        <div className="text-gray-900">{item.requestId}</div>
-                        <div className="font-bold text-gray-900">Employee ID</div>
-                        <div className="text-gray-900">{item.employeeId}</div>
-
-                        <div className="font-bold text-gray-900">College</div>
-                        <div className="text-gray-900">{item.college}</div>
-
-                        <div className="font-bold text-gray-900">Department</div>
-                        <div className="text-gray-900">{item.department}</div>
-
-                        <div className="font-bold text-gray-900">Faculty Type</div>
-                        <div className="text-gray-900">{item.facultyType}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {idx < items.length - 1 ? (
-                    <Divider color="border-[hsl(var(--gray-border))]" />
-                  ) : null}
-                </React.Fragment>
-              ))}
-            </div>
+                    </td>
+                    <td className="px-2 py-4 align-top text-sm font-semibold text-gray-900">
+                      {getItemHref ? (
+                        <Link to={getItemHref(item)} className="hover:underline">
+                          {item.name}
+                        </Link>
+                      ) : (
+                        item.name
+                      )}
+                    </td>
+                    <td className="px-2 py-4 align-top text-sm text-gray-900">{item.requestId}</td>
+                    <td className="px-2 py-4 align-top text-sm text-gray-900">{item.employeeId}</td>
+                    <td className="px-2 py-4 align-top text-sm text-gray-900">{item.college}</td>
+                    <td className="px-2 py-4 align-top text-sm text-gray-900">{item.department}</td>
+                    <td className="px-2 py-4 align-top text-sm text-gray-900">{item.requirementName || ""}</td>
+                    <td className="px-2 py-4 align-top">
+                      <Badge
+                        variant={getClearanceStatusBadgeVariant(item.status)}
+                        className="px-3 py-1 text-xs font-bold"
+                      >
+                        {item.status.toUpperCase()}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <Divider orientation="vertical" className="h-auto self-stretch" />
+        </div>
+
+        <div className="lg:hidden">
+          <div className="flex">
+            <Divider orientation="vertical" className="h-auto self-stretch " />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-3 border-b px-4 py-4">
+                <Checkbox
+                  variant="primary"
+                  checked={allSelected}
+                  onCheckedChange={(v) => {
+                    if (v) {
+                      setSelectedIds(new Set(items.map((i) => i.id)));
+                    } else {
+                      setSelectedIds(new Set());
+                    }
+                  }}
+                />
+
+                <div className="text-sm font-bold text-primary">Select All</div>
+                {selectedIds.size > 0 ? (
+                  <div className="ml-auto flex items-center gap-2">
+                    <RejectAlertDialog
+                      count={selectedIds.size}
+                      trigger={
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          className="h-7 rounded-md px-3 text-sm font-semibold"
+                          disabled={loading}
+                        >
+                          Reject
+                        </Button>
+                      }
+                      onReject={handleBulkReject}
+                    />
+                    <ApproveConfirmDialog
+                      count={selectedIds.size}
+                      trigger={
+                        <Button
+                          type="button"
+                          className="h-7 rounded-l bg-[hsl(var(--success))] px-2 text-sm font-semibold text-white hover:bg-[hsl(var(--success))]/90"
+                          disabled={loading}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Check className="h-4 w-4" /> Approve
+                          </div>
+                        </Button>
+                      }
+                      onApprove={handleBulkApprove}
+                    />
+                  </div>
+                ) : null}
+              </div>
+
+              <Divider color="border-[hsl(var(--gray-border))]" />
+
+              <div>
+                {items.map((item, idx) => (
+                  <React.Fragment key={item.id}>
+                    <div className="flex gap-3 px-4 py-6">
+                      <div className="pt-1">
+                        <Checkbox
+                          variant="primary"
+                          checked={selectedIds.has(item.id)}
+                          onCheckedChange={() => {
+                            setSelectedIds((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(item.id)) next.delete(item.id);
+                              else next.add(item.id);
+                              return next;
+                            });
+                          }}
+                        />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            {getItemHref ? (
+                              <Link
+                                to={getItemHref(item)}
+                                className="truncate text-left text-2xl font-bold text-primary"
+                              >
+                                {item.name}
+                              </Link>
+                            ) : (
+                              <div className="truncate text-left text-2xl font-bold text-primary">
+                                {item.name}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="shrink-0">
+                            <Badge
+                              variant={getClearanceStatusBadgeVariant(item.status)}
+                              className="px-3 py-1 text-xs font-bold"
+                            >
+                              {item.status.toUpperCase()}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-[88px_1fr] gap-x-3 gap-y-1 text-sm">
+                          <div className="font-bold text-gray-900">Request ID</div>
+                          <div className="text-gray-900">{item.requestId}</div>
+                          <div className="font-bold text-gray-900">Employee ID</div>
+                          <div className="text-gray-900">{item.employeeId}</div>
+
+                          <div className="font-bold text-gray-900">College</div>
+                          <div className="text-gray-900">{item.college}</div>
+
+                          <div className="font-bold text-gray-900">Department</div>
+                          <div className="text-gray-900">{item.department}</div>
+
+                          <div className="font-bold text-gray-900">Faculty Type</div>
+                          <div className="text-gray-900">{item.facultyType}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {idx < items.length - 1 ? (
+                      <Divider color="border-[hsl(var(--gray-border))]" />
+                    ) : null}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+            <Divider orientation="vertical" className="h-auto self-stretch" />
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -1536,8 +1651,20 @@ export function ExportArchiveClearanceCard({
 
 
 
-function applyRichTextStyles(html: string): string {
-  return html
+export function applyRichTextStyles(html: string): string {
+  const input = String(html ?? "");
+
+  // Basic sanitization (defense-in-depth). We still rely on trusted admins,
+  // but we should not allow obvious XSS vectors.
+  const sanitized = input
+    // Strip script blocks
+    .replace(/<\s*script[^>]*>[\s\S]*?<\s*\/\s*script\s*>/gi, "")
+    // Strip javascript: URLs
+    .replace(/(href\s*=\s*["'])\s*javascript:[^"']*\1/gi, "$1#$1")
+    // Strip inline event handlers like onclick=...
+    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "");
+
+  return sanitized
     .replace(/<ul>/g, '<ul style="list-style-type:disc;padding-left:1.5rem;margin:0.25rem 0;">')
     .replace(/<ol>/g, '<ol style="list-style-type:decimal;padding-left:1.5rem;margin:0.25rem 0;">')
     .replace(/<li>/g, '<li style="display:list-item;margin:0.1rem 0;">')
@@ -3841,20 +3968,25 @@ export function ExpandableClearanceStepCard({
       {/* Confirmation Dialog */}
       {showConfirmDialog && (
         <AlertDialog open={true} onOpenChange={(open) => !open && setShowConfirmDialog(null)}>
-          <AlertDialogContent className="max-w-md items-center gap-4 mb-3">
-            <AlertDialogHeader>
+          <AlertDialogContent className="max-w-md items-center gap-4 ">
+
+            <div className="items-center gap-2">
               <div className="p-4 flex items-center justify-center">
-                <img src="/RedAlertIcon.png" width="50" height="50" />
-                  </div>             
-              <AlertDialogDescription>
-                You are about to SUBMIT '{showConfirmDialog}'. Do you wish to continue?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <Button variant="back" onClick={() => setShowConfirmDialog(null)}>
+                <img src="/PrimaryAlertIcon.png" width="50" height="50" />
+              </div>
+              <div className="text-xl text-center text-black font-bold">
+                You are about to submit '{showConfirmDialog}'.
+              </div>
+            </div>
+              <div className="text-lg text-center text-black font-bold">
+                Do you wish to continue?
+              </div>           
+              <div className="flex flex-row gap-3 justify-end">
+              <Button variant="back" className="w-full font-bold" onClick={() => setShowConfirmDialog(null)}>
                 Cancel
               </Button>
               <Button variant="default"
+                className="w-full font-bold"
                 onClick={async () => {
                   // Make API call to submit ClearanceRequest first
                   try {
@@ -3944,7 +4076,7 @@ export function ExpandableClearanceStepCard({
               >
                 Submit
               </Button>
-            </AlertDialogFooter>
+              </div>
           </AlertDialogContent>
         </AlertDialog>
       )}

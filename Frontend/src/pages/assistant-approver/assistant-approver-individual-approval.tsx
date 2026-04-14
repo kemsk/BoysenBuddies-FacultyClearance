@@ -121,106 +121,117 @@ export default function AssitantApproverIndividualApproval() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4">
-
-        <div className="mb-3 mt-2 flex items-center justify-end">
+      <main className="dashboard p-4 w-full lg:max-w-6xl lg:mx-auto lg:p-8">
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-2xl text-left text-primary font-bold">Clearance Requests</h1>
           <Button variant="back" size="back" onClick={() => navigate("/assistant-approver-clearance")}> 
             <div className="flex items-center gap-2">
               <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
             </div>
           </Button>
         </div>
-       
-        <div className="mt-2 gap-3">
+
+        <div className="mt-6">
           {loading ? (
             <div className="rounded-xl border border-muted-foreground/20 bg-card p-6 text-black">Loading request...</div>
           ) : item ? (
-            <>
-              <RequestCard
-                requestId={item.requestId}
-                employeeId={item.employeeId}
-                SchoolID={item.schoolId}
-                FullName={item.fullName || item.name}
-                name={item.requestId}
-                college={item.college}
-                department={item.department}
-                facultyType={item.facultyType}
-                SchoolEmail={item.schoolEmail}
-                status={item.status}
-              />
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
+              <div>
+                <RequestCard
+                  requestId={item.requestId}
+                  employeeId={item.employeeId}
+                  SchoolID={item.schoolId}
+                  FullName={item.fullName || item.name}
+                  name={`Request No. ${item.requestId}`}
+                  college={item.college}
+                  department={item.department}
+                  facultyType={item.facultyType}
+                  SchoolEmail={item.schoolEmail}
+                  status={item.status}
+                />
+              </div>
 
-              <div className="mt-5 rounded-xl border border-muted-foreground/20 bg-card p-6 shadow">
-                <div className="text-xl text-center text-black font-bold mt-1">{item.requirementName || "Requirement"}</div>
+              <div className="rounded-xl border border-muted-foreground/20 bg-card shadow">
+                <div className="p-6">
+                  <div className="text-xl text-center text-black font-bold mt-1">{item.requirementName || "Requirement"}</div>
 
-                <div className="mt-6">
-                  <div className="text-md font-bold text-foreground">Submission Notes</div>
-                  <div
-                    className="mt-3 rounded-md border border-foreground p-3 text-sm text-black"
-                    dangerouslySetInnerHTML={{ __html: item.submissionNotes || "No submission notes provided." }}
-                  />
-                </div>
-
-                {item.submissionLink ? (
-                  <div className="mt-4">
-                    <div className="text-md font-bold text-foreground">Submission Link</div>
-                    <a className="mt-2 block break-all text-sm text-primary underline" href={item.submissionLink} target="_blank" rel="noreferrer">
-                      {item.submissionLink}
-                    </a>
+                  <div className="mt-6">
+                    <div className="text-md font-bold text-foreground">Submission Notes</div>
+                    <div
+                      className="mt-3 rounded-md border border-foreground p-3 text-sm text-black"
+                      dangerouslySetInnerHTML={{ __html: item.submissionNotes || "No submission notes provided." }}
+                    />
                   </div>
-                ) : null}
 
-                <div className="mt-4 grid gap-2 text-sm text-black">
-                  <div><span className="font-bold">Submitted On:</span> {item.submittedDate || "N/A"}</div>
-                  {item.approvedBy ? <div><span className="font-bold">Processed By:</span> {item.approvedBy}</div> : null}
-                  {item.approvedDate ? <div><span className="font-bold">Processed On:</span> {item.approvedDate}</div> : null}
+                  {item.submissionLink ? (
+                    <div className="mt-4">
+                      <div className="text-md font-bold text-foreground">Submission Link</div>
+                      <a className="mt-2 block break-all text-sm text-primary underline" href={item.submissionLink} target="_blank" rel="noreferrer">
+                        {item.submissionLink}
+                      </a>
+                    </div>
+                  ) : null}
+
+                  <div className="mt-4 grid gap-2 text-sm text-black">
+                    <div><span className="font-bold">Submitted On:</span> {item.submittedDate || "N/A"}</div>
+                    {item.approvedBy ? <div><span className="font-bold">Processed By:</span> {item.approvedBy}</div> : null}
+                    {item.approvedDate ? <div><span className="font-bold">Processed On:</span> {item.approvedDate}</div> : null}
+                  </div>
                 </div>
 
-                <div className="mt-6">
+                <div className="border-t" />
+
+                <div className="p-6">
                   <div className="text-md font-bold text-foreground">Remarks</div>
                   <Textarea
-                    className="mt-2 min-h-[120px] text-black"
+                    className="mt-2 min-h-[140px] text-black"
                     placeholder="Enter remarks for the approval or rejection"
                     value={remarks}
                     onChange={(e) => setRemarks(e.target.value)}
                     disabled={isSaving}
                   />
-                </div>
 
-                {error ? <div className="mt-3 text-sm font-medium text-red-600">{error}</div> : null}
-                {message ? <div className="mt-3 text-sm font-medium text-green-700">{message}</div> : null}
+                  {error ? <div className="mt-3 text-sm font-medium text-red-600">{error}</div> : null}
+                  {message ? <div className="mt-3 text-sm font-medium text-green-700">{message}</div> : null}
 
-                <div className="mt-6 flex items-center gap-3">
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    className="h-10 rounded-md px-4 text-sm font-bold flex-1"
-                    disabled={isSaving}
-                    onClick={() => handleAction("reject")}
-                  >
-                    Reject
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="default"
-                    className="h-10 rounded-md px-4 text-sm font-bold flex-1"
-                    disabled={isSaving}
-                    onClick={() => handleAction("approve")}
-                  >
-                    Approve
-                  </Button>
+                  <div className="mt-6 flex items-center gap-3">
+                    <Button
+                      type="button"
+                      variant="back"
+                      className="h-10 rounded-md px-4 text-sm font-bold flex-1"
+                      disabled={isSaving}
+                      onClick={() => navigate("/assistant-approver-clearance")}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="h-10 rounded-md px-4 text-sm font-bold flex-1"
+                      disabled={isSaving}
+                      onClick={() => handleAction("reject")}
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="default"
+                      className="h-10 rounded-md px-4 text-sm font-bold flex-1"
+                      disabled={isSaving}
+                      onClick={() => handleAction("approve")}
+                    >
+                      Approve
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </>
+            </div>
           ) : (
             <div className="rounded-xl border border-muted-foreground/20 bg-card p-6 text-black">
               {error || "Request not found."}
             </div>
           )}
         </div>
-      
-
-        
-
       </main>
 
     </div>

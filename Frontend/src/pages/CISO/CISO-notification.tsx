@@ -33,7 +33,7 @@ export default function CISONotification() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ role: selectedRole }),
       });
 
       const text = await r.text();
@@ -47,7 +47,7 @@ export default function CISONotification() {
     } catch (e) {
       console.error("CISO notifications mark-as-read threw", e);
     }
-  }, []);
+  }, [selectedRole]);
 
   React.useEffect(() => {
     const load = async () => {
