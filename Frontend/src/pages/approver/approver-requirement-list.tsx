@@ -45,10 +45,14 @@ export default function RequirementList() {
   const [showTrueAgreement, setShowTrueAgreement] = React.useState(false);
   const [requirements, setRequirements] = React.useState<Requirement[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [activeAcademicYear, setActiveAcademicYear] = React.useState<string>("");
+  const [activeSemester, setActiveSemester] = React.useState<string>("");
   const [editingRequirement, setEditingRequirement] = React.useState<Requirement | null>(null);
   const [pendingChanges, setPendingChanges] = React.useState<any[]>([]);
   const [approverName, setApproverName] = React.useState<string>("");
   const [currentUserId, setCurrentUserId] = React.useState<number | null>(null);
+
+  const hasActiveTimeline = Boolean(activeAcademicYear && activeSemester);
 
   // Fetch current approver name and user ID
   React.useEffect(() => {
@@ -91,6 +95,25 @@ export default function RequirementList() {
     // Don't load pending changes on refresh - only keep them in local storage
     // This ensures page shows saved state, not pending state
   }, [fetchRequirements]);
+
+  React.useEffect(() => {
+    const fetchActiveTimeline = async () => {
+      try {
+        const r = await fetch("/admin/xu-faculty-clearance/api/active-clearance-timeline", {
+          credentials: "include",
+        });
+        if (!r.ok) return;
+        const data = (await r.json()) as { academicYear?: string; semester?: string };
+        setActiveAcademicYear((data.academicYear || "").trim());
+        setActiveSemester((data.semester || "").trim());
+      } catch {
+        setActiveAcademicYear("");
+        setActiveSemester("");
+      }
+    };
+
+    fetchActiveTimeline();
+  }, []);
 
   // Update local storage when pending changes change
   React.useEffect(() => {
@@ -398,7 +421,7 @@ export default function RequirementList() {
        <div className="mt-2 space-y-3">
         <AddRequirementDialog
           trigger={
-            <Button variant="default" className="w-full h-12">
+            <Button variant="default" className="w-full h-12" disabled={!hasActiveTimeline}>
               <div className="flex w-full items-center justify-center gap-2">
               <img src="WhitePlusIcon.png" alt="Add Requirement" />Add Requirement
               </div>
@@ -413,7 +436,18 @@ export default function RequirementList() {
           </div>
         ) : requirements.length === 0 && pendingChanges.filter(change => change.type === 'create').length === 0 ? (
           <div className="text-center py-8">
-            <div className="text-muted-foreground">No requirements found. Create your first requirement above.</div>
+            {!activeAcademicYear && !activeSemester ? (
+              <div className="text-muted-foreground">
+                Your department/office is not a part of the
+                <br />
+                [School Year] [Semester] Approver Flow
+                <br />
+                <br />
+                Contact ciso@xu.edu.ph to configure your department/office.
+              </div>
+            ) : (
+              <div className="text-muted-foreground">No requirements found. Create your first requirement above.</div>
+            )}
           </div>
         ) : (
           (() => {
@@ -518,6 +552,7 @@ export default function RequirementList() {
               </div>
             )}
             <AgreementCard 
+              disabled={!hasActiveTimeline}
               onConfirm={() => {
                 if (pendingChanges.length > 0) {
                   commitPendingChanges();

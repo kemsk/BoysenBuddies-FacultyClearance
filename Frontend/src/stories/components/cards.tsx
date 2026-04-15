@@ -1668,8 +1668,14 @@ export function applyRichTextStyles(html: string): string {
     .replace(/<ul>/g, '<ul style="list-style-type:disc;padding-left:1.5rem;margin:0.25rem 0;">')
     .replace(/<ol>/g, '<ol style="list-style-type:decimal;padding-left:1.5rem;margin:0.25rem 0;">')
     .replace(/<li>/g, '<li style="display:list-item;margin:0.1rem 0;">')
-    .replace(/<a /g, '<a style="color:#2563eb;text-decoration:underline;" ')
-    .replace(/<a>/g, '<a style="color:#2563eb;text-decoration:underline;">');
+    .replace(
+      /<a /g,
+      '<a style="color:#2563eb;text-decoration:underline;overflow-wrap:anywhere;word-break:break-word;" '
+    )
+    .replace(
+      /<a>/g,
+      '<a style="color:#2563eb;text-decoration:underline;overflow-wrap:anywhere;word-break:break-word;">'
+    );
 }
 
 export type RequirementsListCardProps = {
@@ -5846,6 +5852,7 @@ export type AgreementCardProps = {
   SchoolEmail?:string;
   status?: "pending" | "approved" | "rejected";
   className?: string;
+  disabled?: boolean;
   onApprove?: () => void;
   onReject?: () => void;
   onViewDetails?: () => void;
@@ -5854,6 +5861,7 @@ export type AgreementCardProps = {
 
 export function AgreementCard({
   className,
+  disabled = false,
   onConfirm,
 }: AgreementCardProps) {
   const [agreeChecked, setAgreeChecked] = React.useState(false);
@@ -5872,11 +5880,13 @@ export function AgreementCard({
           <Checkbox
             variant="gray"
             checked={agreeChecked}
+            disabled={disabled}
             onCheckedChange={(v) => setAgreeChecked(v === true)}
           />
            <label className="text-sm text-gray-700">
               <span className="font-bold">I agree</span> that I have created all the necessary clearance requirements that I need for my Department/Office
             </label>
+
         </div>
         </div>
 
@@ -5886,6 +5896,7 @@ export function AgreementCard({
           <Checkbox
             variant="gray"
             checked={understandChecked}
+            disabled={disabled}
             onCheckedChange={(v) => setUnderstandChecked(v === true)}
           />
           <label className="text-sm text-gray-700">
@@ -5899,6 +5910,7 @@ export function AgreementCard({
           <Checkbox
             variant="gray"
             checked={understandConsequencesChecked}
+            disabled={disabled}
             onCheckedChange={(v) => setUnderstandConsequencesChecked(v === true)}
           />
           <label className="text-sm text-gray-700">
@@ -5912,7 +5924,7 @@ export function AgreementCard({
             type="button"
             variant="default"
             className="w-full justify-center  text-center font-bold"
-            disabled={!allChecked}
+            disabled={disabled || !allChecked}
             onClick={onConfirm}
           >
             I Agree and Understand

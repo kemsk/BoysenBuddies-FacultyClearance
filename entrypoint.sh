@@ -37,6 +37,14 @@ ON DUPLICATE KEY UPDATE
     first_name = VALUES(first_name),
     last_name = VALUES(last_name);
 
+-- Ensure user 201131134 is not an Approver (keep other roles intact)
+DELETE FROM FC_userrole
+WHERE user_id = (SELECT id FROM FC_user WHERE email = '201131134@my.xu.edu.ph')
+  AND role_id = (SELECT id FROM FC_role WHERE name = 'Approver');
+
+DELETE FROM FC_approver
+WHERE user_id = (SELECT id FROM FC_user WHERE email = '201131134@my.xu.edu.ph');
+
 -- Seed Roles
 INSERT INTO FC_role (name, description, is_system_role, created_at)
 SELECT * FROM (
@@ -79,29 +87,6 @@ WHERE NOT EXISTS (
 );
 
 -- Seed UserRoles for admin users
-INSERT INTO FC_userrole (user_id, role_id, college_id, department_id, assigned_by_id, assigned_date, is_active)
-SELECT * FROM (
-    SELECT 
-        u.id AS user_id, 
-        r.id AS role_id,
-        @ccs_id AS college_id,
-        @it_id AS department_id,
-        u.id AS assigned_by_id,
-        NOW() AS assigned_date,
-        1 AS is_active
-    FROM FC_user u
-    CROSS JOIN FC_role r
-    WHERE u.email = '201131134@my.xu.edu.ph' AND r.name = 'Approver'
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM FC_userrole ur
-    WHERE ur.user_id = v.user_id
-      AND ur.role_id = v.role_id
-      AND ur.college_id = v.college_id
-      AND ur.department_id = v.department_id
-);
-
 INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
 SELECT 
     u.id AS user_id, 
@@ -945,6 +930,9 @@ SELECT afs.id, c.id
 FROM FC_approverflowstep afs
 CROSS JOIN FC_college c
 WHERE afs.config_id = @config_id;
+
+-- Remove approver record for user 201131134 (Farrah Apag) while keeping other roles
+DELETE FROM FC_approver WHERE user_id = (SELECT id FROM FC_user WHERE email = '201131134@my.xu.edu.ph');
 
 EOF
 

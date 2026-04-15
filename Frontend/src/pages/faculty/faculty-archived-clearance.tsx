@@ -25,6 +25,7 @@ type ArchivedTimelineItem = {
   clearancePeriodEnd: string;
   lastUpdated: string;
   archivedDate: string;
+  status?: "COMPLETED" | "INCOMPLETE";
 };
 
 export default function FacultyArchiveClearance() {
@@ -159,7 +160,11 @@ export default function FacultyArchiveClearance() {
                   <h3 className="text-lg font-bold text-foreground">{timeline.name}</h3>
 
                   <div className="flex items-center gap-2">
-                  <Badge variant="success">COMPLETED</Badge>
+                  {timeline.status === "INCOMPLETE" ? (
+                    <Badge variant="warning">INCOMPLETE</Badge>
+                  ) : (
+                    <Badge variant="success">COMPLETED</Badge>
+                  )}
                   <div className=" text-xl font-semibold text-foreground">{'>'}</div>
                   </div>
                 </div>

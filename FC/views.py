@@ -7309,8 +7309,8 @@ def faculty_archived_clearance_api(request):
         _ensure_archived_timeline_records(timeline)
     items = []
     for timeline in archived_timelines:
-        has_archived_snapshot = ArchivedClearance.objects.filter(clearance_timeline=timeline, faculty=faculty).exists()
-        if not has_archived_snapshot:
+        archived = ArchivedClearance.objects.filter(clearance_timeline=timeline, faculty=faculty).first()
+        if not archived:
             continue
         start_year = str(timeline.academic_year_start or "")
         end_year = str(timeline.academic_year_end or "")
@@ -7323,6 +7323,7 @@ def faculty_archived_clearance_api(request):
             "clearancePeriodEnd": timeline.clearance_end_date.strftime("%m/%d/%Y"),
             "lastUpdated": timeline.updated_at.strftime("%B %d, %Y, %H:%M %p"),
             "archivedDate": timeline.archive_date.strftime("%B %d, %Y, %H:%M %p"),
+            "status": archived.status,
         })
     return JsonResponse({"items": items})
 

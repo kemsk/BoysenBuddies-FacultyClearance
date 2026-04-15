@@ -13,6 +13,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { SearchInputGroup } from "../../stories/components/input-group";
 import * as React from "react";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 
 import {
   Select,
@@ -38,7 +39,7 @@ import {
  export default function CISOManageSystemUser() {
   const navigate = useNavigate();
   const [page, setPage] = React.useState(1);
-  const pageSize = 2;
+  const pageSize = 12;
 
   const [users, setUsers] = React.useState<SystemUser[]>([]);
   const [filteredUsers, setFilteredUsers] = React.useState<SystemUser[]>([]);
@@ -250,7 +251,7 @@ import {
         <div className="mb-3 mt-2 flex items-center justify-end">
           <Button variant="back" size="back" onClick={() => navigate("/CISO-tools")}> 
             <div className="flex items-center gap-2">
-              <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
+              <ArrowLeft className="h-4 w-4" />Back
             </div>
           </Button>
         </div>
@@ -339,7 +340,7 @@ import {
           submitLabel="Create"
           colleges={orgColleges}
           departments={orgDepartments}
-          offices={orgOffices.filter(office => office !== "Office of the Vice President for Higher Education")}
+          offices={orgOffices}
           collegeDepartmentsMap={collegeDepartmentsMap}
           onSubmit={(payload: ManageSystemApproverPayload) => {
             (async () => {
@@ -388,7 +389,7 @@ import {
           submitLabel="Create"
           colleges={orgColleges}
           departments={orgDepartments}
-          offices={orgOffices.filter(office => office !== "Office of the Vice President for Higher Education")}
+          offices={orgOffices}
           collegeDepartmentsMap={collegeDepartmentsMap}
           initialValues={
             activeUser
@@ -568,16 +569,16 @@ import {
          <div className="flex items-center justify-center gap-3  px-4 py-3">
           <div className="text-sm text-muted-foreground">Page</div>
 
-          <Button type="button" variant="icon" size="icon" className="h-9 w-9" onClick={onNextPage}>
-            <img src="/BlackArrowIcon.png" alt="Next" className="h-5 w-5" />
+          <Button type="button" variant="icon" size="icon" className="h-9 w-9" onClick={onPrevPage}>
+            <ChevronLeft className="h-5 w-5" />
           </Button>
 
           <div className="flex h-9 min-w-[44px] items-center justify-center rounded-md border border-muted-foreground/30 bg-background px-3 text-sm font-semibold text-foreground">
             {safePage}
           </div>
 
-          <Button type="button" variant="icon" size="icon" className="h-9 w-9" onClick={onPrevPage}>
-            <img src="/BlackArrowIcon.png" alt="Prev" className="h-5 w-5 rotate-180" />
+          <Button type="button" variant="icon" size="icon" className="h-9 w-9" onClick={onNextPage}>
+            <ChevronRight className="h-5 w-5" />
           </Button>
 
           <div className="text-sm text-muted-foreground">of {pageCount}</div>
