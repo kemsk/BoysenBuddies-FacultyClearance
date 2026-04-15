@@ -96,12 +96,10 @@ export function EditSystemGuidelinesDialog({
               <Button
                 type="button"
                 className="h-11 w-full rounded-md"
-                  onClick={() => {
-                    const plainDescription = description.replace(/<[^>]*>/g, '');
-  console.log('Sending:', { title, description: plainDescription });
-  onSave?.({ title, description: plainDescription });
-  setOpen(false);
-}}
+                onClick={() => {
+                  onSave?.({ title, description });
+                  setOpen(false);
+                }}
               >
                 Save
               </Button>

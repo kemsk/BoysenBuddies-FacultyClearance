@@ -6,6 +6,7 @@ import { OVPHEHeader } from "../../stories/components/header";
 import { 
   SectionListCard,
   type SystemGuidlinesItem,
+  applyRichTextStyles,
 } from "../../stories/components/cards";
 
 import { Button } from "../../stories/components/button";
@@ -174,11 +175,7 @@ React.useEffect(() => {
             <div className="p-0">
               {items.map((item, idx) => {
                 const enabled = item.enabled ?? true;
-                const descriptionText = Array.isArray(item.description)
-                  ? item.description
-                      .map((d) => (typeof d === "string" ? d : d.text))
-                      .join("\n")
-                  : item.description;
+                const descriptionText = item.description;
 
                 return (
                   <div key={`${item.title}-${idx}`} className="bg-muted m-4">
@@ -199,9 +196,10 @@ React.useEffect(() => {
                     <Divider color="border-[hsl(var(--white))]" />
 
                     <div className="bg-muted px-4 py-4">
-                      <p className="text-md text-foreground whitespace-pre-line">
-                        {descriptionText}
-                      </p>
+                      <div
+                        className="text-md text-foreground whitespace-pre-line"
+                        dangerouslySetInnerHTML={{ __html: applyRichTextStyles(descriptionText || "") }}
+                      />
 
                       <div className="mt-3 text-sm text-muted-foreground">
                         Last updated: {item.timestamp}

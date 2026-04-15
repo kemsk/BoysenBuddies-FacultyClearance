@@ -5115,6 +5115,7 @@ def ovphe_activity_logs_api(request):
     return JsonResponse({"items": items, "total": total})
 
 
+@csrf_exempt
 @ciso_required
 def ciso_system_guidelines_api(request):
     return _system_guidelines_api(request, "ciso")

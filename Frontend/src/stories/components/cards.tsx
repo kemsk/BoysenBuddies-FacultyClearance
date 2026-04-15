@@ -4180,7 +4180,7 @@ export type SystemGuidlinesItem = {
 
   title: string;
 
-  description: (string | { text: string; subitems?: string[] })[] | string;
+  description: string;
 
   email: string;
 
@@ -5367,7 +5367,10 @@ export function SystemGuidlinesCard({
 
                     ) : (
 
-                      <p className="whitespace-pre-line">{item.description}</p>
+                      <div 
+                        className="text-md text-gray-900 whitespace-pre-line"
+                        dangerouslySetInnerHTML={{ __html: applyRichTextStyles(item.description || "") }}
+                      />
 
                     )}
 
