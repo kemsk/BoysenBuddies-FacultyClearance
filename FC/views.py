@@ -54,11 +54,9 @@ def _assistant_scope(user):
     }
 
 def _assistant_requirement_queryset(user, timeline):
-    scope = _assistant_scope(user)
-    supervisor = scope["supervisor"]
-    supervisor_profile = getattr(supervisor, "approver_profile", None)
+    assistant = getattr(user, "assistant_profile", None)
     
-    if not supervisor_profile:
+    if not assistant:
         return Requirement.objects.none()
 
     requirements = Requirement.objects.filter(
@@ -78,7 +76,7 @@ def _assistant_requirement_queryset(user, timeline):
     visible_ids = [
         requirement.id
         for requirement in requirements
-        if _can_approver_access_requirement(supervisor_profile, requirement)
+        if _can_assistant_access_requirement(assistant, requirement)
     ]
     
     if not visible_ids:
@@ -88,10 +86,9 @@ def _assistant_requirement_queryset(user, timeline):
 
 
 def _assistant_clearance_queryset(user, timeline):
-    scope = _assistant_scope(user)
-    supervisor = scope["supervisor"]
+    assistant = getattr(user, "assistant_profile", None)
     
-    if not supervisor:
+    if not assistant:
         return ClearanceRequest.objects.none()
 
     requests = ClearanceRequest.objects.select_related(
@@ -112,7 +109,11 @@ def _assistant_clearance_queryset(user, timeline):
         clearance_timeline=timeline,
     ).order_by("-submitted_date", "-id")
 
-    visible_ids = [request.id for request in requests if _can_approver_access_request(supervisor, request)]
+    # Apply the correct logic: if assistant has office, use office; otherwise use department
+    visible_ids = []
+    for request in requests:
+        if _can_assistant_access_request(assistant, request):
+            visible_ids.append(request.id)
     
     if not visible_ids:
         return ClearanceRequest.objects.none()
@@ -2238,6 +2239,42 @@ def _can_approver_access_request(user: User, clearance_request: ClearanceRequest
     if approver_profile.department:
         if (approver_profile.department == faculty.department or 
             requirement.target_departments.filter(id=approver_profile.department.id).exists()):
+            return True
+
+    return False
+
+
+def _can_assistant_access_request(assistant: StudentAssistant, clearance_request: ClearanceRequest) -> bool:
+    """Check if student assistant has permission to access a specific clearance request based on their office/department"""
+    faculty = clearance_request.faculty
+    requirement = clearance_request.requirement
+    approver_flow_step = requirement.approver_flow_step
+
+    # Logic: If assistant has an office, they serve under that office; otherwise they serve under their department
+    if assistant.office:
+        # Student assistant has an office - check if it matches the requirement's approver flow step office
+        if approver_flow_step and approver_flow_step.office == assistant.office:
+            return True
+        
+        # Also check if the requirement targets this office
+        if requirement.target_offices.filter(id=assistant.office.id).exists():
+            return True
+            
+    elif assistant.department:
+        # Student assistant has no office - check if they serve under their department
+        if approver_flow_step:
+            # Check if the requirement targets this department
+            if requirement.target_departments.filter(id=assistant.department.id).exists():
+                return True
+        
+        # Also check if faculty belongs to the same department as the assistant
+        if faculty.department == assistant.department:
+            return True
+
+    # Check college-level access (fallback)
+    if assistant.college:
+        if (faculty.college == assistant.college or 
+            requirement.target_colleges.filter(id=assistant.college.id).exists()):
             return True
 
     return False
@@ -7780,6 +7817,35 @@ def _can_approver_access_requirement(approver_profile, requirement):
             # Office approvers should only see college/department/individual specific requirements
             # if their office is explicitly targeted as a recipient for that scope
             return office in requirement.target_offices.all()
+    return False
+
+
+def _can_assistant_access_requirement(assistant: StudentAssistant, requirement: Requirement) -> bool:
+    """Check if student assistant has permission to access a specific requirement based on their office/department"""
+    approver_flow_step = requirement.approver_flow_step
+
+    # Logic: If assistant has an office, they serve under that office; otherwise they serve under their department
+    if assistant.office:
+        # Student assistant has an office - check if it matches the requirement's approver flow step office
+        if approver_flow_step and approver_flow_step.office == assistant.office:
+            return True
+        
+        # Also check if the requirement targets this office
+        if requirement.target_offices.filter(id=assistant.office.id).exists():
+            return True
+            
+    elif assistant.department:
+        # Student assistant has no office - check if they serve under their department
+        if approver_flow_step:
+            # Check if the requirement targets this department
+            if requirement.target_departments.filter(id=assistant.department.id).exists():
+                return True
+
+    # Check college-level access (fallback)
+    if assistant.college:
+        if requirement.target_colleges.filter(id=assistant.college.id).exists():
+            return True
+
     return False
 
 
