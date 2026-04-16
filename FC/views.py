@@ -1976,12 +1976,15 @@ def ciso_system_user_detail_api(request, user_id: int):
     approver_type = (data.get("approverType") or "").strip()
 
     with transaction.atomic():
+        # Check if email exists for a different user
+        existing_email_user = User.objects.filter(email__iexact=email).first()
+        if existing_email_user and existing_email_user.id != user.id:
+            return JsonResponse({"detail": "Email already assigned to a different user"}, status=400)
 
-        if User.objects.filter(email__iexact=email).exclude(pk=user.id).exists():
-            return JsonResponse({"detail": "Email already exists"}, status=400)
-
-        if User.objects.filter(university_id__iexact=university_id).exclude(pk=user.id).exists():
-            return JsonResponse({"detail": "University ID already exists"}, status=400)
+        # Check if university_id exists for a different user
+        existing_id_user = User.objects.filter(university_id__iexact=university_id).first()
+        if existing_id_user and existing_id_user.id != user.id:
+            return JsonResponse({"detail": "University ID already assigned to a different user"}, status=400)
 
         user.email = email
         user.university_id = university_id
@@ -5636,21 +5639,26 @@ def ciso_system_users_api(request):
         return JsonResponse({"detail": "Missing user type"}, status=400)
 
     with transaction.atomic():
-        user = User.objects.filter(email__iexact=email).first()
-        if user:
-            existing_university_id = (user.university_id or "").strip()
+        # Check if email exists for a different user
+        existing_email_user = User.objects.filter(email__iexact=email).first()
+        if existing_email_user:
+            existing_university_id = (existing_email_user.university_id or "").strip()
             if existing_university_id and existing_university_id != university_id:
                 return JsonResponse({"detail": "This email is already assigned to a different University ID"}, status=400)
-            duplicate_university_user = User.objects.filter(university_id__iexact=university_id).exclude(pk=user.pk).first()
-            if duplicate_university_user:
+            
+            # Check if university_id exists for a different user
+            existing_id_user = User.objects.filter(university_id__iexact=university_id).first()
+            if existing_id_user and existing_id_user.id != existing_email_user.id:
                 return JsonResponse({"detail": "University ID already exists"}, status=400)
-
+            
+            user = existing_email_user
             user.university_id = university_id
             user.first_name = first_name
             user.middle_name = middle_name
             user.last_name = last_name
             user.save(update_fields=["university_id", "first_name", "middle_name", "last_name"])
         else:
+            # Check if university_id exists for a different user
             if User.objects.filter(university_id__iexact=university_id).exists():
                 return JsonResponse({"detail": "University ID already exists"}, status=400)
 
@@ -7228,18 +7236,17 @@ def approver_assistant_approver_detail_api(request, user_id):
             return JsonResponse({"detail": "Office not found"}, status=400)
 
     assistant_profile = getattr(target_user, "assistant_profile", None)
-
-    if not assistant_profile and not admin_assistant:
-        return JsonResponse({"detail": "Assistant profile not found"}, status=404)
-
     with transaction.atomic():
-        if User.objects.filter(email__iexact=email).exclude(pk=target_user.id).exists():
-            return JsonResponse({"detail": "Email already exists"}, status=400)
+        # Check if email exists for a different user
+        existing_email_user = User.objects.filter(email__iexact=email).first()
+        if existing_email_user and existing_email_user.id != target_user.id:
+            return JsonResponse({"detail": "Email already assigned to a different user"}, status=400)
 
-        if User.objects.filter(university_id__iexact=university_id).exclude(pk=target_user.id).exists():
-            return JsonResponse({"detail": "University ID already exists"}, status=400)
+        # Check if university_id exists for a different user
+        existing_id_user = User.objects.filter(university_id__iexact=university_id).first()
+        if existing_id_user and existing_id_user.id != target_user.id:
+            return JsonResponse({"detail": "University ID already assigned to a different user"}, status=400)
 
-        # Update core user fields
         target_user.email = email
         target_user.university_id = university_id
         target_user.first_name = first_name
