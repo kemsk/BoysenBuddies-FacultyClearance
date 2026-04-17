@@ -2899,6 +2899,16 @@ def _archive_clearance_timeline_records(timeline: ClearanceTimeline):
         ).order_by("id")
     )
 
+    approver_step_rows = list(
+        ApproverFlowStep.objects.filter(
+            config__clearance_timeline=timeline
+        ).select_related(
+            "office",
+        ).prefetch_related(
+            "colleges",
+        ).order_by("order", "id")
+    )
+
     archived_at = timeline.archive_date or timezone.now()
     dump_faculty_ids = _timeline_dump_faculty_ids(timeline)
     applicable_faculty_ids = _timeline_applicable_faculty_ids(timeline)
@@ -2918,6 +2928,23 @@ def _archive_clearance_timeline_records(timeline: ClearanceTimeline):
         if not faculty:
             continue
 
+        # Get all approver steps that apply to this faculty
+        applicable_approver_steps = []
+        for step in approver_step_rows:
+            # Check if this step applies to the faculty based on office/college scope
+            step_applies = False
+            
+            # Check office scope
+            if step.office and faculty.office and step.office.id == faculty.office.id:
+                step_applies = True
+            # Check college scope
+            elif step.colleges.exists() and faculty.college and step.colleges.filter(id=faculty.college.id).exists():
+                step_applies = True
+            
+            if step_applies:
+                applicable_approver_steps.append(step)
+
+        # Get applicable requirements for this faculty
         applicable_requirements = [
             requirement for requirement in requirement_rows if _requirement_applies_to_faculty(requirement, faculty)
         ]
@@ -2928,27 +2955,95 @@ def _archive_clearance_timeline_records(timeline: ClearanceTimeline):
             if getattr(req, "requirement_id", None)
         }
 
-        missing_approval_labels = []
+        # Build archived steps list - include both approver steps and requirements
+        archived_steps = []
+        approved_count = 0
+        total_step_count = 0
 
+        # First, add all applicable approver steps
+        for step in applicable_approver_steps:
+            step_label = step.office.name if step.office else step.category
+            step_requests = []
+            
+            # Find all requirements for this step that apply to this faculty
+            step_requirements = [req for req in applicable_requirements if req.approver_flow_step_id == step.id]
+            
+            # Find requests for these requirements
+            for req in step_requirements:
+                matched_request = request_by_requirement_id.get(req.id)
+                if matched_request:
+                    step_requests.append({
+                        "requestId": matched_request.request_id,
+                        "title": req.title,
+                        "description": req.description or "",
+                        "status": matched_request.status,
+                        "submissionNotes": matched_request.submission_notes,
+                        "submissionLink": matched_request.submission_link,
+                        "submittedDate": matched_request.submitted_date.isoformat() if matched_request.submitted_date else None,
+                        "approvedDate": matched_request.approved_date.isoformat() if matched_request.approved_date else None,
+                        "approvedBy": _user_display_name(matched_request.approved_by) if matched_request.approved_by else None,
+                        "remarks": matched_request.remarks,
+                    })
+                    if matched_request.status == ClearanceRequest.Status.APPROVED:
+                        approved_count += 1
+            
+            # Determine step status
+            step_status = "PENDING"
+            if step_requests:
+                # If there are requests, use the status of the latest request
+                latest_request = max(step_requests, key=lambda x: x.get("approvedDate") or x.get("submittedDate") or "")
+                step_status = latest_request["status"]
+            else:
+                # No requests yet - this is an in-progress step
+                step_status = "PENDING"
+            
+            archived_steps.append({
+                "id": f"step_{step.id}",
+                "title": step_label,
+                "description": f"Approval step for {step_label}",
+                "status": step_status,
+                "approvedBy": None,
+                "approvedDate": None,
+                "submittedDate": None,
+                "remarks": None,
+                "stepType": "approver_step",
+                "requests": step_requests
+            })
+            
+            total_step_count += 1
+
+        # Then, add any requirements that don't have approver steps (standalone requirements)
         for requirement in applicable_requirements:
-            matched_request = request_by_requirement_id.get(requirement.id)
+            if not requirement.approver_flow_step_id:
+                matched_request = request_by_requirement_id.get(requirement.id)
+                
+                step_status = matched_request.status if matched_request else "PENDING"
+                if matched_request and matched_request.status == ClearanceRequest.Status.APPROVED:
+                    approved_count += 1
+                
+                archived_steps.append({
+                    "id": f"req_{requirement.id}",
+                    "title": requirement.title,
+                    "description": requirement.description or "",
+                    "status": step_status,
+                    "approvedBy": _user_display_name(matched_request.approved_by) if matched_request and matched_request.approved_by else None,
+                    "approvedDate": matched_request.approved_date.isoformat() if matched_request and matched_request.approved_date else None,
+                    "submittedDate": matched_request.submitted_date.isoformat() if matched_request and matched_request.submitted_date else None,
+                    "remarks": matched_request.remarks if matched_request else None,
+                    "stepType": "requirement"
+                })
+                
+                total_step_count += 1
 
-            if not matched_request or matched_request.status != ClearanceRequest.Status.APPROVED:
-                label = _approver_step_label(requirement)
-
-                if label:
-                    missing_approval_labels.append(label)
-
+        # Calculate missing approval labels
+        missing_approval_labels = []
+        for step in archived_steps:
+            if step["status"] != "APPROVED":
+                missing_approval_labels.append(step["title"])
+        
         missing_approval = ", ".join(dict.fromkeys(missing_approval_labels))
 
-        approved_count = sum(
-            1
-            for requirement in applicable_requirements
-            if (request_by_requirement_id.get(requirement.id) and request_by_requirement_id[requirement.id].status == ClearanceRequest.Status.APPROVED)
-        )
-
-        total_requirement_count = len(applicable_requirements)
-        inferred_completed = total_requirement_count > 0 and approved_count == total_requirement_count
+        inferred_completed = total_step_count > 0 and approved_count == total_step_count
         clearance_status = (
             ArchivedClearance.Status.COMPLETED
             if (clearance and clearance.status == Clearance.Status.COMPLETED) or (not clearance and inferred_completed)
@@ -2973,22 +3068,9 @@ def _archive_clearance_timeline_records(timeline: ClearanceTimeline):
                     "department": faculty.department.name if faculty.department else "",
                     "facultyType": faculty.faculty_type or "",
                     "missing_approval": missing_approval,
-                    "request_count": total_requirement_count,
+                    "request_count": total_step_count,
                     "approved_count": approved_count,
-                    "requests": [
-                        {
-                            "requestId": req.request_id,
-                            "title": req.requirement.title if req.requirement else "",
-                            "status": req.status,
-                            "submissionNotes": req.submission_notes,
-                            "submissionLink": req.submission_link,
-                            "submittedDate": req.submitted_date.isoformat() if req.submitted_date else None,
-                            "approvedDate": req.approved_date.isoformat() if req.approved_date else None,
-                            "approvedBy": _user_display_name(req.approved_by) if req.approved_by else None,
-                            "remarks": req.remarks,
-                        }
-                        for req in faculty_requests
-                    ],
+                    "requests": archived_steps,
                 },
             },
         )
@@ -7403,25 +7485,62 @@ def faculty_view_clearance_api(request):
             return JsonResponse({"detail": "Archived clearance not found"}, status=404)
 
         archived_data = archived.clearance_data or {}
-        archived_requests = archived_data.get("requests") or []
+        archived_steps = archived_data.get("requests") or []
         clearance_requests = []
 
-        for index, req in enumerate(archived_requests, start=1):
-            clearance_requests.append({
-                "id": req.get("id") or index,
-                "requestId": req.get("requestId") or "",
-                "title": req.get("title") or "",
-                "description": req.get("description") or "",
-                "status": req.get("status") or ClearanceRequest.Status.PENDING,
-                "submissionNotes": req.get("submissionNotes") or "",
-                "submissionLink": req.get("submissionLink") or "",
-                "submittedDate": req.get("submittedDate"),
-                "approvedDate": req.get("approvedDate"),
-                "approvedBy": req.get("approvedBy"),
-                "remarks": req.get("remarks") or "",
-            })
+        for step in archived_steps:
+            step_type = step.get("stepType", "requirement")
+            
+            if step_type == "approver_step":
+                approver_step_request = {
+                    "id": step.get("id"),
+                    "requestId": step.get("id"),
+                    "title": step.get("title") or "",
+                    "description": step.get("description") or "",
+                    "status": step.get("status") or ClearanceRequest.Status.PENDING,
+                    "submissionNotes": "",
+                    "submissionLink": "",
+                    "submittedDate": step.get("submittedDate"),
+                    "approvedDate": step.get("approvedDate"),
+                    "approvedBy": step.get("approvedBy"),
+                    "remarks": step.get("remarks") or "",
+                    "isApproverStep": True,
+                }
+                clearance_requests.append(approver_step_request)
+                
+                for embedded_req in step.get("requests", []):
+                    child_request = {
+                        "id": embedded_req.get("requestId") or embedded_req.get("id"),
+                        "requestId": embedded_req.get("requestId") or "",
+                        "title": embedded_req.get("title") or "",
+                        "description": embedded_req.get("description") or "",
+                        "status": embedded_req.get("status") or ClearanceRequest.Status.PENDING,
+                        "submissionNotes": embedded_req.get("submissionNotes") or "",
+                        "submissionLink": embedded_req.get("submissionLink") or "",
+                        "submittedDate": embedded_req.get("submittedDate"),
+                        "approvedDate": embedded_req.get("approvedDate"),
+                        "approvedBy": embedded_req.get("approvedBy"),
+                        "remarks": embedded_req.get("remarks") or "",
+                        "parentId": step.get("id"),  # Link to parent approver step
+                        "isApproverStep": False,
+                    }
+                    clearance_requests.append(child_request)
+            else:
+                clearance_requests.append({
+                    "id": step.get("id"),
+                    "requestId": step.get("id"),
+                    "title": step.get("title") or "",
+                    "description": step.get("description") or "",
+                    "status": step.get("status") or ClearanceRequest.Status.PENDING,
+                    "submissionNotes": step.get("submissionNotes") or "",
+                    "submissionLink": step.get("submissionLink") or "",
+                    "submittedDate": step.get("submittedDate"),
+                    "approvedDate": step.get("approvedDate"),
+                    "approvedBy": step.get("approvedBy"),
+                    "remarks": step.get("remarks") or "",
+                    "isApproverStep": False,
+                })
 
-        # Get faculty details for archived clearance
         faculty_data = archived.faculty
         college_name = archived_data.get("college") or (faculty_data.college.name if faculty_data and faculty_data.college else "")
         department_name = archived_data.get("department") or (faculty_data.department.name if faculty_data and faculty_data.department else "")

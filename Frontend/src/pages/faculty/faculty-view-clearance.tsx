@@ -51,6 +51,8 @@ export default function FacultyViewClearance() {
       approvedDate?: string | null;
       submittedDate?: string | null;
       remarks?: string | null;
+      isApproverStep?: boolean;
+      parentId?: string;
     }>;
   }>(null);
   const [loading, setLoading] = React.useState(true);
@@ -81,27 +83,63 @@ export default function FacultyViewClearance() {
   const isClearanceApproved = clearancePercent >= 100;
 
   const stepsToRender = React.useMemo(() => {
-    return (detail?.requests ?? []).map((request, index) => {
-      const normalizedStatus = (request.status || "").toUpperCase();
+    const requests = detail?.requests ?? [];
+    
+    // Separate approver steps and requirements
+    const approverSteps = requests.filter(req => req.isApproverStep);
+    const requirements = requests.filter(req => !req.isApproverStep);
+    
+    // Build the hierarchical structure
+    return approverSteps.map((step, index) => {
+      const normalizedStatus = (step.status || "").toUpperCase();
       const isApproved = normalizedStatus === "APPROVED";
       const isPending = normalizedStatus === "PENDING";
+      
+      // Find child requirements for this approver step
+      const childRequirements = requirements.filter(req => req.parentId === step.id);
+      
       return {
         index: index + 1,
-        title: request.title,
+        title: step.title,
         statusLabel: normalizedStatus || "PENDING",
         statusVariant: isApproved ? "success" as const : isPending ? "warning" as const : "muted" as const,
         collapsedType: "status" as const,
-        submittedTo: request.approvedBy || "",
-        submittedOn: request.approvedDate || request.submittedDate || "",
-        requirements: [
-          {
-            title: request.title,
-            description: request.description || request.remarks || "",
-            completed: isApproved,
-          },
-        ],
+        submittedTo: step.approvedBy || "",
+        submittedOn: step.approvedDate || step.submittedDate || "",
+        requirements: childRequirements.map(child => {
+          const childStatus = (child.status || "").toUpperCase();
+          const childIsApproved = childStatus === "APPROVED";
+          return {
+            title: child.title,
+            description: child.description || child.remarks || "",
+            completed: childIsApproved,
+          };
+        }),
       };
-    });
+    }).concat(
+      // Add standalone requirements (those without a parent approver step)
+      requirements.filter(req => !req.parentId).map((req, index) => {
+        const normalizedStatus = (req.status || "").toUpperCase();
+        const isApproved = normalizedStatus === "APPROVED";
+        const isPending = normalizedStatus === "PENDING";
+        return {
+          index: approverSteps.length + index + 1,
+          title: req.title,
+          statusLabel: normalizedStatus || "PENDING",
+          statusVariant: isApproved ? "success" as const : isPending ? "warning" as const : "muted" as const,
+          collapsedType: "status" as const,
+          submittedTo: req.approvedBy || "",
+          submittedOn: req.approvedDate || req.submittedDate || "",
+          requirements: [
+            {
+              title: req.title,
+              description: req.description || req.remarks || "",
+              completed: isApproved,
+            },
+          ],
+        };
+      })
+    );
   }, [detail]);
 
   const [meProfile, setMeProfile] = React.useState<{
