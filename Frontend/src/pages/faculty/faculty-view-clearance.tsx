@@ -255,6 +255,7 @@ export default function FacultyViewClearance() {
                 onToggle={() =>
                   setExpandedStepIndex((prev) => (prev === step.index ? null : step.index))
                 }
+                timelineId={timelineId}
               />
             ))}
           </div>

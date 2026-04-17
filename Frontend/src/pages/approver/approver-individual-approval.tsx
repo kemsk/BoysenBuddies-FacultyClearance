@@ -136,7 +136,7 @@ export default function ApproverIndividualApproval() {
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRFToken": getCookie("csrftoken"),
+          "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]')?.getAttribute('value') || '',
         },
         body: JSON.stringify({
           request_id: request.item.requestId,
@@ -163,7 +163,7 @@ export default function ApproverIndividualApproval() {
             keepalive: true,
             headers: {
               "Content-Type": "application/json",
-              "X-CSRFToken": getCookie("csrftoken"),
+              "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]')?.getAttribute('value') || '',
             },
             body: JSON.stringify({
               title: "Submission Rejected",
@@ -209,22 +209,7 @@ export default function ApproverIndividualApproval() {
     navigate("/approver-clearance");
   };
 
-  // Helper function to get CSRF token
-  function getCookie(name: string): string {
-    let cookieValue = "";
-    if (document.cookie && document.cookie !== "") {
-      const cookies = document.cookie.split(";");
-      for (let i = 0; i < cookies.length; i++) {
-        const cookie = cookies[i].trim();
-        if (cookie.substring(0, name.length + 1) === (name + "=")) {
-          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-          break;
-        }
-      }
-    }
-    return cookieValue;
-  }
-
+  
   if (loading) {
     return (
       <div className="min-h-screen bg-primary-foreground text-primary-foreground">

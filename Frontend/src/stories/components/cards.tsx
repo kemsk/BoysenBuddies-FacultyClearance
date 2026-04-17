@@ -3743,6 +3743,7 @@ export type ExpandableClearanceStepCardProps = {
   submittedOn?: string;
   requirements?: ClearanceRequirementItem[];
   className?: string;
+  timelineId?: string;
 
 };
 
@@ -3761,6 +3762,7 @@ export function ExpandableClearanceStepCard({
   submittedOn,
   requirements = [],
   className,
+  timelineId,
 
 }: ExpandableClearanceStepCardProps) {
 
@@ -4005,7 +4007,8 @@ export function ExpandableClearanceStepCard({
                       },
                       body: JSON.stringify({
                         requirementTitle: showConfirmDialog,
-                        comment: pendingComment
+                        comment: pendingComment,
+                        timelineId: timelineId
                       })
                     });
 

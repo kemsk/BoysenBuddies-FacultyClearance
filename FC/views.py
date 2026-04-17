@@ -2986,6 +2986,20 @@ def _archive_clearance_timeline_records(timeline: ClearanceTimeline):
                     })
                     if matched_request.status == ClearanceRequest.Status.APPROVED:
                         approved_count += 1
+                else:
+                    # Add requirement even if no request was submitted
+                    step_requests.append({
+                        "requestId": f"req_{req.id}",
+                        "title": req.title,
+                        "description": req.description or "",
+                        "status": "PENDING",
+                        "submissionNotes": "",
+                        "submissionLink": "",
+                        "submittedDate": None,
+                        "approvedDate": None,
+                        "approvedBy": None,
+                        "remarks": None,
+                    })
             
             # Determine step status
             step_status = "PENDING"
@@ -3012,8 +3026,9 @@ def _archive_clearance_timeline_records(timeline: ClearanceTimeline):
             
             total_step_count += 1
 
-        # Then, add any requirements that don't have approver steps (standalone requirements)
+        # Then, add only standalone requirements (those without approver steps)
         for requirement in applicable_requirements:
+            # Only add requirements that don't belong to any approver step
             if not requirement.approver_flow_step_id:
                 matched_request = request_by_requirement_id.get(requirement.id)
                 
@@ -6476,6 +6491,7 @@ def faculty_submit_requirement_api(request):
 
     requirement_title = (data.get("requirementTitle") or "").strip()
     comment = (data.get("comment") or "").strip()
+    timeline_id = (data.get("timelineId") or "").strip()
 
     if not requirement_title:
         return JsonResponse({"detail": "Requirement title is required"}, status=400)
@@ -6489,21 +6505,35 @@ def faculty_submit_requirement_api(request):
     if not faculty:
         return JsonResponse({"detail": "Faculty not found"}, status=404)
 
-    # Get active clearance timeline
-    timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year_start", "-id").first()
+    # Get clearance timeline - allow both active and archived timelines
+    if timeline_id:
+        # Use specific timeline if provided
+        timeline = ClearanceTimeline.objects.filter(id=timeline_id).first()
+        if not timeline:
+            return JsonResponse({"detail": "Timeline not found"}, status=404)
+    else:
+        # Default to active timeline if no specific timeline provided
+        timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year_start", "-id").first()
+        if not timeline:
+            return JsonResponse({"detail": "No active clearance timeline"}, status=400)
 
-    if not timeline:
-        return JsonResponse({"detail": "No active clearance timeline"}, status=400)
-
-    # Find the requirement by title (case-insensitive search)
+    # Find the requirement by title (case-insensitive search) within the specified timeline
     try:
-        requirement = Requirement.objects.filter(title__iexact=requirement_title).first()
+        requirement = Requirement.objects.filter(
+            title__iexact=requirement_title,
+            clearance_timeline=timeline,
+            is_active=True
+        ).first()
+        
         if not requirement:
-            # Log all available requirements for debugging
-            all_requirements = Requirement.objects.all().values_list('title', flat=True)
-            print(f"Available requirements: {list(all_requirements)}")
+            # Log all available requirements for this timeline for debugging
+            all_requirements = Requirement.objects.filter(
+                clearance_timeline=timeline,
+                is_active=True
+            ).values_list('title', flat=True)
+            print(f"Available requirements for timeline {timeline.id}: {list(all_requirements)}")
             print(f"Looking for: '{requirement_title}'")
-            return JsonResponse({"detail": f"Requirement '{requirement_title}' not found"}, status=404)
+            return JsonResponse({"detail": f"Requirement '{requirement_title}' not found in this timeline"}, status=404)
 
     except Exception as e:
         print(f"Error finding requirement: {e}")
@@ -6667,6 +6697,21 @@ def faculty_submit_requirement_api(request):
         )
 
         print(f"Created clearance request: {clearance_request.id} with request_id: {request_id}")
+
+        # Update archived clearance if this is for an archived timeline
+        if timeline and timeline.archive_date:
+            try:
+                archived_clearance = ArchivedClearance.objects.filter(
+                    faculty=faculty,
+                    clearance_timeline=timeline
+                ).first()
+                
+                if archived_clearance:
+                    # Re-archive the timeline to include the new request
+                    _archive_clearance_timeline_records(timeline)
+                    print(f"Updated archived clearance for timeline {timeline.id}")
+            except Exception as e:
+                print(f"Error updating archived clearance: {e}")
 
     except Exception as e:
         print(f"Error creating clearance request: {e}")
@@ -8592,15 +8637,9 @@ def approver_action_api(request):
     if action == "reject" and not remarks.strip():
         return JsonResponse({"detail": "Remarks are required for rejection"}, status=400)
 
-    active_timeline = _get_active_timeline()
-
-    if not active_timeline:
-        return JsonResponse({"detail": "No active clearance timeline"}, status=400)
-
-    # Get all clearance requests
+    # Get all clearance requests (allow both active and archived timelines)
     clearance_requests = ClearanceRequest.objects.filter(
-        id__in=request_ids,
-        clearance_timeline=active_timeline
+        id__in=request_ids
     )
 
     if len(clearance_requests) != len(request_ids):
@@ -8691,6 +8730,22 @@ def approver_action_api(request):
                 "status": _to_request_status(clearance_request.status),
                 "oldStatus": _to_request_status(old_status)
             })
+            
+            # Update archived clearance if this request belongs to an archived timeline
+            if clearance_request.clearance_timeline and clearance_request.clearance_timeline.archive_date:
+                try:
+                    archived_clearance = ArchivedClearance.objects.filter(
+                        faculty=clearance_request.faculty,
+                        clearance_timeline=clearance_request.clearance_timeline
+                    ).first()
+                    
+                    if archived_clearance:
+                        # Re-archive the timeline to reflect the updated status
+                        _archive_clearance_timeline_records(clearance_request.clearance_timeline)
+                        print(f"Updated archived clearance after {action} for timeline {clearance_request.clearance_timeline.id}")
+                except Exception as e:
+                    print(f"Error updating archived clearance after {action}: {e}")
+    
     return JsonResponse({
         "success": True,
         "message": f"Successfully {action}d {len(updated_requests)} clearance request(s)",
@@ -8766,7 +8821,7 @@ def approver_activity_logs_api(request):
                         'faculty',
                         'faculty__college',
                         'faculty__department'
-                    ).get(request_id=request_id, clearance_timeline=_get_active_timeline())
+                    ).get(request_id=request_id)
                     faculty = clearance_request.faculty
                 else:
                     # For individual approvals, look up faculty by name from details
