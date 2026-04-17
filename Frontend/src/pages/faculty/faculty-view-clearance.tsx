@@ -37,6 +37,11 @@ export default function FacultyViewClearance() {
       totalCount: number;
       missingApproval?: string;
     };
+    faculty?: {
+      college: string;
+      department: string;
+      facultyType: string;
+    };
     requests: Array<{
       id: number | string;
       title: string;
@@ -126,9 +131,9 @@ export default function FacultyViewClearance() {
     return parts.length ? parts.join(" ") : meProfile.email;
   }, [meProfile]);
 
-  const collegeLabel = "";
-  const departmentLabel = "";
-  const facultyTypeLabel = "";
+  const collegeLabel = detail?.faculty?.college || "";
+  const departmentLabel = detail?.faculty?.department || "";
+  const facultyTypeLabel = detail?.faculty?.facultyType || "";
   const statusLabel = detail?.clearance.status ?? "";
   const timeline = detail?.timeline ?? null;
 

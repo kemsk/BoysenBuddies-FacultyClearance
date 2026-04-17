@@ -7421,6 +7421,12 @@ def faculty_view_clearance_api(request):
                 "remarks": req.get("remarks") or "",
             })
 
+        # Get faculty details for archived clearance
+        faculty_data = archived.faculty
+        college_name = archived_data.get("college") or (faculty_data.college.name if faculty_data and faculty_data.college else "")
+        department_name = archived_data.get("department") or (faculty_data.department.name if faculty_data and faculty_data.department else "")
+        faculty_type = archived_data.get("facultyType") or getattr(faculty_data, "faculty_type", "") or ""
+
         return JsonResponse({
             "timeline": {
                 "id": str(timeline.id),
@@ -7440,6 +7446,11 @@ def faculty_view_clearance_api(request):
                 "missingApproval": archived_data.get("missing_approval", ""),
                 "approvedCount": archived_data.get("approved_count", 0),
                 "totalCount": archived_data.get("request_count", len(clearance_requests)),
+            },
+            "faculty": {
+                "college": college_name,
+                "department": department_name,
+                "facultyType": faculty_type,
             },
             "requests": clearance_requests,
         })
@@ -7475,6 +7486,11 @@ def faculty_view_clearance_api(request):
             "remarks": req.remarks,
         })
 
+    # Get faculty details for active clearance
+    college_name = faculty.college.name if faculty and faculty.college else ""
+    department_name = faculty.department.name if faculty and faculty.department else ""
+    faculty_type = getattr(faculty, "faculty_type", "") or ""
+
     return JsonResponse({
         "timeline": {
             "id": str(timeline.id),
@@ -7494,6 +7510,11 @@ def faculty_view_clearance_api(request):
             "missingApproval": "",
             "approvedCount": sum(1 for req in clearance_requests if req["status"] == ClearanceRequest.Status.APPROVED),
             "totalCount": len(clearance_requests),
+        },
+        "faculty": {
+            "college": college_name,
+            "department": department_name,
+            "facultyType": faculty_type,
         },
         "requests": clearance_requests
     })
