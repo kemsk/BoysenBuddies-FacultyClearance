@@ -5776,6 +5776,7 @@ def ciso_system_users_api(request):
         # Check if email exists for a different user
         existing_email_user = User.objects.filter(email__iexact=email).first()
         if existing_email_user:
+            # Allow adding existing users with new roles - just update their info if needed
             existing_university_id = (existing_email_user.university_id or "").strip()
             if existing_university_id and existing_university_id != university_id:
                 return JsonResponse({"detail": "This email is already assigned to a different University ID"}, status=400)
@@ -7066,18 +7067,14 @@ def approver_assistant_approvers_api(request):
                 existing_email_user = User.objects.filter(email__iexact=email).first()
                 existing_university_user = User.objects.filter(university_id__iexact=university_id).first()
 
+                # Allow adding existing users as assistants - just ensure consistency
                 if existing_email_user and existing_university_user and existing_email_user.pk != existing_university_user.pk:
                     return JsonResponse({"detail": "Email and University ID belong to different existing users"}, status=400)
-
-                if existing_email_user and not existing_university_user:
-                    return JsonResponse({"detail": "Email already exists"}, status=400)
-
-                if existing_university_user and not existing_email_user:
-                    return JsonResponse({"detail": "University ID already exists"}, status=400)
 
                 user_obj = existing_email_user or existing_university_user
 
                 if user_obj:
+                    # Update existing user's info if needed
                     user_obj.email = email
                     user_obj.university_id = university_id
                     user_obj.first_name = first_name
@@ -7086,6 +7083,7 @@ def approver_assistant_approvers_api(request):
                     user_obj.save(update_fields=["email", "university_id", "first_name", "middle_name", "last_name"])
 
                 else:
+                    # Create new user if they don't exist
                     user_obj = User.objects.create(
                         email=email,
                         university_id=university_id,

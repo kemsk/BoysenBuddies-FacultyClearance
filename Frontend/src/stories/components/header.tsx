@@ -931,7 +931,7 @@ export function CISOHeader() {
                       to="/CISO-system-guideline"
                       className="text-xl font-regular text-primary"
                     >
-                      System Guidlines
+                      System Guidelines
                     </Link>
                   </SheetClose>
                   <SheetClose asChild>
@@ -1236,7 +1236,7 @@ export function OVPHEHeader() {
                       to="/OVPHE-system-guideline"
                       className="text-xl font-regular text-primary"
                     >
-                      System Guidlines
+                      System Guidelines
                     </Link>
                   </SheetClose>
                   <SheetClose asChild>
