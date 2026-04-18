@@ -1068,7 +1068,7 @@ export function ClearanceRequestsCard({
   return (
     <Card className={cn("overflow-hidden", className)}>
       <CardContent className="p-0">
-        <div className="hidden lg:block">
+        <div className="hidden md:block">
           <div className="flex items-center gap-3 border-b px-4 py-4">
             <Checkbox
               variant="primary"
@@ -1120,17 +1120,17 @@ export function ClearanceRequestsCard({
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
+            <table className="w-full min-w-[900px] border-collapse">
               <thead>
                 <tr className="border-b">
-                  <th className="w-12 px-4 py-3 text-left" />
-                  <th className="px-2 py-3 text-left text-sm font-bold text-primary">Name</th>
-                  <th className="px-2 py-3 text-left text-sm font-bold text-primary">Request ID</th>
-                  <th className="px-2 py-3 text-left text-sm font-bold text-primary">Employee ID</th>
-                  <th className="px-2 py-3 text-left text-sm font-bold text-primary">College</th>
-                  <th className="px-2 py-3 text-left text-sm font-bold text-primary">Department</th>
-                  <th className="px-2 py-3 text-left text-sm font-bold text-primary">Requirement</th>
-                  <th className="px-2 py-3 text-left text-sm font-bold text-primary">Status</th>
+                  <th className="w-12 px-4 py-3 text-left min-w-[48px]" />
+                  <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[20%] min-w-[150px]">Name</th>
+                  <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[15%] min-w-[120px]">Request ID</th>
+                  <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[12%] min-w-[100px]">Employee ID</th>
+                  <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[15%] min-w-[120px]">College</th>
+                  <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[15%] min-w-[120px]">Department</th>
+                  <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[15%] min-w-[120px]">Requirement</th>
+                  <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[8%] min-w-[80px]">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -1150,7 +1150,7 @@ export function ClearanceRequestsCard({
                         }}
                       />
                     </td>
-                    <td className="px-2 py-4 align-top text-sm font-semibold text-gray-900">
+                    <td className="px-2 py-4 align-top text-sm font-semibold text-gray-900 break-words">
                       {getItemHref ? (
                         <Link to={getItemHref(item)} className="hover:underline">
                           {item.name}
@@ -1159,11 +1159,11 @@ export function ClearanceRequestsCard({
                         item.name
                       )}
                     </td>
-                    <td className="px-2 py-4 align-top text-sm text-gray-900">{item.requestId}</td>
-                    <td className="px-2 py-4 align-top text-sm text-gray-900">{item.employeeId}</td>
-                    <td className="px-2 py-4 align-top text-sm text-gray-900">{item.college}</td>
-                    <td className="px-2 py-4 align-top text-sm text-gray-900">{item.department}</td>
-                    <td className="px-2 py-4 align-top text-sm text-gray-900">{item.requirementName || ""}</td>
+                    <td className="px-2 py-4 align-top text-sm text-gray-900 break-all">{item.requestId}</td>
+                    <td className="px-2 py-4 align-top text-sm text-gray-900 break-all">{item.employeeId}</td>
+                    <td className="px-2 py-4 align-top text-sm text-gray-900 break-words">{item.college}</td>
+                    <td className="px-2 py-4 align-top text-sm text-gray-900 break-words">{item.department}</td>
+                    <td className="px-2 py-4 align-top text-sm text-gray-900 break-words">{item.requirementName || ""}</td>
                     <td className="px-2 py-4 align-top">
                       <Badge
                         variant={getClearanceStatusBadgeVariant(item.status)}
@@ -1179,7 +1179,7 @@ export function ClearanceRequestsCard({
           </div>
         </div>
 
-        <div className="lg:hidden">
+        <div className="md:hidden">
           <div className="flex">
             <Divider orientation="vertical" className="h-auto self-stretch " />
             <div className="min-w-0 flex-1">

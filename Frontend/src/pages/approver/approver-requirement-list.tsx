@@ -40,6 +40,7 @@ type Requirement = {
 };
 
 export default function RequirementList() {
+  console.log("=== RequirementList component loaded ===");
   const navigate = useNavigate();
   const [showSuccess, setShowSuccess] = React.useState(false);
   const [showTrueAgreement, setShowTrueAgreement] = React.useState(false);
@@ -51,25 +52,77 @@ export default function RequirementList() {
   const [pendingChanges, setPendingChanges] = React.useState<any[]>([]);
   const [approverName, setApproverName] = React.useState<string>("");
   const [currentUserId, setCurrentUserId] = React.useState<number | null>(null);
+  const [isPartOfApproverFlow, setIsPartOfApproverFlow] = React.useState<boolean>(false);
 
   const hasActiveTimeline = Boolean(activeAcademicYear && activeSemester);
+
+  // Debug state values
+  React.useEffect(() => {
+    console.log("State debug:", {
+      activeAcademicYear,
+      activeSemester,
+      hasActiveTimeline,
+      isPartOfApproverFlow
+    });
+  }, [activeAcademicYear, activeSemester, hasActiveTimeline, isPartOfApproverFlow]);
 
   // Fetch current approver name and user ID
   React.useEffect(() => {
     const fetchApprover = async () => {
       try {
+        console.log("Fetching user profile...");
         const r = await fetch("/admin/xu-faculty-clearance/api/me", { credentials: "include" });
+        console.log("API response status:", r.status);
+        
         if (r.ok) {
           const data = await r.json();
+          console.log("Full user data:", data);
+          
           const email = data.email;
           const idValue = typeof data.id === "string" ? parseInt(data.id, 10) : data.id;
           if (Number.isFinite(idValue)) setCurrentUserId(idValue);
 
           const name = [data.firstName, data.lastName].filter(Boolean).join(" ");
           setApproverName(name || email || "Approver");
+
+          // Check if user is part of approver flow
+          console.log("User roles payload:", data.roles_payload);
+          const approverRole = data.roles_payload?.find(
+            (role: any) => role.role_name === "Approver" || role.role_name === "ASSISTANT_APPROVER" || role.role_name === "Student Assistant"
+          );
+          console.log("Found approver role:", approverRole);
+          
+          if (approverRole) {
+            // Check if user has approver profile (means they're configured in approver flow)
+            try {
+              const profileResponse = await fetch("/admin/xu-faculty-clearance/api/approver/profile", { credentials: "include" });
+              if (profileResponse.ok) {
+                const profileData = await profileResponse.json();
+                console.log("Approver profile:", profileData);
+                
+                // If user has an approver profile, they're part of the approver flow
+                const hasProfile = profileData !== null && profileData !== undefined;
+                console.log("Has approver profile (in approver flow):", hasProfile);
+                setIsPartOfApproverFlow(hasProfile);
+              } else {
+                console.log("Failed to fetch approver profile");
+                setIsPartOfApproverFlow(false);
+              }
+            } catch (error) {
+              console.log("Error checking approver profile:", error);
+              setIsPartOfApproverFlow(false);
+            }
+          } else {
+            console.log("User is not an approver");
+            setIsPartOfApproverFlow(false);
+          }
+        } else {
+          console.log("API call failed with status:", r.status);
         }
-      } catch {
+      } catch (error) {
+        console.log("Error fetching user profile:", error);
         setApproverName("Approver");
+        setIsPartOfApproverFlow(false);
       }
     };
     fetchApprover();
@@ -421,7 +474,7 @@ export default function RequirementList() {
        <div className="mt-2 space-y-3">
         <AddRequirementDialog
           trigger={
-            <Button variant="default" className="w-full h-12" disabled={!hasActiveTimeline}>
+            <Button variant="default" className="w-full h-12" disabled={!isPartOfApproverFlow || !hasActiveTimeline}>
               <div className="flex w-full items-center justify-center gap-2">
               <img src="WhitePlusIcon.png" alt="Add Requirement" />Add Requirement
               </div>
@@ -436,7 +489,11 @@ export default function RequirementList() {
           </div>
         ) : requirements.length === 0 && pendingChanges.filter(change => change.type === 'create').length === 0 ? (
           <div className="text-center py-8">
-            {!activeAcademicYear && !activeSemester ? (
+            {!hasActiveTimeline ? (
+              <div className="text-muted-foreground">
+                There is no Clearance Timeline activated
+              </div>
+            ) : !isPartOfApproverFlow ? (
               <div className="text-muted-foreground">
                 Your department/office is not a part of the
                 <br />
@@ -552,7 +609,7 @@ export default function RequirementList() {
               </div>
             )}
             <AgreementCard 
-              disabled={!hasActiveTimeline}
+              disabled={!isPartOfApproverFlow || !hasActiveTimeline}
               onConfirm={() => {
                 if (pendingChanges.length > 0) {
                   commitPendingChanges();

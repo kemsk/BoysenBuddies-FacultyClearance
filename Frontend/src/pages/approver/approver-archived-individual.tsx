@@ -163,20 +163,20 @@ export default function ApproverArchivedIndividualApproval() {
                 status={item.status}
               />
 
-              <div className="hidden lg:block">
+              <div className="hidden md:block">
                 <div className="overflow-hidden rounded-xl border border-muted-foreground/20 bg-card shadow">
                   <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-left text-sm text-black">
+                    <table className="w-full min-w-[800px] border-collapse text-left text-sm text-black">
                       <thead className="bg-white">
                         <tr className="border-b border-muted-foreground/20">
-                          <th className="px-4 py-3 font-semibold">Requirement</th>
-                          <th className="px-4 py-3 font-semibold">Submission Notes</th>
-                          <th className="px-4 py-3 font-semibold">Submission Link</th>
-                          <th className="px-4 py-3 font-semibold">Status</th>
-                          <th className="px-4 py-3 font-semibold">Processed By</th>
-                          <th className="px-4 py-3 font-semibold">Processed On</th>
-                          <th className="px-4 py-3 font-semibold">Remarks</th>
-                          <th className="px-4 py-3 font-semibold">Actions</th>
+                          <th className="px-4 py-3 font-semibold w-[15%] min-w-[120px]">Requirement</th>
+                          <th className="px-4 py-3 font-semibold w-[20%] min-w-[150px]">Submission Notes</th>
+                          <th className="px-4 py-3 font-semibold w-[15%] min-w-[120px]">Submission Link</th>
+                          <th className="px-4 py-3 font-semibold w-[10%] min-w-[80px]">Status</th>
+                          <th className="px-4 py-3 font-semibold w-[10%] min-w-[100px]">Processed By</th>
+                          <th className="px-4 py-3 font-semibold w-[10%] min-w-[100px]">Processed On</th>
+                          <th className="px-4 py-3 font-semibold w-[15%] min-w-[140px]">Remarks</th>
+                          <th className="px-4 py-3 font-semibold w-[5%] min-w-[80px]">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -187,14 +187,14 @@ export default function ApproverArchivedIndividualApproval() {
                             </td>
                             <td className="px-4 py-4 align-top">
                               <div
-                                className="max-w-[360px]"
+                                className="max-w-full break-words"
                                 dangerouslySetInnerHTML={{ __html: request.submissionNotes || "No submission notes provided." }}
                               />
                             </td>
                             <td className="px-4 py-4 align-top">
                               {request.submissionLink ? (
                                 <a
-                                  className="block max-w-[320px] break-all text-primary underline"
+                                  className="block max-w-full break-all text-primary underline"
                                   href={request.submissionLink}
                                   target="_blank"
                                   rel="noreferrer"
@@ -215,7 +215,7 @@ export default function ApproverArchivedIndividualApproval() {
                             <td className="px-4 py-4 align-top">{request.approvedDate || "-"}</td>
                             <td className="px-4 py-4 align-top">
                               <textarea
-                                className="min-h-[88px] w-[260px] rounded-md border border-foreground p-3 text-sm text-black"
+                                className="min-h-[88px] w-full max-w-full rounded-md border border-foreground p-3 text-sm text-black resize-none"
                                 value={remarksByRequest[request.id] ?? ""}
                                 onChange={(event) =>
                                   setRemarksByRequest((prev) => ({
@@ -255,7 +255,7 @@ export default function ApproverArchivedIndividualApproval() {
                 </div>
               </div>
 
-              <div className="lg:hidden">
+              <div className="md:hidden">
                 {item.requests.map((request) => (
                   <div key={request.id} className="rounded-xl border border-muted-foreground/20 bg-card p-6 shadow">
                     <div className="text-xl text-center text-black font-bold mt-1">{request.requirementName || request.requestId}</div>

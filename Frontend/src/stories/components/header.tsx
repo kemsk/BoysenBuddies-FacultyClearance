@@ -1385,7 +1385,11 @@ export function OVPHEHeader() {
                 >
                   Logout
                 </Button>
-                <Button variant="back" className="w-full">Cancel</Button>
+                 <AlertDialogCancel asChild>
+                  <Button variant="back" className="w-full">
+                    Cancel
+                  </Button>
+                </AlertDialogCancel>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -1635,7 +1639,11 @@ export function AssistantApproverHeader() {
                 >
                   Logout
                 </Button>
-                <Button variant="back" className="w-full">Cancel</Button>
+              <AlertDialogCancel asChild>
+                  <Button variant="back" className="w-full">
+                    Cancel
+                  </Button>
+                </AlertDialogCancel>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
