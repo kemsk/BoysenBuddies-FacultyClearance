@@ -84,7 +84,7 @@ export default function ApproverActivityLogs() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const pageSize = 40;
+  const pageSize = 20;
 
   const [items, setItems] = useState<ActivityLogItem[]>([]);
 

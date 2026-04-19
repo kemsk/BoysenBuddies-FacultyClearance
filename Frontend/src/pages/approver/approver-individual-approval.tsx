@@ -5,7 +5,10 @@ import { RequestCard } from "../../stories/components/cards";
 import { Button } from "../../stories/components/button";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Textarea } from "../../stories/components/textarea";
-
+import { Lock} from 'lucide-react';
+import { Dialog } from "../../stories/components/dialog";
+import { ConfirmAlert, OverrideAlert } from "../../stories/components/alert";
+import { useState } from "react";
 interface IndividualRequestData {
   item: {
     id: string;
@@ -41,7 +44,10 @@ export default function ApproverIndividualApproval() {
   const [remarks, setRemarks] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [userProfile, setUserProfile] = React.useState<any>(null);
-
+  const [showOverrideAlert, setShowOverrideAlert] = useState(false);
+  const [showConfirmAlert, setShowConfirmAlert] = useState(false);  // ← ADD THIS
+  const [overrideReason, setOverrideReason] = useState('');        // ← ADD THIS
+  const [overrideStatus, setOverrideStatus] = useState<'approved' | 'rejected'>('approved');
   React.useEffect(() => {
     if (!requestId) {
       setError("No request ID provided");
@@ -58,11 +64,16 @@ export default function ApproverIndividualApproval() {
         setUserProfile(profileData);
         
         // Then fetch the request
+        console.log('[DEBUG] Fetching individual approval for requestId:', requestId);
+        console.log('[DEBUG] User session check:', document.cookie);
         return fetch(`/admin/xu-faculty-clearance/api/approver/individual-approval?request_id=${requestId}`);
       })
       .then((res) => {
+        console.log('[DEBUG] Response status:', res.status);
+        console.log('[DEBUG] Response headers:', res.headers);
         if (!res.ok) {
           throw new Error(`Failed to load request: ${res.statusText}`);
+          throw new Error(`Failed to load request: ${res.status}`);
         }
         return res.json();
       })
@@ -312,33 +323,80 @@ export default function ApproverIndividualApproval() {
             <div className="border-t" />
 
             <div className="p-6">
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="text-md font-bold text-foreground">Status</div>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="status"
-                    value="approved"
-                    checked={status === "approved"}
-                    onChange={(e) => setStatus(e.target.value as "approved")}
-                    disabled={isDisabled}
-                    className="mr-2"
-                  />
-                  <span className="text-black">Approved</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="status"
-                    value="rejected"
-                    checked={status === "rejected"}
-                    onChange={(e) => setStatus(e.target.value as "rejected")}
-                    disabled={isDisabled}
-                    className="mr-2"
-                  />
-                  <span className="text-black">Rejected</span>
-                </label>
+              <div className="text-md font-bold text-foreground mb-4">Status</div>
+  
+                <div className="flex justify-between items-center">
+                  {/* Radio buttons on the left */}
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="status"
+                        value="approved"
+                        checked={status === "approved"}
+                        onChange={(e) => setStatus(e.target.value as "approved")}
+                        disabled={isDisabled}
+                        className="mr-2"
+                      />
+                      <span className="text-black">Approved</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="status"
+                        value="rejected"
+                        checked={status === "rejected"}
+                        onChange={(e) => setStatus(e.target.value as "rejected")}
+                        disabled={isDisabled}
+                        className="mr-2"
+                      />
+                      <span className="text-black">Rejected</span>
+                    </label>
+                  </div>
+
+                  {/* Button on the right */}
+                  <Button variant="default" className="flex items-center gap-2"
+                    onClick={() => setShowOverrideAlert(true)}
+                  >
+                    <Lock className="w-4 h-4" />
+                    Override Status
+                  </Button>
               </div>
+
+            {showOverrideAlert && !showConfirmAlert && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                  <OverrideAlert
+                    open={showOverrideAlert}
+                    status={overrideStatus}
+                    onStatusChange={setOverrideStatus}
+                    onDelete={() => {
+                      console.log('Override confirmed:', overrideStatus);
+                      setShowOverrideAlert(false);
+                    }}
+                    onCancel={() => setShowOverrideAlert(false)}
+                    onConfirm={() => setShowConfirmAlert(true)}
+                  />
+                </div>      
+              </div>
+            )}
+
+            {/* Add ConfirmAlert as separate dialog */}
+            {showConfirmAlert && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                  <ConfirmAlert
+                    open={showConfirmAlert}
+                    reason={overrideReason}
+                    onDelete={() => {
+                      console.log('Confirmed:', overrideStatus);
+                      setShowConfirmAlert(false);
+                    }}
+                    onCancel={() => setShowConfirmAlert(false)}
+                  />
+                </div>
+              </div>
+            )}
 
               {isProcessed ? (
                 <div className="mt-3 text-sm text-amber-600 bg-amber-50 p-2 rounded">
@@ -394,6 +452,7 @@ export default function ApproverIndividualApproval() {
             </div>
           </div>
         </div>
+        
       </main>
 
     </div>

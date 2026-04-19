@@ -4,7 +4,9 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "../../components/lib/utils"
  
 import { Button } from "./button"
- 
+import { InputGroupTextarea, LineInputGroup, type InputGroup, type InputGroupInput } from "./input-group"
+import { useState } from "react"
+
 const alertVariants = cva(
   "relative w-full rounded-lg border px-4 py-3 text-sm [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg~*]:pl-7",
   {
@@ -244,3 +246,138 @@ export const DeleteAlert = React.forwardRef<
     </div>
   </div>
 ))
+
+export const OverrideAlert = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & {
+    onDelete?: () => void;
+    onCancel?: () => void;
+    status?: 'approved' | 'rejected';
+    onStatusChange?: (status: 'approved' | 'rejected') => void;
+    open?: boolean;
+    onConfirm?: () => void;  // ← ADD THIS
+  }
+>(({ className, onDelete, onCancel, status, onStatusChange, onConfirm, ...props }, ref) => {
+  // Add state here
+  const [overrideReason, setOverrideReason] = React.useState('');
+  return (
+    <div
+      ref={ref}
+      role="alert"
+      className={cn(alertVariants({ variant: "default" }), className)}
+      {...props}
+    >
+    <div className=" items-center gap-4 mb-3">
+      <div className="p-4 flex items-center justify-center">
+        <img src="/RedAlertIcon.png" width="50" height="50" />
+      </div>
+      <div className="mb-4 text-xl text-center text-black font-bold">
+        You are about to OVERRIDE clearance request [Request ID].
+      </div>
+
+      <div className="mb-4 text-md text-center text-black">
+        Please provide a reason for overriding
+      </div>
+
+      <InputGroupTextarea 
+        placeholder="Enter reason for override..."
+        value={overrideReason}
+        onChange={(e) => setOverrideReason(e.target.value)}
+        className="border border-gray-300 rounded-md p-2 !text-black placeholder:text-gray-400"
+      />
+
+      <div className="mt-6 mb-4 text-xs text-black text-justify">
+        Note: Overriding will change the status for both approver and faculty member. If the faculty member has already cleared all requirements, their clearance status will be reverted to incomplete.
+      </div>
+      
+      {/* Status selection */}
+      <div className="flex items-center justify-center gap-4 mb-2">
+        <label className="flex items-center">
+          <span className="text-md font-bold text-foreground mr-4">Status:</span>
+          <input
+            type="radio"
+            name="override_status"
+            value="approved"
+            checked={status === 'approved'}
+            onChange={(e) => onStatusChange?.(e.target.value as 'approved')}
+            className="mr-2"
+          />
+          <span className="text-black">Approved</span>
+        </label>
+        <label className="flex items-center">
+          <input
+            type="radio"
+            name="override_status"
+            value="rejected"
+            checked={status === 'rejected'}
+            onChange={(e) => onStatusChange?.(e.target.value as 'rejected')}
+            className="mr-2"
+          />
+          <span className="text-black">Rejected</span>
+        </label>
+      </div>
+      
+      <div className="flex flex-row gap-3 justify-end mt-6">
+        <Button variant="cancel" onClick={onCancel} className="flex-1">
+          CANCEL
+        </Button>
+        <Button variant="default" onClick={() => {
+          onConfirm?.();  // ← OPEN CONFIRM DIALOG
+          }} className="flex-1 font-bold">
+          UPDATE
+        </Button>
+      </div>
+    </div>
+  </div>
+);
+});
+
+
+export const ConfirmAlert = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & {
+    onDelete?: () => void;
+    onCancel?: () => void;
+    status?: 'approved' | 'rejected';
+    onStatusChange?: (status: 'approved' | 'rejected') => void;
+    open?: boolean;
+    reason?: string;  // ← ADD THIS PROP
+  }
+>(({ className, onDelete, onCancel, status, onStatusChange, reason, ...props }, ref) => {
+  // Add state here
+  const [overrideReason, setOverrideReason] = React.useState('');
+ 
+  return (
+    <div
+      ref={ref}
+      role="alert"
+      className={cn(alertVariants({ variant: "default" }), className)}
+      {...props}
+    >
+    <div className=" items-center gap-4 mb-3">
+      <div className="mb-4 text-xl text-center text-black font-bold">
+        Input your XU Email to confirm
+      </div>
+
+
+      <LineInputGroup 
+        placeholder="example@xu.edu.ph"
+        value={overrideReason}
+        onChange={(e) => setOverrideReason(e.target.value)}
+        className="border border-gray-300 rounded-md p-2 !text-black placeholder:text-gray-400"
+      />
+      
+      <div className="flex flex-row gap-3 justify-end mt-6">
+        <Button variant="cancel" onClick={onCancel} className="flex-1">
+          CANCEL
+        </Button>
+        <Button variant="default" onClick={() => {
+          onDelete?.();
+        }} className="flex-1 font-bold">
+          CONFIRM
+        </Button>
+      </div>
+    </div>
+  </div>
+);
+});

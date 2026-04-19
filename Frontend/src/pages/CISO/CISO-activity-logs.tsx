@@ -85,7 +85,7 @@ function mapEventNameToVariant(eventName: string): ActivityLogVariant {
 export default function CISOActivityLogs() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const pageSize = 40;
+  const pageSize = 20;
   const navigate = useNavigate();
 
   const [items, setItems] = useState<ActivityLogItem[]>([]);
@@ -96,20 +96,25 @@ export default function CISOActivityLogs() {
     params.set("page", "1");
     params.set("pageSize", "500");
 
-    fetch(`/admin/xu-faculty-clearance/api/ciso/activity-logs?${params.toString()}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: { items: ActivityLogItem[] }) => {
-        const roleNeedle = "CISO";
-        const onlyCiso = (data.items ?? []).filter((it) => {
-          const role = String((it as any).actorRole ?? "").trim();
-          if (!role) return false;
-          return (
-            role.toLowerCase() === roleNeedle.toLowerCase() ||
-            role.toLowerCase().startsWith(roleNeedle.toLowerCase())
-          );
-        });
+    // Fetch from all role endpoints to get complete activity logs
+    Promise.all([
+      fetch(`/admin/xu-faculty-clearance/api/ciso/activity-logs?${params.toString()}`),
+      fetch(`/admin/xu-faculty-clearance/api/ovphe/activity-logs?${params.toString()}`),
+      fetch(`/admin/xu-faculty-clearance/api/approver/activity-logs?${params.toString()}`),
+    ])
+      .then(async ([cisoRes, ovpheRes, approverRes]) => {
+        const cisoData = cisoRes.ok ? await cisoRes.json() : { items: [] };
+        const ovpheData = ovpheRes.ok ? await ovpheRes.json() : { items: [] };
+        const approverData = approverRes.ok ? await approverRes.json() : { items: [] };
+        
+        // Combine all activity logs from all roles
+        const allItems = [
+          ...(cisoData.items || []),
+          ...(ovpheData.items || []),
+          ...(approverData.items || []),
+        ];
 
-        const mappedItems = onlyCiso.map((it) => {
+        const mappedItems = allItems.map((it) => {
           const evt = String((it as any).event_type ?? "").trim();
           const raw = evt || String((it as any).variant ?? "").trim() || String((it as any).title ?? "").trim();
           const variant = mapEventNameToVariant(raw);
@@ -229,17 +234,14 @@ export default function CISOActivityLogs() {
     return entries.map(([year, items]) => ({ year, items }));
   }, [sortedItems]);
 
-  // Paginate by year groups so a year isn't split across pages.
-  // Show all year-groups on one page so all logs are visible.
-  const yearsPerPage = yearGroups.length;
-  const totalPages = Math.max(1, Math.ceil(yearGroups.length / yearsPerPage));
+  // Paginate by 20 items per page
+  const totalPages = Math.max(1, Math.ceil(sortedItems.length / pageSize));
   const safePage = Math.min(Math.max(1, page), totalPages);
-  const startYearIndex = (safePage - 1) * yearsPerPage;
-  const pagedYearGroups = yearGroups.slice(startYearIndex, startYearIndex + yearsPerPage);
-  const pagedItems = pagedYearGroups.flatMap((g) => g.items);
+  const startIndex = (safePage - 1) * pageSize;
+  const pagedItems = sortedItems.slice(startIndex, startIndex + pageSize);
 
   // Ensure rendered items have unique ids to avoid React key collisions
-  const renderedItems = pagedItems.map((it, i) => ({ ...it, id: `${it.id}-${startYearIndex}-${i}` }));
+  const renderedItems = pagedItems.map((it, i) => ({ ...it, id: `${it.id}-${startIndex}-${i}` }));
 
   useEffect(() => {
     if (page !== safePage) setPage(safePage);
@@ -283,12 +285,12 @@ export default function CISOActivityLogs() {
         </div>
        
        <div className="mt-5 space-y-5">
-          <div className="w-full max-w-[520px]">
+          <div className="w-full">
             <SearchInputGroup
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               containerClassName="h-10"
-              placeholder="Search by name, ID, or email..."
+              placeholder="Search by title"
             />
           </div>
         </div>

@@ -110,9 +110,6 @@ export default function CISOFacultyDataDump() {
       
        <div className="mt-2 space-y-3">
 
-
-          
-
         <FacultyDataDumpCard
           accept=".csv,text/csv"
           semesters={timelines}

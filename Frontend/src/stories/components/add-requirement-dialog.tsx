@@ -1,16 +1,18 @@
 import * as React from "react";
 import { Check, Search, X } from "lucide-react";
-
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";
+
 import {
   Dialog,
   DialogContent,
   DialogTrigger,
 } from "./dialog";
+
 import { Input } from "./input";
 import { SearchInputGroup } from "./input-group";
 import { InputGroupWithAddon } from "./input-group";
+
 import {
   Select,
   SelectContent,
@@ -72,6 +74,8 @@ type ApproverProfile = {
   office?: string;
 };
 
+
+
 export function AddRequirementDialog({
   trigger,
   initialValues,
@@ -83,7 +87,6 @@ export function AddRequirementDialog({
   const [open, setOpen] = React.useState(false);
   const [approverProfile, setApproverProfile] = React.useState<ApproverProfile | null>(null);
   const [approverRole, setApproverRole] = React.useState<ApproverRole>(null);
-
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [physicalSubmission, setPhysicalSubmission] = React.useState(false);
@@ -94,16 +97,15 @@ export function AddRequirementDialog({
   const [facultyQuery, setFacultyQuery] = React.useState("");
   const [facultyIds, setFacultyIds] = React.useState<string[]>([]);
   const [facultyOptions, setFacultyOptions] = React.useState<FacultyOption[]>([]);
-  
   const [colleges, setColleges] = React.useState<CollegeOption[]>([]);
   const [departments, setDepartments] = React.useState<DepartmentOption[]>([]);
   const [selectedColleges, setSelectedColleges] = React.useState<number[]>([]);
+  const [departmentCollegeFilter, setDepartmentCollegeFilter] = React.useState<string>("");
   const [selectedDepartments, setSelectedDepartments] = React.useState<number[]>([]);
 
   // Load options when dialog opens
   React.useEffect(() => {
     if (!open) return;
-    
     // Reset form
     setRecipientScope(initialValues?.recipientScope || "individual");
     setTitle(initialValues?.title ?? "");
@@ -113,7 +115,7 @@ export function AddRequirementDialog({
     setSelectedColleges(initialValues?.targetColleges ?? []);
     setSelectedDepartments(initialValues?.targetDepartments ?? []);
     setFacultyQuery("");
-    
+
     // Load approver profile and options
     loadApproverProfile();
     loadOptions();
@@ -123,6 +125,7 @@ export function AddRequirementDialog({
     try {
       const response = await fetch("/admin/xu-faculty-clearance/api/approver/dashboard");
       if (response.ok) {
+
         const data = await response.json();
         if (data.approverInfo) {
           const profile: ApproverProfile = {
@@ -131,12 +134,14 @@ export function AddRequirementDialog({
             department: data.approverInfo.department || undefined,
             office: data.approverInfo.office || undefined,
           };
+
           setApproverProfile(profile);
-          
+
           // Determine role based on assigned fields and department name
           if (profile.office && !profile.college && !profile.department) {
             // Only has office - Office Approver
             setApproverRole('office_approver');
+
           } else if (profile.college && profile.department) {
             // Has both college and department
             if (profile.department.toLowerCase().includes('dean')) {
@@ -155,6 +160,7 @@ export function AddRequirementDialog({
   };
 
   const loadOptions = async () => {
+
     try {
       // Load faculty options
       const facultyResponse = await fetch("/admin/xu-faculty-clearance/api/approver/faculty-options");
@@ -177,8 +183,8 @@ export function AddRequirementDialog({
 
   // Get available recipient scopes based on approver role
   const getAvailableRecipientScopes = () => {
-    const scopes = [];
-    
+    const scopes = [];   
+
     switch (approverRole) {
       case 'college_dean':
         scopes.push(
@@ -187,12 +193,14 @@ export function AddRequirementDialog({
           { value: 'individual', label: 'Individual Faculty' }
         );
         break;
+
       case 'department_chair':
         scopes.push(
           { value: 'department', label: 'By Department' },
           { value: 'individual', label: 'Individual Faculty' }
         );
         break;
+
       case 'office_approver':
         scopes.push(
           { value: 'all', label: 'All Faculty' },
@@ -201,6 +209,7 @@ export function AddRequirementDialog({
           { value: 'individual', label: 'Individual Faculty' }
         );
         break;
+
       default:
         // Fallback to all scopes if role is not determined
         scopes.push(
@@ -210,7 +219,6 @@ export function AddRequirementDialog({
           { value: 'individual', label: 'Individual Faculty' }
         );
     }
-    
     return scopes;
   };
 
@@ -229,37 +237,48 @@ export function AddRequirementDialog({
     return colleges;
   };
 
-  // Filter departments based on approver role
-  const getFilteredDepartments = () => {
-    if (approverRole === 'office_approver') {
-      // Office approver can see all departments
-      return departments;
-    } else if (approverRole === 'college_dean' && approverProfile?.college) {
-      // College dean can see all departments in their college except dean department
-      return departments.filter(dept => 
-        dept.college === approverProfile?.college && 
-        !dept.name.toLowerCase().includes('dean')
-      );
-    } else if (approverRole === 'department_chair' && approverProfile?.department) {
-      // Department chair can only see their department
-      return departments.filter(dept => dept.name === approverProfile.department);
-    }
-    return departments;
-  };
+// Filter departments based on approver role
+const getFilteredDepartments = () => {
+  let filtered = departments;
+  
+  if (approverRole === 'office_approver') {
+    // Office approver can see all departments
+    filtered = departments;
+
+  } else if (approverRole === 'college_dean' && approverProfile?.college) {
+    // College dean can see all departments in their college except dean department
+    filtered = departments.filter(dept => 
+      dept.college === approverProfile?.college && 
+      !dept.name.toLowerCase().includes('dean')
+    );
+  } else if (approverRole === 'department_chair' && approverProfile?.department) {
+    // Department chair can only see their department
+    filtered = departments.filter(dept => dept.name === approverProfile.department);
+  }
+  
+  // Apply college filter if selected (not "all")
+  if (departmentCollegeFilter && departmentCollegeFilter !== "all") {
+    filtered = filtered.filter(dept => dept.college === departmentCollegeFilter);
+  }
+  
+  return filtered;
+};
 
   // Filter faculty based on approver role and recipient scope
   const getFilteredFaculty = () => {
     let filtered = facultyOptions;
-    
+
     if (approverRole === 'college_dean' && approverProfile?.college) {
       // College dean - faculty from their college only
       filtered = filtered.filter(f => f.college === approverProfile.college);
+
     } else if (approverRole === 'department_chair' && approverProfile?.department) {
       // Department chair - faculty from their department only
       filtered = filtered.filter(f => f.department === approverProfile.department);
     }
+
     // Office approver can see all faculty (no filtering needed)
-    
+
     // Apply search query
     const q = facultyQuery.trim().toLowerCase();
     if (q) {
@@ -269,7 +288,6 @@ export function AddRequirementDialog({
         (f.subtitle ? f.subtitle.toLowerCase().includes(q) : false)
       );
     }
-    
     return filtered;
   };
 
@@ -427,6 +445,7 @@ export function AddRequirementDialog({
                     className="h-6 min-w-0 flex-1 rounded-none border-0 bg-transparent p-0 text-sm text-foreground shadow-none outline-none placeholder:text-muted-foreground focus-visible:ring-0"
                   />
                 </div>
+
                 <Button
                   type="button"
                   variant="ghost"
@@ -474,6 +493,7 @@ export function AddRequirementDialog({
               >
                 Cancel
               </Button>
+
               <Button
                 type="button"
                 className="h-11 w-full rounded-md"
@@ -500,7 +520,7 @@ export function AddRequirementDialog({
 
         {/* Faculty Search Dialog */}
         <Dialog open={facultyOpen} onOpenChange={setFacultyOpen}>
-          <DialogContent className="w-[420px] max-w-[calc(100vw-3rem)] max-h-[calc(100vh-3rem)] overflow-y-auto overflow-x-hidden rounded-xl p-0">
+          <DialogContent className="w-[420px] max-w-[calc(100vw-3rem)] rounded-xl p-0">
             <div className="rounded-xl bg-background">
               <div className="px-6 pb-4 pt-6">
                 <div className="text-center text-base font-bold text-foreground">Search Faculty</div>
@@ -511,6 +531,7 @@ export function AddRequirementDialog({
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select recipient scope" />
                     </SelectTrigger>
+
                     <SelectContent>
                       {getAvailableRecipientScopes().map((scope) => (
                         <SelectItem key={scope.value} value={scope.value}>
@@ -528,6 +549,7 @@ export function AddRequirementDialog({
                       // Multi-select for Office Approvers
                       <div className="space-y-2">
                         <div className="text-sm text-muted-foreground">Select colleges (multiple allowed):</div>
+                        <div className="max-h-48 overflow-y-auto space-y-2 pr-2">
                         {getFilteredColleges().map((college) => (
                           <label key={college.id} className="flex items-center gap-2 cursor-pointer">
                             <Checkbox
@@ -543,16 +565,20 @@ export function AddRequirementDialog({
                             <span className="text-sm">{college.name}</span>
                           </label>
                         ))}
+                        </div>
                       </div>
                     ) : (
+                      
                       // Single select for other roles
                       <Select 
                         value={selectedColleges.length > 0 ? selectedColleges[0].toString() : ""}
                         onValueChange={(value) => setSelectedColleges([parseInt(value)])}
                       >
+
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select college" />
                         </SelectTrigger>
+
                         <SelectContent>
                           {getFilteredColleges().map((college) => (
                             <SelectItem key={college.id} value={college.id.toString()}>
@@ -566,13 +592,36 @@ export function AddRequirementDialog({
                 )}
 
                 {recipientScope === "department" && (
-                  <div className="mt-3 space-y-1.5">
-                    {approverRole === 'office_approver' ? (
+  <div className="mt-3 space-y-1.5">
+    {/* College Filter for Departments */}
+    <div className="mt-3 space-y-1.5">
+      <div className="text-sm text-muted-foreground">Filter by college:</div>
+      <Select 
+        value={departmentCollegeFilter}
+        onValueChange={setDepartmentCollegeFilter}
+      >
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder="All colleges" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All colleges</SelectItem>
+          {Array.from(new Set(departments.map(d => d.college))).map((college) => (
+            <SelectItem key={college} value={college}>
+              {college}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+    
+    {approverRole === 'office_approver' ? (
                       // Multi-select for Office Approvers
-                      <div className="space-y-2">
-                        <div className="text-sm text-muted-foreground">Select departments (multiple allowed):</div>
+                      <div className="mt-6 space-y-1.5">
+                        <div className="text-sm text-muted-foreground mb-4">Select departments (multiple allowed):</div>
+                          <div className="space-y-1.5 max-h-48 overflow-y-auto">
                         {getFilteredDepartments().map((dept) => (
                           <label key={dept.id} className="flex items-center gap-2 cursor-pointer">
+
                             <Checkbox
                               checked={selectedDepartments.includes(dept.id)}
                               onCheckedChange={(checked) => {
@@ -583,25 +632,32 @@ export function AddRequirementDialog({
                                 }
                               }}
                             />
+
                             <span className="text-sm">{dept.name} ({dept.college})</span>
                           </label>
                         ))}
+                        </div>
                       </div>
                     ) : (
+
                       // Single select for other roles
                       <Select 
                         value={selectedDepartments.length > 0 ? selectedDepartments[0].toString() : ""}
                         onValueChange={(value) => setSelectedDepartments([parseInt(value)])}
                       >
+
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select department" />
                         </SelectTrigger>
+
                         <SelectContent>
                           {getFilteredDepartments().map((dept) => (
                             <SelectItem key={dept.id} value={dept.id.toString()}>
                               {dept.name} ({dept.college})
                             </SelectItem>
                           ))}
+                          
+
                         </SelectContent>
                       </Select>
                     )}
@@ -620,21 +676,6 @@ export function AddRequirementDialog({
                       />
                     </div>
 
-                    <div className="mt-4">
-                      <button
-                        type="button"
-                        className={
-                          allFilteredSelected
-                            ? "w-full rounded-md bg-muted-foreground/20 px-4 py-3 text-left"
-                            : "w-full rounded-md px-4 py-3 text-left"
-                        }
-                        onClick={() => toggleSelectAllFiltered(!allFilteredSelected)}
-                      >
-                        <div className="text-sm font-bold text-foreground">Select All</div>
-                        <div className="mt-1 text-xs text-muted-foreground">Select All Faculty Members</div>
-                      </button>
-                    </div>
-
                     <div className="mt-4 space-y-3">
                       {filteredFaculty.map((f) => {
                         const selected = facultyIds.includes(f.id);
@@ -649,14 +690,18 @@ export function AddRequirementDialog({
                             }
                             onClick={() => toggleFaculty(f.id)}
                           >
+
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
                                 <div className="text-sm font-bold text-foreground">{f.name}</div>
+
                                 <div className="mt-1 text-xs text-muted-foreground">{f.subtitle ?? f.id}</div>
+
                                 {f.college && (
                                   <div className="mt-1 text-xs text-muted-foreground">{f.college}</div>
                                 )}
                               </div>
+
                               {selected ? (
                                 <Check className="mt-1 h-5 w-5 shrink-0 text-foreground" />
                               ) : null}
@@ -688,17 +733,21 @@ export function AddRequirementDialog({
                           return "";
                         })()}
                       </div>
+
                       <div className="mt-1 text-xs text-muted-foreground">
                         {(() => {
                           if (recipientScope === "all") {
                             return "All faculty members will receive this requirement";
                           } else if (recipientScope === "college" && selectedColleges.length > 0) {
+
                             return selectedColleges.length === 1 
                               ? `All faculty in ${colleges.find(c => c.id === selectedColleges[0])?.name} will receive this requirement`
                               : `All faculty in ${selectedColleges.length} selected colleges will receive this requirement`;
+
                           } else if (recipientScope === "department" && selectedDepartments.length > 0) {
                             return selectedDepartments.length === 1
                               ? `All faculty in ${departments.find(d => d.id === selectedDepartments[0])?.name} will receive this requirement`
+
                               : `All faculty in ${selectedDepartments.length} selected departments will receive this requirement`;
                           }
                           return "";

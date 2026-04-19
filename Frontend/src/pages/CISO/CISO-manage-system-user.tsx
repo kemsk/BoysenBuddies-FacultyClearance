@@ -39,7 +39,7 @@ import {
  export default function CISOManageSystemUser() {
   const navigate = useNavigate();
   const [page, setPage] = React.useState(1);
-  const pageSize = 12;
+  const pageSize = 20;
 
   const [users, setUsers] = React.useState<SystemUser[]>([]);
   const [filteredUsers, setFilteredUsers] = React.useState<SystemUser[]>([]);

@@ -203,7 +203,10 @@ function AddCollegeDialog(props: {
                   <Button
                     type="button"
                     className="mt-3 h-10 w-full rounded-md bg-primary text-primary-foreground"
-                    onClick={() => setDepartments((prev) => [...prev, { name: "", short: "" }])}
+                    onClick={() => {
+                      const newDept = { name: "", short: "" };
+                      setDepartments((prev) => [...prev, newDept]);
+                    }}
                   >
                     <div className="flex w-full items-center justify-between">
                       <span className="text-sm font-semibold">Add New Department</span>
@@ -774,7 +777,7 @@ export default function CISOCollegeOfficeConfiguration() {
   );
 
   const handleSaveConfiguration = React.useCallback(async () => {
-    if (!selectedTimelineId || !checkbox1Checked || !checkbox2Checked) return;
+    if (!selectedTimelineId) return;
     
     setIsSaving(true);
     try {
@@ -802,17 +805,13 @@ export default function CISOCollegeOfficeConfiguration() {
       
       // Show success message
       alert('Configuration saved successfully!');
-      
-      // Reset checkboxes after successful save
-      setCheckbox1Checked(false);
-      setCheckbox2Checked(false);
     } catch (error) {
       console.error('Error saving configuration:', error);
       alert('Failed to save configuration. Please try again.');
     } finally {
       setIsSaving(false);
     }
-  }, [selectedTimelineId, checkbox1Checked, checkbox2Checked, colleges, departments, offices, approverFlow]);
+  }, [selectedTimelineId, colleges, departments, offices, approverFlow]);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -889,8 +888,29 @@ export default function CISOCollegeOfficeConfiguration() {
             )}
           </div>
 
+          <div className="w-full bg-white rounded-lg border border-gray-200 p-6">
+            <div className="space-y-4">
+              <div className="border-2 border-orange-400 bg-orange-50 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                  <h3 className="font-bold text-orange-800">Important Notes:</h3>
+                </div>
+                <ul className="space-y-2 text-sm text-orange-700">
+                  <li className="flex items-start gap-2">
+                    <span className="text-orange-500 mt-1">·</span>
+                    <span>Ensure all Colleges, Departments, and Offices required for the Faculty Clearance Process are properly configured on this page.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-orange-500 mt-1">·</span>
+                    <span>Once a Clearance Timeline is set to "Active" status, no further configuration changes can be made.</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           <div className="w-full space-y-5">
-            
+
             <SectionListCard
               title="Colleges"
               headerActionImgAlt="Add"
@@ -1165,40 +1185,23 @@ export default function CISOCollegeOfficeConfiguration() {
           </div>
 
           <div className="w-full bg-white rounded-lg border border-gray-200 p-6">
-            <div className="space-y-3">
-              <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
-                <Checkbox 
-                  variant="gray" 
-                  checked={checkbox1Checked}
-                  onCheckedChange={(checked) => setCheckbox1Checked(checked === true)}
-                  disabled={isConfigurationLocked}
-                /> 
-                <label htmlFor="checkbox1" className="text-sm text-gray-700"><span className="font-bold">I agree</span> that all Colleges, Departments, and Offices that are necessary to the Faculty Clearance Process are present and are readily configured in this page.</label>
-              </div>
-              <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
-                <Checkbox 
-                  variant="gray" 
-                  checked={checkbox2Checked}
-                  onCheckedChange={(checked) => setCheckbox2Checked(checked === true)}
-                  disabled={isConfigurationLocked}
-                /> 
-                <label htmlFor="checkbox2" className="text-sm text-gray-700"><span className="font-bold">I understand</span> that once a Clearance Timeline is in an "Active" state, I cannot make any changes to the configuration.</label>
-              </div>
-            </div>
-            <div className="mt-3">
-              <Button 
-                variant="default" 
-                className="w-full font-bold"
-                disabled={!checkbox1Checked || !checkbox2Checked || isSaving || isConfigurationLocked}
-                onClick={handleSaveConfiguration}
-              >
-                {isSaving ? 'Saving...' : 'I Agree and Understand'}
-              </Button>
-              {isConfigurationLocked && (
-                <div className="mt-2 text-sm text-red-600 text-center">
-                  Configuration is locked because the timeline is active.
+            <div className="space-y-4">
+              <div className="border-2 border-orange-400 bg-orange-50 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                  <h3 className="font-bold text-orange-800">Important Notes:</h3>
                 </div>
-              )}
+                <ul className="space-y-2 text-sm text-orange-700">
+                  <li className="flex items-start gap-2">
+                    <span className="text-orange-500 mt-1">·</span>
+                    <span>Ensure all Colleges, Departments, and Offices required for the Faculty Clearance Process are properly configured on this page.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-orange-500 mt-1">·</span>
+                    <span>Once a Clearance Timeline is set to "Active" status, no further configuration changes can be made.</span>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
@@ -1337,40 +1340,23 @@ export default function CISOCollegeOfficeConfiguration() {
             </div>
 
             <div className="w-full bg-white rounded-lg border border-gray-200 p-6">
-              <div className="space-y-3">
-                <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
-                  <Checkbox 
-                    variant="gray" 
-                    checked={checkbox1Checked}
-                    onCheckedChange={(checked) => setCheckbox1Checked(checked === true)}
-                    disabled={isConfigurationLocked}
-                  /> 
-                  <label htmlFor="checkbox1" className="text-sm text-gray-700"><span className="font-bold">I agree</span> that all Colleges, Departments, and Offices that are necessary to the Faculty Clearance Process are present and are readily configured in this page.</label>
-                </div>
-                <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
-                  <Checkbox 
-                    variant="gray" 
-                    checked={checkbox2Checked}
-                    onCheckedChange={(checked) => setCheckbox2Checked(checked === true)}
-                    disabled={isConfigurationLocked}
-                  /> 
-                  <label htmlFor="checkbox2" className="text-sm text-gray-700"><span className="font-bold">I understand</span> that once a Clearance Timeline is in an "Active" state, I cannot make any changes to the configuration.</label>
-                </div>
-              </div>
-              <div className="mt-3">
-                <Button 
-                  variant="default" 
-                  className="w-full font-bold"
-                  disabled={!checkbox1Checked || !checkbox2Checked || isSaving || isConfigurationLocked}
-                  onClick={handleSaveConfiguration}
-                >
-                  {isSaving ? 'Saving...' : 'I Agree and Understand'}
-                </Button>
-                {isConfigurationLocked && (
-                  <div className="mt-2 text-sm text-red-600 text-center">
-                    Configuration is locked because the timeline is active.
+              <div className="space-y-4">
+                <div className="border-2 border-orange-400 bg-orange-50 p-4 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                    <h3 className="font-bold text-orange-800">Important Notes:</h3>
                   </div>
-                )}
+                  <ul className="space-y-2 text-sm text-orange-700">
+                    <li className="flex items-start gap-2">
+                      <span className="text-orange-500 mt-1">·</span>
+                      <span>Ensure all Colleges, Departments, and Offices required for the Faculty Clearance Process are properly configured on this page.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-orange-500 mt-1">·</span>
+                      <span>Once a Clearance Timeline is set to "Active" status, no further configuration changes can be made.</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -1652,39 +1638,81 @@ export default function CISOCollegeOfficeConfiguration() {
           onOpenChange={setAddApproverOpen}
           colleges={colleges}
           categories={approverCategories}
-          onCreate={(payload) => {
-            (async () => {
-
-              // Check for duplicate approver with same category and colleges
-              const isDuplicate = approverFlow.some(existing => {
-                const categoryMatch = existing.category === payload.category;
-                const collegeMatch = JSON.stringify(existing.collegeIds.sort()) === JSON.stringify(payload.collegeIds.sort());
-                return categoryMatch && collegeMatch;
+          onCreate={async (payload) => {
+            // Check for duplicate approver with same category and colleges
+            const isDuplicate = approverFlow.some(existing => {
+              const categoryMatch = existing.category === payload.category;
+              const collegeMatch = JSON.stringify(existing.collegeIds.sort()) === JSON.stringify(payload.collegeIds.sort());
+              return categoryMatch && collegeMatch;
+            });
+            
+            if (isDuplicate) {
+              alert('An approver with this category and college selection already exists!');
+              return;
+            }
+            
+            try {
+              console.log('[DEBUG] Attempting POST to: /admin/xu-faculty-clearance/api/ciso/approver-flow/steps');
+              console.log('[DEBUG] Payload:', {
+                category: payload.category,
+                collegeIds: payload.collegeIds,
+                order: approverFlow.length + 1,
               });
               
-              if (isDuplicate) {
-                alert('An approver with this category and college selection already exists!');
+              const response = await fetch("/admin/xu-faculty-clearance/api/ciso/approver-flow/steps", {
+                method: "POST",
+                credentials: "include",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  category: payload.category,
+                  collegeIds: payload.collegeIds,
+                  order: approverFlow.length + 1,
+                }),
+              });
+
+              console.log('[DEBUG] Response status:', response.status);
+              console.log('[DEBUG] Response headers:', response.headers);
+
+              if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Error creating approver flow step:', errorText);
+                alert(`Failed to create approver flow step. Status: ${response.status}. Error: ${errorText}`);
                 return;
               }
-              
+
+              const created = await response.json();
+              console.log('[DEBUG] Created approver:', created);
+
+              // Update local state with the created item
+              setApproverFlow((prev) => [
+                ...prev,
+                {
+                  id: created.id || crypto.randomUUID(),
+                  category: payload.category,
+                  collegeIds: payload.collegeIds,
+                  order: prev.length + 1,
+                },
+              ]);
+
               const addedCollegeNames = payload.collegeIds
                 .map((id) => colleges.find((c) => c.id === id)?.name)
                 .filter(Boolean);
 
-              // Only update local approverFlow; persistence happens when configuration is saved
-              setApproverFlow((prev) => [
-                ...prev,
-                {
-                  id: `temp-${Date.now()}-${prev.length}`,
-                  category: payload.category,
-                  collegeIds: payload.collegeIds,
-                  order: prev.length,
-                },
-              ]);
+              postCISOActivityLog({
+                event_type: "added_approver",
+                details: [
+                  `Approver Category: ${payload.category}`,
+                  `Colleges: ${addedCollegeNames.join(", ")}`,
+                ],
+              });
 
-            })().catch(() => {
-              // ignore; can be handled by UI later
-            });
+              alert('Approver flow step created successfully!');
+            } catch (error) {
+              console.error('Error creating approver flow step:', error);
+              alert('Failed to create approver flow step. Please try again.');
+            }
           }}
         />
 

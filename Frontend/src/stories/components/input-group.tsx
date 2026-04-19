@@ -419,6 +419,38 @@ function SearchInputGroup({
   );
 }
 
+function LineInputGroup({
+  className,
+  containerClassName,
+  placeholder = DEFAULT_SEARCH_PLACEHOLDER,
+  size = "sm",
+  ...props
+}: SearchInputGroupProps) {
+  return (
+    <InputGroup
+      className={cn(
+        "bg-white border-primary ",
+        containerClassName
+      )}
+    >
+      <InputGroupAddon>
+        <Search className="h-4 w-4" />
+      </InputGroupAddon>
+      <Input
+        type="search"
+        size={size}
+        placeholder={placeholder}
+        data-slot="input-group-control"
+        className={cn(
+          "h-full flex-1 rounded-none border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 p-2",
+          className
+        )}
+        {...props}
+      />
+    </InputGroup>
+  );
+}
+
 export {
   InputGroup,
   InputGroupAddon,
@@ -429,4 +461,5 @@ export {
   InputGroupWithAddon,
   DEFAULT_SEARCH_PLACEHOLDER,
   SearchInputGroup,
+  LineInputGroup,
 }

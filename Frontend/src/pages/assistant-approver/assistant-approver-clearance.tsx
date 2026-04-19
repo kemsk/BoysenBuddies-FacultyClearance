@@ -1,6 +1,7 @@
 import * as React from "react";
 import "../../index.css"; 
 import { AssistantApproverHeader } from "../../stories/components/header";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import {
   ClearanceRequestsCard,
@@ -22,8 +23,9 @@ import { SearchInputGroup } from "../../stories/components/input-group";
 
 export default function AssistantApproverClearance() {
   const [query, setQuery] = React.useState("");
-
   const [requests, setRequests] = React.useState<ClearanceRequestItem[]>([]);
+  const [page, setPage] = React.useState(1);
+  const itemsPerPage = 20;
 
   React.useEffect(() => {
     fetch("/admin/xu-faculty-clearance/api/assistant-approver/clearance", {
@@ -48,6 +50,19 @@ export default function AssistantApproverClearance() {
       return hay.includes(q);
     });
   }, [query, requests]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
+  const safePage = Math.max(1, Math.min(page, totalPages || 1));
+  const paginatedRequests = React.useMemo(() => {
+    const startIndex = (safePage - 1) * itemsPerPage;
+    return filteredRequests.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredRequests, safePage, itemsPerPage]);
+
+  // Reset page when query changes
+  React.useEffect(() => {
+    setPage(1);
+  }, [query]);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -104,9 +119,48 @@ export default function AssistantApproverClearance() {
 
         <div className="mt-6">
           <ClearanceRequestsCard
-            items={filteredRequests}
+            items={paginatedRequests}
             getItemHref={(item) => `/assistant-approver-individual-clearance?requestId=${encodeURIComponent(item.requestId)}`}
           />
+        </div>
+
+        <div className="mt-8 h-px w-full bg-[hsl(var(--gray-border))]" />
+
+        <div className="px-6 pb-4">
+          <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <span>Page</span>
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-background text-foreground disabled:opacity-50"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={safePage <= 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+
+            <select
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground"
+              value={safePage}
+              onChange={(e) => setPage(Number(e.target.value))}
+            >
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {i + 1}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-background text-foreground disabled:opacity-50"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={safePage >= totalPages}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+
+            <span>of {totalPages}</span>
+          </div>
         </div>
 
         
