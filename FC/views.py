@@ -2436,6 +2436,36 @@ def ciso_faculty_dump_import_api(request):
     def _clean(value: str | None):
         return (value or "").strip()
 
+    def _validate_faculty_data(email, university_id, employee_id, first_name, last_name, faculty_type, college_name, department_name, office_name):
+        """Validate faculty data - all fields required except middle_name"""
+        missing_fields = []
+        
+        # Core identifier fields
+        if not email or not email.strip():
+            missing_fields.append("email")
+        
+        if not university_id or not university_id.strip():
+            missing_fields.append("university_id")
+        
+        if not employee_id or not employee_id.strip():
+            missing_fields.append("employee_id")
+        
+        # Name fields
+        if not first_name or not first_name.strip():
+            missing_fields.append("first_name")
+        
+        if not last_name or not last_name.strip():
+            missing_fields.append("last_name")
+        
+        if not faculty_type or not faculty_type.strip():
+            missing_fields.append("faculty_type")
+        
+        # Check that at least one organizational assignment exists
+        if not (college_name or department_name or office_name):
+            missing_fields.append("organization_assignment")
+        
+        return len(missing_fields) == 0, missing_fields
+
     # Get or create Faculty role
     try:
         faculty_role = Role.objects.get(name='Faculty')
@@ -2471,6 +2501,19 @@ def ciso_faculty_dump_import_api(request):
         office_name = _clean(row.get("office"))
         college_name = _clean(row.get("college"))
         department_name = _clean(row.get("department"))
+
+        # Validate faculty data - skip incomplete records
+        is_valid, missing_fields = _validate_faculty_data(
+            email, university_id, employee_id, first_name, last_name, faculty_type, college_name, department_name, office_name
+        )
+        
+        if not is_valid:
+            errors.append({
+                "row": idx, 
+                "message": f"Skipping incomplete faculty record. Missing required fields: {', '.join(missing_fields)}"
+            })
+            skipped_count += 1
+            continue
 
         try:
             with transaction.atomic():
@@ -3145,6 +3188,26 @@ def _serialize_archived_faculty_item(archived: ArchivedClearance):
     employee_id = archived_data.get("employeeId") or getattr(faculty, "employee_id", "") or ""
     display_name = archived_data.get("name") or _archived_faculty_display_name(faculty) or getattr(user, "email", "") or employee_id
 
+    # Calculate validation status and missing fields
+    missing_fields = []
+    
+    # Check required fields
+    if not getattr(faculty, "first_name", "") or not getattr(faculty, "first_name", "").strip():
+        missing_fields.append("first_name")
+    
+    if not getattr(faculty, "last_name", "") or not getattr(faculty, "last_name", "").strip():
+        missing_fields.append("last_name")
+    
+    if not getattr(faculty, "faculty_type", "") or not getattr(faculty, "faculty_type", "").strip():
+        missing_fields.append("faculty_type")
+    
+    # Check organizational assignment
+    if not (faculty.college or faculty.department or faculty.office):
+        missing_fields.append("organization_assignment")
+    
+    validation_status = "COMPLETE" if len(missing_fields) == 0 else "INCOMPLETE"
+    missing_fields_str = ", ".join(missing_fields) if missing_fields else ""
+
     return {
         "id": str(archived.id),
         "employeeId": employee_id,
@@ -3155,6 +3218,8 @@ def _serialize_archived_faculty_item(archived: ArchivedClearance):
         "status": archived.status,
         "missingApproval": archived_data.get("missing_approval", ""),
         "lastUpdated": archived.last_updated.strftime("%B %d, %Y, %H:%M %p") if archived.last_updated else "",
+        "validationStatus": validation_status,
+        "missingFields": missing_fields_str,
     }
 
 
@@ -4955,7 +5020,7 @@ def ovphe_export_clearance_results_api(request):
         ]
     )
     writer.writerow([])
-    writer.writerow(["Faculty Name", "University ID", "College", "Department", "Office", "Status", "Completion Date"])
+    writer.writerow(["Faculty Name", "University ID", "College", "Department", "Office", "Status", "Completion Date", "Validation Status"])
 
     for faculty in faculty_items:
         clearance = clearances_by_faculty.get(faculty.id)
@@ -4980,6 +5045,16 @@ def ovphe_export_clearance_results_api(request):
         elif completion_info["is_completed"] and completion_info["completed_at"]:
             completion_date = _format_export_datetime(completion_info["completed_at"])
 
+        # Calculate validation status
+        required_fields = [
+            getattr(faculty, "first_name", ""),
+            getattr(faculty, "last_name", ""),
+            getattr(faculty, "faculty_type", ""),
+        ]
+        all_required_present = all(field and field.strip() for field in required_fields)
+        has_organization = bool(faculty.college or faculty.department or faculty.office)
+        validation_status = "COMPLETE" if all_required_present and has_organization else "INCOMPLETE"
+
         writer.writerow(
             [
                 faculty_name,
@@ -4989,6 +5064,7 @@ def ovphe_export_clearance_results_api(request):
                 faculty.office.name if faculty.office else "",
                 export_status,
                 completion_date,
+                validation_status,
             ]
         )
     return response
@@ -10671,16 +10747,98 @@ def ciso_archived_faculty_download_api(request, archived_id: int):
     if not dump.dump_file_path:
         return JsonResponse({"detail": "CSV file not available for this archived faculty dump"}, status=404)
 
-    # Try to serve the file
+    # Read the original CSV file
     try:
         import os
         from django.conf import settings
         file_path = os.path.join(settings.MEDIA_ROOT if hasattr(settings, 'MEDIA_ROOT') else '', dump.dump_file_path)
         if not os.path.exists(file_path):
             return JsonResponse({"detail": "CSV file not found on server"}, status=404)
+        
+        # Read original CSV
         with open(file_path, 'rb') as f:
-            response = HttpResponse(f.read(), content_type='text/csv')
-            response['Content-Disposition'] = f'attachment; filename="{dump.dump_file_path.split("/")[-1]}"'
-            return response
+            raw_content = f.read()
+        
+        # Try to decode with common encodings
+        text = None
+        for enc in ("utf-8-sig", "utf-8", "latin-1"):
+            try:
+                text = raw_content.decode(enc)
+                break
+            except Exception:
+                continue
+        
+        if text is None:
+            return JsonResponse({"detail": "Unable to decode CSV file"}, status=400)
+        
+        reader = csv.DictReader(io.StringIO(text))
+        original_fieldnames = reader.fieldnames or []
+        
+        # Generate new CSV with validation columns
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header with original columns + validation columns
+        new_fieldnames = list(original_fieldnames) + ["Validation Status", "Missing Fields"]
+        writer.writerow(new_fieldnames)
+        
+        def _clean(value: str | None):
+            return (value or "").strip()
+        
+        # Process each row and add validation
+        for row in reader:
+            # Extract faculty data for validation
+            email = _clean(row.get("email"))
+            university_id = _clean(row.get("university_id"))
+            employee_id = _clean(row.get("employee_id"))
+            first_name = _clean(row.get("first_name"))
+            last_name = _clean(row.get("last_name"))
+            faculty_type = _clean(row.get("faculty_type"))
+            college_name = _clean(row.get("college"))
+            department_name = _clean(row.get("department"))
+            office_name = _clean(row.get("office"))
+            
+            # Validate faculty data
+            missing_fields = []
+            
+            if not email or not email.strip():
+                missing_fields.append("email")
+            
+            if not university_id or not university_id.strip():
+                missing_fields.append("university_id")
+            
+            if not employee_id or not employee_id.strip():
+                missing_fields.append("employee_id")
+            
+            if not first_name or not first_name.strip():
+                missing_fields.append("first_name")
+            
+            if not last_name or not last_name.strip():
+                missing_fields.append("last_name")
+            
+            if not faculty_type or not faculty_type.strip():
+                missing_fields.append("faculty_type")
+            
+            if not (college_name or department_name or office_name):
+                missing_fields.append("organization_assignment")
+            
+            validation_status = "COMPLETE" if len(missing_fields) == 0 else "INCOMPLETE"
+            missing_fields_str = ", ".join(missing_fields) if missing_fields else ""
+            
+            # Write row with validation columns
+            new_row = [row.get(field, "") for field in original_fieldnames] + [validation_status, missing_fields_str]
+            writer.writerow(new_row)
+        
+        # Create response
+        csv_content = output.getvalue()
+        bom_content = '\ufeff' + csv_content  # Add BOM for Excel compatibility
+        response = HttpResponse(bom_content, content_type='text/csv;charset=utf-8')
+        
+        # Generate filename based on dump info
+        filename = f"archived_faculty_{dump.academic_year_start}_{dump.academic_year_end}_{dump.term}_{dump.id}.csv"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
+        
     except Exception as e:
-        return JsonResponse({"detail": "Error serving file: " + str(e)}, status=500)
+        return JsonResponse({"detail": "Error processing CSV file: " + str(e)}, status=500)
