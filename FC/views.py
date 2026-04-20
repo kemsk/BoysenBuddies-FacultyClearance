@@ -2311,7 +2311,6 @@ def ciso_faculty_dump_template_api(request):
         "middle_name",
         "last_name",
         "faculty_type",
-        "phone_number",
         "college",
         "department",
     ]
@@ -2329,7 +2328,6 @@ def ciso_faculty_dump_template_api(request):
             "middle_name": "A.",
             "last_name": "Faculty",
             "faculty_type": "Full-time",
-            "phone_number": "09171234567",
             "college": "College of Computer Studies",
             "department": "Information Technology",
         },
@@ -2341,7 +2339,6 @@ def ciso_faculty_dump_template_api(request):
             "middle_name": "B.",
             "last_name": "New",
             "faculty_type": "Part-time",
-            "phone_number": "09987654321",
             "college": "College of Arts and Sciences",
             "department": "Mathematics",
         },
@@ -2471,7 +2468,6 @@ def ciso_faculty_dump_import_api(request):
         middle_name = _clean(row.get("middle_name"))
         last_name = _clean(row.get("last_name"))
         faculty_type = _clean(row.get("faculty_type"))
-        phone_number = _clean(row.get("phone_number"))
         office_name = _clean(row.get("office"))
         college_name = _clean(row.get("college"))
         department_name = _clean(row.get("department"))
@@ -2502,7 +2498,6 @@ def ciso_faculty_dump_import_api(request):
                     defaults={
                         'employee_id': employee_id,
                         'faculty_type': faculty_type,
-                        'phone_number': phone_number,
                         'first_name': first_name,
                         'middle_name': middle_name,
                         'last_name': last_name,
@@ -2512,7 +2507,6 @@ def ciso_faculty_dump_import_api(request):
                     # Update existing faculty
                     faculty.employee_id = employee_id
                     faculty.faculty_type = faculty_type
-                    faculty.phone_number = phone_number
                     faculty.first_name = first_name
                     faculty.middle_name = middle_name
                     faculty.last_name = last_name

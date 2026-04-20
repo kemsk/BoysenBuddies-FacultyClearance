@@ -27,7 +27,6 @@ export type FacultyMemberDetails = {
   college: string;
   department: string;
   facultyType: string;
-  phoneNumber?: string;
   email?: string;
   status: FacultyMemberStatus;
 };
@@ -95,13 +94,6 @@ export function FacultyMemberDetailsDialog({
 
               <div className="font-semibold text-foreground">Faculty Type</div>
               <div className="text-muted-foreground">{details.facultyType}</div>
-
-              {details.phoneNumber ? (
-                <>
-                  <div className="font-semibold text-foreground">Phone Number</div>
-                  <div className="text-muted-foreground">{details.phoneNumber}</div>
-                </>
-              ) : null}
 
               {details.email ? (
                 <>

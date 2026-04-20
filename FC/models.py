@@ -109,7 +109,6 @@ class Faculty(models.Model):
     middle_name = models.CharField(max_length=100, null=True, blank=True)
     last_name = models.CharField(max_length=100, null=True, blank=True)
     faculty_type = models.CharField(max_length=50, null=True, blank=True)
-    phone_number = models.CharField(max_length=20, null=True, blank=True)
     office = models.ForeignKey(Office, on_delete=models.SET_NULL, null=True, blank=True, related_name="faculty")
     college = models.ForeignKey(College, on_delete=models.SET_NULL, null=True, blank=True, related_name="faculty")
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name="faculty")
