@@ -1,6 +1,6 @@
 import * as React from "react";
 import "../../index.css"; 
-import { ApprovalHeader } from "../../stories/components/header";
+import { DynamicApproverHeader } from "../../stories/components/header";
 
 import {
   AnnouncementsCard,
@@ -108,7 +108,7 @@ export default function Approverdashboard() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <ApprovalHeader />
+        <DynamicApproverHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}

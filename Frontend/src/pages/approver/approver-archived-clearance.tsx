@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import "../../index.css"; 
-import { ApprovalHeader } from "../../stories/components/header";
+import { DynamicApproverHeader } from "../../stories/components/header";
 
 import {
   type AnnouncementItem,
@@ -107,7 +107,7 @@ export default function ApproverAchivedClearance() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <ApprovalHeader />
+        <DynamicApproverHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}

@@ -3,7 +3,7 @@ import * as React from "react";
 import "../../index.css";
 import { Link, useNavigate } from "react-router-dom";
 
-import { OVPHEHeader } from "../../stories/components/header";
+import { DynamicApproverHeader, OVPHEHeader } from "../../stories/components/header";
 import {
   AnalyticsDonutCard,
   DepartmentCompletionRateCard,
@@ -38,6 +38,33 @@ function postOVPHEActivityLog(payload: { event_type: string; details?: string[] 
 
 export default function SystemAnalytics() {
   const navigate = useNavigate();
+  const [userProfile, setUserProfile] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const profileResponse = await fetch("/admin/xu-faculty-clearance/api/me", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          setUserProfile(profileData);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user profile:", error);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  const isOVPHE = userProfile?.role_value === 2;
+  const HeaderComponent = isOVPHE ? OVPHEHeader : DynamicApproverHeader;
 
   const [selectedTerm, setSelectedTerm] = React.useState("Term");
   const [selectedClearance, setSelectedClearance] = React.useState("All Clearances");
@@ -249,7 +276,7 @@ export default function SystemAnalytics() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <OVPHEHeader />
+        <HeaderComponent />
       </div>
 
       {/* DASHBOARD CONTENT */}

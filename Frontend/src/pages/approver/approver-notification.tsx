@@ -1,7 +1,7 @@
 import React from "react";
 import "../../index.css"; // ensure index.css is accessible from src
 import { Button } from "../../stories/components/button";
-import { ApprovalHeader } from "../../stories/components/header";
+import { DynamicApproverHeader } from "../../stories/components/header";
 
 import {
   NotificationsCard,
@@ -133,7 +133,7 @@ export default function ApproverNotification() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <ApprovalHeader />
+        <DynamicApproverHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}

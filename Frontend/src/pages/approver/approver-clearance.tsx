@@ -1,6 +1,6 @@
 import * as React from "react";
 import "../../index.css";
-import { ApprovalHeader } from "../../stories/components/header";
+import { DynamicApproverHeader } from "../../stories/components/header";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ClearanceRequestsCard, type ClearanceRequestItem } from "../../stories/components/cards";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../stories/components/select";
@@ -284,7 +284,7 @@ export default function ApproverClearance() {
     return (
       <div className="min-h-screen bg-primary-foreground text-primary-foreground">
         <div className="header mb-3">
-          <ApprovalHeader />
+          <DynamicApproverHeader />
         </div>
         <main className="dashboard p-[2%]">
           <div className="flex items-center justify-center h-64">

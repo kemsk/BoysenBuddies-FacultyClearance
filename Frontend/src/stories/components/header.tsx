@@ -283,6 +283,34 @@ export function AdminHeader() {
 export function ApprovalHeader() {
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = React.useState(0);
+  const [userProfile, setUserProfile] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const profileResponse = await fetch("/admin/xu-faculty-clearance/api/me", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          setUserProfile(profileData);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user profile:", error);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  const isHRO = userProfile?.roles_payload?.some(
+    (role: any) => role.office === "Human Resources Office"
+  ) || false;
 
   React.useEffect(() => {
     let mounted = true;
@@ -466,6 +494,40 @@ export function ApprovalHeader() {
                 </div>
               </div>
             </div>
+
+            {isHRO && (
+              <div className="mt-2">
+              <SheetClose asChild>
+                <Link
+                  to="/approver-tools"
+                  className="flex items-center gap-3 text-xl font-semibold text-primary"
+                >
+                  <img
+                    src="/PrimaryToolIcon.png"
+                    alt="Tools"
+                    className="h-5 w-5 object-contain"
+                  />
+                  <span>Tools</span>
+                </Link>
+              </SheetClose>
+
+              <div className="mt-5 flex gap-3">
+                <div className="flex w-5 justify-center">
+                  <div className="w-px bg-[hsl(var(--gray-border))]" />
+                </div>
+                <div className=" flex flex-col space-y-3">
+                  <SheetClose asChild>
+                    <Link
+                      to="/OVPHE-system-analytics"
+                      className="text-xl font-regular text-primary"
+                    >
+                      System Analytics
+                    </Link>
+                  </SheetClose>
+                </div>
+              </div>
+              </div>
+            )}
 
             <div className="mt-2">
             <SheetClose asChild>
@@ -739,6 +801,14 @@ export function HROHeader() {
                   </SheetClose>
                   <SheetClose asChild>
                     <Link
+                      to="/OVPHE-system-analytics"
+                      className="text-xl font-regular text-primary"
+                    >
+                      System Analytics
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link
                       to="/HRO-activity-logs"
                       className="text-xl font-regular text-primary"
                     >
@@ -823,6 +893,36 @@ export function HROHeader() {
       </div>
     </HeaderVariant>
   );
+}
+
+export function DynamicApproverHeader() {
+  const [userProfile, setUserProfile] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const profileResponse = await fetch("/admin/xu-faculty-clearance/api/me", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          setUserProfile(profileData);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user profile:", error);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  // Always use ApprovalHeader since System Analytics is now conditionally shown for HRO users
+  return <ApprovalHeader />;
 }
 
 export function CISOHeader() {

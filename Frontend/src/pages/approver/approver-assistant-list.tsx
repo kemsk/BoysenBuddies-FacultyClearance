@@ -1,5 +1,5 @@
 import "../../index.css";
-import { ApprovalHeader } from "../../stories/components/header";
+import { DynamicApproverHeader } from "../../stories/components/header";
 
 import {
   Select,
@@ -389,7 +389,7 @@ export default function ApproverAssistantList() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <ApprovalHeader />
+        <DynamicApproverHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}

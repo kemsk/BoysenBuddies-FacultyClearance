@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import "../../index.css"; 
-import { ApprovalHeader } from "../../stories/components/header";
+import { DynamicApproverHeader } from "../../stories/components/header";
 
 import {
   ClearanceRequestsCard,
@@ -194,7 +194,7 @@ export default function ApproverViewClearance() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <ApprovalHeader />
+        <DynamicApproverHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}

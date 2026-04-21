@@ -1,6 +1,6 @@
 import * as React from "react";
 import "../../index.css"; 
-import { ApprovalHeader } from "../../stories/components/header";
+import { DynamicApproverHeader } from "../../stories/components/header";
 import { RequestCard } from "../../stories/components/cards";
 import { Button } from "../../stories/components/button";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -225,7 +225,7 @@ export default function ApproverIndividualApproval() {
     return (
       <div className="min-h-screen bg-primary-foreground text-primary-foreground">
         <div className="header mb-3">
-          <ApprovalHeader />
+          <DynamicApproverHeader />
         </div>
         <main className="dashboard p-4">
           <div className="flex items-center justify-center h-64">
@@ -240,7 +240,7 @@ export default function ApproverIndividualApproval() {
     return (
       <div className="min-h-screen bg-primary-foreground text-primary-foreground">
         <div className="header mb-3">
-          <ApprovalHeader />
+          <DynamicApproverHeader />
         </div>
         <main className="dashboard p-4">
           <div className="flex items-center justify-center h-64">
@@ -258,7 +258,7 @@ export default function ApproverIndividualApproval() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <ApprovalHeader />
+        <DynamicApproverHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}

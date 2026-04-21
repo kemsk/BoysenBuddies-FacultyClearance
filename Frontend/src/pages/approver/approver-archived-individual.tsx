@@ -1,6 +1,6 @@
 import * as React from "react";
 import "../../index.css";
-import { ApprovalHeader } from "../../stories/components/header";
+import { DynamicApproverHeader } from "../../stories/components/header";
 import { RequestCard } from "../../stories/components/cards";
 import { Button } from "../../stories/components/button";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
@@ -113,7 +113,7 @@ export default function ApproverArchivedIndividualApproval() {
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
       <div className="header mb-3">
-        <ApprovalHeader />
+        <DynamicApproverHeader />
       </div>
 
       <main className="dashboard p-4 w-full lg:max-w-4xl lg:mx-auto lg:p-8">
