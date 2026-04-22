@@ -3970,28 +3970,36 @@ def _relink_flow_steps_for_office(*, office: Office, timeline_id=None):
     if not office or not office.is_active:
         return
 
-    # Try timeline-specific config first if timeline_id is provided
-    config = None
-
-    if timeline_id:
-        try:
-            timeline = ClearanceTimeline.objects.get(id=timeline_id)
-            config = ApproverFlowConfig.objects.filter(clearance_timeline=timeline).order_by("-updated_at", "-id").first()
-
-        except ClearanceTimeline.DoesNotExist:
-            pass
-
-    # Fallback to global config
-    if not config:
-        config = ApproverFlowConfig.objects.filter(clearance_timeline__isnull=True).order_by("-updated_at", "-id").first()
-
+    # Get the most recent approver flow config
+    config = ApproverFlowConfig.objects.order_by("-updated_at", "-id").first()
+    
     if not config:
         return
 
-    config.steps.filter(office__isnull=True).filter(
+    # First, try to link existing unassigned steps
+    existing_steps = config.steps.filter(office__isnull=True).filter(
         models.Q(category__iexact=office.name)
         | models.Q(category__iexact=(office.abbreviation or ""))
-    ).update(office=office)
+    )
+    
+    if existing_steps.exists():
+        existing_steps.update(office=office)
+    else:
+        # Create new approver flow step for this office if no existing step found
+        # Use the office name as the category, fallback to abbreviation if name is too generic
+        category_name = office.name
+        if len(category_name) <= 3 and office.abbreviation:
+            category_name = office.abbreviation
+        
+        # Get the next order number
+        max_order = config.steps.aggregate(models.Max('order'))['order__max'] or 0
+        
+        ApproverFlowStep.objects.create(
+            config=config,
+            category=category_name,
+            office=office,
+            order=max_order + 1
+        )
 
 
 @csrf_exempt
@@ -4559,11 +4567,15 @@ def ciso_office_detail_api(request, office_id: int):
 
             return JsonResponse({"id": str(obj.id), "softDeleted": True})
 
+        # Delete approver flow steps linked to this office
+        deleted_steps_count = obj.approver_flow_steps.count()
+        obj.approver_flow_steps.all().delete()
+
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.DELETED_OFFICE,
                 user=admin if admin else None,
-                details=[f"Office: {office_name}"],
+                details=[f"Office: {office_name}", f"Deleted {deleted_steps_count} approver flow steps"],
             )
         except Exception:
             pass

@@ -878,9 +878,6 @@ export default function CISOCollegeOfficeConfiguration() {
                     <div className="text-sm text-gray-600">
                       <div>Academic Year: {timeline.academicYearStart}-{timeline.academicYearEnd}</div>
                       <div>Clearance Period: {timeline.clearanceStartDate} to {timeline.clearanceEndDate}</div>
-                      <div className={`mt-1 font-semibold ${timeline.setAsActive ? 'text-red-600' : 'text-green-600'}`}>
-                        Status: {timeline.setAsActive ? 'Active (Configuration Locked)' : 'Inactive'}
-                      </div>
                     </div>
                   );
                 })()}
@@ -1329,9 +1326,6 @@ export default function CISOCollegeOfficeConfiguration() {
                       <div className="text-sm text-gray-600">
                         <div>Academic Year: {timeline.academicYearStart}-{timeline.academicYearEnd}</div>
                         <div>Clearance Period: {timeline.clearanceStartDate} to {timeline.clearanceEndDate}</div>
-                        <div className={`mt-1 font-semibold ${timeline.setAsActive ? 'text-red-600' : 'text-green-600'}`}>
-                          Status: {timeline.setAsActive ? 'Active (Configuration Locked)' : 'Inactive'}
-                        </div>
                       </div>
                     );
                   })()}
