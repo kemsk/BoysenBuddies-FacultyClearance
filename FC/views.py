@@ -4551,21 +4551,7 @@ def ciso_office_detail_api(request, office_id: int):
     if request.method == "DELETE":
         office_name = obj.name
 
-        if _is_office_referenced(obj):
-            if obj.is_active:
-                obj.is_active = False
-                obj.save(update_fields=["is_active"])
-
-            try:
-                ActivityLog.objects.create(
-                    event_type=ActivityLog.EventType.DELETED_OFFICE,
-                    user=admin if admin else None,
-                    details=[f"Office: {office_name}"],
-                )
-            except Exception:
-                pass
-
-            return JsonResponse({"id": str(obj.id), "softDeleted": True})
+        # Always perform hard delete for offices in CISO configuration
 
         # Delete approver flow steps linked to this office
         deleted_steps_count = obj.approver_flow_steps.count()

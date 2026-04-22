@@ -2094,7 +2094,6 @@ export default function CISOCollegeOfficeConfiguration() {
                 <AlertDialogAction
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={() => {
-                    console.log("[DEBUG] AlertDialogAction clicked", confirmDelete);
                     if (!confirmDelete.open) return;
 
                     if (confirmDelete.type === "college") {
@@ -2152,66 +2151,106 @@ export default function CISOCollegeOfficeConfiguration() {
                     if (confirmDelete.type === "office") {
                       (async () => {
                         try {
-                          await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
-                            method: "POST",
-                            credentials: "include",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              event_type: "deleted_office",
-                              details: confirmDelete.label ? [`Office: ${confirmDelete.label}`] : [],
-                              user_role: "CISO",
-                            }),
-                          });
-                        } catch {
-                          // ignore
-                        }
+                          // Make direct API call to delete the office
+                          await apiJson(
+                            `/admin/xu-faculty-clearance/api/ciso/offices/${confirmDelete.id}`,
+                            { method: "DELETE" }
+                          );
+                          
+                          // Update local state to reflect the deletion
+                          setOffices((prev) => prev.filter((o) => o.id !== confirmDelete.id));
+                          
+                          // Remove approver flow steps that reference the deleted office
+                          const stepsToDelete = approverFlow.filter((step) => step.officeId === confirmDelete.id);
+                          
+                          // Delete each approver flow step via API
+                          for (const step of stepsToDelete) {
+                            try {
+                              await apiJson(
+                                `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps/${step.id}`,
+                                { method: "DELETE" }
+                              );
+                            } catch (error) {
+                              // ignore individual step deletion errors
+                            }
+                          }
+                          
+                          // Update local approver flow state
+                          setApproverFlow((prev) => prev.filter((step) => step.officeId !== confirmDelete.id));
+                          
+                          // Log activity
+                          try {
+                            await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                              method: "POST",
+                              credentials: "include",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                event_type: "deleted_office",
+                                details: confirmDelete.label ? [`Office: ${confirmDelete.label}`] : [],
+                                user_role: "CISO",
+                              }),
+                            });
+                          } catch {
+                            // ignore
+                          }
 
-                        postCISOActivityLog({
-                          event_type: "deleted_office",
-                          details: confirmDelete.label ? [`Office: ${confirmDelete.label}`] : [],
-                        });
-                        await apiJson(
-                          `/admin/xu-faculty-clearance/api/ciso/offices/${confirmDelete.id}`,
-                          { method: "DELETE" }
-                        );
-                        setOffices((prev) => prev.filter((o) => o.id !== confirmDelete.id));
+                          postCISOActivityLog({
+                            event_type: "deleted_office",
+                            details: confirmDelete.label ? [`Office: ${confirmDelete.label}`] : [],
+                          });
+                          
+                        } catch (error) {
+                          // ignore office deletion errors
+                        }
                       })();
                     }
 
                     if (confirmDelete.type === "approver") {
                       (async () => {
-                        const step = approverFlow.find((a) => a.id === confirmDelete.id);
-                        const isAll = !step || step.collegeIds.length === 0 || step.collegeIds.length === colleges.length;
-                        const collegeTitles = isAll
-                          ? ["ALL"]
-                          : (step.collegeIds
-                              .map((id) => colleges.find((c) => c.id === id)?.name)
-                              .filter(Boolean) as string[]);
-                        const details = [
-                          step?.category ? `Department/Office Name = ("${step.category}")` : "",
-                          `College : ${collegeTitles.length ? collegeTitles.join(", ") : ""}`,
-                        ].filter((d) => {
-                          const t = String(d ?? "").trim();
-                          return !!t && t !== "College :";
-                        });
-
                         try {
-                          await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
-                            method: "POST",
-                            credentials: "include",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              event_type: "removed_from_approver_flow",
-                              details,
-                              user_role: "CISO",
-                            }),
+                          // Make direct API call to delete the approver flow step
+                          await apiJson(
+                            `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps/${confirmDelete.id}`,
+                            { method: "DELETE" }
+                          );
+                          
+                          // Update local state to reflect the deletion
+                          setApproverFlow((prev) => prev.filter((a) => a.id !== confirmDelete.id));
+                          
+                          // Log activity
+                          const step = approverFlow.find((a) => a.id === confirmDelete.id);
+                          const isAll = !step || step.collegeIds.length === 0 || step.collegeIds.length === colleges.length;
+                          const collegeTitles = isAll
+                            ? ["ALL"]
+                            : (step.collegeIds
+                                .map((id) => colleges.find((c) => c.id === id)?.name)
+                                .filter(Boolean) as string[]);
+                          const details = [
+                            step?.category ? `Department/Office Name = ("${step.category}")` : "",
+                            `College : ${collegeTitles.length ? collegeTitles.join(", ") : ""}`,
+                          ].filter((d) => {
+                            const t = String(d ?? "").trim();
+                            return !!t && t !== "College :";
                           });
-                        } catch {
-                          // ignore
-                        }
 
-                        // Only update local approverFlow; persistence happens when configuration is saved
-                        setApproverFlow((prev) => prev.filter((a) => a.id !== confirmDelete.id));
+                          try {
+                            await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                              method: "POST",
+                              credentials: "include",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                event_type: "removed_from_approver_flow",
+                                details,
+                                user_role: "CISO",
+                              }),
+                            });
+                          } catch {
+                            // ignore
+                          }
+                          
+                        } catch (error) {
+                          // ignore approver step deletion errors
+                        }
                       })();
                     }
 
