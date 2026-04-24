@@ -28,6 +28,7 @@ import ApproverAchivedClearance from "./pages/approver/approver-archived-clearan
 import ApproverViewClearance from "./pages/approver/approver-view-clearance";
 import ApproverIndividualApproval from "./pages/approver/approver-individual-approval";
 import ApproverArchivedIndividualApproval from "./pages/approver/approver-archived-individual";
+import ApproverTools from "./pages/approver/approver-tools";
 
 
 
@@ -533,6 +534,16 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={[3]}>
                 <ApproverArchivedIndividualApproval />
+              </ProtectedRoute>
+            }
+          />
+        }
+        {
+          <Route
+            path="/approver-tools"
+            element={
+              <ProtectedRoute allowedRoles={[3]}>
+                <ApproverTools />
               </ProtectedRoute>
             }
           />
