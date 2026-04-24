@@ -1649,14 +1649,11 @@ export default function CISOCollegeOfficeConfiguration() {
             }
             
             try {
-              console.log('[DEBUG] Attempting POST to: /admin/xu-faculty-clearance/api/ciso/approver-flow/steps');
-              console.log('[DEBUG] Payload:', {
-                category: payload.category,
-                collegeIds: payload.collegeIds,
-                order: approverFlow.length + 1,
-              });
+              const apiUrl = selectedTimelineId 
+                ? `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps?timeline_id=${selectedTimelineId}`
+                : "/admin/xu-faculty-clearance/api/ciso/approver-flow/steps";
               
-              const response = await fetch("/admin/xu-faculty-clearance/api/ciso/approver-flow/steps", {
+              const response = await fetch(apiUrl, {
                 method: "POST",
                 credentials: "include",
                 headers: {
@@ -1669,18 +1666,13 @@ export default function CISOCollegeOfficeConfiguration() {
                 }),
               });
 
-              console.log('[DEBUG] Response status:', response.status);
-              console.log('[DEBUG] Response headers:', response.headers);
-
               if (!response.ok) {
                 const errorText = await response.text();
-                console.error('Error creating approver flow step:', errorText);
                 alert(`Failed to create approver flow step. Status: ${response.status}. Error: ${errorText}`);
                 return;
               }
 
               const created = await response.json();
-              console.log('[DEBUG] Created approver:', created);
 
               const addedCollegeNames = payload.collegeIds
                 .map((id) => colleges.find((c) => c.id === id)?.name)
@@ -2006,8 +1998,12 @@ export default function CISOCollegeOfficeConfiguration() {
               const editedCollegeNames = payload.collegeIds
                 .map((id) => colleges.find((c) => c.id === id)?.name)
                 .filter(Boolean);
+              const apiUrl = selectedTimelineId 
+                ? `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps/${editingApproverId}?timeline_id=${selectedTimelineId}`
+                : `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps/${editingApproverId}`;
+              
               const updated = await apiJson<ApproverFlowItem>(
-                `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps/${editingApproverId}`,
+                apiUrl,
                 {
                   method: "PATCH",
                   body: JSON.stringify({ category: payload.category, collegeIds: payload.collegeIds }),

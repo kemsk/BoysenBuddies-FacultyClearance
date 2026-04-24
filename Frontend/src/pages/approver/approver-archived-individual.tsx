@@ -9,7 +9,7 @@ import { Link, useNavigate } from "react-router-dom";
 type ArchivedApproverRequest = {
   id: string;
   requestId: string;
-  requirementName: string;
+  requirementTitle: string;
   submissionNotes: string;
   submissionLink: string;
   status: "pending" | "approved" | "rejected";
@@ -183,7 +183,7 @@ export default function ApproverArchivedIndividualApproval() {
                         {item.requests.map((request) => (
                           <tr key={request.id} className="border-b border-muted-foreground/20 last:border-b-0">
                             <td className="px-4 py-4 align-top font-semibold">
-                              {request.requirementName || request.requestId}
+                              {request.requirementTitle || request.requestId}
                             </td>
                             <td className="px-4 py-4 align-top">
                               <div
@@ -258,7 +258,7 @@ export default function ApproverArchivedIndividualApproval() {
               <div className="md:hidden">
                 {item.requests.map((request) => (
                   <div key={request.id} className="rounded-xl border border-muted-foreground/20 bg-card p-6 shadow">
-                    <div className="text-xl text-center text-black font-bold mt-1">{request.requirementName || request.requestId}</div>
+                    <div className="text-xl text-center text-black font-bold mt-1">{request.requirementTitle || request.requestId}</div>
 
                     <div className="mt-6">
                       <div className="text-md font-bold text-foreground">Submission Notes</div>

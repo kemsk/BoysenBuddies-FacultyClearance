@@ -41,7 +41,7 @@ type AssistantApprovalItem = {
   facultyType: string;
   status: "pending" | "approved" | "rejected";
   submittedDate: string;
-  requirementName: string;
+  requirementTitle: string;
   submissionNotes: string;
   submissionLink: string;
   remarks: string;
@@ -153,7 +153,7 @@ export default function AssitantApproverIndividualApproval() {
 
               <div className="rounded-xl border border-muted-foreground/20 bg-card shadow">
                 <div className="p-6">
-                  <div className="text-xl text-center text-black font-bold mt-1">{item.requirementName || "Requirement"}</div>
+                  <div className="text-xl text-center text-black font-bold mt-1">{item.requirementTitle || "Requirement"}</div>
 
                   <div className="mt-6">
                     <div className="text-md font-bold text-foreground">Submission Notes</div>

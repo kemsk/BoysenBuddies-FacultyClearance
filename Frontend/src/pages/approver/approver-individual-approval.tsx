@@ -23,7 +23,7 @@ interface IndividualRequestData {
     facultyType: string;
     status: string;
     submittedDate: string;
-    requirementName: string;
+    requirementTitle: string;
     submissionNotes: string;
     submissionLink: string;
     remarks: string;
@@ -165,7 +165,7 @@ export default function ApproverIndividualApproval() {
 
       if (status === "rejected") {
         try {
-          const requirementTitle = request.item.requirementName || "";
+          const requirementTitle = request.item.requirementTitle || "";
           const trimmedRemarks = String(remarks || "").trim();
 
           const notifResponse = await fetch("/admin/xu-faculty-clearance/api/faculty/notifications", {
@@ -294,7 +294,7 @@ export default function ApproverIndividualApproval() {
           <div className="rounded-xl border border-muted-foreground/20 bg-card shadow">
             <div className="p-6">
               <div className="text-xl text-center text-black font-bold mt-1">
-                {item.requirementName}
+                {item.requirementTitle}
               </div>
 
               <div className="mt-6">

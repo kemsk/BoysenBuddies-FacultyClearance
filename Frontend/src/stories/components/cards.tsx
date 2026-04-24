@@ -799,7 +799,7 @@ export type ClearanceRequestItem = {
 
   facultyType: string;
 
-  requirementName?: string;
+  requirementTitle?: string;
 
   status: ClearanceRequestStatus;
 
@@ -1158,7 +1158,7 @@ export function ClearanceRequestsCard({
 
           if (!requestItem) return null;
 
-          const requirementTitle = String(requestItem.requirementName || "");
+          const requirementTitle = String(requestItem.requirementTitle || "");
 
           const trimmedRemarks = String(reason || "").trim();
 
@@ -1552,7 +1552,7 @@ export function ClearanceRequestsCard({
                     <td className="px-2 py-4 align-top text-sm text-gray-900 break-all">{item.employeeId}</td>
                     <td className="px-2 py-4 align-top text-sm text-gray-900 break-words">{item.college}</td>
                     <td className="px-2 py-4 align-top text-sm text-gray-900 break-words">{item.department}</td>
-                    <td className="px-2 py-4 align-top text-sm text-gray-900 break-words">{item.requirementName || ""}</td>
+                    <td className="px-2 py-4 align-top text-sm text-gray-900 break-words">{item.requirementTitle || ""}</td>
                     <td className="px-2 py-4 align-top">
                       <Badge
 

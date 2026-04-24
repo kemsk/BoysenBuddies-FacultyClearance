@@ -180,6 +180,7 @@ def _serialize_clearance_request_item(req: ClearanceRequest):
         "college": getattr(getattr(faculty, "college", None), "name", "") or "",
         "department": getattr(getattr(faculty, "department", None), "name", "") or "",
         "facultyType": getattr(faculty, "faculty_type", "") or "",
+        "requirementTitle": req.requirement.title if req.requirement else "",
         "status": _to_request_status(req.status),
     }
 
@@ -244,7 +245,7 @@ def _serialize_assistant_individual_request(req: ClearanceRequest):
             "facultyType": getattr(faculty, "faculty_type", "") or "",
             "status": _to_request_status(req.status),
             "submittedDate": timezone.localtime(req.submitted_date).strftime("%B %d, %Y, %I:%M %p") if req.submitted_date else "",
-            "requirementName": getattr(getattr(req, "requirement", None), "title", "") or "",
+            "requirementTitle": getattr(getattr(req, "requirement", None), "title", "") or "",
             "submissionNotes": req.submission_notes or "",
             "submissionLink": req.submission_link or "",
             "remarks": req.remarks or "",
