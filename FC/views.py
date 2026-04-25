@@ -9146,6 +9146,81 @@ def approver_activity_logs_api(request):
 
 
 @csrf_exempt
+@approver_required
+def approver_override_api(request):
+    user = _get_authenticated_user(request)
+    
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    try:
+        data = json.loads(request.body.decode("utf-8") or "{}")
+    except Exception:
+        return JsonResponse({"detail": "Invalid JSON"}, status=400)
+
+    request_id = data.get("request_id")
+    status = data.get("status")  # "approved" or "rejected"
+    reason = data.get("reason", "")
+
+    if not request_id or status not in ["approved", "rejected"]:
+        return JsonResponse({"detail": "Invalid request data"}, status=400)
+
+    if not reason.strip():
+        return JsonResponse({"detail": "Override reason is required"}, status=400)
+
+    try:
+        # Get the clearance request
+        clearance_request = ClearanceRequest.objects.get(request_id=request_id)
+        
+        # Log the override activity
+        # Note: User profile is not needed for override logging
+
+        # Create activity log for override
+        ActivityLog.objects.create(
+            event_type=f"overridden_{status}_clearance",
+            user=user,
+            user_role="Approver",
+            request_id=request_id,
+            details=[
+                f"Override Reason: {reason}",
+                f"Previous Status: {clearance_request.status}",
+                f"New Status: {status}",
+                f"Requirement: {clearance_request.requirement.title if clearance_request.requirement else 'N/A'}",
+            ],
+            department=clearance_request.faculty.department.name if clearance_request.faculty.department else None,
+            college=clearance_request.faculty.college.name if clearance_request.faculty.college else None,
+            university_id=clearance_request.faculty.employee_id,
+        )
+
+        # Update the clearance request status using the enum values
+        clearance_request.status = (
+            ClearanceRequest.Status.APPROVED
+            if status == "approved"
+            else ClearanceRequest.Status.REJECTED
+        )
+        clearance_request.remarks = reason
+        clearance_request.approved_date = timezone.now()
+        clearance_request.approved_by = user
+
+        clearance_request.save()
+
+        return JsonResponse({
+            "message": f"Clearance request overridden to {status}",
+            "status": status,
+            "request_id": request_id
+        })
+
+    except ClearanceRequest.DoesNotExist:
+        return JsonResponse({"detail": "Clearance request not found"}, status=404)
+    except Exception as e:
+        print(f"Override API error: {str(e)}")
+        return JsonResponse({"detail": f"Failed to override request: {str(e)}"}, status=500)
+
+
+@csrf_exempt
 def approver_notifications_api(request):
     user = _get_authenticated_user(request)
     if not user:
