@@ -432,7 +432,10 @@ export default function ApproverIndividualApproval() {
                   </div>
 
                   {/* Button on the right */}
-                  <Button variant="default" className="flex items-center gap-2"
+                  <Button
+                    variant="default"
+                    className="flex items-center gap-2"
+                    disabled={status === "pending"}
                     onClick={() => setShowOverrideAlert(true)}
                   >
                     <Lock className="w-4 h-4" />
