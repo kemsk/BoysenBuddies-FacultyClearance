@@ -277,32 +277,34 @@ export function CollegeClearanceStatusCard({
 
   return (
     <BaseCard className={cn("max-w-full", className)}>
-      <div className="w-full overflow-hidden rounded-xl">
-        <div className="grid grid-cols-[1fr_152px_190px_110px_140px] bg-slate-50 px-5 py-4 text-sm font-bold text-primary">
-          <div>College or School</div>
-          <div className="text-center">Faculty Members</div>
-          <div>Completed Clearance</div>
-          <div className="text-center">Completion Rate</div>
-          <div className="text-center">Status</div>
-        </div>
-        <div className="divide-y divide-black/10">
-          {items.map((row, idx) => (
-            <React.Fragment key={idx}>{renderRow(row)}</React.Fragment>
-          ))}
-          {finalTotalRow != null ? renderRow(finalTotalRow, { isTotal: true }) : null}
-        </div>
-        <div className="flex items-center justify-between gap-4 bg-slate-50 px-5 py-4">
-          <div className="text-sm text-gray-500">{footerLeft}</div>
-          {footerActionLabel != null ? (
-            <button
-              type="button"
-              className="inline-flex items-center rounded-md border border-primary px-3 py-2 text-sm font-semibold text-primary"
-              onClick={onFooterAction}
-            >
-              {footerActionLabel}
-              <span className="ml-2">→</span>
-            </button>
-          ) : null}
+      <div className="w-full overflow-x-auto touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+        <div className="min-w-[760px] overflow-hidden rounded-xl">
+          <div className="grid grid-cols-[1fr_152px_190px_110px_140px] bg-slate-50 px-5 py-4 text-sm font-bold text-primary">
+            <div>College or School</div>
+            <div className="text-center">Faculty Members</div>
+            <div>Completed Clearance</div>
+            <div className="text-center">Completion Rate</div>
+            <div className="text-center">Status</div>
+          </div>
+          <div className="divide-y divide-black/10">
+            {items.map((row, idx) => (
+              <React.Fragment key={idx}>{renderRow(row)}</React.Fragment>
+            ))}
+            {finalTotalRow != null ? renderRow(finalTotalRow, { isTotal: true }) : null}
+          </div>
+          <div className="flex items-center justify-between gap-4 bg-slate-50 px-5 py-4">
+            <div className="text-sm text-gray-500">{footerLeft}</div>
+            {footerActionLabel != null ? (
+              <button
+                type="button"
+                className="inline-flex items-center rounded-md border border-primary px-3 py-2 text-sm font-semibold text-primary"
+                onClick={onFooterAction}
+              >
+                {footerActionLabel}
+                <span className="ml-2">→</span>
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
     </BaseCard>
@@ -483,62 +485,64 @@ export function OfficeBottlenecksCard({
 
 
 
-        <div className="mt-5 overflow-hidden rounded-lg border border-black/10">
+        <div className="mt-5 w-full overflow-x-auto touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+          <div className="min-w-[640px] overflow-hidden rounded-lg border border-black/10">
 
-          <div className="grid grid-cols-[1fr_110px_110px_180px] bg-slate-50 px-4 py-3 text-sm font-bold text-primary">
+            <div className="grid grid-cols-[1fr_110px_110px_180px] bg-slate-50 px-4 py-3 text-sm font-bold text-primary">
 
-            <div>Office</div>
+              <div>Office</div>
 
-            <div className="text-center">Cleared</div>
+              <div className="text-center">Cleared</div>
 
-            <div className="text-center">Pending</div>
+              <div className="text-center">Pending</div>
 
-            <div className="text-center">Pending Rate</div>
+              <div className="text-center">Pending Rate</div>
 
-          </div>
+            </div>
 
 
 
-          <div className="divide-y divide-black/10">
+            <div className="divide-y divide-black/10">
 
-            {rows.map((row, idx) => (
+              {rows.map((row, idx) => (
 
-              <div key={idx} className="grid grid-cols-[1fr_110px_110px_180px] items-center px-4 py-4 text-sm">
+                <div key={idx} className="grid grid-cols-[1fr_110px_110px_180px] items-center px-4 py-4 text-sm">
 
-                <div className="min-w-0 truncate text-gray-800">{row.office}</div>
+                  <div className="min-w-0 truncate text-gray-800">{row.office}</div>
 
-                <div className="text-center font-semibold text-success">{row.cleared}</div>
+                  <div className="text-center font-semibold text-success">{row.cleared}</div>
 
-                <div className="text-center font-semibold text-orange-500">{row.pending}</div>
+                  <div className="text-center font-semibold text-orange-500">{row.pending}</div>
 
-                <div className="flex items-center justify-center gap-3">
+                  <div className="flex items-center justify-center gap-3">
 
-                  <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-200">
+                    <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-200">
 
-                    <div
+                      <div
 
-                      className="h-full rounded-full bg-orange-400"
+                        className="h-full rounded-full bg-orange-400"
 
-                      style={{ width: `${Math.max(0, Math.min(100, row.pendingRate))}%` }}
+                        style={{ width: `${Math.max(0, Math.min(100, row.pendingRate))}%` }}
 
-                    />
+                      />
 
-                  </div>
+                    </div>
 
-                  <div className="w-10 text-right text-xs font-semibold text-orange-600">
+                    <div className="w-10 text-right text-xs font-semibold text-orange-600">
 
-                    {Math.round(row.pendingRate)}%
+                      {Math.round(row.pendingRate)}%
+
+                    </div>
 
                   </div>
 
                 </div>
 
-              </div>
+              ))}
 
-            ))}
+            </div>
 
           </div>
-
         </div>
 
       </div>
