@@ -76,6 +76,7 @@ urlpatterns = [
     path('api/approver/college-department-options', views.approver_college_department_options_api, name='ApproverCollegeDepartmentOptions'),
     path('api/approver/clearance', views.approver_clearance_api, name='ApproverClearance'),
     path('api/approver/action', views.approver_action_api, name='ApproverAction'),
+    path('api/approver/override', views.approver_override_api, name='ApproverOverride'),
     path('api/approver/assistant-list', views.approver_assistant_list_api, name='ApproverAssistantList'),
     path('api/approver/activity-logs', views.approver_activity_logs_api, name='ApproverActivityLogs'),
     path('api/approver/notifications', views.approver_notifications_api, name='ApproverNotifications'),

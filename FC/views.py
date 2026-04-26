@@ -180,6 +180,7 @@ def _serialize_clearance_request_item(req: ClearanceRequest):
         "college": getattr(getattr(faculty, "college", None), "name", "") or "",
         "department": getattr(getattr(faculty, "department", None), "name", "") or "",
         "facultyType": getattr(faculty, "faculty_type", "") or "",
+        "requirementTitle": req.requirement.title if req.requirement else "",
         "status": _to_request_status(req.status),
     }
 
@@ -244,7 +245,7 @@ def _serialize_assistant_individual_request(req: ClearanceRequest):
             "facultyType": getattr(faculty, "faculty_type", "") or "",
             "status": _to_request_status(req.status),
             "submittedDate": timezone.localtime(req.submitted_date).strftime("%B %d, %Y, %I:%M %p") if req.submitted_date else "",
-            "requirementName": getattr(getattr(req, "requirement", None), "title", "") or "",
+            "requirementTitle": getattr(getattr(req, "requirement", None), "title", "") or "",
             "submissionNotes": req.submission_notes or "",
             "submissionLink": req.submission_link or "",
             "remarks": req.remarks or "",
@@ -2311,7 +2312,6 @@ def ciso_faculty_dump_template_api(request):
         "middle_name",
         "last_name",
         "faculty_type",
-        "phone_number",
         "college",
         "department",
     ]
@@ -2329,7 +2329,6 @@ def ciso_faculty_dump_template_api(request):
             "middle_name": "A.",
             "last_name": "Faculty",
             "faculty_type": "Full-time",
-            "phone_number": "09171234567",
             "college": "College of Computer Studies",
             "department": "Information Technology",
         },
@@ -2341,7 +2340,6 @@ def ciso_faculty_dump_template_api(request):
             "middle_name": "B.",
             "last_name": "New",
             "faculty_type": "Part-time",
-            "phone_number": "09987654321",
             "college": "College of Arts and Sciences",
             "department": "Mathematics",
         },
@@ -2439,6 +2437,36 @@ def ciso_faculty_dump_import_api(request):
     def _clean(value: str | None):
         return (value or "").strip()
 
+    def _validate_faculty_data(email, university_id, employee_id, first_name, last_name, faculty_type, college_name, department_name, office_name):
+        """Validate faculty data - all fields required except middle_name"""
+        missing_fields = []
+        
+        # Core identifier fields
+        if not email or not email.strip():
+            missing_fields.append("email")
+        
+        if not university_id or not university_id.strip():
+            missing_fields.append("university_id")
+        
+        if not employee_id or not employee_id.strip():
+            missing_fields.append("employee_id")
+        
+        # Name fields
+        if not first_name or not first_name.strip():
+            missing_fields.append("first_name")
+        
+        if not last_name or not last_name.strip():
+            missing_fields.append("last_name")
+        
+        if not faculty_type or not faculty_type.strip():
+            missing_fields.append("faculty_type")
+        
+        # Check that at least one organizational assignment exists
+        if not (college_name or department_name or office_name):
+            missing_fields.append("organization_assignment")
+        
+        return len(missing_fields) == 0, missing_fields
+
     # Get or create Faculty role
     try:
         faculty_role = Role.objects.get(name='Faculty')
@@ -2471,10 +2499,22 @@ def ciso_faculty_dump_import_api(request):
         middle_name = _clean(row.get("middle_name"))
         last_name = _clean(row.get("last_name"))
         faculty_type = _clean(row.get("faculty_type"))
-        phone_number = _clean(row.get("phone_number"))
         office_name = _clean(row.get("office"))
         college_name = _clean(row.get("college"))
         department_name = _clean(row.get("department"))
+
+        # Validate faculty data - skip incomplete records
+        is_valid, missing_fields = _validate_faculty_data(
+            email, university_id, employee_id, first_name, last_name, faculty_type, college_name, department_name, office_name
+        )
+        
+        if not is_valid:
+            errors.append({
+                "row": idx, 
+                "message": f"Skipping incomplete faculty record. Missing required fields: {', '.join(missing_fields)}"
+            })
+            skipped_count += 1
+            continue
 
         try:
             with transaction.atomic():
@@ -2502,7 +2542,6 @@ def ciso_faculty_dump_import_api(request):
                     defaults={
                         'employee_id': employee_id,
                         'faculty_type': faculty_type,
-                        'phone_number': phone_number,
                         'first_name': first_name,
                         'middle_name': middle_name,
                         'last_name': last_name,
@@ -2512,7 +2551,6 @@ def ciso_faculty_dump_import_api(request):
                     # Update existing faculty
                     faculty.employee_id = employee_id
                     faculty.faculty_type = faculty_type
-                    faculty.phone_number = phone_number
                     faculty.first_name = first_name
                     faculty.middle_name = middle_name
                     faculty.last_name = last_name
@@ -3151,6 +3189,26 @@ def _serialize_archived_faculty_item(archived: ArchivedClearance):
     employee_id = archived_data.get("employeeId") or getattr(faculty, "employee_id", "") or ""
     display_name = archived_data.get("name") or _archived_faculty_display_name(faculty) or getattr(user, "email", "") or employee_id
 
+    # Calculate validation status and missing fields
+    missing_fields = []
+    
+    # Check required fields
+    if not getattr(faculty, "first_name", "") or not getattr(faculty, "first_name", "").strip():
+        missing_fields.append("first_name")
+    
+    if not getattr(faculty, "last_name", "") or not getattr(faculty, "last_name", "").strip():
+        missing_fields.append("last_name")
+    
+    if not getattr(faculty, "faculty_type", "") or not getattr(faculty, "faculty_type", "").strip():
+        missing_fields.append("faculty_type")
+    
+    # Check organizational assignment
+    if not (faculty.college or faculty.department or faculty.office):
+        missing_fields.append("organization_assignment")
+    
+    validation_status = "COMPLETE" if len(missing_fields) == 0 else "INCOMPLETE"
+    missing_fields_str = ", ".join(missing_fields) if missing_fields else ""
+
     return {
         "id": str(archived.id),
         "employeeId": employee_id,
@@ -3161,6 +3219,8 @@ def _serialize_archived_faculty_item(archived: ArchivedClearance):
         "status": archived.status,
         "missingApproval": archived_data.get("missing_approval", ""),
         "lastUpdated": archived.last_updated.strftime("%B %d, %Y, %H:%M %p") if archived.last_updated else "",
+        "validationStatus": validation_status,
+        "missingFields": missing_fields_str,
     }
 
 
@@ -3911,28 +3971,36 @@ def _relink_flow_steps_for_office(*, office: Office, timeline_id=None):
     if not office or not office.is_active:
         return
 
-    # Try timeline-specific config first if timeline_id is provided
-    config = None
-
-    if timeline_id:
-        try:
-            timeline = ClearanceTimeline.objects.get(id=timeline_id)
-            config = ApproverFlowConfig.objects.filter(clearance_timeline=timeline).order_by("-updated_at", "-id").first()
-
-        except ClearanceTimeline.DoesNotExist:
-            pass
-
-    # Fallback to global config
-    if not config:
-        config = ApproverFlowConfig.objects.filter(clearance_timeline__isnull=True).order_by("-updated_at", "-id").first()
-
+    # Get the most recent approver flow config
+    config = ApproverFlowConfig.objects.order_by("-updated_at", "-id").first()
+    
     if not config:
         return
 
-    config.steps.filter(office__isnull=True).filter(
+    # First, try to link existing unassigned steps
+    existing_steps = config.steps.filter(office__isnull=True).filter(
         models.Q(category__iexact=office.name)
         | models.Q(category__iexact=(office.abbreviation or ""))
-    ).update(office=office)
+    )
+    
+    if existing_steps.exists():
+        existing_steps.update(office=office)
+    else:
+        # Create new approver flow step for this office if no existing step found
+        # Use the office name as the category, fallback to abbreviation if name is too generic
+        category_name = office.name
+        if len(category_name) <= 3 and office.abbreviation:
+            category_name = office.abbreviation
+        
+        # Get the next order number
+        max_order = config.steps.aggregate(models.Max('order'))['order__max'] or 0
+        
+        ApproverFlowStep.objects.create(
+            config=config,
+            category=category_name,
+            office=office,
+            order=max_order + 1
+        )
 
 
 @csrf_exempt
@@ -4484,27 +4552,17 @@ def ciso_office_detail_api(request, office_id: int):
     if request.method == "DELETE":
         office_name = obj.name
 
-        if _is_office_referenced(obj):
-            if obj.is_active:
-                obj.is_active = False
-                obj.save(update_fields=["is_active"])
+        # Always perform hard delete for offices in CISO configuration
 
-            try:
-                ActivityLog.objects.create(
-                    event_type=ActivityLog.EventType.DELETED_OFFICE,
-                    user=admin if admin else None,
-                    details=[f"Office: {office_name}"],
-                )
-            except Exception:
-                pass
-
-            return JsonResponse({"id": str(obj.id), "softDeleted": True})
+        # Delete approver flow steps linked to this office
+        deleted_steps_count = obj.approver_flow_steps.count()
+        obj.approver_flow_steps.all().delete()
 
         try:
             ActivityLog.objects.create(
                 event_type=ActivityLog.EventType.DELETED_OFFICE,
                 user=admin if admin else None,
-                details=[f"Office: {office_name}"],
+                details=[f"Office: {office_name}", f"Deleted {deleted_steps_count} approver flow steps"],
             )
         except Exception:
             pass
@@ -4961,7 +5019,7 @@ def ovphe_export_clearance_results_api(request):
         ]
     )
     writer.writerow([])
-    writer.writerow(["Faculty Name", "University ID", "College", "Department", "Office", "Status", "Completion Date"])
+    writer.writerow(["Faculty Name", "University ID", "College", "Department", "Office", "Status", "Completion Date", "Validation Status"])
 
     for faculty in faculty_items:
         clearance = clearances_by_faculty.get(faculty.id)
@@ -4986,6 +5044,16 @@ def ovphe_export_clearance_results_api(request):
         elif completion_info["is_completed"] and completion_info["completed_at"]:
             completion_date = _format_export_datetime(completion_info["completed_at"])
 
+        # Calculate validation status
+        required_fields = [
+            getattr(faculty, "first_name", ""),
+            getattr(faculty, "last_name", ""),
+            getattr(faculty, "faculty_type", ""),
+        ]
+        all_required_present = all(field and field.strip() for field in required_fields)
+        has_organization = bool(faculty.college or faculty.department or faculty.office)
+        validation_status = "COMPLETE" if all_required_present and has_organization else "INCOMPLETE"
+
         writer.writerow(
             [
                 faculty_name,
@@ -4995,6 +5063,7 @@ def ovphe_export_clearance_results_api(request):
                 faculty.office.name if faculty.office else "",
                 export_status,
                 completion_date,
+                validation_status,
             ]
         )
     return response
@@ -9077,6 +9146,81 @@ def approver_activity_logs_api(request):
 
 
 @csrf_exempt
+@approver_required
+def approver_override_api(request):
+    user = _get_authenticated_user(request)
+    
+    if not user:
+        return JsonResponse({"detail": "Authentication required"}, status=401)
+
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    try:
+        data = json.loads(request.body.decode("utf-8") or "{}")
+    except Exception:
+        return JsonResponse({"detail": "Invalid JSON"}, status=400)
+
+    request_id = data.get("request_id")
+    status = data.get("status")  # "approved" or "rejected"
+    reason = data.get("reason", "")
+
+    if not request_id or status not in ["approved", "rejected"]:
+        return JsonResponse({"detail": "Invalid request data"}, status=400)
+
+    if not reason.strip():
+        return JsonResponse({"detail": "Override reason is required"}, status=400)
+
+    try:
+        # Get the clearance request
+        clearance_request = ClearanceRequest.objects.get(request_id=request_id)
+        
+        # Log the override activity
+        # Note: User profile is not needed for override logging
+
+        # Create activity log for override
+        ActivityLog.objects.create(
+            event_type=f"overridden_{status}_clearance",
+            user=user,
+            user_role="Approver",
+            request_id=request_id,
+            details=[
+                f"Override Reason: {reason}",
+                f"Previous Status: {clearance_request.status}",
+                f"New Status: {status}",
+                f"Requirement: {clearance_request.requirement.title if clearance_request.requirement else 'N/A'}",
+            ],
+            department=clearance_request.faculty.department.name if clearance_request.faculty.department else None,
+            college=clearance_request.faculty.college.name if clearance_request.faculty.college else None,
+            university_id=clearance_request.faculty.employee_id,
+        )
+
+        # Update the clearance request status using the enum values
+        clearance_request.status = (
+            ClearanceRequest.Status.APPROVED
+            if status == "approved"
+            else ClearanceRequest.Status.REJECTED
+        )
+        clearance_request.remarks = reason
+        clearance_request.approved_date = timezone.now()
+        clearance_request.approved_by = user
+
+        clearance_request.save()
+
+        return JsonResponse({
+            "message": f"Clearance request overridden to {status}",
+            "status": status,
+            "request_id": request_id
+        })
+
+    except ClearanceRequest.DoesNotExist:
+        return JsonResponse({"detail": "Clearance request not found"}, status=404)
+    except Exception as e:
+        print(f"Override API error: {str(e)}")
+        return JsonResponse({"detail": f"Failed to override request: {str(e)}"}, status=500)
+
+
+@csrf_exempt
 def approver_notifications_api(request):
     user = _get_authenticated_user(request)
     if not user:
@@ -10677,16 +10821,98 @@ def ciso_archived_faculty_download_api(request, archived_id: int):
     if not dump.dump_file_path:
         return JsonResponse({"detail": "CSV file not available for this archived faculty dump"}, status=404)
 
-    # Try to serve the file
+    # Read the original CSV file
     try:
         import os
         from django.conf import settings
         file_path = os.path.join(settings.MEDIA_ROOT if hasattr(settings, 'MEDIA_ROOT') else '', dump.dump_file_path)
         if not os.path.exists(file_path):
             return JsonResponse({"detail": "CSV file not found on server"}, status=404)
+        
+        # Read original CSV
         with open(file_path, 'rb') as f:
-            response = HttpResponse(f.read(), content_type='text/csv')
-            response['Content-Disposition'] = f'attachment; filename="{dump.dump_file_path.split("/")[-1]}"'
-            return response
+            raw_content = f.read()
+        
+        # Try to decode with common encodings
+        text = None
+        for enc in ("utf-8-sig", "utf-8", "latin-1"):
+            try:
+                text = raw_content.decode(enc)
+                break
+            except Exception:
+                continue
+        
+        if text is None:
+            return JsonResponse({"detail": "Unable to decode CSV file"}, status=400)
+        
+        reader = csv.DictReader(io.StringIO(text))
+        original_fieldnames = reader.fieldnames or []
+        
+        # Generate new CSV with validation columns
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header with original columns + validation columns
+        new_fieldnames = list(original_fieldnames) + ["Validation Status", "Missing Fields"]
+        writer.writerow(new_fieldnames)
+        
+        def _clean(value: str | None):
+            return (value or "").strip()
+        
+        # Process each row and add validation
+        for row in reader:
+            # Extract faculty data for validation
+            email = _clean(row.get("email"))
+            university_id = _clean(row.get("university_id"))
+            employee_id = _clean(row.get("employee_id"))
+            first_name = _clean(row.get("first_name"))
+            last_name = _clean(row.get("last_name"))
+            faculty_type = _clean(row.get("faculty_type"))
+            college_name = _clean(row.get("college"))
+            department_name = _clean(row.get("department"))
+            office_name = _clean(row.get("office"))
+            
+            # Validate faculty data
+            missing_fields = []
+            
+            if not email or not email.strip():
+                missing_fields.append("email")
+            
+            if not university_id or not university_id.strip():
+                missing_fields.append("university_id")
+            
+            if not employee_id or not employee_id.strip():
+                missing_fields.append("employee_id")
+            
+            if not first_name or not first_name.strip():
+                missing_fields.append("first_name")
+            
+            if not last_name or not last_name.strip():
+                missing_fields.append("last_name")
+            
+            if not faculty_type or not faculty_type.strip():
+                missing_fields.append("faculty_type")
+            
+            if not (college_name or department_name or office_name):
+                missing_fields.append("organization_assignment")
+            
+            validation_status = "COMPLETE" if len(missing_fields) == 0 else "INCOMPLETE"
+            missing_fields_str = ", ".join(missing_fields) if missing_fields else ""
+            
+            # Write row with validation columns
+            new_row = [row.get(field, "") for field in original_fieldnames] + [validation_status, missing_fields_str]
+            writer.writerow(new_row)
+        
+        # Create response
+        csv_content = output.getvalue()
+        bom_content = '\ufeff' + csv_content  # Add BOM for Excel compatibility
+        response = HttpResponse(bom_content, content_type='text/csv;charset=utf-8')
+        
+        # Generate filename based on dump info
+        filename = f"archived_faculty_{dump.academic_year_start}_{dump.academic_year_end}_{dump.term}_{dump.id}.csv"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
+        
     except Exception as e:
-        return JsonResponse({"detail": "Error serving file: " + str(e)}, status=500)
+        return JsonResponse({"detail": "Error processing CSV file: " + str(e)}, status=500)

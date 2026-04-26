@@ -99,7 +99,6 @@ class Migration(migrations.Migration):
                 ('middle_name', models.CharField(blank=True, max_length=100, null=True)),
                 ('last_name', models.CharField(blank=True, max_length=100, null=True)),
                 ('faculty_type', models.CharField(blank=True, max_length=50, null=True)),
-                ('phone_number', models.CharField(blank=True, max_length=20, null=True)),
                 ('college', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='faculty', to='FC.college')),
                 ('department', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='faculty', to='FC.department')),
                 ('office', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='faculty', to='FC.office')),

@@ -1,6 +1,6 @@
 import * as React from "react";
 import "../../index.css";
-import { ApprovalHeader } from "../../stories/components/header";
+import { DynamicApproverHeader } from "../../stories/components/header";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ClearanceRequestsCard, type ClearanceRequestItem } from "../../stories/components/cards";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../stories/components/select";
@@ -162,6 +162,8 @@ export default function ApproverClearance() {
   const [confirmAction, setConfirmAction] = React.useState<"approve" | "reject">("approve");
   const [selectedRequest, setSelectedRequest] = React.useState<ClearanceRequestItem | null>(null);
   const [approverEmail, setApproverEmail] = React.useState("");
+  const [sortBy, setSortBy] = React.useState("name");
+  const [statusFilter, setStatusFilter] = React.useState("all");
 
   React.useEffect(() => {
     fetch("/admin/xu-faculty-clearance/api/approver/clearance", {
@@ -183,6 +185,30 @@ export default function ApproverClearance() {
         setLoading(false);
         setRequests([]);
       });
+  }, []);
+
+  // Refresh data when window regains focus (after approve/reject actions)
+  React.useEffect(() => {
+    const handleFocus = () => {
+      fetch("/admin/xu-faculty-clearance/api/approver/clearance", {
+        credentials: "include",
+      })
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error(`Failed to load requests: ${res.statusText}`);
+          }
+          return res.json();
+        })
+        .then((data) => {
+          setRequests(Array.isArray(data?.items) ? data.items : []);
+        })
+        .catch(() => {
+          // Silent error handling for refresh
+        });
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   // Fetch approver email
@@ -255,15 +281,52 @@ export default function ApproverClearance() {
 
   const filteredRequests = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return requests;
-    return requests.filter((r) => {
-      const hay = [r.requestId, r.employeeId, r.name, r.college, r.department, r.facultyType]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
+    let filtered = requests;
+    
+    // Filter by status
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((r) => {
+        if (statusFilter === "pending") return r.status === "pending";
+        if (statusFilter === "approved") return r.status === "approved";
+        if (statusFilter === "rejected") return r.status === "rejected";
+        return true;
+      });
+    }
+    
+    // Filter by search query
+    if (q) {
+      filtered = filtered.filter((r) => {
+        const hay = [r.requestId, r.employeeId, r.name, r.college, r.department, r.facultyType]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return hay.includes(q);
+      });
+    }
+    
+    // Sort by selected field
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "name":
+          return (a.name || "").localeCompare(b.name || "");
+        case "date":
+          // Since submittedDate doesn't exist in the type, sort by requestId as a fallback
+          return (b.requestId || "").localeCompare(a.requestId || "");
+        case "employeeId":
+          return (a.employeeId || "").localeCompare(b.employeeId || "");
+        case "college":
+          return (a.college || "").localeCompare(b.college || "");
+        case "department":
+          return (a.department || "").localeCompare(b.department || "");
+        case "facultyType":
+          return (a.facultyType || "").localeCompare(b.facultyType || "");
+        default:
+          return 0;
+      }
     });
-  }, [query, requests]);
+    
+    return filtered;
+  }, [query, requests, sortBy, statusFilter]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
@@ -284,7 +347,7 @@ export default function ApproverClearance() {
     return (
       <div className="min-h-screen bg-primary-foreground text-primary-foreground">
         <div className="header mb-3">
-          <ApprovalHeader />
+          <DynamicApproverHeader />
         </div>
         <main className="dashboard p-[2%]">
           <div className="flex items-center justify-center h-64">
@@ -301,7 +364,7 @@ export default function ApproverClearance() {
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
       {/* HEADER */}
       <div className="header mb-3">
-        <ApprovalHeader />
+        <DynamicApproverHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
@@ -318,7 +381,7 @@ export default function ApproverClearance() {
           </div>
 
           <div className="flex flex-wrap items-left gap-3 overflow-x-auto">
-            <Select defaultValue="name">
+            <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger variant="pill" className="w-max gap-2">
                 <span>Sort by :</span>
                 <SelectValue />
@@ -333,7 +396,7 @@ export default function ApproverClearance() {
               </SelectContent>
             </Select>
 
-            <Select defaultValue="pending">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger variant="pill" className="w-max gap-2">
                 <span>Status :</span>
                 <SelectValue />
@@ -352,8 +415,6 @@ export default function ApproverClearance() {
           <ClearanceRequestsCard
             items={paginatedRequests}
             getItemHref={(item) => `/approver-individual-approval?request_id=${item.requestId}`}
-            onApprove={handleApprove}
-            onReject={handleReject}
           />
         </div>
 

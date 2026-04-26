@@ -9,7 +9,7 @@ import { Link, useNavigate } from "react-router-dom";
 type ArchivedAssistantRequest = {
   id: string;
   requestId: string;
-  requirementName: string;
+  requirementTitle: string;
   submissionNotes: string;
   submissionLink: string;
   status: "pending" | "approved" | "rejected";
@@ -165,7 +165,7 @@ export default function AssistantApproverArchivedIndividualApproval() {
 
               {item.requests.map((request) => (
                 <div key={request.id} className="rounded-xl border border-muted-foreground/20 bg-card p-6 shadow">
-                  <div className="text-xl text-center text-black font-bold mt-1">{request.requirementName || request.requestId}</div>
+                  <div className="text-xl text-center text-black font-bold mt-1">{request.requirementTitle || request.requestId}</div>
 
                   <div className="mt-6">
                     <div className="text-md font-bold text-foreground">Submission Notes</div>

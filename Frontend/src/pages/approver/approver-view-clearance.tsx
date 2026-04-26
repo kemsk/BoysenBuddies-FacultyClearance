@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import "../../index.css"; 
-import { ApprovalHeader } from "../../stories/components/header";
+import { DynamicApproverHeader } from "../../stories/components/header";
 
 import {
   ClearanceRequestsCard,
@@ -194,7 +194,7 @@ export default function ApproverViewClearance() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <ApprovalHeader />
+        <DynamicApproverHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
@@ -382,7 +382,7 @@ export default function ApproverViewClearance() {
                               <div className="max-w-[220px] whitespace-pre-wrap">{item.department}</div>
                             </td>
                             <td className="px-4 py-4 align-top">
-                              <div className="max-w-[220px] whitespace-pre-wrap">{item.requirementName || "-"}</div>
+                              <div className="max-w-[220px] whitespace-pre-wrap">{item.requirementTitle || "-"}</div>
                             </td>
                             <td className="px-4 py-4 align-top">
                               <Badge

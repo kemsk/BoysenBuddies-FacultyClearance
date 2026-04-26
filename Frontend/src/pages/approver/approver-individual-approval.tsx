@@ -1,6 +1,6 @@
 import * as React from "react";
 import "../../index.css"; 
-import { ApprovalHeader } from "../../stories/components/header";
+import { DynamicApproverHeader } from "../../stories/components/header";
 import { RequestCard } from "../../stories/components/cards";
 import { Button } from "../../stories/components/button";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -9,6 +9,23 @@ import { Lock} from 'lucide-react';
 import { Dialog } from "../../stories/components/dialog";
 import { ConfirmAlert, OverrideAlert } from "../../stories/components/alert";
 import { useState } from "react";
+
+// Helper function to get CSRF token
+function getCookie(name: string): string {
+  let cookieValue = "";
+  if (document.cookie && document.cookie !== "") {
+    const cookies = document.cookie.split(";");
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + "=")) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
 interface IndividualRequestData {
   item: {
     id: string;
@@ -23,7 +40,7 @@ interface IndividualRequestData {
     facultyType: string;
     status: string;
     submittedDate: string;
-    requirementName: string;
+    requirementTitle: string;
     submissionNotes: string;
     submissionLink: string;
     remarks: string;
@@ -165,7 +182,7 @@ export default function ApproverIndividualApproval() {
 
       if (status === "rejected") {
         try {
-          const requirementTitle = request.item.requirementName || "";
+          const requirementTitle = request.item.requirementTitle || "";
           const trimmedRemarks = String(remarks || "").trim();
 
           const notifResponse = await fetch("/admin/xu-faculty-clearance/api/faculty/notifications", {
@@ -220,12 +237,69 @@ export default function ApproverIndividualApproval() {
     navigate("/approver-clearance");
   };
 
-  
+  const handleOverride = async () => {
+    if (!request || !overrideReason.trim()) {
+      setError("Override reason is required");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/admin/xu-faculty-clearance/api/approver/override", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken") || "",
+        },
+        body: JSON.stringify({
+          request_id: request.item.requestId,
+          status: overrideStatus,
+          reason: overrideReason,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || errorData.message || `Failed to override: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log("Override successful:", result);
+
+      // Reset override state
+      setShowOverrideAlert(false);
+      setShowConfirmAlert(false);
+      setOverrideReason("");
+      setOverrideStatus('approved');
+
+      // Refresh the request data
+      const updatedResponse = await fetch(`/admin/xu-faculty-clearance/api/approver/individual-approval?request_id=${requestId}`, {
+        credentials: "include",
+      });
+      
+      if (updatedResponse.ok) {
+        const updatedData = await updatedResponse.json();
+        setRequest(updatedData);
+        setStatus(updatedData.item.status.toLowerCase() as "approved" | "rejected" | "pending");
+        setRemarks(updatedData.item.remarks || "");
+      }
+
+    } catch (err) {
+      console.error("Error overriding:", err);
+      setError(err instanceof Error ? err.message : "Failed to override request");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-primary-foreground text-primary-foreground">
         <div className="header mb-3">
-          <ApprovalHeader />
+          <DynamicApproverHeader />
         </div>
         <main className="dashboard p-4">
           <div className="flex items-center justify-center h-64">
@@ -240,7 +314,7 @@ export default function ApproverIndividualApproval() {
     return (
       <div className="min-h-screen bg-primary-foreground text-primary-foreground">
         <div className="header mb-3">
-          <ApprovalHeader />
+          <DynamicApproverHeader />
         </div>
         <main className="dashboard p-4">
           <div className="flex items-center justify-center h-64">
@@ -253,12 +327,15 @@ export default function ApproverIndividualApproval() {
 
   const { item } = request;
 
+  // Extract approver email from the loaded profile (used for override confirmation)
+  const approverEmail = (userProfile?.user?.email || userProfile?.email || "").toLowerCase().trim();
+
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
       
       {/* HEADER */}
       <div className="header mb-3">
-        <ApprovalHeader />
+        <DynamicApproverHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
@@ -294,7 +371,7 @@ export default function ApproverIndividualApproval() {
           <div className="rounded-xl border border-muted-foreground/20 bg-card shadow">
             <div className="p-6">
               <div className="text-xl text-center text-black font-bold mt-1">
-                {item.requirementName}
+                {item.requirementTitle}
               </div>
 
               <div className="mt-6">
@@ -355,7 +432,10 @@ export default function ApproverIndividualApproval() {
                   </div>
 
                   {/* Button on the right */}
-                  <Button variant="default" className="flex items-center gap-2"
+                  <Button
+                    variant="default"
+                    className="flex items-center gap-2"
+                    disabled={status === "pending"}
                     onClick={() => setShowOverrideAlert(true)}
                   >
                     <Lock className="w-4 h-4" />
@@ -369,15 +449,19 @@ export default function ApproverIndividualApproval() {
                   <OverrideAlert
                     open={showOverrideAlert}
                     status={overrideStatus}
+                    requestId={item.requestId}
                     onStatusChange={setOverrideStatus}
                     onDelete={() => {
-                      console.log('Override confirmed:', overrideStatus);
+                      console.log("Override confirmed:", overrideStatus);
                       setShowOverrideAlert(false);
                     }}
                     onCancel={() => setShowOverrideAlert(false)}
-                    onConfirm={() => setShowConfirmAlert(true)}
+                    onConfirm={(reason: string) => {
+                      setOverrideReason(reason);
+                      setShowConfirmAlert(true);
+                    }}
                   />
-                </div>      
+                </div>
               </div>
             )}
 
@@ -388,9 +472,18 @@ export default function ApproverIndividualApproval() {
                   <ConfirmAlert
                     open={showConfirmAlert}
                     reason={overrideReason}
-                    onDelete={() => {
-                      console.log('Confirmed:', overrideStatus);
+                    onDelete={(emailInput?: string) => {
+                      const entered = (emailInput || "").toLowerCase().trim();
+
+                      // Require that the entered email matches the logged-in approver's email
+                      if (!approverEmail || entered !== approverEmail) {
+                        setError("Please enter your XU email to confirm the override");
+                        return;
+                      }
+
+                      console.log("Confirmed override with email:", entered);
                       setShowConfirmAlert(false);
+                      handleOverride();
                     }}
                     onCancel={() => setShowConfirmAlert(false)}
                   />

@@ -10,7 +10,6 @@ import {
 import { Divider } from "../../stories/components/divider";
 
 import { Button } from "../../stories/components/button";
-import { Checkbox } from "../../stories/components/checkbox";
 
 import { Pencil, Trash2 } from "lucide-react";
 
@@ -607,8 +606,6 @@ export default function CISOCollegeOfficeConfiguration() {
     return localStorage.getItem('ciso-selected-timeline') || "";
   });
   const [isConfigurationLocked, setIsConfigurationLocked] = React.useState(false);
-  const [checkbox1Checked, setCheckbox1Checked] = React.useState(false);
-  const [checkbox2Checked, setCheckbox2Checked] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
 
   const [selectedCollegeId, setSelectedCollegeId] = React.useState<string>("");
@@ -709,22 +706,30 @@ export default function CISOCollegeOfficeConfiguration() {
       });
   }, []);
 
-  // Fetch approver flow when timeline changes
-  React.useEffect(() => {
+  // Refetch approver flow data
+  const refetchApproverFlow = React.useCallback(async () => {
     const approverFlowUrl = selectedTimelineId 
       ? `/admin/xu-faculty-clearance/api/ciso/approver-flow?timeline_id=${selectedTimelineId}`
       : "/admin/xu-faculty-clearance/api/ciso/approver-flow";
     
-    fetch(approverFlowUrl, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: { steps: ApproverFlowItem[] }) => {
+    try {
+      const response = await fetch(approverFlowUrl, { credentials: "include" });
+      if (response.ok) {
+        const data = await response.json();
         const steps = (data.steps ?? []).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
         setApproverFlow(steps);
-      })
-      .catch(() => {
+      } else {
         setApproverFlow([]);
-      });
+      }
+    } catch {
+      setApproverFlow([]);
+    }
   }, [selectedTimelineId]);
+
+  // Fetch approver flow when timeline changes
+  React.useEffect(() => {
+    refetchApproverFlow();
+  }, [selectedTimelineId, refetchApproverFlow]);
 
   // Check if selected timeline is active
   React.useEffect(() => {
@@ -878,9 +883,6 @@ export default function CISOCollegeOfficeConfiguration() {
                     <div className="text-sm text-gray-600">
                       <div>Academic Year: {timeline.academicYearStart}-{timeline.academicYearEnd}</div>
                       <div>Clearance Period: {timeline.clearanceStartDate} to {timeline.clearanceEndDate}</div>
-                      <div className={`mt-1 font-semibold ${timeline.setAsActive ? 'text-red-600' : 'text-green-600'}`}>
-                        Status: {timeline.setAsActive ? 'Active (Configuration Locked)' : 'Inactive'}
-                      </div>
                     </div>
                   );
                 })()}
@@ -1329,9 +1331,6 @@ export default function CISOCollegeOfficeConfiguration() {
                       <div className="text-sm text-gray-600">
                         <div>Academic Year: {timeline.academicYearStart}-{timeline.academicYearEnd}</div>
                         <div>Clearance Period: {timeline.clearanceStartDate} to {timeline.clearanceEndDate}</div>
-                        <div className={`mt-1 font-semibold ${timeline.setAsActive ? 'text-red-600' : 'text-green-600'}`}>
-                          Status: {timeline.setAsActive ? 'Active (Configuration Locked)' : 'Inactive'}
-                        </div>
                       </div>
                     );
                   })()}
@@ -1639,27 +1638,22 @@ export default function CISOCollegeOfficeConfiguration() {
           colleges={colleges}
           categories={approverCategories}
           onCreate={async (payload) => {
-            // Check for duplicate approver with same category and colleges
+            // Enhanced duplicate prevention for approver flow - strict category check
             const isDuplicate = approverFlow.some(existing => {
-              const categoryMatch = existing.category === payload.category;
-              const collegeMatch = JSON.stringify(existing.collegeIds.sort()) === JSON.stringify(payload.collegeIds.sort());
-              return categoryMatch && collegeMatch;
+              return existing.category === payload.category;
             });
             
             if (isDuplicate) {
-              alert('An approver with this category and college selection already exists!');
+              alert(`Duplicate approver category detected!\n\nCategory: "${payload.category}"\n\nAn approver with category "${payload.category}" already exists. Each category can only be used once.`);
               return;
             }
             
             try {
-              console.log('[DEBUG] Attempting POST to: /admin/xu-faculty-clearance/api/ciso/approver-flow/steps');
-              console.log('[DEBUG] Payload:', {
-                category: payload.category,
-                collegeIds: payload.collegeIds,
-                order: approverFlow.length + 1,
-              });
+              const apiUrl = selectedTimelineId 
+                ? `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps?timeline_id=${selectedTimelineId}`
+                : "/admin/xu-faculty-clearance/api/ciso/approver-flow/steps";
               
-              const response = await fetch("/admin/xu-faculty-clearance/api/ciso/approver-flow/steps", {
+              const response = await fetch(apiUrl, {
                 method: "POST",
                 credentials: "include",
                 headers: {
@@ -1672,29 +1666,13 @@ export default function CISOCollegeOfficeConfiguration() {
                 }),
               });
 
-              console.log('[DEBUG] Response status:', response.status);
-              console.log('[DEBUG] Response headers:', response.headers);
-
               if (!response.ok) {
                 const errorText = await response.text();
-                console.error('Error creating approver flow step:', errorText);
                 alert(`Failed to create approver flow step. Status: ${response.status}. Error: ${errorText}`);
                 return;
               }
 
               const created = await response.json();
-              console.log('[DEBUG] Created approver:', created);
-
-              // Update local state with the created item
-              setApproverFlow((prev) => [
-                ...prev,
-                {
-                  id: created.id || crypto.randomUUID(),
-                  category: payload.category,
-                  collegeIds: payload.collegeIds,
-                  order: prev.length + 1,
-                },
-              ]);
 
               const addedCollegeNames = payload.collegeIds
                 .map((id) => colleges.find((c) => c.id === id)?.name)
@@ -1707,6 +1685,9 @@ export default function CISOCollegeOfficeConfiguration() {
                   `Colleges: ${addedCollegeNames.join(", ")}`,
                 ],
               });
+
+              // Refetch approver flow data to update UI
+              await refetchApproverFlow();
 
               alert('Approver flow step created successfully!');
             } catch (error) {
@@ -1824,7 +1805,7 @@ export default function CISOCollegeOfficeConfiguration() {
             if (!editingCollegeId) return;
             (async () => {
               const previousName = colleges.find((c) => c.id === editingCollegeId)?.name ?? "";
-              const updated = await apiJson<CollegeItem>(
+              await apiJson<CollegeItem>(
                 `/admin/xu-faculty-clearance/api/ciso/colleges/${editingCollegeId}`,
                 {
                   method: "PATCH",
@@ -1841,7 +1822,7 @@ export default function CISOCollegeOfficeConfiguration() {
                     event_type: "edited_college",
                     details: [
                       previousName ? `Previous: ${previousName}` : "",
-                      updated.name ? `Updated: ${updated.name}` : "",
+                      payload.name ? `Updated: ${payload.name}` : "",
                     ].filter(Boolean),
                     user_role: "CISO",
                   }),
@@ -1854,10 +1835,12 @@ export default function CISOCollegeOfficeConfiguration() {
                 event_type: "edited_college",
                 details: [
                   previousName ? `Previous: ${previousName}` : "",
-                  updated.name ? `Updated: ${updated.name}` : "",
+                  payload.name ? `Updated: ${payload.name}` : "",
                 ].filter(Boolean),
               });
-              setColleges((prev) => prev.map((c) => (c.id === editingCollegeId ? updated : c)));
+
+              // Refetch approver flow data to update UI (in case college name affects approver flow display)
+              await refetchApproverFlow();
             })();
           }}
         />
@@ -1882,7 +1865,7 @@ export default function CISOCollegeOfficeConfiguration() {
               const prevDept = departments.find((d) => d.id === editingDepartmentId);
               const prevDeptName = prevDept?.name ?? "";
               const prevCollegeName = colleges.find((c) => c.id === prevDept?.collegeId)?.name ?? "";
-              const updated = await apiJson<DepartmentItem>(
+              await apiJson<DepartmentItem>(
                 `/admin/xu-faculty-clearance/api/ciso/departments/${editingDepartmentId}`,
                 {
                   method: "PATCH",
@@ -1900,7 +1883,7 @@ export default function CISOCollegeOfficeConfiguration() {
                     details: [
                       prevDeptName ? `Previous: ${prevDeptName}` : "",
                       prevCollegeName ? `College: ${prevCollegeName}` : "",
-                      updated.name ? `Updated: ${updated.name}` : "",
+                      payload.name ? `Updated: ${payload.name}` : "",
                     ].filter(Boolean),
                     user_role: "CISO",
                   }),
@@ -1914,12 +1897,9 @@ export default function CISOCollegeOfficeConfiguration() {
                 details: [
                   prevDeptName ? `Previous: ${prevDeptName}` : "",
                   prevCollegeName ? `College: ${prevCollegeName}` : "",
-                  updated.name ? `Updated: ${updated.name}` : "",
+                  payload.name ? `Updated: ${payload.name}` : "",
                 ].filter(Boolean),
               });
-              setDepartments((prev) =>
-                prev.map((d) => (d.id === editingDepartmentId ? updated : d))
-              );
             })();
           }}
         />
@@ -1942,7 +1922,7 @@ export default function CISOCollegeOfficeConfiguration() {
             if (!editingOfficeId) return;
             (async () => {
               const prevOfficeName = offices.find((o) => o.id === editingOfficeId)?.name ?? "";
-              const updated = await apiJson<OfficeItem>(
+              await apiJson<OfficeItem>(
                 `/admin/xu-faculty-clearance/api/ciso/offices/${editingOfficeId}`,
                 {
                   method: "PATCH",
@@ -1959,7 +1939,7 @@ export default function CISOCollegeOfficeConfiguration() {
                     event_type: "edited_office",
                     details: [
                       prevOfficeName ? `Previous: ${prevOfficeName}` : "",
-                      updated.name ? `Updated: ${updated.name}` : "",
+                      payload.name ? `Updated: ${payload.name}` : "",
                     ].filter(Boolean),
                     user_role: "CISO",
                   }),
@@ -1972,10 +1952,12 @@ export default function CISOCollegeOfficeConfiguration() {
                 event_type: "edited_office",
                 details: [
                   prevOfficeName ? `Previous: ${prevOfficeName}` : "",
-                  updated.name ? `Updated: ${updated.name}` : "",
+                  payload.name ? `Updated: ${payload.name}` : "",
                 ].filter(Boolean),
               });
-              setOffices((prev) => prev.map((o) => (o.id === editingOfficeId ? updated : o)));
+
+              // Refetch approver flow data to update UI (in case office name affects approver flow display)
+              await refetchApproverFlow();
             })();
           }}
         />
@@ -1999,18 +1981,37 @@ export default function CISOCollegeOfficeConfiguration() {
           onSave={(payload) => {
             if (!editingApproverId) return;
             (async () => {
+              // Enhanced duplicate prevention for approver flow edit - strict category check
+              const isDuplicate = approverFlow.some(existing => {
+                // Skip checking the current item being edited
+                if (existing.id === editingApproverId) return false;
+                return existing.category === payload.category;
+              });
+              
+              if (isDuplicate) {
+                alert(`Duplicate approver category detected!\n\nCategory: "${payload.category}"\n\nAn approver with category "${payload.category}" already exists. Each category can only be used once.`);
+                return;
+              }
+
               const prevApprover = approverFlow.find((a) => a.id === editingApproverId);
               const prevCategory = prevApprover?.category ?? "";
               const editedCollegeNames = payload.collegeIds
                 .map((id) => colleges.find((c) => c.id === id)?.name)
                 .filter(Boolean);
+              const apiUrl = selectedTimelineId 
+                ? `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps/${editingApproverId}?timeline_id=${selectedTimelineId}`
+                : `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps/${editingApproverId}`;
+              
               const updated = await apiJson<ApproverFlowItem>(
-                `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps/${editingApproverId}`,
+                apiUrl,
                 {
                   method: "PATCH",
                   body: JSON.stringify({ category: payload.category, collegeIds: payload.collegeIds }),
                 }
               );
+
+              // Refetch approver flow data to update UI
+              await refetchApproverFlow();
 
               try {
                 await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
@@ -2030,7 +2031,6 @@ export default function CISOCollegeOfficeConfiguration() {
               } catch {
                 // ignore
               }
-              setApproverFlow((prev) => prev.map((a) => (a.id === editingApproverId ? updated : a)));
             })();
           }}
         />
@@ -2041,7 +2041,6 @@ export default function CISOCollegeOfficeConfiguration() {
           items={approverFlow}
           onSave={(next) => {
             (async () => {
-              setApproverFlow(next);
               await apiJson<{ ok: boolean }>(
                 "/admin/xu-faculty-clearance/api/ciso/approver-flow/order",
                 {
@@ -2049,6 +2048,9 @@ export default function CISOCollegeOfficeConfiguration() {
                   body: JSON.stringify({ stepIds: next.map((s) => s.id) }),
                 }
               );
+
+              // Refetch approver flow data to update UI
+              await refetchApproverFlow();
 
               try {
                 const details = next.map((step, idx) => {
@@ -2100,7 +2102,6 @@ export default function CISOCollegeOfficeConfiguration() {
                 <AlertDialogAction
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={() => {
-                    console.log("[DEBUG] AlertDialogAction clicked", confirmDelete);
                     if (!confirmDelete.open) return;
 
                     if (confirmDelete.type === "college") {
@@ -2117,9 +2118,23 @@ export default function CISOCollegeOfficeConfiguration() {
                           event_type: "deleted_college",
                           details: confirmDelete.label ? [`College: ${confirmDelete.label}`] : [],
                         });
-                        setColleges((prev) => prev.filter((c) => c.id !== confirmDelete.id));
-                        setDepartments((prev) => prev.filter((d) => d.collegeId !== confirmDelete.id));
-                        setSelectedCollegeId((prev) => (prev === confirmDelete.id ? "" : prev));
+                        
+                        // Remove approver flow steps that reference the deleted college
+                        const stepsToDelete = approverFlow.filter((step) => 
+                          confirmDelete.id && step.collegeIds.includes(confirmDelete.id)
+                        );
+                        
+                        // Delete each approver flow step via API
+                        for (const step of stepsToDelete) {
+                          try {
+                            await apiJson(
+                              `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps/${step.id}`,
+                              { method: "DELETE" }
+                            );
+                          } catch (error) {
+                            // ignore individual step deletion errors
+                          }
+                        }
                       })();
                     }
 
@@ -2151,73 +2166,106 @@ export default function CISOCollegeOfficeConfiguration() {
                           `/admin/xu-faculty-clearance/api/ciso/departments/${confirmDelete.id}`,
                           { method: "DELETE" }
                         );
-                        setDepartments((prev) => prev.filter((d) => d.id !== confirmDelete.id));
                       })();
                     }
 
                     if (confirmDelete.type === "office") {
                       (async () => {
                         try {
-                          await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
-                            method: "POST",
-                            credentials: "include",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              event_type: "deleted_office",
-                              details: confirmDelete.label ? [`Office: ${confirmDelete.label}`] : [],
-                              user_role: "CISO",
-                            }),
-                          });
-                        } catch {
-                          // ignore
-                        }
+                          // Make direct API call to delete the office
+                          await apiJson(
+                            `/admin/xu-faculty-clearance/api/ciso/offices/${confirmDelete.id}`,
+                            { method: "DELETE" }
+                          );
+                          
+                          // Remove approver flow steps that reference the deleted office
+                          const stepsToDelete = approverFlow.filter((step) => step.officeId === confirmDelete.id);
+                          
+                          // Delete each approver flow step via API
+                          for (const step of stepsToDelete) {
+                            try {
+                              await apiJson(
+                                `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps/${step.id}`,
+                                { method: "DELETE" }
+                              );
+                            } catch (error) {
+                              // ignore individual step deletion errors
+                            }
+                          }
+                          
+                          // Log activity
+                          try {
+                            await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                              method: "POST",
+                              credentials: "include",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                event_type: "deleted_office",
+                                details: confirmDelete.label ? [`Office: ${confirmDelete.label}`] : [],
+                                user_role: "CISO",
+                              }),
+                            });
+                          } catch {
+                            // ignore
+                          }
 
-                        postCISOActivityLog({
-                          event_type: "deleted_office",
-                          details: confirmDelete.label ? [`Office: ${confirmDelete.label}`] : [],
-                        });
-                        await apiJson(
-                          `/admin/xu-faculty-clearance/api/ciso/offices/${confirmDelete.id}`,
-                          { method: "DELETE" }
-                        );
-                        setOffices((prev) => prev.filter((o) => o.id !== confirmDelete.id));
+                          postCISOActivityLog({
+                            event_type: "deleted_office",
+                            details: confirmDelete.label ? [`Office: ${confirmDelete.label}`] : [],
+                          });
+                          
+                        } catch (error) {
+                          // ignore office deletion errors
+                        }
                       })();
                     }
 
                     if (confirmDelete.type === "approver") {
                       (async () => {
-                        const step = approverFlow.find((a) => a.id === confirmDelete.id);
-                        const isAll = !step || step.collegeIds.length === 0 || step.collegeIds.length === colleges.length;
-                        const collegeTitles = isAll
-                          ? ["ALL"]
-                          : (step.collegeIds
-                              .map((id) => colleges.find((c) => c.id === id)?.name)
-                              .filter(Boolean) as string[]);
-                        const details = [
-                          step?.category ? `Department/Office Name = ("${step.category}")` : "",
-                          `College : ${collegeTitles.length ? collegeTitles.join(", ") : ""}`,
-                        ].filter((d) => {
-                          const t = String(d ?? "").trim();
-                          return !!t && t !== "College :";
-                        });
-
                         try {
-                          await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
-                            method: "POST",
-                            credentials: "include",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              event_type: "removed_from_approver_flow",
-                              details,
-                              user_role: "CISO",
-                            }),
+                          // Make direct API call to delete the approver flow step
+                          await apiJson(
+                            `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps/${confirmDelete.id}`,
+                            { method: "DELETE" }
+                          );
+                          
+                          // Refetch approver flow data to update UI
+                          await refetchApproverFlow();
+                          
+                          // Log activity
+                          const step = approverFlow.find((a) => a.id === confirmDelete.id);
+                          const isAll = !step || step.collegeIds.length === 0 || step.collegeIds.length === colleges.length;
+                          const collegeTitles = isAll
+                            ? ["ALL"]
+                            : (step.collegeIds
+                                .map((id) => colleges.find((c) => c.id === id)?.name)
+                                .filter(Boolean) as string[]);
+                          const details = [
+                            step?.category ? `Department/Office Name = ("${step.category}")` : "",
+                            `College : ${collegeTitles.length ? collegeTitles.join(", ") : ""}`,
+                          ].filter((d) => {
+                            const t = String(d ?? "").trim();
+                            return !!t && t !== "College :";
                           });
-                        } catch {
-                          // ignore
-                        }
 
-                        // Only update local approverFlow; persistence happens when configuration is saved
-                        setApproverFlow((prev) => prev.filter((a) => a.id !== confirmDelete.id));
+                          try {
+                            await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                              method: "POST",
+                              credentials: "include",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                event_type: "removed_from_approver_flow",
+                                details,
+                                user_role: "CISO",
+                              }),
+                            });
+                          } catch {
+                            // ignore
+                          }
+                          
+                        } catch (error) {
+                          // ignore approver step deletion errors
+                        }
                       })();
                     }
 

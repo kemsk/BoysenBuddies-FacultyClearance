@@ -255,9 +255,10 @@ export const OverrideAlert = React.forwardRef<
     status?: 'approved' | 'rejected';
     onStatusChange?: (status: 'approved' | 'rejected') => void;
     open?: boolean;
-    onConfirm?: () => void;  // ← ADD THIS
+    requestId?: string;
+    onConfirm?: (reason: string) => void;
   }
->(({ className, onDelete, onCancel, status, onStatusChange, onConfirm, ...props }, ref) => {
+>(({ className, onDelete, onCancel, status, onStatusChange, onConfirm, requestId, ...props }, ref) => {
   // Add state here
   const [overrideReason, setOverrideReason] = React.useState('');
   return (
@@ -272,7 +273,7 @@ export const OverrideAlert = React.forwardRef<
         <img src="/RedAlertIcon.png" width="50" height="50" />
       </div>
       <div className="mb-4 text-xl text-center text-black font-bold">
-        You are about to OVERRIDE clearance request [Request ID].
+        You are about to OVERRIDE clearance request {requestId || "[Request ID]"}.
       </div>
 
       <div className="mb-4 text-md text-center text-black">
@@ -285,7 +286,7 @@ export const OverrideAlert = React.forwardRef<
         onChange={(e) => setOverrideReason(e.target.value)}
         className="border border-gray-300 rounded-md p-2 !text-black placeholder:text-gray-400"
       />
-
+      
       <div className="mt-6 mb-4 text-xs text-black text-justify">
         Note: Overriding will change the status for both approver and faculty member. If the faculty member has already cleared all requirements, their clearance status will be reverted to incomplete.
       </div>
@@ -322,7 +323,7 @@ export const OverrideAlert = React.forwardRef<
           CANCEL
         </Button>
         <Button variant="default" onClick={() => {
-          onConfirm?.();  // ← OPEN CONFIRM DIALOG
+          onConfirm?.(overrideReason);
           }} className="flex-1 font-bold">
           UPDATE
         </Button>
@@ -332,16 +333,15 @@ export const OverrideAlert = React.forwardRef<
 );
 });
 
-
 export const ConfirmAlert = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & {
-    onDelete?: () => void;
+    onDelete?: (email?: string) => void;
     onCancel?: () => void;
     status?: 'approved' | 'rejected';
     onStatusChange?: (status: 'approved' | 'rejected') => void;
     open?: boolean;
-    reason?: string;  // ← ADD THIS PROP
+    reason?: string;  
   }
 >(({ className, onDelete, onCancel, status, onStatusChange, reason, ...props }, ref) => {
   // Add state here
@@ -372,7 +372,7 @@ export const ConfirmAlert = React.forwardRef<
           CANCEL
         </Button>
         <Button variant="default" onClick={() => {
-          onDelete?.();
+          onDelete?.(overrideReason);
         }} className="flex-1 font-bold">
           CONFIRM
         </Button>

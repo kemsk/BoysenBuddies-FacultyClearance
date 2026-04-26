@@ -1,5 +1,5 @@
 import "../../index.css";
-import { ApprovalHeader } from "../../stories/components/header";
+import { DynamicApproverHeader } from "../../stories/components/header";
 import { ActionNavCard } from "../../stories/components/cards";
 import { Eye, Users } from "lucide-react";
 
@@ -8,7 +8,7 @@ export default function Action() {
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
       {/* HEADER */}
       <div className="header mb-3">
-        <ApprovalHeader />
+        <DynamicApproverHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}

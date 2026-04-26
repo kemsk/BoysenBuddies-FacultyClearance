@@ -1,95 +1,48 @@
 import * as React from "react";
-
-
-
 import { Check, ChevronLeft, ChevronRight, Download, Pencil, Plus, Trash2, Upload, X, ArrowBigLeft, ArrowBigRight, UserCheck, UserMinus, UserPlus } from "lucide-react";
-
-
-
 import { Link } from "react-router-dom";
-
 import { cn } from "../../components/lib/utils";
-
 import { Badge } from "./badge";
-
 import { Button } from "./button";
-
 import { Checkbox } from "./checkbox";
-
 import { ApproveConfirmDialog, RejectAlertDialog } from "./clearance-action-dialogs";
-
 import { Divider } from "./divider";
-
 import { DeactivateAlert, ActivateAlert, DeleteAlert } from "./alert";
-
 import {
 
   AlertDialog,
-
   AlertDialogAction,
-
   AlertDialogCancel,
-
   AlertDialogContent,
-
   AlertDialogDescription,
-
   AlertDialogFooter,
-
   AlertDialogHeader,
-
   AlertDialogTitle,
-
   AlertDialogTrigger,
-
 } from "./alert-dialog";
-
-
-
 import { CommentDialog } from "./dialog";
-
-
-
 import {
 
   Card,
-
   CardContent,
-
   CardDescription,
-
   CardHeader,
-
   CardTitle,
-
 } from "./card";
-
-
-
 import { InputGroupWithAddon } from "./input-group";
-
 import {
 
   Select,
-
   SelectContent,
-
   SelectItem,
-
   SelectTrigger,
-
   SelectValue,
-
 } from "./select";
-
-
 
 export function GuidelinesToggle({
 
   checked = false,
-
   onChange,
-
 }: {
 
   checked?: boolean;
@@ -103,8 +56,6 @@ export function GuidelinesToggle({
   const [showAlert, setShowAlert] = React.useState(false);
 
   const [alertType, setAlertType] = React.useState<'activate' | 'deactivate'>('deactivate');
-
-
 
   const handleToggle = () => {
 
@@ -128,8 +79,6 @@ export function GuidelinesToggle({
 
   };
 
-
-
   const confirmToggle = () => {
 
     setShowAlert(false);
@@ -142,12 +91,9 @@ export function GuidelinesToggle({
 
   };
 
-
-
   return (
 
     <>
-
       <button
 
         type="button"
@@ -175,7 +121,6 @@ export function GuidelinesToggle({
         }}
 
       >
-
         <span
 
           className={
@@ -189,20 +134,13 @@ export function GuidelinesToggle({
           }
 
         />
-
       </button>
-
-
-
       {showAlert && (
 
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-
           <div className="bg-white rounded-lg p-6 max-w-sm mx-4">
-
             {alertType === 'activate' ? (
-
-              <ActivateAlert 
+              <ActivateAlert
 
                 onDelete={confirmToggle}
 
@@ -211,8 +149,7 @@ export function GuidelinesToggle({
               />
 
             ) : (
-
-              <DeactivateAlert 
+              <DeactivateAlert
 
                 onDelete={confirmToggle}
 
@@ -221,318 +158,120 @@ export function GuidelinesToggle({
               />
 
             )}
-
           </div>
-
         </div>
 
       )}
-
     </>
 
   );
 
 }
 
-
-
 type DashboardBadgeVariant = "default" | "success" | "warning" | "muted" | "destructive";
-
-
 
 function getBadgeVariant(variant: DashboardBadgeVariant | undefined) {
 
-
-
   if (variant === "warning") return "warning" as const;
-
-
 
   if (variant === "muted") return "secondary" as const;
 
-
-
   if (variant === "destructive") return "destructive" as const;
-
-
 
   return "default" as const;
 
-
-
 }
-
-
-
-
-
-
 
 export type WelcomeCardProps = {
 
-
-
   name: string;
-
-
 
   className?: string;
 
-
-
 };
-
-
-
-
-
-
 
 export function WelcomeCard({ name, className }: WelcomeCardProps) {
 
-
-
   return (
-
-
-
     <Card className={cn("overflow-hidden border-0 shadow-none", className)}>
-
-
-
       <CardHeader className="bg-primary text-primary-foreground text-center py-2.5">
-
-
-
         <CardDescription className="text-base leading-none text-primary-foreground/80">
-
-
 
           Welcome
 
-
-
         </CardDescription>
-
-
-
         <CardTitle className="text-xl font-bold leading-tight">{name}!</CardTitle>
-
-
-
       </CardHeader>
-
-
-
     </Card>
-
-
 
   );
 
-
-
 }
-
-
-
-
-
-
 
 export type ActionNavCardProps = {
 
-
-
   icon: React.ReactNode;
-
-
 
   title: string;
 
-
-
   description: string;
-
-
 
   to?: string;
 
-
-
   onClick?: () => void;
-
-
 
   className?: string;
 
-
-
 };
-
-
-
-
-
-
 
 export function ActionNavCard({
 
-
-
   icon,
-
-
-
   title,
-
-
-
   description,
-
-
-
   to,
-
-
-
   onClick,
-
-
-
   className,
-
-
-
 }: ActionNavCardProps) {
 
-
-
   const content = (
-
-
-
     <Card className={cn("rounded-xl border bg-white shadow-sm", className)}>
-
-
-
       <CardContent className="flex items-center gap-4 p-4">
-
-
-
         <div className="text-primary ">{icon}</div>
-
-
-
-
-
-
-
         <div className="min-w-0 flex-1">
-
-
-
           <div className="text-sm font-bold text-primary">{title}</div>
-
-
-
           <div className="mt-1 text-xs text-primary">{description}</div>
-
-
-
         </div>
-
-
-
-
-
-
-
         <ChevronRight className="h-5 w-5 text-primary" />
-
-
-
       </CardContent>
-
-
-
     </Card>
 
-
-
   );
-
-
-
-
-
-
 
   if (to) {
 
-
-
     return (
-
-
-
       <Link to={to} className="block">
-
-
-
         {content}
-
-
-
       </Link>
-
-
 
     );
 
-
-
   }
-
-
-
-
-
-
 
   return (
 
-
-
     <button type="button" className="block w-full text-left" onClick={onClick}>
-
-
-
       {content}
-
-
-
     </button>
-
-
 
   );
 
-
-
 }
-
-
-
-
-
-
 
 export type RequirementListItem = {
 
-
-
-  title: string;  
+  title: string;
 
   description: string;
 
@@ -550,39 +289,21 @@ export type RequirementListItem = {
 
 };
 
-
-
 export type StudentAssistantItem = {
-
-
 
   id: string;
 
-
-
   name: string;
-
-
 
   college: string;
 
-
-
   department: string;
-
-
 
   office: string;
 
-
-
   email: string;
 
-
-
   isActive?: boolean;
-
-
 
   /**
 
@@ -593,8 +314,6 @@ export type StudentAssistantItem = {
    */
 
   universityId?: string;
-
-
 
   /**
 
@@ -608,73 +327,37 @@ export type StudentAssistantItem = {
 
   assistantType?: string;
 
-
-
 };
-
-
-
-
 
 export type StudentAssistantsCardProps = {
 
-
-
   items: StudentAssistantItem[];
-
-
 
   className?: string;
 
-
-
   onAddUser?: () => void;
-
-
 
   onCreateUser?: (payload: {
 
-
-
     firstName: string;
-
-
 
     middleName?: string;
 
-
-
     lastName: string;
-
-
 
     schoolId: string;
 
-
-
     college: string;
-
-
 
     department: string;
 
-
-
     email: string;
-
-
 
   }) => void;
 
-
-
   onEditUser?: (item: StudentAssistantItem) => void;
 
-
-
   onRemove?: (id: string) => void;
-
-
 
   /**
 
@@ -686,41 +369,24 @@ export type StudentAssistantsCardProps = {
 
   mode?: "assistants" | "admins";
 
-
-
   onModeChange?: (mode: "assistants" | "admins") => void;
 
-
-
 };
-
-
 
 export function StudentAssistantsCard({
 
   items,
-
   className,
-
   onAddUser,
-
   onEditUser,
-
   onRemove,
-
   mode,
-
   onModeChange,
-
 }: StudentAssistantsCardProps) {
 
   const [internalMode, setInternalMode] = React.useState<"assistants" | "admins">("assistants");
 
-
-
   const effectiveMode = mode ?? internalMode;
-
-
 
   const setMode = (next: "assistants" | "admins") => {
 
@@ -734,28 +400,15 @@ export function StudentAssistantsCard({
 
   };
 
-
-
   const addLabel = effectiveMode === "admins" ? "Add Admin" : "Add Assistant";
 
-
-
   return (
-
     <Card className={cn("overflow-hidden", className)}>
-
       <CardContent className="p-0">
-
         <div className="flex">
-
           <Divider orientation="vertical" className="h-auto self-stretch" />
-
-
-
           <div className="min-w-0 flex-1">
-
             <div className="flex items-center justify-between gap-3 border-b px-5 py-5">
-
               <Select
 
                 value={effectiveMode}
@@ -763,111 +416,56 @@ export function StudentAssistantsCard({
                 onValueChange={(v) => setMode(v as "assistants" | "admins")}
 
               >
-
                 <SelectTrigger variant="primaryoutline" className="w-max">
-
                   <div className="flex items-center gap-2">
+                    <img
 
-                    <img 
+                      src={effectiveMode === "admins" ? "/PrimaryAdminIcon.png" : "/PrimaryWaveHandIcon.png"}
 
-                      src={effectiveMode === "admins" ? "/PrimaryAdminIcon.png" : "/PrimaryWaveHandIcon.png"} 
+                      alt={effectiveMode === "admins" ? "admins" : "assistants"}
 
-                      alt={effectiveMode === "admins" ? "admins" : "assistants"} 
-
-                      className="h-4 w-4" 
+                      className="h-4 w-4"
 
                     />
-
                     <SelectValue placeholder="Assistants" />
-
                   </div>
-
                 </SelectTrigger>
-
                 <SelectContent>
-
                   <SelectItem value="assistants">Assistants</SelectItem>
-
                   <SelectItem value="admins">Admins</SelectItem>
-
                 </SelectContent>
-
               </Select>
-
-
-
               <Button type="button" className="h-8 rounded-md px-3 text-sm font-bold" onClick={onAddUser}>
-
                 <div className="flex items-center gap-2">
-
                   <Plus className="h-4 w-4" />{addLabel}
-
                 </div>
-
               </Button>
-
             </div>
-
-
-
             <Divider color="border-[hsl(var(--gray-border))]" />
-
-
-
             <div>
-
               {items.map((item, idx) => (
-
                 <React.Fragment key={item.id}>
-
                   <div className="flex items-start gap-4 px-4 py-5">
-
                     <div className="min-w-0 flex-1 px-2 py-2">
-
                       <div className="flex items-center justify-start w-full">
-
                         <Badge variant={item.isActive ? "success" : "destructive"}>
-
                           {item.isActive ? "ACTIVE" : "INACTIVE"}
-
                         </Badge>
-
                       </div>
-
-
-
                       <div className="flex items-center justify-between w-full pt-4">
-
                         <span className="text-2xl font-bold text-gray-900">{item.name}</span>
-
                       </div>
-
-
-
                       <div className="mt-4 grid grid-cols-[95px_1fr] gap-x-5 gap-y-1 text-sm">
-
                         <div className="font-bold text-gray-900">College</div>
-
                         <div className="text-gray-900">{item.college}</div>
-
                         <div className="font-bold text-gray-900">Department</div>
-
                         <div className="text-gray-900">{item.department}</div>
-
                         <div className="font-bold text-gray-900">Office</div>
-
                         <div className="text-gray-900">{item.office}</div>
-
                         <div className="font-bold text-gray-900">Email</div>
-
                         <div className="text-gray-900">{item.email}</div>
-
                       </div>
-
-
-
                       <div className="flex items-center gap-2 mt-4 w-full">
-
                         <Button
 
                           type="button"
@@ -883,9 +481,6 @@ export function StudentAssistantsCard({
                           EDIT
 
                         </Button>
-
-
-
                         <Button
 
                           type="button"
@@ -901,44 +496,26 @@ export function StudentAssistantsCard({
                           REMOVE
 
                         </Button>
-
                       </div>
-
                     </div>
-
                   </div>
-
-
-
                   {idx < items.length - 1 ? (
-
                     <Divider color="border-[hsl(var(--gray-border))]" />
 
                   ) : null}
-
                 </React.Fragment>
 
               ))}
-
             </div>
-
           </div>
-
-
-
           <Divider orientation="vertical" className="h-auto self-stretch" />
-
         </div>
-
       </CardContent>
-
     </Card>
 
   );
 
 }
-
-
 
 export type RequirementEditCardProps = {
 
@@ -964,40 +541,25 @@ export type RequirementEditCardProps = {
 
 };
 
-
-
 export function RequirementEditCard({
 
   title,
-
   description,
-
   physicalSubmission = false,
-
   Recipients,
-
   LastUpdated,
-
   CreatedBy,
-
   ClearanceTimeline,
-
   onEdit,
-
   onDelete,
-
 }: RequirementEditCardProps) {
 
   const [deleteOpen, setDeleteOpen] = React.useState(false);
 
-
-
   return (
 
     <div className="rounded-xl border bg-card text-card-foreground shadow">
-
       <div className="pt-6 pb-4 pl-4 pr-4">
-
         <div
 
           className={cn(
@@ -1009,17 +571,10 @@ export function RequirementEditCard({
           )}
 
         >
-
           {title}
-
         </div>
-
-
-
         <div className="flex items-center justify-left gap-2 mt-3">
-
           {physicalSubmission ? (
-
             <Badge variant="warning" className="mb-2">
 
               PHYSICAL SUBMISSION
@@ -1027,113 +582,59 @@ export function RequirementEditCard({
             </Badge>
 
           ) : null}
-
         </div>
-
       </div>
-
-
-
       <Divider className="bg-foreground w-full" />
-
-
-
       <div className="pt-6 pb-4 pl-6 pr-6">
-
         <div>
-
           <div className="grid grid-cols-2 gap-2">
-
             <div className="text-md font-bold text-gray-900">Recipients</div>
-
             <div className="text-sm text-gray-900 text-left break-words">{Recipients}</div>
-
           </div>
-
-
-
           <div className="grid grid-cols-2 gap-2 pt-1">
-
             <div className="text-md font-bold text-gray-900 pt-1">Description</div>
-
-            <div 
+            <div
 
               className="text-sm text-gray-900 text-left break-words"
 
               dangerouslySetInnerHTML={{ __html: applyRichTextStyles(description || "") }}
 
             />
-
           </div>
-
-
-
           <div className="grid grid-cols-2 gap-2 pt-1">
-
             <div className="text-md font-bold text-gray-900">Last Updated</div>
-
             <div className="text-sm text-gray-900 text-left break-words">{LastUpdated}</div>
-
           </div>
-
-
-
           <div className="grid grid-cols-2 gap-2 pt-1">
-
             <div className="text-md font-bold text-gray-900">Created By</div>
-
             <div className="text-sm text-gray-900 text-left break-words">{CreatedBy}</div>
-
           </div>
-
-
-
           <div className="grid grid-cols-2 gap-2 pt-1 pb-3">
-
             <div className="text-md font-bold text-gray-900">Clearance Timeline</div>
-
             <div className="text-sm text-gray-900 text-left break-words">{ClearanceTimeline}</div>
-
           </div>
-
         </div>
-
       </div>
-
-
-
       <Divider className="bg-foreground w-full" />
-
-
-
       <div className="mt-4 pt-2 pb-5 flex items-center justify-center gap-3">
+        <Button
 
-        <Button 
-
-          variant="default" 
+          variant="default"
 
           className="h-max w-max rounded-xl px-7 text-base font-semibold p-3"
 
           onClick={() => onEdit?.()}
 
         >
-
           <div className="flex items-center gap-2">
-
             <Pencil className="h-4 w-4" />
 
             Edit
 
           </div>
-
         </Button>
-
-
-
         <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-
           <AlertDialogTrigger asChild>
-
             <Button
 
               type="button"
@@ -1143,23 +644,15 @@ export function RequirementEditCard({
               className="h-max w-max rounded-xl px-7 text-base font-semibold p-3"
 
             >
-
               <div className="flex items-center gap-2">
-
                 <Trash2 className="h-5 w-5" />
 
                 Delete
 
               </div>
-
             </Button>
-
           </AlertDialogTrigger>
-
-
-
           <AlertDialogContent className="max-w-md">
-
             <DeleteAlert
 
               itemName={title}
@@ -1175,20 +668,14 @@ export function RequirementEditCard({
               onCancel={() => setDeleteOpen(false)}
 
             />
-
           </AlertDialogContent>
-
         </AlertDialog>
-
       </div>
-
     </div>
 
   );
 
 }
-
-
 
 export type RequirementListCardProps = {
 
@@ -1216,40 +703,25 @@ export type RequirementListCardProps = {
 
 };
 
-
-
 export function RequirementListCard({
 
   title,
-
   description,
-
   physicalSubmission = false,
-
   Recipients,
-
   LastUpdated,
-
   CreatedBy,
-
   ClearanceTimeline,
-
   onEdit,
-
   onDelete,
-
 }: RequirementListCardProps) {
 
   const [deleteOpen, setDeleteOpen] = React.useState(false);
 
-
-
   return (
 
     <div className="rounded-xl border bg-card text-card-foreground shadow">
-
       <div className="pt-6 pb-4 pl-4 pr-4">
-
         <div
 
           className={cn(
@@ -1261,17 +733,10 @@ export function RequirementListCard({
           )}
 
         >
-
           {title}
-
         </div>
-
-
-
         <div className="flex items-center justify-left gap-2 mt-3">
-
           {physicalSubmission ? (
-
             <Badge variant="warning" className="mb-2">
 
               PHYSICAL SUBMISSION
@@ -1279,88 +744,44 @@ export function RequirementListCard({
             </Badge>
 
           ) : null}
-
         </div>
-
       </div>
-
-
-
       <Divider className="bg-foreground w-full" />
-
-
-
       <div className="pt-6 pb-4 pl-6 pr-6">
-
         <div>
-
           <div className="grid grid-cols-2 gap-2">
-
             <div className="text-md font-bold text-gray-900">Recipients</div>
-
             <div className="text-sm text-gray-900 text-left break-words">{Recipients}</div>
-
           </div>
-
-
-
           <div className="grid grid-cols-2 gap-2 pt-1">
-
             <div className="text-md font-bold text-gray-900 pt-1">Description</div>
-
-            <div 
+            <div
 
               className="text-sm text-gray-900 text-left break-words"
 
               dangerouslySetInnerHTML={{ __html: applyRichTextStyles(description || "") }}
 
             />
-
           </div>
-
-
-
           <div className="grid grid-cols-2 gap-2 pt-1">
-
             <div className="text-md font-bold text-gray-900">Last Updated</div>
-
             <div className="text-sm text-gray-900 text-left break-words">{LastUpdated}</div>
-
           </div>
-
-
-
           <div className="grid grid-cols-2 gap-2 pt-1">
-
             <div className="text-md font-bold text-gray-900">Created By</div>
-
             <div className="text-sm text-gray-900 text-left break-words">{CreatedBy}</div>
-
           </div>
-
-
-
           <div className="grid grid-cols-2 gap-2 pt-1 pb-3">
-
             <div className="text-md font-bold text-gray-900">Clearance Timeline</div>
-
             <div className="text-sm text-gray-900 text-left break-words">{ClearanceTimeline}</div>
-
           </div>
-
         </div>
-
       </div>
-
-
-
     </div>
 
   );
 
 }
-
-
 
 export type ClearanceRequestItem = {
 
@@ -1378,17 +799,13 @@ export type ClearanceRequestItem = {
 
   facultyType: string;
 
-  requirementName?: string;
+  requirementTitle?: string;
 
   status: ClearanceRequestStatus;
 
 };
 
-
-
 export type ClearanceRequestStatus = "pending" | "approved" | "rejected";
-
-
 
 export type ClearanceRequestsCardProps = {
 
@@ -1400,8 +817,6 @@ export type ClearanceRequestsCardProps = {
 
 };
 
-
-
 function getClearanceStatusBadgeVariant(status: ClearanceRequestStatus) {
 
   if (status === "approved") return "success" as const;
@@ -1412,33 +827,22 @@ function getClearanceStatusBadgeVariant(status: ClearanceRequestStatus) {
 
 }
 
-
-
 export function ClearanceRequestsCard({
 
   items,
-
   className,
-
   getItemHref,
-
 }: ClearanceRequestsCardProps) {
 
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set());
 
   const [loading, setLoading] = React.useState(false);
 
-
-
   const allSelected = items.length > 0 && selectedIds.size === items.length;
-
-
 
   const handleBulkApprove = async () => {
 
     if (selectedIds.size === 0) return;
-
-    
 
     setLoading(true);
 
@@ -1450,13 +854,9 @@ export function ClearanceRequestsCard({
 
       console.log("[DEBUG] Is assistant approver:", isAssistantApprover);
 
-      
-
       // Use appropriate endpoint based on user type
 
       const actionEndpoint = isAssistantApprover ? "/admin/xu-faculty-clearance/api/assistant-approver/clearance" : "/admin/xu-faculty-clearance/api/approver/action";
-
-      
 
       const response = await fetch(actionEndpoint, {
 
@@ -1484,8 +884,6 @@ export function ClearanceRequestsCard({
 
       });
 
-
-
       if (!response.ok) {
 
         const errorData = await response.json().catch(() => ({}));
@@ -1508,13 +906,9 @@ export function ClearanceRequestsCard({
 
       }
 
-
-
       const result = await response.json();
 
       console.log("Bulk approve successful:", result);
-
-      
 
       if (isAssistantApprover) {
 
@@ -1523,8 +917,6 @@ export function ClearanceRequestsCard({
         return;
 
       }
-
-      
 
       // Log activity for each approved request
 
@@ -1538,23 +930,17 @@ export function ClearanceRequestsCard({
 
         });
 
-        
-
         console.log("[DEBUG] Profile response status:", profileResponse.status);
 
         const userProfile = profileResponse.ok ? await profileResponse.json() : null;
 
         console.log("[DEBUG] User profile:", userProfile);
 
-        
-
         // Check if current user is an assistant approver by checking the current URL
 
         const isAssistantApprover = window.location.pathname.includes('/assistant-approver');
 
         console.log("[DEBUG] Is assistant approver:", isAssistantApprover);
-
-        
 
         // Create activity log for each request
 
@@ -1568,8 +954,6 @@ export function ClearanceRequestsCard({
 
             console.log("[DEBUG] requestItem:", requestItem);
 
-            
-
             // Use faculty member's data from the clearance request
 
             const facultyDepartment = requestItem.department || null;
@@ -1582,13 +966,9 @@ export function ClearanceRequestsCard({
 
             const userOffice = userProfile?.roles_payload?.[0]?.office || null;
 
-            
-
             // Always use regular event types for now until we fix the backend
 
             const eventType = "approved_clearance";
-
-            
 
             let details = [
 
@@ -1600,8 +980,6 @@ export function ClearanceRequestsCard({
 
             ];
 
-            
-
             // Add assistant info to details if this is an assistant approver
 
             if (isAssistantApprover && userProfile) {
@@ -1610,55 +988,33 @@ export function ClearanceRequestsCard({
 
             }
 
-            
-
             console.log("[DEBUG] Extracted data:", {
 
               facultyDepartment,
-
               facultyCollege,
-
               facultyEmployeeId,
-
               userOffice,
-
               userProfileExists: !!userProfile,
-
               profileRoles: userProfile?.roles_payload,
-
               isAssistantApprover,
-
               eventType
 
             });
 
-            
-
             const activityPayload = {
 
               event_type: eventType,
-
               details: details,
-
               department: facultyDepartment,
-
               college: facultyCollege,
-
               office: userOffice,
-
               university_id: facultyEmployeeId,
-
               request_id: requestId,
-
               user_role: "Approver",
 
             };
 
-            
-
             console.log("[DEBUG] Activity payload:", activityPayload);
-
-            
 
             const activityResponse = await fetch("/admin/xu-faculty-clearance/api/approver/activity-logs", {
 
@@ -1667,14 +1023,11 @@ export function ClearanceRequestsCard({
               credentials: "include",
 
               keepalive: true,
-
               headers: { "Content-Type": "application/json" },
 
               body: JSON.stringify(activityPayload),
 
             });
-
-            
 
             console.log("[DEBUG] Activity log response status:", activityResponse.status);
 
@@ -1686,8 +1039,6 @@ export function ClearanceRequestsCard({
 
             }
 
-            
-
             return activityResponse;
 
           }
@@ -1696,8 +1047,6 @@ export function ClearanceRequestsCard({
 
         });
 
-        
-
         await Promise.all(activityPromises);
 
       } catch (logError) {
@@ -1705,8 +1054,6 @@ export function ClearanceRequestsCard({
         console.error("Failed to log bulk approval activity:", logError);
 
       }
-
-      
 
       // Refresh the page to show updated status
 
@@ -1726,13 +1073,9 @@ export function ClearanceRequestsCard({
 
   };
 
-
-
   const handleBulkReject = async (reason: string) => {
 
     if (selectedIds.size === 0) return;
-
-    
 
     setLoading(true);
 
@@ -1744,13 +1087,9 @@ export function ClearanceRequestsCard({
 
       console.log("[DEBUG] Is assistant approver:", isAssistantApprover);
 
-      
-
       // Use appropriate endpoint based on user type
 
       const actionEndpoint = isAssistantApprover ? "/admin/xu-faculty-clearance/api/assistant-approver/clearance" : "/admin/xu-faculty-clearance/api/approver/action";
-
-      
 
       const response = await fetch(actionEndpoint, {
 
@@ -1773,12 +1112,9 @@ export function ClearanceRequestsCard({
           action: "reject",
 
           remarks: reason,
-
         }),
 
       });
-
-
 
       if (!response.ok) {
 
@@ -1802,22 +1138,16 @@ export function ClearanceRequestsCard({
 
       }
 
-
-
       const result = await response.json();
 
       console.log("Bulk reject successful:", result);
-
-      
 
       try {
 
         console.log("[notification] Creating bulk Submission Rejected notifications:", {
 
           selectedCount: selectedIds.size,
-
           reason,
-
           actor: isAssistantApprover ? "assistant" : "approver",
 
         });
@@ -1828,15 +1158,11 @@ export function ClearanceRequestsCard({
 
           if (!requestItem) return null;
 
-
-
-          const requirementTitle = String(requestItem.requirementName || "");
+          const requirementTitle = String(requestItem.requirementTitle || "");
 
           const trimmedRemarks = String(reason || "").trim();
 
           const userRole = isAssistantApprover ? "Assistant" : "Approver";
-
-
 
           const notifResponse = await fetch("/admin/xu-faculty-clearance/api/faculty/notifications", {
 
@@ -1845,7 +1171,6 @@ export function ClearanceRequestsCard({
             credentials: "include",
 
             keepalive: true,
-
             headers: {
 
               "Content-Type": "application/json",
@@ -1881,14 +1206,10 @@ export function ClearanceRequestsCard({
               ],
 
               user_role: userRole,
-
               is_read: false,
-
             }),
 
           });
-
-
 
           if (!notifResponse.ok) {
 
@@ -1897,7 +1218,6 @@ export function ClearanceRequestsCard({
               "[notification] Submission Rejected POST failed:",
 
               notifResponse.status,
-
               await notifResponse.text(),
 
             );
@@ -1908,13 +1228,9 @@ export function ClearanceRequestsCard({
 
           }
 
-
-
           return notifResponse;
 
         });
-
-
 
         await Promise.all(notificationPromises);
 
@@ -1924,8 +1240,6 @@ export function ClearanceRequestsCard({
 
       }
 
-
-
       if (isAssistantApprover) {
 
         window.location.reload();
@@ -1933,8 +1247,6 @@ export function ClearanceRequestsCard({
         return;
 
       }
-
-      
 
       // Log activity for each rejected request
 
@@ -1950,15 +1262,11 @@ export function ClearanceRequestsCard({
 
         const userProfile = await profileResponse.json();
 
-        
-
         // Check if current user is an assistant approver by checking the current URL
 
         const isAssistantApprover = window.location.pathname.includes('/assistant-approver');
 
         console.log("[DEBUG] Is assistant approver (reject):", isAssistantApprover);
-
-        
 
         // Create activity log for each request
 
@@ -1972,8 +1280,6 @@ export function ClearanceRequestsCard({
 
             console.log("[DEBUG] requestItem (reject):", requestItem);
 
-            
-
             // Use faculty member's data from the clearance request
 
             const facultyDepartment = requestItem.department || null;
@@ -1986,29 +1292,19 @@ export function ClearanceRequestsCard({
 
             const userOffice = userProfile?.roles_payload?.[0]?.office || null;
 
-            
-
             // Determine event type based on whether user is assistant approver
 
             const eventType = "rejected_clearance";
 
-            
-
             console.log("[DEBUG] Extracted data (reject):", {
 
               facultyDepartment,
-
               facultyCollege,
-
               facultyEmployeeId,
-
               userOffice,
-
               eventType
 
             });
-
-            
 
             let details = [
 
@@ -2020,15 +1316,11 @@ export function ClearanceRequestsCard({
 
             ];
 
-            
-
             if (isAssistantApprover && userProfile) {
 
               details.push(`Assistant: ${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || userProfile.email);
 
             }
-
-            
 
             return fetch("/admin/xu-faculty-clearance/api/approver/activity-logs", {
 
@@ -2037,25 +1329,17 @@ export function ClearanceRequestsCard({
               credentials: "include",
 
               keepalive: true,
-
               headers: { "Content-Type": "application/json" },
 
               body: JSON.stringify({
 
                 event_type: eventType,
-
                 details: details,
-
                 department: facultyDepartment,
-
                 college: facultyCollege,
-
                 office: userOffice,
-
                 university_id: facultyEmployeeId,
-
                 request_id: requestId,
-
                 user_role: "Approver",
 
               }),
@@ -2068,8 +1352,6 @@ export function ClearanceRequestsCard({
 
         });
 
-        
-
         await Promise.all(activityPromises);
 
       } catch (logError) {
@@ -2077,8 +1359,6 @@ export function ClearanceRequestsCard({
         console.error("Failed to log bulk rejection activity:", logError);
 
       }
-
-      
 
       // Refresh the page to show updated status
 
@@ -2097,8 +1377,6 @@ export function ClearanceRequestsCard({
     }
 
   };
-
-
 
   // Helper function to get CSRF token
 
@@ -2130,18 +1408,11 @@ export function ClearanceRequestsCard({
 
   }
 
-
-
   return (
-
     <Card className={cn("overflow-hidden", className)}>
-
       <CardContent className="p-0">
-
         <div className="hidden lg:block">
-
           <div className="flex items-center gap-3 border-b px-4 py-4">
-
             <Checkbox
 
               variant="primary"
@@ -2163,23 +1434,15 @@ export function ClearanceRequestsCard({
               }}
 
             />
-
-
-
             <div className="text-sm font-bold text-primary">Select All</div>
-
-
-
             {selectedIds.size > 0 ? (
 
               <div className="ml-auto flex items-center gap-2">
-
                 <RejectAlertDialog
 
                   count={selectedIds.size}
 
                   trigger={
-
                     <Button
 
                       type="button"
@@ -2201,13 +1464,11 @@ export function ClearanceRequestsCard({
                   onReject={handleBulkReject}
 
                 />
-
                 <ApproveConfirmDialog
 
                   count={selectedIds.size}
 
                   trigger={
-
                     <Button
 
                       type="button"
@@ -2217,13 +1478,10 @@ export function ClearanceRequestsCard({
                       disabled={loading}
 
                     >
-
                       <div className="flex items-center gap-2">
-
                         <Check className="h-4 w-4" /> Approve
 
                       </div>
-
                     </Button>
 
                   }
@@ -2231,51 +1489,29 @@ export function ClearanceRequestsCard({
                   onApprove={handleBulkApprove}
 
                 />
-
               </div>
 
             ) : null}
-
           </div>
-
-
-
           <div>
-
             <table className="w-full min-w-[900px] border-collapse">
-
               <thead>
-
                 <tr className="border-b">
-
                   <th className="w-12 px-4 py-3 text-left min-w-[48px]" />
-
                   <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[20%] min-w-[150px]">Name</th>
-
                   <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[15%] min-w-[120px]">Request ID</th>
-
                   <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[12%] min-w-[100px]">Employee ID</th>
-
                   <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[15%] min-w-[120px]">College</th>
-
                   <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[15%] min-w-[120px]">Department</th>
-
                   <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[15%] min-w-[120px]">Requirement</th>
-
                   <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[8%] min-w-[80px]">Status</th>
-
                 </tr>
-
               </thead>
-
               <tbody>
-
                 {items.map((item) => (
 
                   <tr key={item.id} className="border-b last:border-b-0">
-
                     <td className="w-12 px-4 py-4 align-top">
-
                       <Checkbox
 
                         variant="primary"
@@ -2299,17 +1535,11 @@ export function ClearanceRequestsCard({
                         }}
 
                       />
-
                     </td>
-
                     <td className="px-2 py-4 align-top text-sm font-semibold text-gray-900 break-words">
-
                       {getItemHref ? (
-
                         <Link to={getItemHref(item)} className="hover:underline">
-
                           {item.name}
-
                         </Link>
 
                       ) : (
@@ -2317,21 +1547,13 @@ export function ClearanceRequestsCard({
                         item.name
 
                       )}
-
                     </td>
-
                     <td className="px-2 py-4 align-top text-sm text-gray-900 break-all">{item.requestId}</td>
-
                     <td className="px-2 py-4 align-top text-sm text-gray-900 break-all">{item.employeeId}</td>
-
                     <td className="px-2 py-4 align-top text-sm text-gray-900 break-words">{item.college}</td>
-
                     <td className="px-2 py-4 align-top text-sm text-gray-900 break-words">{item.department}</td>
-
-                    <td className="px-2 py-4 align-top text-sm text-gray-900 break-words">{item.requirementName || ""}</td>
-
+                    <td className="px-2 py-4 align-top text-sm text-gray-900 break-words">{item.requirementTitle || ""}</td>
                     <td className="px-2 py-4 align-top">
-
                       <Badge
 
                         variant={getClearanceStatusBadgeVariant(item.status)}
@@ -2339,37 +1561,21 @@ export function ClearanceRequestsCard({
                         className="px-3 py-1 text-xs font-bold"
 
                       >
-
                         {item.status.toUpperCase()}
-
                       </Badge>
-
                     </td>
-
                   </tr>
 
                 ))}
-
               </tbody>
-
             </table>
-
           </div>
-
         </div>
-
-
-
         <div className="lg:hidden">
-
           <div className="flex">
-
             <Divider orientation="vertical" className="h-auto self-stretch " />
-
             <div className="min-w-0 flex-1">
-
               <div className="flex items-center gap-3 border-b px-4 py-4">
-
                 <Checkbox
 
                   variant="primary"
@@ -2391,21 +1597,15 @@ export function ClearanceRequestsCard({
                   }}
 
                 />
-
-
-
                 <div className="text-sm font-bold text-primary">Select All</div>
-
                 {selectedIds.size > 0 ? (
 
                   <div className="ml-auto flex items-center gap-2">
-
                     <RejectAlertDialog
 
                       count={selectedIds.size}
 
                       trigger={
-
                         <Button
 
                           type="button"
@@ -2427,13 +1627,11 @@ export function ClearanceRequestsCard({
                       onReject={handleBulkReject}
 
                     />
-
                     <ApproveConfirmDialog
 
                       count={selectedIds.size}
 
                       trigger={
-
                         <Button
 
                           type="button"
@@ -2443,13 +1641,10 @@ export function ClearanceRequestsCard({
                           disabled={loading}
 
                         >
-
                           <div className="flex items-center gap-2">
-
                             <Check className="h-4 w-4" /> Approve
 
                           </div>
-
                         </Button>
 
                       }
@@ -2457,29 +1652,16 @@ export function ClearanceRequestsCard({
                       onApprove={handleBulkApprove}
 
                     />
-
                   </div>
 
                 ) : null}
-
               </div>
-
-
-
               <Divider color="border-[hsl(var(--gray-border))]" />
-
-
-
               <div>
-
                 {items.map((item, idx) => (
-
                   <React.Fragment key={item.id}>
-
                     <div className="flex gap-3 px-4 py-6">
-
                       <div className="pt-1">
-
                         <Checkbox
 
                           variant="primary"
@@ -2503,19 +1685,11 @@ export function ClearanceRequestsCard({
                           }}
 
                         />
-
                       </div>
-
-
-
                       <div className="min-w-0 flex-1">
-
                         <div className="flex items-start justify-between gap-3">
-
                           <div className="min-w-0">
-
                             {getItemHref ? (
-
                               <Link
 
                                 to={getItemHref(item)}
@@ -2523,27 +1697,18 @@ export function ClearanceRequestsCard({
                                 className="truncate text-left text-2xl font-bold text-primary"
 
                               >
-
                                 {item.name}
-
                               </Link>
 
                             ) : (
 
                               <div className="truncate text-left text-2xl font-bold text-primary">
-
                                 {item.name}
-
                               </div>
 
                             )}
-
                           </div>
-
-
-
                           <div className="shrink-0">
-
                             <Badge
 
                               variant={getClearanceStatusBadgeVariant(item.status)}
@@ -2551,82 +1716,42 @@ export function ClearanceRequestsCard({
                               className="px-3 py-1 text-xs font-bold"
 
                             >
-
                               {item.status.toUpperCase()}
-
                             </Badge>
-
                           </div>
-
                         </div>
-
-
-
                         <div className="mt-3 grid grid-cols-[88px_1fr] gap-x-3 gap-y-1 text-sm">
-
                           <div className="font-bold text-gray-900">Request ID</div>
-
                           <div className="text-gray-900">{item.requestId}</div>
-
                           <div className="font-bold text-gray-900">Employee ID</div>
-
                           <div className="text-gray-900">{item.employeeId}</div>
-
-
-
                           <div className="font-bold text-gray-900">College</div>
-
                           <div className="text-gray-900">{item.college}</div>
-
-
-
                           <div className="font-bold text-gray-900">Department</div>
-
                           <div className="text-gray-900">{item.department}</div>
-
-
-
                           <div className="font-bold text-gray-900">Faculty Type</div>
-
                           <div className="text-gray-900">{item.facultyType}</div>
-
                         </div>
-
                       </div>
-
                     </div>
-
-
-
                     {idx < items.length - 1 ? (
-
                       <Divider color="border-[hsl(var(--gray-border))]" />
 
                     ) : null}
-
                   </React.Fragment>
 
                 ))}
-
               </div>
-
             </div>
-
             <Divider orientation="vertical" className="h-auto self-stretch" />
-
           </div>
-
         </div>
-
       </CardContent>
-
     </Card>
 
   );
 
 }
-
-
 
 export type RequestCardProps = {
 
@@ -2660,36 +1785,21 @@ export type RequestCardProps = {
 
 };
 
-
-
 export function RequestCard({
 
   requestId,
-
   employeeId,
-
   SchoolID,
-
   FullName,
-
   name,
-
   college,
-
   department,
-
   facultyType,
-
   SchoolEmail,
-
   className,
-
   onApprove,
-
   onReject,
-
   onViewDetails,
-
 }: RequestCardProps) {
 
   const getStatusVariant = (status: string) => {
@@ -2702,93 +1812,46 @@ export function RequestCard({
 
   };
 
-
-
   const getStatusText = (status: string) => {
 
     return status.toUpperCase();
 
   };
 
-
-
   return (
-
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
-
       <CardContent className="p-0">
-
         <div className="flex">
-
           <Divider orientation="vertical" className="h-auto self-stretch" />
-
           <div className="min-w-0 flex-1">
-
             <div className="flex items-start justify-between gap-3 px-4 py-6 bg-primary">
-
               <div className="min-w-0 flex-1 text-white font-bold text-center text-2xl">
-
                 {name}
-
               </div>
-
             </div>
-
-
-
             <div className=" grid grid-cols-[100px_1fr] gap-x-3 gap-y-2 text-sm p-6">
-
               <div className="font-bold text-gray-900">School ID</div>
-
               <div className="text-gray-900">{SchoolID}</div>
-
-              
-
               <div className="font-bold text-gray-900">Full Name</div>
-
               <div className="text-gray-900">{FullName}</div>
-
-              
-
               <div className="font-bold text-gray-900">College</div>
-
               <div className="text-gray-900">{college}</div>
-
-              
-
               <div className="font-bold text-gray-900">Department</div>
-
               <div className="text-gray-900">{department}</div>
-
-              
-
               <div className="font-bold text-gray-900">Faculty Type</div>
-
               <div className="text-gray-900">{facultyType}</div>
-
-              
-
               <div className="font-bold text-gray-900">School Email</div>
-
               <div className="text-gray-900">{SchoolEmail}</div>
-
             </div>
-
           </div>
-
           <Divider orientation="vertical" className="h-auto self-stretch" />
-
         </div>
-
       </CardContent>
-
     </Card>
 
   );
 
 }
-
-
 
 export type RequirementApprovalCardProps = {
 
@@ -2804,8 +1867,6 @@ export type RequirementApprovalCardProps = {
 
 };
 
-
-
 export function RequirementApprovalCard({
 
   requirementName = "Library Clearance",
@@ -2813,107 +1874,56 @@ export function RequirementApprovalCard({
   submissionNotes = "Submit library clearance form with signature",
 
   onApprove,
-
   onReject,
-
 }: RequirementApprovalCardProps) {
 
   return (
 
     <div className="rounded-xl border bg-card text-card-foreground border-muted-foreground/20">
-
         <div className="space-y-4 p-6">
-
           <div>
-
             <div className="text-xl text-center text-gray-900 font-bold mt-1">{requirementName}</div>
-
           </div>
-
-          
-
           <div>
-
             <div className="text-md font-bold text-gray-900">Submission Notes</div>
-
-            <div 
+            <div
 
               className="text-sm text-gray-900 mt-3 p-3 border border-foreground rounded-md pb-"
 
               dangerouslySetInnerHTML={{ __html: applyRichTextStyles(submissionNotes) }}
 
             />
-
           </div>
-
-          
-
           <div>
-
             <div className="text-md font-bold text-gray-900"></div>
-
             <div className="text-sm text-gray-900 mt-1"></div>
-
           </div>
-
         </div>
-
-
-
         <Divider className="bg-foreground "></Divider>
-
-
-
         <div className="p-6 ">
-
           <div className="flex items-center gap-3">
-
             <div className="text-md font-bold text-gray-900">Status</div>
-
-
-
             <div className="ml-auto">
-
               <div className="flex items-center gap-2">
-
-                
-
                 <input type="radio" name="status" value="approved" id="approved" className="h-4 w-4 text-blue-600" />
-
                 <label htmlFor="approved" className="text-sm text-gray-900">Approved</label>
-
-                
-
                 <input type="radio" name="status" value="rejected" id="rejected" className="h-4 w-4 text-blsck bg-black" />
-
                 <label htmlFor="rejected" className="text-sm text-gray-900">Rejected</label>
-
               </div>
-
             </div>
-
           </div>
-
           <div className="mt-3">
-
             <div className="mt-2">
-
-              <InputGroupWithAddon 
+              <InputGroupWithAddon
 
                 placeholder="Enter remarks or comments..."
 
                 className="text-md"
 
               />
-
             </div>
-
           </div>
-
-
-
           <div className="flex items-center mt-6 gap-3">
-
             <Button
 
               type="button"
@@ -2923,15 +1933,12 @@ export function RequirementApprovalCard({
               className="h-8 rounded-md px-4 text-sm font-bold flex-1"
 
             >
-
               <div className="flex items-center justify-center gap-2">
 
-                Cancel 
+                Cancel
 
               </div>
-
             </Button>
-
             <Button
 
               type="button"
@@ -2941,30 +1948,21 @@ export function RequirementApprovalCard({
               className="h-8 rounded-md px-4 text-sm font-bold flex-1"
 
             >
-
               <div className="flex items-center justify-center gap-2">
 
                 Save
 
               </div>
-
             </Button>
-
           </div>
-
         </div>
-
       </div>
 
   );
 
 }
 
-
-
 export type ExportArchiveClearanceStatus = "complete" | "incomplete";
-
-
 
 export type ExportArchiveClearanceItem = {
 
@@ -2988,8 +1986,6 @@ export type ExportArchiveClearanceItem = {
 
 };
 
-
-
 export type ExportArchiveClearanceCardProps = {
 
   items: ExportArchiveClearanceItem[];
@@ -3002,10 +1998,6 @@ export type ExportArchiveClearanceCardProps = {
 
 };
 
-
-
-
-
 function getExportArchiveClearanceBadgeVariant(status: ExportArchiveClearanceStatus) {
 
   if (status === "complete") return "success" as const;
@@ -3014,20 +2006,13 @@ function getExportArchiveClearanceBadgeVariant(status: ExportArchiveClearanceSta
 
 }
 
-
-
 export function ExportArchiveClearanceCard({
 
   items,
-
   className,
-
   exportLabel = "Export Results",
 
   onExport,
-
-
-
 }: ExportArchiveClearanceCardProps) {
 
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set());
@@ -3040,26 +2025,13 @@ export function ExportArchiveClearanceCard({
 
   );
 
-
-
   return (
-
     <Card className={cn("overflow-hidden border-muted-foreground/20 shadow-sm", className)}>
-
       <CardContent className="p-0">
-
         <div className="flex">
-
-
-
           <Divider orientation="vertical" className="h-auto self-stretch " />
-
-
-
           <div className="min-w-0 flex-1">
-
             <div className="flex items-center gap-3 border-b px-4 py-4">
-
               <Checkbox
 
                 variant="primary"
@@ -3075,13 +2047,11 @@ export function ExportArchiveClearanceCard({
                 }}
 
               />
-
               <div className="text-sm font-bold text-primary">
 
                 Select All
 
               </div>
-
               <Button
 
                 type="button"
@@ -3095,31 +2065,16 @@ export function ExportArchiveClearanceCard({
                 disabled={selectedItems.length === 0}
 
               >
-
                 <Plus className="h-5 w-5" />
-
                 {exportLabel}
-
               </Button>
-
             </div>
-
-
-
             <Divider color="border-[hsl(var(--gray-border))]" />
-
-
-
             <div>
-
               {items.map((item, idx) => (
-
                 <React.Fragment key={item.id}>
-
                   <div className="flex gap-3 px-4 py-6">
-
                     <div className="pt-1">
-
                       <Checkbox
 
                         variant="primary"
@@ -3143,29 +2098,15 @@ export function ExportArchiveClearanceCard({
                         }}
 
                       />
-
                     </div>
-
-
-
                     <div className="min-w-0 flex-1">
-
                       <div className="flex items-start justify-between gap-3">
-
                         <div className="min-w-0">
-
                           <div className="truncate text-left text-base font-bold text-primary">
-
-                            {item.name}  
-
+                            {item.name}
                           </div>
-
                         </div>
-
-
-
                         <div className="shrink-0">
-
                           <Badge
 
                             variant={getExportArchiveClearanceBadgeVariant(item.status)}
@@ -3173,145 +2114,85 @@ export function ExportArchiveClearanceCard({
                             className="px-3 py-1 text-xs font-bold"
 
                           >
-
                             {item.status.toUpperCase()}
-
                           </Badge>
-
                         </div>
-
                       </div>
-
-
-
                       <div className="mt-3 grid grid-cols-[110px_1fr] gap-x-3 gap-y-1 text-sm">
-
                         <div className="font-bold text-gray-900">
 
                           Request ID
 
                         </div>
-
                         <div className="text-gray-900">
-
                           {item.requestId}
-
                         </div>
-
                         <div className="font-bold text-gray-900">
 
                           University ID
 
                         </div>
-
                         <div className="text-gray-900">
-
                           {item.universityId}
-
                         </div>
-
                         <div className="font-bold text-gray-900">
 
                           College
 
                         </div>
-
                         <div className="text-gray-900">
-
                           {item.college}
-
                         </div>
-
                         <div className="font-bold text-gray-900">
 
                           Department
 
                         </div>
-
                         <div className="text-gray-900">
-
                           {item.department}
-
                         </div>
-
                         <div className="font-bold text-gray-900">
 
                           Faculty Type
 
                         </div>
-
                         <div className="text-gray-900">
-
                           {item.facultyType}
-
                         </div>
-
                         <div className="font-bold text-gray-900">
 
                           Missing Signatures
 
                         </div>
-
                         <div className="text-gray-900">
-
                           {item.missingSignatures}
-
                         </div>
-
                       </div>
-
                     </div>
-
                   </div>
-
-
-
                   {idx < items.length - 1 ? (
-
                     <Divider color="border-[hsl(var(--gray-border))]" />
 
                   ) : null}
-
                 </React.Fragment>
 
               ))}
-
             </div>
-
           </div>
-
           <Divider orientation="vertical" className="h-auto self-stretch" />
-
         </div>
-
       </CardContent>
-
     </Card>
-
-
 
   );
 
 };
 
-
-
-
-
-
-
-
-
-
-
 export function applyRichTextStyles(html: string): string {
 
   const input = String(html ?? "");
 
-
-
   // Basic sanitization (defense-in-depth). We still rely on trusted admins,
-
   // but we should not allow obvious XSS vectors.
 
   const sanitized = input
@@ -3328,8 +2209,6 @@ export function applyRichTextStyles(html: string): string {
 
     .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "");
 
-
-
   return sanitized
 
     .replace(/<ul>/g, '<ul style="list-style-type:disc;padding-left:1.5rem;margin:0.25rem 0;">')
@@ -3341,7 +2220,6 @@ export function applyRichTextStyles(html: string): string {
     .replace(
 
       /<a /g,
-
       '<a style="color:#2563eb;text-decoration:underline;overflow-wrap:anywhere;word-break:break-word;" '
 
     )
@@ -3349,18 +2227,13 @@ export function applyRichTextStyles(html: string): string {
     .replace(
 
       /<a>/g,
-
       '<a style="color:#2563eb;text-decoration:underline;overflow-wrap:anywhere;word-break:break-word;">'
 
     );
 
 }
 
-
-
 export type RequirementsListCardProps = {
-
-
 
   items: RequirementListItem[];
 
@@ -3382,62 +2255,34 @@ export type RequirementsListCardProps = {
 
   addDisabled?: boolean;
 
-
-
 };
-
-
-
-
-
-
 
 export function RequirementsListCard({
 
-
-
   items,
-
   className,
-
   onClose,
-
   headerActionHref,
-
   headerActionImgSrc,
-
   headerActionImgAlt = "Open",
 
   lastUpdated,
-
   onViewItem,
-
   onAddRequirement,
-
   addDisabled = true,
-
-
-
 }: RequirementsListCardProps) {
 
   const [collapsedTitles, setCollapsedTitles] = React.useState<Set<string>>(() => new Set());
 
-
-
   return (
-
     <Card className={cn("overflow-hidden", className)}>
-
       <CardHeader className="relative bg-primary py-3">
-
         <CardTitle className="text-center text-base font-bold text-primary-foreground">
 
           Requirements List
 
         </CardTitle>
-
         {headerActionHref && headerActionImgSrc ? (
-
           <Button
 
             asChild
@@ -3449,9 +2294,7 @@ export function RequirementsListCard({
             className="absolute right-3 top-[40%] -translate-y-1/2 text-primary-foreground"
 
           >
-
             <Link to={headerActionHref}>
-
               <img
 
                 src={headerActionImgSrc}
@@ -3461,13 +2304,10 @@ export function RequirementsListCard({
                 className="h-6 w-6 object-contain"
 
               />
-
             </Link>
-
           </Button>
 
         ) : (
-
           <Button
 
             type="button"
@@ -3481,23 +2321,14 @@ export function RequirementsListCard({
             onClick={onClose}
 
           >
-
             <X className="h-5 w-5" />
-
           </Button>
 
         )}
-
       </CardHeader>
-
-
-
       <CardContent className="p-0">
-
         <div className="p-4">
-
           <div className="space-y-3">
-
             {items.map((item) => (
 
               <div
@@ -3507,13 +2338,9 @@ export function RequirementsListCard({
                 className="flex items-start justify-between gap-3 rounded-md bg-muted"
 
               >
-
                 <div className="w-full">
-
                   <div className="flex items-center justify-between gap-3  p-4">
-
                     <div className="text-lg font-bold text-gray-900 mt-2">{item.title}</div>
-
                     <Button
 
                       type="button"
@@ -3523,13 +2350,9 @@ export function RequirementsListCard({
                       className="mt-0.5 text-primary"
 
                     >
-
                       {headerActionHref ? (
-
                         <Link to={headerActionHref}>
-
                           <img src="BlackChevronIcon.png" className="h-5" />
-
                         </Link>
 
                       ) : (
@@ -3537,203 +2360,97 @@ export function RequirementsListCard({
                         <img src="BlackChevronIcon.png" className="h-5" />
 
                       )}
-
                     </Button>
-
                   </div>
-
-                  
-
                   <Divider className="bg-black mt-2"></Divider>
-
-
-
                     <div className=" p-4">
-
                       {item.physicalSubmission ? (
 
                         <div className="mt-2 ml-0">
-
                           <Badge variant="warning">PHYSICAL SUBMISSION</Badge>
-
                         </div>
 
                       ) : null}
-
-                      <div 
+                      <div
 
                         className="mt-4 text-md text-gray-900"
 
                         dangerouslySetInnerHTML={{ __html: applyRichTextStyles(item.description || "") }}
 
                       />
-
                       <div className="mt-7 text-sm text-muted-foreground italic">{item.lastUpdated}</div>
-
                     </div>
-
-                  
-
                 </div>
-
               </div>
 
             ))}
-
-
-
           </div>
-
-
-
         </div>
-
-
-
-
-
       </CardContent>
-
     </Card>
 
   );
 
 }
 
-
-
-
-
-
-
 export type AnnouncementItem = {
-
-
 
   title: string;
 
-
-
   description: string;
-
-
 
   timestamp: string;
 
-
-
   imageSrc?: string;
-
-
 
   imageAlt?: string;
 
-
-
   pinned?: boolean;
-
-
 
   enabled?: boolean;
 
-
-
   headerActionHref?: string;
-
-
 
   headerActionImgSrc?: string;
 
-
-
   headerActionImgAlt?: string;
 
-
-
 };
-
-
-
-
-
-
 
 export type AnnouncementsCardProps = {
 
-
-
   items: AnnouncementItem[];
-
-
 
   className?: string;
 
-
-
   headerActionHref?: string;
-
-
 
   headerActionImgSrc?: string;
 
-
-
   headerActionImgAlt?: string;
-
-
 
   showHeaderChevron?: boolean;
 
-
-
 };
-
-
-
-
-
-
 
 export function AnnouncementsCard({
 
-
-
   items,
-
   className,
-
   headerActionHref,
-
   headerActionImgSrc,
-
   headerActionImgAlt,
-
   showHeaderChevron = true,
-
-
-
 }: AnnouncementsCardProps) {
 
-
-
   return (
-
     <Card className={cn("overflow-hidden", className)}>
-
       <CardHeader className="bg-[hsl(var(--yellow))] py-3 shadow-sm">
-
-
-
         <CardTitle className="relative flex items-center justify-center text-base font-bold text-gray-900">
-
-
-
           <div className="text-center font-bold">Announcements</div>
-
           {headerActionImgSrc && headerActionImgAlt ? (
 
             headerActionHref ? (
-
               <Button
 
                 asChild
@@ -3745,9 +2462,7 @@ export function AnnouncementsCard({
                 className="absolute right-[-8px] top-1/2 -translate-y-1/2"
 
               >
-
                 <Link to={headerActionHref}>
-
                   <img
 
                     src={headerActionImgSrc}
@@ -3757,19 +2472,12 @@ export function AnnouncementsCard({
                     className="h-6 w-6 object-contain"
 
                   />
-
                 </Link>
-
               </Button>
-
-
 
             ) : (
 
-
-
               <div className="absolute right-0 top-1/2 -translate-y-1/2">
-
                 <img
 
                   src={headerActionImgSrc}
@@ -3779,7 +2487,6 @@ export function AnnouncementsCard({
                   className="h-6 w-6 object-contain"
 
                 />
-
               </div>
 
             )
@@ -3787,45 +2494,24 @@ export function AnnouncementsCard({
           ) : showHeaderChevron ? (
 
             <div className="absolute right-1 top-1/2 -translate-y-1/2">
-
-
-
               <ChevronRight className="h-5 w-5 text-gray-900" />
-
-
-
             </div>
 
           ) : null}
-
         </CardTitle>
-
       </CardHeader>
-
-
-
       <CardContent className="p-4">
-
         <div className="space-y-3">
-
           {items.map((item) => (
 
             <div key={item.title} className="rounded-md bg-foregroundLight p-4">
-
               <div className="flex items-start gap-3">
-
                 {item.pinned ? (
-
-
 
                   <img src="/BlackBookmarkIcon.png" alt="Pin" className="mt-0.5 h-4 w-4 text-gray-900" />
 
-
-
                 ) : null}
-
                 <div className="min-w-0">
-
                   {item.imageSrc ? (
 
                     <img
@@ -3839,305 +2525,134 @@ export function AnnouncementsCard({
                     />
 
                   ) : null}
-
                   {item.pinned ? (
 
                     <div className="text-xs font-bold text-muted-foreground">PINNED</div>
 
                   ) : null}
-
-
-
                   <div className="text-sm font-bold text-gray-900 mt-2">{item.title}</div>
-
-
-
                   <div className="mt-1 text-sm text-muted-foreground">
-
                     <span
 
                       dangerouslySetInnerHTML={{ __html: applyRichTextStyles(item.description || "") }}
 
                     />
-
                   </div>
-
                   <div className="mt-3 text-xs text-muted-foreground">{item.timestamp}</div>
-
                 </div>
-
               </div>
-
             </div>
 
           ))}
-
         </div>
-
       </CardContent>
-
     </Card>
 
   );
 
 }
 
-
-
-
-
-
-
-
-
-
-
 export type NotificationItemStatus = "approved" | "rejected" | "submitted";
-
-
-
-
-
-
 
 export type NotificationItem = {
 
-
-
   id?: string;
-
-
 
   title: string;
 
-
-
   status?: NotificationItemStatus;
-
-
 
   description?: string;
 
-
-
   details: string[];
-
-
 
   timestamp: string;
 
-
-
   is_read?: boolean;
 
-
-
 };
-
-
-
-
-
-
 
 export type NotificationsCardProps = {
 
-
-
   items: NotificationItem[];
-
-
 
   className?: string;
 
-
-
-
-
-
-
   pageSize?: number;
-
-
 
   showMarkAsReadButton?: boolean;
 
-
-
   readAll?: boolean;
-
-
 
   onReadAllChange?: (readAll: boolean) => void;
 
-
-
   onItemClick?: (item: NotificationItem) => void;
-
-
 
 };
 
-
-
-
-
-
-
 function statusText(status: NotificationItemStatus) {
-
-
 
   if (status === "approved") return "APPROVED";
 
-
-
   if (status === "rejected") return "REJECTED";
-
-
 
   return "SUBMITTED";
 
-
-
 }
-
-
-
-
-
-
 
 export function NotificationsCard({
 
   items,
-
   className,
-
   pageSize = 10,
-
   showMarkAsReadButton = true,
-
   readAll: readAllProp,
-
   onReadAllChange,
-
   onItemClick,
-
-
-
 }: NotificationsCardProps) {
-
-
 
   const [page, setPage] = React.useState(1);
 
-
-
   const [readAllUncontrolled, setReadAllUncontrolled] = React.useState(false);
-
-
-
-
-
-
 
   const readAll = readAllProp ?? readAllUncontrolled;
 
-
-
   const setReadAll = (next: boolean) => {
-
-
 
     if (readAllProp === undefined) setReadAllUncontrolled(next);
 
-
-
     onReadAllChange?.(next);
-
-
 
   };
 
-
-
-
-
-
-
   React.useEffect(() => {
-
-
 
     setPage(1);
 
-
-
     setReadAll(false);
-
-
 
   }, [items]);
 
-
-
-
-
-
-
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
-
-
 
   const safePage = Math.min(Math.max(1, page), totalPages);
 
-
-
   const start = (safePage - 1) * pageSize;
-
-
 
   const pagedItems = items.slice(start, start + pageSize);
 
-
-
-
-
-
-
   React.useEffect(() => {
-
-
 
     if (page !== safePage) setPage(safePage);
 
-
-
   }, [page, safePage]);
 
-
-
-
-
-
-
   return (
-
-
-
     <Card className={className}>
-
-
-
       <CardContent className="p-0">
-
-
-
         {showMarkAsReadButton ? (
 
           <div className="flex items-center justify-end px-6 pt-4">
-
             <Button
 
               className="h-8 px-3 text-xs"
@@ -4153,19 +2668,12 @@ export function NotificationsCard({
               Mark as Read .//
 
             </Button>
-
           </div>
 
         ) : null}
-
-
-
         {pagedItems.map((item, index) => (
 
           <div key={`${item.title}-${start + index}`}>
-
-
-
             <button
 
               type="button"
@@ -4183,17 +2691,10 @@ export function NotificationsCard({
               disabled={!onItemClick}
 
             >
-
               <div className="flex items-start justify-between gap-3">
-
                 <div className="min-w-0">
-
                   <div className="text-base font-bold text-gray-900">{item.title}</div>
-
-
-
                   <div className="mt-1 text-sm text-gray-900">
-
                     {item.description?.trim()
 
                       ? (
@@ -4206,76 +2707,40 @@ export function NotificationsCard({
 
                         )
 
-                      : item.status                   
+                      : item.status
 
                         ? (
 
                             <>
 
                               Your submission has been <span className="font-bold">{statusText(item.status)}.</span>
-
                             </>
 
                           )
 
                         : null}
-
                   </div>
-
                 </div>
-
-
-
                 {!readAll && !item.is_read ? (
-
-
 
                   <div className="mt-1 h-4 w-4 shrink-0 rounded-full bg-red-500" />
 
-
-
                 ) : null}
-
-
-
               </div>
-
-
-
-
-
-
-
               {null}
-
-
-
               <div className="mt-3 text-xs italic text-muted-foreground">{item.timestamp}</div>
-
             </button>
-
             {index < pagedItems.length - 1 ? (
 
               <div className="h-px w-full bg-[hsl(var(--gray-border))]" />
 
             ) : null}
-
           </div>
 
         ))}
-
-
-
         <div className="px-6 pb-4">
-
           <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-
             <span>Page</span>
-
-
-
-            
-
             <button
 
               type="button"
@@ -4287,17 +2752,8 @@ export function NotificationsCard({
               disabled={safePage <= 1}
 
             >
-
               <ChevronLeft className="h-4 w-4" />
-
             </button>
-
-
-
-
-
-
-
             <select
 
               className="h-9 rounded-md border border-input bg-background px-3 text-sm text-gray-900"
@@ -4307,82 +2763,36 @@ export function NotificationsCard({
               onChange={(e) => setPage(Number(e.target.value))}
 
             >
-
               {Array.from({ length: totalPages }).map((_, i) => (
 
                 <option key={i + 1} value={i + 1}>
-
                   {i + 1}
-
                 </option>
 
               ))}
-
             </select>
-
-
-
             <button
 
               type="button"
 
               className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-background text-gray-900 disabled:opacity-50"
 
-
-
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-
-
 
               disabled={safePage >= totalPages}
 
-
-
             >
-
-
-
               <ChevronRight className="h-4 w-4" />
-
-
-
             </button>
-
-
-
-
-
-
-
             <span>of {totalPages}</span>
-
-
-
           </div>
-
-
-
         </div>
-
-
-
       </CardContent>
-
-
-
     </Card>
-
-
 
   );
 
-
-
 }
-
-
-
-
 
 export type ActivityLogVariant =
 
@@ -4476,15 +2886,7 @@ export type ActivityLogVariant =
 
   | "removed_faculty_data_dump";
 
-
-
-
-
-
-
 export type ActivityLogItem = {
-
-
 
   id: string;
 
@@ -4546,15 +2948,7 @@ export type ActivityLogItem = {
 
   assistantApproverLastName?: string;
 
-
-
 };
-
-
-
-
-
-
 
 export type ActivityLogsCardProps = {
 
@@ -4564,1087 +2958,451 @@ export type ActivityLogsCardProps = {
 
 };
 
-
-
-
-
-
-
 function getActivityIcon(variant: ActivityLogVariant) {
-
-
 
   if (variant === "approved_clearance") {
 
-
-
     return (
 
-
-
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-success p-0.2">
-
-
-
         <Check strokeWidth={4} className="h-3 w-3 text-white transform translate-y-[0.5px]" />
-
-
-
       </div>
-
-
 
     );
 
-
-
   }
-
-
 
   if (variant === "archived_guideline") {
 
-
-
     return (
-
-
 
       <div className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-success p-0.2">
-
-
-
         <Check strokeWidth={4} className="h-3 w-3 text-white transform translate-y-[0.5px]" />
-
-
-
       </div>
-
-
 
     );
 
-
-
   }
 
-
-
-  if (variant === "rejected_clearance" || variant === "set_guideline_status_inactive" || variant === "set_announcement_status_inactive" || variant === "set_timeline_status_inactive" || variant === "disabled_guideline" || variant === "delete_guideline") { 
-
-
+  if (variant === "rejected_clearance" || variant === "set_guideline_status_inactive" || variant === "set_announcement_status_inactive" || variant === "set_timeline_status_inactive" || variant === "disabled_guideline" || variant === "delete_guideline") {
 
     return (
 
-
-
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-[hsl(var(--destructive))] p-0.5">
-
-
-
         <X strokeWidth={4} className="h-3 w-3 text-white transform " />
-
-
-
       </div>
-
-
 
     );
 
-
-
   }
-
-
 
   if (variant === "create_request" || variant === "created_requirements" || variant === "created_guideline" || variant === "created_announcement" || variant === "created_timeline" || variant === "created_college" || variant === "created_department" || variant === "added_to_approver_flow" || variant === "enabled_guideline") {
 
-
-
     return (
 
-
-
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-primary p-0.5">
-
-
-
         <Plus strokeWidth={4} className="h-3 w-3  text-white transform" />
-
-
-
       </div>
-
-
 
     );
 
-
-
   }
-
-
 
   if (variant === "edited_requirements" || variant === "edited_approver_flow" || variant === "edited_guideline" || variant === "edited_announcement" || variant === "edited_college" || variant === "edited_department" || variant === "edited_office" || variant === "edited_approver" || variant === "edited_timeline") {
 
-
-
     return (
 
-
-
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-primary p-0.5">
-
-
-
         <Pencil strokeWidth={4} className="h-3 w-3 text-white" />
-
-
-
       </div>
-
-
 
     );
 
-
-
   }
-
-
 
   if (variant === "updated_assistant_approver") {
 
-
-
     return (
 
-
-
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-primary p-0.5">
-
-
-
         <UserCheck strokeWidth={4} className="h-3 w-3 text-white" />
-
-
-
       </div>
-
-
 
     );
 
-
-
   }
-
-
 
   if (variant === "removed_assistant_approver" || variant === "removed_approver") {
 
-
-
     return (
 
-
-
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-[hsl(var(--destructive))] p-0.5">
-
-
-
         <UserMinus strokeWidth={4} className="h-3 w-3 text-white" />
-
-
-
       </div>
-
-
 
     );
 
-
-
   }
-
-
 
   if (variant === "created_approver" || variant === "added_assistant_approver") {
 
-
-
     return (
 
-
-
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-[#1f2b88] p-0.5">
-
-
-
         <UserPlus strokeWidth={2.5} className="h-4 w-4 text-white" />
-
-
-
       </div>
-
-
 
     );
 
-
-
   }
-
-
 
   if (variant === "user_logout") {
 
-
-
     return (
 
-
-
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-primary p-0.5">
-
-
-
           <ArrowBigLeft strokeWidth={4} className="h-3 w-3 text-white" />
-
-
-
       </div>
-
-
 
     );
 
-
-
   }
-
-
 
   if (variant === "user_login") {
 
-
-
     return (
 
-
-
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-primary p-0.5">
-
-
-
           <ArrowBigRight strokeWidth={4} className="h-3 w-3 text-white" />
-
-
-
       </div>
-
-
 
     );
 
-
-
   }
-
-
 
   if (variant === "exported_clearance_results") {
 
-
-
     return (
 
-
-
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-primary p-0.5">
-
-
-
         <Download strokeWidth={4} className="h-3 w-3 text-white" />
-
-
-
       </div>
-
-
 
     );
 
-
-
   }
-
-
 
   if (variant === "set_timeline_status_active" || variant === "set_guideline_status_active" || variant === "set_announcement_status_active") {
 
-
-
     return (
 
-
-
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-success p-0.2">
-
         <Check strokeWidth={4} className="h-3 w-3 text-white transform translate-y-[0.5px]" />
-
       </div>
-
-
 
     );
 
-
-
   }
-
-
-
-
-
-
-
-
-
-
 
   if (variant === "deleted_college" || variant === "deleted_department" || variant === "removed_from_approver_flow" || variant === "removed_faculty_data_dump" || variant === "deleted_requirements" || variant === "deleted_office") {
 
-
-
     return (
 
-
-
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-[hsl(var(--destructive))] p-0.5">
-
-
-
         <Trash2 strokeWidth={3} className="h-3 w-3 text-white" />
-
-
-
       </div>
-
-
 
     );
 
-
-
   }
-
-
-
-
-
-
 
   if (variant === "uploaded_faculty_data_dump") {
 
-
-
     return (
 
-
-
       <div className="flex flex-shrink-0 h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-[#1f2b88] p-0.5">
-
-
-
         <Download strokeWidth={4} className="h-3 w-3 text-white" />
-
-
-
       </div>
-
-
 
     );
 
-
-
   }
-
-
-
-
-
-
 
   return (
 
-
-
     <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full">
-
-
-
       <img src="/PrimaryCirclePlusIcon.png" className="h-full w-full object-cover" />
-
-
-
     </div>
-
-
 
   );
 
-
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 function formatActivityLogText(item: ActivityLogItem) {
 
-
-
   const actorName = [item.actorFirstName, item.actorLastName].filter(Boolean).join(" ").trim();
-
-
 
   const facultyName = [item.facultyFirstName, item.facultyLastName].filter(Boolean).join(" ").trim();
 
-
-
   const facultyCollegeDepartment = [item.facultyCollege, item.facultyDepartment]
 
-
-
     .filter(Boolean)
-
-
 
     .join(" - ")
 
-
-
     .trim();
-
-
-
-
-
-
 
   const assistantApproverName = [item.assistantApproverFirstName, item.assistantApproverLastName]
 
-
-
     .filter(Boolean)
-
-
 
     .join(" ")
 
-
-
     .trim();
-
-
-
-
-
-
 
   const userName = actorName || facultyName;
 
-
-
   const requirementTitle = item.requirementTitle?.trim();
-
-
 
   const requirementTail = requirementTitle ? `: ${requirementTitle}` : "";
 
-
-
   const deptOffice = item.approverDepartment?.trim();
-
-
 
   const deptTail = deptOffice ? ` for ${deptOffice}.` : ".";
 
-
-
   const guidelineTitle = item.guidelineTitle?.trim();
-
-
 
   const guidelineTail = guidelineTitle ? `: **${guidelineTitle}**.` : ".";
 
-
-
   const announcementTitle = item.announcementTitle?.trim();
-
-
 
   const schoolYear = item.schoolYear?.trim();
 
-
-
   const semester = item.semester?.trim();
-
-
 
   const collegeName = item.collegeName?.trim();
 
-
-
   const departmentName = item.departmentName?.trim();
-
-
 
   const approverFlowField = item.approverFlowField?.trim();
 
-
-
-
-
-
-
-
-
-
-
   if (item.variant === "exported_clearance_results") {
-
-
 
     const title = "Exported Clearance Results";
 
-
-
     const firstName = item.actorFirstName?.trim() || userName;
-
-
 
     const schoolYearTail = schoolYear ? ` for ${schoolYear}` : "";
 
-
-
     const semesterTail = semester ? ` for ${semester}.` : ".";
-
-
 
     const description = `User ${firstName} exported clearance results${schoolYearTail}${semesterTail}`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "created_guideline") {
 
-
-
     const title = "Created Guideline";
-
-
 
     const description = `User ${userName} created ${guidelineTail}`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "edited_guideline") {
 
-
-
     const title = "Edited Guideline";
-
-
 
     const description = `User ${userName} edited ${guidelineTail}`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "enabled_guideline") {
 
-
-
     const title = "Enabled Guideline";
-
-
 
     const description = `User ${userName} enabled ${guidelineTail}`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "disabled_guideline") {
 
-
-
     const title = "Disabled Guideline";
-
-
 
     const description = `User ${userName} disabled ${guidelineTail}`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "delete_guideline") {
 
-
-
     const title = "Deleted Guideline";
-
-
 
     const description = `User ${userName} deleted ${guidelineTail}`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "set_guideline_status_active") {
 
-
-
     const title = "Set Guideline Status to \"Active\"";
-
-
 
     const description = `User ${userName} set ${guidelineTitle || ""} status to Active.`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "set_guideline_status_inactive") {
 
-
-
     const title = "Set Guideline Status to \"Inactive\"";
-
-
 
     const description = `User ${userName} set ${guidelineTitle || ""} status to Inactive.`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "archived_guideline") {
 
-
-
     const title = "Archived Guideline";
-
-
 
     const description = `User ${userName} archived ${guidelineTail}`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "created_announcement") {
 
-
-
     const title = "Created Announcement";
-
-
 
     const description = `User ${userName} created announcement${announcementTitle ? `: ${announcementTitle}.` : "."}`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "edited_announcement") {
 
-
-
     const title = "Edited Announcement";
-
-
 
     const description = `User ${userName} edited announcement${announcementTitle ? `: ${announcementTitle}.` : "."}`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
-
-  
-
-
-
-
-
-
 
   if (item.variant === "set_announcement_status_active") {
 
-
-
     const title = "Set Announcement Status to \"Active\"";
-
-
 
     const description = `User ${userName} set announcement, ${announcementTitle || ""} status to Active.`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "set_announcement_status_inactive") {
 
-
-
     const title = "Set Announcement Status to \"Inactive\"";
-
-
 
     const description = `User ${userName} set announcement, ${announcementTitle || ""} status to Inactive.`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "created_timeline") {
 
-
-
     const title = "Created Timeline";
-
-
 
     const timelineLabel = [schoolYear, semester].filter(Boolean).join(" ").trim();
 
-
-
     const labelTail = timelineLabel ? `: ${timelineLabel}.` : ".";
-
-
 
     const description = `User ${userName} created timeline${labelTail}`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "edited_timeline") {
 
-
-
     const title = "Edited Timeline";
 
-
-
     const timelineLabel = [schoolYear, semester].filter(Boolean).join(" ").trim();
-
-
 
     const labelTail = timelineLabel ? `: ${timelineLabel}.` : ".";
 
-
-
     const description = `User ${userName} edited timeline${labelTail}`;
-
-
 
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "set_timeline_status_active") {
 
-
-
     const title = "Set Timeline Status to \"Active\"";
-
-
 
     const timelineLabel = [schoolYear, semester].filter(Boolean).join(" ").trim();
 
-
-
     const labelTail = timelineLabel ? ` ${timelineLabel}` : "";
-
-
 
     const description = `User ${userName} set timeline,${labelTail} status to Active.`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "set_timeline_status_inactive") {
 
-
-
     const title = "Set Timeline Status to \"Inactive\"";
-
-
 
     const timelineLabel = [schoolYear, semester].filter(Boolean).join(" ").trim();
 
-
-
     const labelTail = timelineLabel ? ` ${timelineLabel}` : "";
-
-
 
     const description = `User ${userName} set timeline,${labelTail} status to Inactive, clearance timeline is archived.`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "created_college") {
 
-
-
     const title = "Created College";
 
-
-
     const collegeTail = collegeName ? `: ${collegeName}.` : ".";
-
-
 
     const description = `User ${userName} created college${collegeTail}`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "edited_college") {
 
-
-
     const title = "Edited College";
-
-
 
     const collegeTail = collegeName ? `: ${collegeName}.` : ".";
 
-
-
     const description = `User ${userName} edited college${collegeTail}`;
-
-
 
     return { title, description };
 
-
-
   }
 
-
-
-
-
-
-
   if (item.variant === "deleted_college") {
-
-
 
     const title = "Deleted College";
 
@@ -5654,111 +3412,49 @@ function formatActivityLogText(item: ActivityLogItem) {
 
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "created_department") {
 
-
-
     const title = "Created Department";
-
-
 
     const deptTail = departmentName ? `: ${departmentName}` : "";
 
-
-
     const collegeTail = collegeName ? ` for ${collegeName}.` : ".";
-
-
 
     const description = `User ${userName} created department${deptTail}${collegeTail}`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "edited_department") {
 
-
-
     const title = "Edited Department";
-
-
 
     const deptTail = departmentName ? `: ${departmentName}` : "";
 
-
-
     const collegeTail = collegeName ? ` for ${collegeName}.` : ".";
-
-
 
     const description = `User ${userName} edited department${deptTail}${collegeTail}`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "deleted_department") {
 
-
-
     const title = "Deleted Department";
-
-
 
     const deptTail = departmentName ? `: ${departmentName}` : "";
 
-
-
     const collegeTail = collegeName ? ` for ${collegeName}.` : ".";
-
-
 
     const description = `User ${userName} deleted department${deptTail}${collegeTail}`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "user_logout") {
 
@@ -5776,8 +3472,6 @@ function formatActivityLogText(item: ActivityLogItem) {
 
   }
 
-
-
   if (item.variant === "user_login") {
 
     const title = "User Login";
@@ -5794,211 +3488,91 @@ function formatActivityLogText(item: ActivityLogItem) {
 
   }
 
-
-
-
-
-
-
   if (item.variant === "updated_assistant_approver" ) {
-
-
 
     const title = "Updated Assistant Approver";
 
-
-
     const assistantTail = assistantApproverName ? ` ${assistantApproverName}` : "";
-
-
 
     const description = `User ${userName} updated assistant approver${assistantTail}${deptTail}`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "removed_assistant_approver") {
 
-
-
     const title = "Removed Assistant Approver";
 
-
-
     const assistantTail = assistantApproverName ? ` ${assistantApproverName}` : "";
-
-
 
     const description = `User ${userName} removed assistant approver${assistantTail}${deptTail}`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "added_assistant_approver") {
 
-
-
     const title = "Added Assistant Approver";
-
-
 
     const assistantTail = assistantApproverName ? ` ${assistantApproverName}` : "";
 
-
-
     const description = `User ${userName} created assistant approver${assistantTail}${deptTail}`;
-
-
 
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "deleted_requirements") {
 
-
-
     const title = "Deleted Requirements";
-
-
 
     const description = `User ${userName} deleted requirement${requirementTail}${deptTail}`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "created_requirements") {
 
-
-
     const title = "Created Requirements";
-
-
 
     const description = `User ${userName} created requirement${requirementTail}${deptTail}`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "edited_requirements") {
 
-
-
     const title = "Edited Requirements";
-
-
 
     const description = `User ${userName} edited requirement${requirementTail}${deptTail}`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "create_request") {
 
-
-
     const title = "Create Request";
-
-
 
     const description = `Faculty Member ${facultyName || actorName} from ${facultyCollegeDepartment}, requested for clearance.`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
-
-
-
-
 
   if (item.variant === "approved_clearance") {
 
-
-
     const title = "Approved Clearance";
-
-
 
     const description = `User ${actorName} of Department/Office ${item.approverDepartment || ""}, approved clearance for faculty member ${facultyName}.`;
 
-
-
     return { title, description };
 
-
-
   }
-
-
 
   return {
 
@@ -6008,11 +3582,7 @@ function formatActivityLogText(item: ActivityLogItem) {
 
   };
 
-
-
 }
-
-
 
 export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): React.ReactElement {
 
@@ -6020,11 +3590,7 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
 
     const today = new Date();
 
-
-
     const shortMonths = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-
-
 
     if (dateLabel === "Today") {
 
@@ -6044,8 +3610,6 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
 
     }
 
-
-
     const mmddyyyy = /^\d{2}\/\d{2}\/\d{4}$/.test(dateLabel);
 
     if (mmddyyyy) {
@@ -6059,9 +3623,7 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
       return {
 
         year: yyyy,
-
         monthIndex,
-
         monthShort: shortMonths[monthIndex],
 
         day: String(dayNum).padStart(2, "0"),
@@ -6072,25 +3634,19 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
 
     }
 
-
-
     return {
 
       year: "",
 
       monthIndex: 0,
-
       monthShort: "",
 
       day: "",
 
       key: dateLabel,
-
     };
 
   }, []);
-
-
 
   const getItemTimestamp = React.useCallback(
 
@@ -6112,8 +3668,6 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
 
       }
 
-
-
       try {
 
         const d = parseDateParts(item.dateLabel);
@@ -6121,8 +3675,6 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
         const yearNum = Number(d.year);
 
         if (!yearNum) return 0;
-
-
 
         let hour = 0;
 
@@ -6150,8 +3702,6 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
 
         }
 
-
-
         return new Date(yearNum, d.monthIndex, Number(d.day) || 1, hour, minute).getTime();
 
       } catch {
@@ -6166,8 +3716,6 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
 
   );
 
-
-
   const normalizedItems = React.useMemo(() => {
 
     return (items ?? []).map((it) => {
@@ -6180,8 +3728,6 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
 
       }
 
-
-
       if (it.variant) return it;
 
       if (!evt) return it;
@@ -6191,8 +3737,6 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
     });
 
   }, [items]);
-
-
 
   const yearGroups = React.useMemo(() => {
 
@@ -6212,15 +3756,11 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
 
     }>> = new Map();
 
-
-
     for (const item of normalizedItems) {
 
       const ts = getItemTimestamp(item);
 
       const dateObj = ts ? new Date(ts) : null;
-
-
 
       const parsed = parseDateParts(item.dateLabel);
 
@@ -6236,13 +3776,9 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
 
       const monthIndex = dateObj ? dateObj.getMonth() : parsed.monthIndex || 0;
 
-
-
       const dateKey = dateObj ? `${year}-${monthIndex}-${dateObj.getDate()}` : parsed.key;
 
       const sortKey = ts || 0;
-
-
 
       let datesMap = yearMap.get(year);
 
@@ -6254,8 +3790,6 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
 
       }
 
-
-
       let d = datesMap.get(dateKey);
 
       if (!d) {
@@ -6263,17 +3797,12 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
         d = {
 
           key: dateKey,
-
           year,
-
           monthShort,
-
           day,
-
           items: [item],
 
           sortKey,
-
         };
 
         datesMap.set(dateKey, d);
@@ -6288,8 +3817,6 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
 
     }
 
-
-
     const yearEntries = Array.from(yearMap.entries()).sort((a, b) => {
 
       const an = Number(a[0]) || 0;
@@ -6299,8 +3826,6 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
       return bn - an;
 
     });
-
-
 
     return yearEntries.map(([year, datesMap]) => {
 
@@ -6316,505 +3841,167 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
 
   }, [getItemTimestamp, normalizedItems, parseDateParts]);
 
-
-
   return (
 
     <div className={cn("space-y-6", className)}>
-
-
-
       {yearGroups.map((yearGroup) => (
 
-
-
         <div key={yearGroup.year || "no-year"} className="space-y-4">
-
-
-
           <div className="flex items-center gap-4">
-
-
-
             <div className="flex items-center gap-2">
-
-
-
               <div className="h-2 w-2 rounded-full bg-red-500" />
-
-
-
               <div className="text-xl font-bold tracking-wide text-gray-900">
 
-
-
                 YEAR {yearGroup.year}
-
-
-
               </div>
-
-
-
             </div>
-
-
-
             <div className="h-[2px] flex-1 bg-[hsl(var(--gray-border))]" />
-
-
-
           </div>
-
-
-
-
-
-
-
           <div className="space-y-6">
-
-
-
             {yearGroup.dates.map((dateGroup) => (
 
-
-
               <div key={dateGroup.key} className="grid grid-cols-[60px_1fr] gap-0">
-
-
-
                 <div className="-ml-4 flex flex-col items-center">
-
-
-
                   <div className="w-full text-center text-lg font-bold text-primary">
-
-
-
                     {dateGroup.monthShort}
-
-
-
                   </div>
-
-
-
-
-
-
-
                   <div className="mt-1 flex flex-1 flex-col items-center">
-
-
-
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold">
-
-
-
                       {dateGroup.day}
-
-
-
                     </div>
-
-
-
                     <div className="w-1 flex-1 rounded-full bg-primary" />
-
-
-
                   </div>
-
-
-
                 </div>
-
-
-
-
-
-
-
                 <div className="ml-1 space-y-5">
-
-
-
                   {dateGroup.items.map((item) => (
-
-
 
                     <div
 
-
-
                       key={item.id}
-
-
 
                       className="rounded-lg bg-background p-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
 
-
-
                     >
-
-
-
                       {(() => {
-
-
 
                         const autoText = formatActivityLogText(item);
 
-
-
                         const title = item.title ?? autoText.title;
-
-
 
                         const description = item.description ?? autoText.description;
 
-
-
                         return (
 
-
-
                           <>
-
-
-
                             <div className="flex items-start justify-between">
-
-
-
                               <div className="flex items-start gap-2">
-
-
-
                                 {getActivityIcon(item.variant)}
-
-
-
                                 <div className="text-xl font-bold text-primary">{title}</div>
-
-
-
                               </div>
-
-
-
-
-
-
-
                               <div className="whitespace-nowrap text-sm italic text-muted-foreground">
-
-
-
                                 {item.timeLabel}
-
-
-
                               </div>
-
-
-
                             </div>
-
-
-
-
-
-
-
-                            <div 
-
-
+                            <div
 
                               className="mt-2 text-md text-gray-900 text-justify"
 
-
-
                               dangerouslySetInnerHTML={{ __html: applyRichTextStyles(description) }}
 
-
-
                             />
-
-
-
                           </>
-
-
 
                         );
 
-
-
                       })()}
-
-
-
                     </div>
 
-
-
                   ))}
-
-
-
                 </div>
-
-
-
               </div>
 
-
-
             ))}
-
-
-
           </div>
-
-
-
         </div>
 
-
-
       ))}
-
-
-
     </div>
-
-
 
   );
 
-
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 export type ApprovedCardProps = {
 
-
-
   headerTitle?: string;
-
-
 
   title?: string;
 
-
-
   description?: string;
-
-
 
   note?: string;
 
-
-
   className?: string;
 
-
-
 };
-
-
-
-
-
-
 
 export function ApprovedCard({
 
-
-
   headerTitle = "Clearance Approved",
-
-
 
   title = "Congratulations!",
 
-
-
   description =
-
-
 
     "Your clearance has been fully approved. Kindly wait as the HRO is processing your payroll.",
 
-
-
   note =
-
-
 
     "Note: If you teach in the Basic Education Unit, please settle all obligations at that level to avoid delays.",
 
-
-
   className,
-
-
-
 }: ApprovedCardProps) {
 
-
-
   return (
-
-
-
     <Card className={cn("overflow-hidden", className)}>
-
-
-
       <CardHeader className="bg-primary text-primary-foreground text-center py-5">
-
-
-
         <CardTitle className="text-base font-bold">{headerTitle}</CardTitle>
-
-
-
       </CardHeader>
-
-
-
-
-
-
-
       <CardContent className="px-6 py-6 text-center">
-
-
-
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-success text-success">
-
-
-
           <Check className="h-8 w-8" />
-
-
-
         </div>
-
-
-
-
-
-
-
         <div className="mt-4 text-lg font-bold text-gray-900">{title}</div>
-
-
-
         <div className="mt-2 text-sm text-muted-foreground">{description}</div>
-
-
-
-
-
-
-
         <div className="mt-6 text-xs font-semibold text-gray-900">{note}</div>
-
-
-
       </CardContent>
-
-
-
     </Card>
-
-
 
   );
 
-
-
 }
-
-
-
-
-
-
-
-
-
-
 
 export type AcademicDetailsRow = {
 
-
-
   label: string;
-
-
 
   value: string;
 
-
-
 };
-
-
-
-
-
-
 
 export type AcademicDetailsCardProps = {
 
-
-
   topLeft?: AcademicDetailsRow;
-
-
 
   topRight?: AcademicDetailsRow;
 
-
-
   rows: AcademicDetailsRow[];
-
-
 
   className?: string;
 
-
-
 };
 
-
-
-
-
-
-
 export type WelcomeAcademicCardProps = {
-
-
 
   name: string;
 
@@ -6828,19 +4015,9 @@ export type WelcomeAcademicCardProps = {
 
   className?: string;
 
-
-
 };
 
-
-
-
-
-
-
 export type ApproverWelcomeMetricsProps = {
-
-
 
   pendingClearance: number;
 
@@ -6848,35 +4025,16 @@ export type ApproverWelcomeMetricsProps = {
 
   className?: string;
 
-
-
 };
-
-
-
-
-
-
 
 export function ApproverWelcomeMetrics({
 
-
-
   pendingClearance,
-
   totalClearanceRequests,
-
   className,
-
-
-
 }: ApproverWelcomeMetricsProps) {
 
-
-
   return (
-
-
 
     <div
 
@@ -6889,13 +4047,9 @@ export function ApproverWelcomeMetrics({
       )}
 
     >
-
       <Card className="overflow-hidden">
-
         <CardContent className="flex items-center justify-between p-4">
-
           <div className="text-4xl font-bold leading-none text-primary">{pendingClearance}</div>
-
           <div className="text-right text-sm font-bold leading-tight text-primary">
 
             Pending
@@ -6905,19 +4059,11 @@ export function ApproverWelcomeMetrics({
             Clearance
 
           </div>
-
         </CardContent>
-
       </Card>
-
-
-
       <Card className="overflow-hidden">
-
         <CardContent className="flex items-center justify-between p-4">
-
           <div className="text-4xl font-bold leading-none text-primary">{totalClearanceRequests}</div>
-
           <div className="text-right text-sm font-bold leading-tight text-primary">
 
             Clearance
@@ -6927,75 +4073,36 @@ export function ApproverWelcomeMetrics({
             Requests
 
           </div>
-
         </CardContent>
-
       </Card>
-
     </div>
 
   );
 
-
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 export function WelcomeAcademicCard({
 
   name,
-
   topLeft,
-
   topRight,
-
   rows = [],
 
   afterRows,
-
   className,
-
-
-
 }: WelcomeAcademicCardProps) {
 
-
-
   return (
-
-
-
     <Card className={cn("overflow-hidden", className)}>
-
       <CardHeader className="bg-primary text-primary-foreground text-center py-2.5">
-
         <CardDescription className="text-base leading-none text-primary-foreground/80">
 
           Welcome
 
         </CardDescription>
-
         <CardTitle className="text-xl font-bold leading-tight">{name}!</CardTitle>
-
       </CardHeader>
-
-
-
       <CardContent className="pt-4 pb-1">
-
         <div
 
           className={cn(
@@ -7011,226 +4118,88 @@ export function WelcomeAcademicCard({
           )}
 
         >
-
           <div className="flex items-baseline gap-3">
-
             <div className="text-sm font-bold text-primary">{topLeft.label}</div>
-
             <div className="text-sm font-medium text-primary">{topLeft.value}</div>
-
           </div>
-
-
-
           <div className="flex items-baseline gap-3">
-
             <div className="text-sm font-bold text-primary">{topRight.label}</div>
-
             <div className="text-sm font-medium text-primary">{topRight.value}</div>
-
           </div>
-
-
-
         </div>
-
-
-
         {rows.length ? (
 
           <div className="-mx-6 px-6 py-3 flex justify-center">
-
             <div className="grid grid-cols-[auto,1fr] items-baseline gap-x-6 gap-y-2 justify-center">
-
               {rows.map((row) => (
-
                 <React.Fragment key={row.label}>
-
                   <div className="text-sm font-bold text-primary">{row.label}</div>
-
                   <div className="text-sm font-medium text-primary whitespace-normal break-words">{row.value}</div>
-
                 </React.Fragment>
 
               ))}
-
             </div>
-
           </div>
 
         ) : null}
-
-
-
         {afterRows ? <div className="mt-4">{afterRows}</div> : null}
-
       </CardContent>
-
     </Card>
 
   );
 
 }
-
-
-
-
-
-
-
-
 
 export function AcademicDetailsCard({ topLeft, topRight, rows, className }: AcademicDetailsCardProps) {
 
-
-
   return (
-
-
-
     <Card className={cn("border-0 shadow-none", className)}>
-
-
-
       <CardContent className="pt-6">
-
-
-
         {topLeft && topRight ? (
-
-
 
           <div
 
-
-
             className={cn(
-
-
 
               "-mx-6 flex items-center justify-center gap-3 px-6 pb-3",
 
-
-
               rows.length
-
-
 
                 ? "border-b border-[hsl(var(--gray-border))] shadow-[0_2px_2px_-2px_rgba(0,0,0,0.25)]"
 
-
-
                 : ""
-
-
 
             )}
 
-
-
           >
-
-
-
             <div className="flex items-baseline gap-3">
-
-
-
               <div className="text-sm font-bold text-primary">{topLeft.label}</div>
-
-
-
               <div className="text-sm font-medium text-primary">{topLeft.value}</div>
-
-
-
             </div>
-
-
-
             <div className="flex items-baseline gap-3">
-
-
-
               <div className="text-sm font-bold text-primary">{topRight.label}</div>
-
-
-
               <div className="text-sm font-medium text-primary">{topRight.value}</div>
-
-
-
             </div>
-
-
-
           </div>
 
-
-
         ) : null}
-
-
-
-
-
-
-
         <div className={cn("grid grid-cols-2 gap-x-4 gap-y-2", topLeft && topRight ? "mt-4" : "")}
 
-
-
         >
-
-
-
           {rows.map((row) => (
-
-
-
             <React.Fragment key={row.label}>
-
-
-
               <div className="text-sm font-bold text-primary">{row.label}</div>
-
-
-
               <div className="text-sm font-medium text-primary">{row.value}</div>
-
-
-
             </React.Fragment>
 
-
-
           ))}
-
-
-
         </div>
-
-
-
       </CardContent>
-
-
-
     </Card>
-
-
 
   );
 
-
-
 }
-
-
-
-
-
-
 
 export type ClearanceStatusCardProps = {
 
@@ -7242,59 +4211,29 @@ export type ClearanceStatusCardProps = {
 
 };
 
-
-
-
-
-
-
 export function ClearanceStatusCard({
 
   statusLabel,
-
   statusVariant = "warning",
 
   className,
-
-
-
 }: ClearanceStatusCardProps) {
 
-
-
   return (
-
     <Card className={cn("bg-foregroundLight", className)}>
-
       <CardContent className="py-4">
-
         <div className="flex items-center justify-between">
-
           <div className="text-sm font-bold text-gray-900">Clearance Status</div>
-
           <Badge variant={getBadgeVariant(statusVariant)}>{statusLabel}</Badge>
-
         </div>
-
       </CardContent>
-
     </Card>
 
   );
 
 };
 
-
-
-
-
-
-
-
-
 export type ClearanceProgressCardProps = {
-
-
 
   label?: string;
 
@@ -7306,35 +4245,17 @@ export type ClearanceProgressCardProps = {
 
   className?: string;
 
-
-
 };
 
-
-
-
-
-
-
 export function ClearanceProgressCard({
-
-
 
   label = "Clearance Progress Bar",
 
   value,
-
   current,
-
   total,
-
   className,
-
-
-
 }: ClearanceProgressCardProps) {
-
-
 
   const computed =
 
@@ -7344,36 +4265,22 @@ export function ClearanceProgressCard({
 
       : value;
 
-
-
   const clamped = Math.max(0, Math.min(100, computed));
 
-
-
   return (
-
     <Card className={className}>
-
       <CardContent className="py-5">
-
         <div className="flex items-center justify-between">
-
           <div className="text-base font-bold text-gray-900">{label}</div>
-
           {typeof current === "number" && typeof total === "number" ? (
 
             <div className="text-sm font-semibold text-muted-foreground">
-
               {current}/{total}
-
             </div>
 
           ) : null}
-
         </div>
-
         <div className="mt-3 h-2 w-full rounded-full bg-muted">
-
           <div
 
             className="h-2 rounded-full bg-success"
@@ -7381,30 +4288,15 @@ export function ClearanceProgressCard({
             style={{ width: `${clamped}%` }}
 
           />
-
         </div>
-
       </CardContent>
-
     </Card>
-
-
 
   );
 
 };
 
-
-
-
-
-
-
-
-
 export type ClearanceStepCardProps = {
-
-
 
   index: number;
 
@@ -7420,15 +4312,7 @@ export type ClearanceStepCardProps = {
 
   onClick?: () => void;
 
-
-
 };
-
-
-
-
-
-
 
 export type ClearanceRequirementItem = {
 
@@ -7456,15 +4340,7 @@ export type ClearanceRequirementItem = {
 
 };
 
-
-
-
-
-
-
 export type ExpandableClearanceStepCardProps = {
-
-
 
   index: number;
 
@@ -7490,49 +4366,26 @@ export type ExpandableClearanceStepCardProps = {
 
   timelineId?: string;
 
-
-
 };
-
-
-
-
-
-
 
 export function ExpandableClearanceStepCard({
 
-
-
   index,
-
   title,
-
   statusLabel,
-
   statusVariant = "warning",
 
   expanded,
-
   onToggle,
-
   collapsedType = "status",
 
   submittedTo,
-
   submittedOn,
-
   requirements = [],
 
   className,
-
   timelineId,
-
-
-
 }: ExpandableClearanceStepCardProps) {
-
-
 
   // Initialize state with existing submitted requirements
 
@@ -7541,8 +4394,6 @@ export function ExpandableClearanceStepCard({
     const initialComments: Record<string, string> = {};
 
     const initialCheckboxes: Record<string, boolean> = {};
-
-    
 
     requirements.forEach((req) => {
 
@@ -7576,15 +4427,11 @@ export function ExpandableClearanceStepCard({
 
     });
 
-    
-
     setSavedComments(initialComments);
 
     setCheckboxStates(initialCheckboxes);
 
   }, [requirements]);
-
-
 
   const [savedComments, setSavedComments] = React.useState<Record<string, string>>({});
 
@@ -7596,8 +4443,6 @@ export function ExpandableClearanceStepCard({
 
   const [pendingComment, setPendingComment] = React.useState<string>("");
 
-
-
   const isLocked = collapsedType === "locked";
 
   const effectiveExpanded = expanded && !isLocked;
@@ -7606,14 +4451,8 @@ export function ExpandableClearanceStepCard({
 
   const showArrow = collapsedType !== "locked";
 
-
-
   return (
-
-
-
     <Card className={cn("overflow-hidden border-muted-foreground/20 shadow-sm", className)}>
-
       <button
 
         type="button"
@@ -7628,20 +4467,12 @@ export function ExpandableClearanceStepCard({
 
         )}
 
-
-
         onClick={isLocked ? undefined : onToggle}
 
         disabled={isLocked}
 
-
-
       >
-
-
-
         <div className="flex items-center gap-3">
-
           <div
 
             className={cn(
@@ -7654,20 +4485,11 @@ export function ExpandableClearanceStepCard({
 
                 : "bg-primary text-primary-foreground"
 
-
-
             )}
 
           >
-
             {index}
-
-
-
           </div>
-
-
-
           <div
 
             className={cn(
@@ -7679,25 +4501,14 @@ export function ExpandableClearanceStepCard({
             )}
 
           >
-
             {title}
-
           </div>
-
         </div>
-
-
-
         <div className="flex items-center gap-3">
-
           {showBadge ? (
-
             <Badge variant={getBadgeVariant(statusVariant)}>{statusLabel}</Badge>
 
           ) : null}
-
-
-
           {showArrow ? (
 
             <img
@@ -7716,8 +4527,6 @@ export function ExpandableClearanceStepCard({
 
             />
 
-
-
           ) : (
 
             <img
@@ -7731,51 +4540,27 @@ export function ExpandableClearanceStepCard({
             />
 
           )}
-
         </div>
-
       </button>
-
-
-
-
-
-
-
       {effectiveExpanded ? (
-
-
-
         <CardContent className="p-6 pt-4">
-
           <div className="space-y-5">
-
             <div>
-
               <div className="text-sm font-bold text-gray-900">Status</div>
-
               {submittedTo ? (
 
                 <div className="mt-2 text-sm text-gray-900">Submitted to: {submittedTo}</div>
 
               ) : null}
-
               {submittedOn ? (
 
                 <div className="mt-1 text-sm text-gray-900">Submitted on: {submittedOn}</div>
 
               ) : null}
-
             </div>
-
-
-
             <div>
-
               <div className="text-sm font-bold text-gray-900">Requirements Checklist</div>
-
               <div className="mt-3 space-y-3">
-
                 {requirements.map((req) => (
 
                   (() => {
@@ -7783,8 +4568,6 @@ export function ExpandableClearanceStepCard({
                     const savedComment = savedComments[req.title]?.trim() ?? "";
 
                     const hasSavedComment = savedComment.length > 0;
-
-
 
                     return (
 
@@ -7801,20 +4584,16 @@ export function ExpandableClearanceStepCard({
                     )}
 
                   >
-
                     <div className="mt-1">
+                      <Checkbox
 
-                      <Checkbox 
-
-                        variant="success" 
+                        variant="success"
 
                         checked={checkboxStates[req.title] || req.completed || false}
 
                         onCheckedChange={(checked) => {
 
                           const isSubmitted = req.submitted || req.completed;
-
-                          
 
                           // Prevent unchecking if already submitted or approved
 
@@ -7823,8 +4602,6 @@ export function ExpandableClearanceStepCard({
                             return;
 
                           }
-
-                          
 
                           if (checked && !savedComments[req.title]) {
 
@@ -7843,17 +4620,11 @@ export function ExpandableClearanceStepCard({
                         }}
 
                       />
-
                     </div>
-
                     <div className="flex-1">
-
                       <div className="flex items-center gap-2">
-
                         <div className="text-sm font-bold text-gray-900">{req.title}</div>
-
                         {req.required_physical && (
-
                           <Badge variant="secondary" className="text-xs">
 
                             Physical Submission
@@ -7861,9 +4632,7 @@ export function ExpandableClearanceStepCard({
                           </Badge>
 
                         )}
-
                         {req.completed && (
-
                           <Badge variant="success" className="text-xs">
 
                             APPROVED
@@ -7871,20 +4640,17 @@ export function ExpandableClearanceStepCard({
                           </Badge>
 
                         )}
-
                       </div>
-
-                      <div 
+                      <div
 
                       className="mt-1 text-sm text-gray-900 whitespace-pre-line"
 
                       dangerouslySetInnerHTML={{ __html: applyRichTextStyles(req.description) }}
 
                     />
-
                       {hasSavedComment && !req.rejected ? (
 
-                        <div 
+                        <div
 
                           className="bg-white p-4 border border-black rounded-md mt-3"
 
@@ -7893,9 +4659,7 @@ export function ExpandableClearanceStepCard({
                         />
 
                       ) : null}
-
                     </div>
-
                   </div>
 
                     );
@@ -7903,23 +4667,14 @@ export function ExpandableClearanceStepCard({
                   })()
 
                 ))}
-
               </div>
-
             </div>
-
           </div>
-
         </CardContent>
 
       ) : null}
-
-
-
       {/* Comment Dialog for checkbox submission */}
-
       {showCommentDialog && (
-
         <CommentDialog
 
           open={true}
@@ -7945,49 +4700,31 @@ export function ExpandableClearanceStepCard({
         />
 
       )}
-
-      
-
       {/* Confirmation Dialog */}
-
       {showConfirmDialog && (
-
         <AlertDialog open={true} onOpenChange={(open) => !open && setShowConfirmDialog(null)}>
-
           <AlertDialogContent className="max-w-md items-center gap-4 ">
-
-
-
             <div className="items-center gap-2">
-
               <div className="p-4 flex items-center justify-center">
-
                 <img src="/PrimaryAlertIcon.png" width="50" height="50" />
-
               </div>
-
               <div className="text-xl text-center text-black font-bold">
 
                 You are about to submit '{showConfirmDialog}'.
 
               </div>
-
             </div>
-
               <div className="text-lg text-center text-black font-bold">
 
                 Do you wish to continue?
 
-              </div>           
-
+              </div>
               <div className="flex flex-row gap-3 justify-end">
-
               <Button variant="back" className="w-full font-bold" onClick={() => setShowConfirmDialog(null)}>
 
                 Cancel
 
               </Button>
-
               <Button variant="default"
 
                 className="w-full font-bold"
@@ -8015,16 +4752,12 @@ export function ExpandableClearanceStepCard({
                       body: JSON.stringify({
 
                         requirementTitle: showConfirmDialog,
-
                         comment: pendingComment,
-
                         timelineId: timelineId
 
                       })
 
                     });
-
-
 
                     if (!response.ok) {
 
@@ -8044,13 +4777,9 @@ export function ExpandableClearanceStepCard({
 
                     }
 
-
-
                     const result = await response.json();
 
                     console.log('Requirement submitted successfully:', result);
-
-
 
                     try {
 
@@ -8063,7 +4792,6 @@ export function ExpandableClearanceStepCard({
                         credentials: 'include',
 
                         keepalive: true,
-
                         headers: {
 
                           'Content-Type': 'application/json',
@@ -8089,18 +4817,13 @@ export function ExpandableClearanceStepCard({
                           ],
 
                           is_read: false,
-
                           user_role: 'Faculty',
 
                           created_by_id: null,
-
                           approver_id: result?.approverId ?? null,
-
                         })
 
                       });
-
-
 
                       if (!notifRes.ok) {
 
@@ -8129,8 +4852,6 @@ export function ExpandableClearanceStepCard({
                       console.error('Failed to create submission notification:', e);
 
                     }
-
-
 
                     // Only update state after successful submission
 
@@ -8171,624 +4892,253 @@ export function ExpandableClearanceStepCard({
                 Submit
 
               </Button>
-
               </div>
-
           </AlertDialogContent>
-
         </AlertDialog>
 
       )}
-
     </Card>
 
   );
 
 }
-
-
-
-
 
 export function ClearanceStepCard({
 
   index,
-
-
-
   title,
-
-
-
   statusLabel,
-
-
-
   statusVariant = "muted",
 
-
-
   rightIcon,
-
-
-
   className,
-
-
-
   onClick,
-
-
-
 }: ClearanceStepCardProps) {
-
-
 
   const effectiveRightIcon =
 
-
-
     rightIcon ?? (
 
-
-
       <img
-
-
 
         src="/PrimaryArrowIcon.png"
 
-
-
         alt="Open"
-
-
 
         className="h-7 w-7 object-contain"
 
-
-
       />
-
-
 
     );
 
-
-
-
-
-
-
   return (
-
-
-
     <Card
-
-
 
       className={cn(
 
-
-
         "border-muted-foreground/20 shadow-sm",
-
-
 
         onClick ? "cursor-pointer" : "",
 
-
-
         className
-
-
 
       )}
 
-
-
       onClick={onClick}
 
-
-
     >
-
-
-
       <CardContent className="flex items-center justify-between px-6 py-4">
-
-
-
         <div className="flex items-center gap-3">
-
-
-
           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-
-
-
             {index}
-
-
-
           </div>
-
-
-
           <div className="text-sm font-bold text-primary">{title}</div>
-
-
-
         </div>
-
-
-
-
-
-
-
         <div className="flex items-center gap-3">
-
-
-
           {statusLabel ? (
-
-
-
             <Badge variant={getBadgeVariant(statusVariant)}>{statusLabel}</Badge>
 
-
-
           ) : null}
-
-
-
           {effectiveRightIcon}
-
-
-
         </div>
-
-
-
       </CardContent>
-
-
-
     </Card>
-
-
 
   );
 
-
-
 }
-
-
-
-
-
-
 
 export type SystemGuidlinesItem = {
 
-
-
   title: string;
-
-
 
   description: string;
 
-
-
   email: string;
-
-
 
   created_by: string;
 
-
-
   timestamp: string;
-
-
 
   enabled?: boolean;
 
-
-
 };
-
-
-
-
-
-
 
 export type SystemGuidlinesCardProps = {
 
-
-
   items: SystemGuidlinesItem[];
-
-
 
   className?: string;
 
-
-
   onClose?: () => void;
-
-
 
   headerActionHref?: string;
 
-
-
   headerActionImgSrc?: string;
-
-
 
   headerActionImgAlt?: string;
 
-
-
   headerActionOnClick?: () => void;
-
-
 
   onViewItem?: (item: SystemGuidlinesItem) => void;
 
-
-
   onAddRequirement?: () => void;
-
-
 
   addDisabled?: boolean;
 
-
-
   cardName?: string;
-
-
 
 };
 
-
-
-
-
-
-
 export interface SectionListCardProps {
-
-
 
   title: string;
 
-
-
   className?: string;
-
-
 
   onClose?: () => void;
 
-
-
   headerActionHref?: string;
-
-
 
   headerActionImgSrc?: string;
 
-
-
   headerActionImgAlt?: string;
-
-
 
   headerActionOnClick?: () => void;
 
-
-
   headerActions?: React.ReactNode;
-
-
 
   children: React.ReactNode;
 
-
-
 }
-
-
-
-
-
-
 
 export function SectionListCard(props: SectionListCardProps) {
 
-
-
   const {
 
-
-
     title,
-
-
-
     className,
-
-
-
     onClose,
-
-
-
     headerActionHref,
-
-
-
     headerActionImgSrc,
-
-
-
     headerActionImgAlt = "Open",
 
-
-
     headerActionOnClick,
-
-
-
     headerActions,
-
-
-
     children,
-
-
-
   } = props;
 
-
-
-
-
-
-
   const headerAction = headerActionHref && headerActionImgSrc ? (
-
-
-
     <Button
-
-
 
       asChild
 
-
-
       variant="icon"
-
-
 
       size="icon"
 
-
-
       className="absolute right-3 top-[40%] -translate-y-1/2 text-primary-foreground"
 
-
-
     >
-
-
-
       <Link to={headerActionHref}>
-
-
-
         <img
-
-
 
           src={headerActionImgSrc}
 
-
-
           alt={headerActionImgAlt}
-
-
 
           className="h-6 w-6 object-contain"
 
-
-
         />
-
-
-
       </Link>
-
-
-
     </Button>
 
-
-
   ) : headerActionOnClick && headerActionImgSrc ? (
-
-
-
     <Button
-
-
 
       type="button"
 
-
-
       variant="icon"
 
-
-
       size="icon"
-
-
 
       className="absolute right-3 top-[40%] -translate-y-1/2 text-primary-foreground"
 
-
-
       onClick={headerActionOnClick}
 
-
-
     >
-
-
-
       <img
-
-
 
         src={headerActionImgSrc}
 
-
-
         alt={headerActionImgAlt}
-
-
 
         className="h-6 w-6 object-contain"
 
-
-
       />
-
-
-
     </Button>
 
-
-
   ) : onClose ? (
-
-
-
     <Button
-
-
 
       type="button"
 
-
-
       variant="icon"
-
-
 
       size="icon"
 
-
-
       className="absolute right-3 top-1/2 -translate-y-1/2 text-primary-foreground"
-
-
 
       onClick={onClose}
 
-
-
     >
-
-
-
       <X className="h-5 w-5" />
-
-
-
     </Button>
-
-
 
   ) : null;
 
-
-
-
-
-
-
   return (
-
-
-
     <Card className={cn("overflow-hidden", className)}>
-
-
-
       <CardHeader className="relative bg-primary py-3">
-
-
-
         <CardTitle className="text-center text-base font-bold text-primary-foreground">
-
-
-
           {title}
-
-
-
         </CardTitle>
-
-
-
         {headerActions ? (
-
-
 
           <div className="absolute right-3 top-[40%] -translate-y-1/2">{headerActions}</div>
 
-
-
         ) : (
-
-
 
           headerAction
 
-
-
         )}
-
-
-
       </CardHeader>
-
-
-
       <CardContent className="p-0">{children}</CardContent>
-
-
-
     </Card>
-
-
 
   );
 
 }
-
-
 
 export interface FacultyDataDumpCardProps {
 
@@ -8832,48 +5182,31 @@ export interface FacultyDataDumpCardProps {
 
 }
 
-
-
 export function FacultyDataDumpCard({
 
   title = "Upload Faculty Data",
 
   className,
-
   onFileSelected,
-
   selectedFile,
-
   uploadStatus = "idle",
 
   uploadProgress = 0,
-
   uploadStatusText,
-
   onCancelUpload,
-
   onRemoveFile,
-
   onActivate,
-
   activateDisabled = false,
-
   onDownloadTemplate,
-
   maxSizeLabel = "Max size 50 MB",
 
   accept = ".csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 
   semesters,
-
   selectedSemesterId,
-
   onSemesterChange,
-
   isFileReady = false,
-
   onClearFile,
-
 }: FacultyDataDumpCardProps) {
 
   const inputRef = React.useRef<HTMLInputElement | null>(null);
@@ -8886,8 +5219,6 @@ export function FacultyDataDumpCard({
 
   const currentFile = selectedFile ?? internalFile;
 
-
-
   function handleFiles(files: FileList | null) {
 
     const file = files?.[0];
@@ -8899,8 +5230,6 @@ export function FacultyDataDumpCard({
     onFileSelected?.(file);
 
   }
-
-
 
   const prettyBytes = (bytes: number) => {
 
@@ -8916,8 +5245,6 @@ export function FacultyDataDumpCard({
 
   };
 
-
-
   const statusLabel = (() => {
 
     if (uploadStatusText?.trim()) return uploadStatusText.trim();
@@ -8932,18 +5259,11 @@ export function FacultyDataDumpCard({
 
   })();
 
-
-
   return (
-
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
-
       <CardContent className="p-6">
-
         <div className="text-center text-base font-bold text-gray-900">{title}</div>
-
         <div className="mt-4">
-
           <Select
 
             value={currentSemesterId}
@@ -8957,33 +5277,19 @@ export function FacultyDataDumpCard({
             }}
 
           >
-
             <SelectTrigger className="w-full">
-
               <SelectValue placeholder="Select Semester" />
-
             </SelectTrigger>
-
             <SelectContent>
-
               {(semesters ?? []).map((s) => (
-
                 <SelectItem key={s.id} value={s.id}>
-
                   {s.label}
-
                 </SelectItem>
 
               ))}
-
             </SelectContent>
-
           </Select>
-
         </div>
-
-
-
         <div
 
           className={cn(
@@ -9005,33 +5311,21 @@ export function FacultyDataDumpCard({
           }}
 
         >
-
           {currentFile ? (
 
             <div className="w-full">
-
               <div className="flex items-center gap-3 rounded-md border border-muted-foreground/20 bg-background p-3">
-
                 <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
-
                   <Upload className="h-6 w-6" />
-
                 </div>
-
                 <div className="min-w-0 flex-1">
-
                   <div className="truncate text-sm font-semibold text-gray-900">{currentFile.name}</div>
-
                   <div className="mt-0.5 text-xs text-muted-foreground">
-
                     {prettyBytes(currentFile.size)}{statusLabel ? ` • ${statusLabel}` : ""}
-
                   </div>
-
                   {uploadStatus === "uploading" ? (
 
                     <div className="mt-2 h-2 w-full overflow-hidden rounded bg-muted">
-
                       <div
 
                         className="h-full bg-primary"
@@ -9039,33 +5333,23 @@ export function FacultyDataDumpCard({
                         style={{ width: `${Math.max(0, Math.min(100, uploadProgress))}%` }}
 
                       />
-
                     </div>
 
                   ) : null}
-
                 </div>
-
                 <div className="flex items-center gap-2">
-
                   {uploadStatus === "uploading" ? (
-
                     <Button type="button" variant="icon" size="icon" onClick={onCancelUpload}>
-
                       <X className="h-4 w-4" />
-
                     </Button>
 
                   ) : uploadStatus === "success" ? (
 
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-success">
-
                       <Check className="h-4 w-4 text-white" strokeWidth={4} />
-
                     </div>
 
                   ) : (
-
                     <Button type="button" variant="icon" size="icon" onClick={() => {
 
                       setInternalFile(null);
@@ -9081,23 +5365,14 @@ export function FacultyDataDumpCard({
                       }
 
                     }}>
-
                       <X className="h-4 w-4" />
-
                     </Button>
 
                   )}
-
                 </div>
-
               </div>
-
-
-
               <div className="mt-3 grid grid-cols-2 gap-3">
-
                 {uploadStatus === "uploading" ? (
-
                   <Button type="button" variant="secondary" disabled className="col-span-2 h-10 w-full rounded-md">
 
                     Cancel
@@ -9107,7 +5382,6 @@ export function FacultyDataDumpCard({
                 ) : (uploadStatus === "success" || isFileReady) ? (
 
                   <>
-
                     <Button
 
                       type="button"
@@ -9135,9 +5409,7 @@ export function FacultyDataDumpCard({
                       Remove File
 
                     </Button>
-
                     {uploadStatus === "success" ? (
-
                       <Button
 
                         type="button"
@@ -9171,7 +5443,6 @@ export function FacultyDataDumpCard({
                       </Button>
 
                     ) : (
-
                       <Button
 
                         type="button"
@@ -9189,11 +5460,9 @@ export function FacultyDataDumpCard({
                       </Button>
 
                     )}
-
                   </>
 
                 ) : (
-
                   <Button
 
                     type="button"
@@ -9211,9 +5480,7 @@ export function FacultyDataDumpCard({
                   </Button>
 
                 )}
-
               </div>
-
             </div>
 
           ) : (
@@ -9227,27 +5494,18 @@ export function FacultyDataDumpCard({
               onClick={() => inputRef.current?.click()}
 
             >
-
               <div className="flex h-12 w-12 items-center justify-center rounded-md text-muted-foreground">
-
                 <Upload className="h-10 w-10" />
-
               </div>
-
               <div className="text-md text-muted-foreground">
-
                 {" "}
-
                 <span className="font-bold">Click to upload </span> or drag and drop
 
               </div>
-
               <div className="text-xs text-muted-foreground">CSV or Excel files ({maxSizeLabel})</div>
-
             </button>
 
           )}
-
           <input
 
             ref={inputRef}
@@ -9261,132 +5519,48 @@ export function FacultyDataDumpCard({
             onChange={(e) => handleFiles(e.target.files)}
 
           />
-
         </div>
-
-
-
         <div className="mt-5 rounded-md bg-primary/10 p-4">
-
           <div className="text-lg font-bold text-primary">Need a template?</div>
-
           <div className="mt-1 mt-2 text-sm  text-muted-foreground">
-
-
 
             Download our CSV template to ensure your student data is formatted correctly
 
-
-
           </div>
-
-
-
-
-
-
-
           <div className="mt-4">
-
-
-
             <Button
-
-
 
               type="button"
 
-
-
-              className="h-10 rounded-md bg-primary px-4 
-
-
+              className="h-10 rounded-md bg-primary px-4
 
               font-bold text-primary-foreground hover:bg-primary/90"
 
-
-
               onClick={onDownloadTemplate}
 
-
-
             >
-
-
-
               <div className="flex items-center gap-2 text-sm font-bold">
-
-
-
                 <img src="/WhiteDownloadIcon.png" alt="Download" className="h-6 w-6 object-contain" />
-
-
 
                 Download Template
 
-
-
               </div>
-
-
-
             </Button>
-
-
-
           </div>
-
-
-
         </div>
-
-
-
-
-
-
-
         <div className="mt-4 rounded-md bg-yellow-100 p-4">
-
-
-
           <div className="text-md font-bold text-yellow-900">Important Information</div>
-
-
-
           <ul className="mt-2 list-disc space-y-1 pl-5 text-sm  text-yellow-900">
-
-
-
             <li>All imported users will be automatically assigned the faculty member role</li>
-
-
-
             <li>Faculty Members will automatically be assigned to the active school year and semester</li>
-
-
-
           </ul>
-
-
-
         </div>
-
       </CardContent>
-
-
-
     </Card>
-
-
 
   );
 
-
-
 }
-
-
 
 export type ArchivedClearanceCardProps = {
 
@@ -9422,12 +5596,9 @@ export type ArchivedClearanceCardProps = {
 
 };
 
-
-
 export function ArchivedClearanceCard({
 
   className,
-
   title = "Archived Clearance",
 
   AcademicYear = "2025 - 2026",
@@ -9445,92 +5616,46 @@ export function ArchivedClearanceCard({
   iconAlt = "Archive",
 
   onIconClick,
-
   iconClassName = "ml-4",
 
 }: ArchivedClearanceCardProps) {
 
   return (
-
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
-
         <div className="text-center text-xl font-bold text-gray-900 flex items-center justify-between p-6">
-
           <div>{title}</div>
-
           <Button variant="icon" className={iconClassName} size="icon" onClick={onIconClick}>
-
             <img src={iconSrc} alt={iconAlt} className="h-6 w-6" />
-
           </Button>
-
         </div>
-
-        
-
         <Divider className="bg-foreground " />
-
-        
-
         <div className=" p-6">
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Academic Year</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{AcademicYear}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Clearance Period</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{ClearancePeriod}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Semester</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{Semester}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Last Update</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{LastUpdate}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Archived</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{Archived}</div>
-
         </div>
-
       </div>
-
       </Card>
 
     );
 
   }
-
-
 
 export type ViewArchivedClearanceWithStatusCardProps  = {
 
@@ -9572,14 +5697,9 @@ export type ViewArchivedClearanceWithStatusCardProps  = {
 
 };
 
-
-
-
-
 export function ViewArchivedClearanceWithStatusCard({
 
   className,
-
   title = "Archived Clearance",
 
   AcademicYear = "2025 - 2026",
@@ -9600,131 +5720,62 @@ export function ViewArchivedClearanceWithStatusCard({
 
   iconAlt = "Archive",
 
-
-
   onIconClick,
-
   iconClassName = "ml-4",
 
 }: ViewArchivedClearanceWithStatusCardProps) {
 
   return (
-
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
-
-      
-
         <div className="text-xl font-bold text-gray-900 justify-between p-6">
-
           <div className="items-right pb-3">
-
             <Badge variant={status === "complete" ? "success" : "warning"}>
-
               {status === "complete" ? "COMPLETE" : "INCOMPLETE"}
-
             </Badge>
-
           </div>
-
           <div className="flex items-center text-center justify-between ">
-
           <div>{title}</div>
-
           <Button variant="icon" className={iconClassName} size="icon" onClick={onIconClick}>
-
             <img src="/BlackChevronIcon.png" alt={iconAlt} className="h-6 w-6" />
-
           </Button>
-
-          </div> 
-
+          </div>
         </div>
-
-        
-
         <Divider className="bg-foreground " />
-
-        
-
         <div className=" p-6">
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Academic Year</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{AcademicYear}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Semester</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{Semester}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Clearance Period</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{ClearancePeriod}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Last Update</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{LastUpdate}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Archived</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{Archived}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Faculty CSV Dump</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{FacultyCSVDump}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900"></div>
-
           <div className="text-sm text-gray-900 text-left break-words">{Size}</div>
-
         </div>
-
       </div>
-
       </Card>
 
     );
 
   }
-
-
 
 export type ViewArchivedClearanceCardProps = {
 
@@ -9768,12 +5819,9 @@ export type ViewArchivedClearanceCardProps = {
 
 };
 
-
-
 export function ViewArchivedClearanceCard({
 
   className,
-
   title = "Archived Clearance",
 
   AcademicYear = "2025 - 2026",
@@ -9797,122 +5845,58 @@ export function ViewArchivedClearanceCard({
   iconAlt = "Archive",
 
   onIconClick,
-
   iconClassName = "ml-4",
 
 }: ViewArchivedClearanceCardProps) {
 
   return (
-
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
-
         <div className="text-center text-xl font-bold text-gray-900 flex items-center justify-between p-6">
-
           <div>{title}</div>
-
           <Button variant="icon" className={iconClassName} size="icon">
-
             <img src="/PrimaryDownloadIcon.png" alt={iconAlt} className="h-6 w-6" />
-
           </Button>
-
         </div>
-
-        
-
         <Divider className="bg-foreground " />
-
-        
-
         <div className=" p-6">
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Academic Year</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{AcademicYear}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Semester</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{Semester}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Clearance Period</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{ClearancePeriod}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Last Update</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{LastUpdate}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Archived</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{Archived}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Faculty CSV Dump</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{FacultyCSVDump}</div>
-
         </div>
-
-
-
           <div className="grid grid-cols-2 gap-2">
-
             <div className="text-md font-bold text-gray-900">Total Faculty</div>
-
             <div className="text-sm text-gray-900 text-left break-words">{totalFaculty}</div>
-
           </div>
-
-
-
           <div className="grid grid-cols-2 gap-2">
-
             <div className="text-md font-bold text-gray-900">Completed Clearances</div>
-
             <div className="text-sm text-gray-900 text-left break-words">{completedClearances}</div>
-
           </div>
-
         </div>
-
       </Card>
 
     );
 
   }
-
-
 
 export type ViewArchivedFacultyCardProps = {
 
@@ -9936,28 +5920,17 @@ export type ViewArchivedFacultyCardProps = {
 
 };
 
-
-
 export function ViewArchivedFacultyCard({
 
   className,
-
   academicYear,
-
   semester,
-
   clearancePeriod,
-
   archivedDate,
-
   csvFileName,
-
   csvFileSize,
-
   onDownloadCSV,
-
   onIconClick,
-
 }: ViewArchivedFacultyCardProps) {
 
   const yearMatch = academicYear.match(/(\d{4})/);
@@ -9965,8 +5938,6 @@ export function ViewArchivedFacultyCard({
   const startYear = yearMatch ? yearMatch[1] : "";
 
   const yearCode = startYear ? startYear.slice(2) : "";
-
-
 
   const normalizedSemester = semester.toLowerCase();
 
@@ -9978,18 +5949,12 @@ export function ViewArchivedFacultyCard({
 
   else if (normalizedSemester.includes("intersession")) termCode = "03";
 
-
-
   const displayTitle = yearCode && termCode ? `${yearCode}${termCode} Archived Faculty` : "Archived Faculty";
 
   return (
-
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
-
       <div className="text-center text-xl font-bold text-gray-900 flex items-center justify-between p-6">
-
         <div>{displayTitle}</div>
-
         <Button
 
           variant="icon"
@@ -10003,98 +5968,45 @@ export function ViewArchivedFacultyCard({
           disabled={!onDownloadCSV}
 
         >
-
           <img src="/PrimaryDownloadIcon.png" alt="Download CSV" className="h-6 w-6" />
-
         </Button>
-
       </div>
-
-
-
       <Divider className="bg-foreground " />
-
-
-
       <div className="p-6">
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Academic Year</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{academicYear}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Semester</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{semester}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Clearance Period</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{clearancePeriod}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Last Update</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{archivedDate}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Archived</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{archivedDate}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Faculty CSV Dump</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{csvFileName}</div>
-
         </div>
-
-
-
         <div className="grid grid-cols-2 gap-2">
-
           <div className="text-md font-bold text-gray-900">Size</div>
-
           <div className="text-sm text-gray-900 text-left break-words">{csvFileSize}</div>
-
         </div>
-
       </div>
-
     </Card>
 
   );
 
 }
-
-
 
 export type SystemUser = {
 
@@ -10102,659 +6014,224 @@ export type SystemUser = {
 
   name: string;
 
-
-
   systemId: string;
-
-
 
   userRole: string;
 
-
-
   universityId: string;
-
-
 
   college: string;
 
-
-
   department: string;
-
-
 
   email: string;
 
-
-
 };
-
-
-
-
-
-
 
 export type SystemUsersCardProps = {
 
-
-
   className?: string;
-
-
 
   users: SystemUser[];
 
-
-
   onAddApprover?: () => void;
-
-
 
   onAddAdmin?: () => void;
 
-
-
   onEditUser?: (user: SystemUser) => void;
-
-
 
   onRemoveUser?: (user: SystemUser) => void;
 
-
-
   currentUserEmail?: string;
-
-
 
   pageLabel?: string;
 
-
-
   pageCountLabel?: string;
-
-
 
   onPrevPage?: () => void;
 
-
-
   onNextPage?: () => void;
-
-
 
 };
 
-
-
-
-
-
-
 export function SystemUsersCard({
 
-
-
   className,
-
-
-
   users,
-
-
-
   onAddApprover,
-
-
-
   onAddAdmin,
-
-
-
   onEditUser,
-
-
-
   onRemoveUser,
-
-
-
   currentUserEmail,
-
-
-
 }: SystemUsersCardProps) {
 
-
-
   return (
-
-
-
     <Card className={cn("overflow-hidden border-muted-foreground/20 shadow-sm", className)}>
-
-
-
       <CardContent className="p-0">
-
-
-
         <div className="flex">
-
-
-
           <Divider orientation="vertical" className="h-auto self-stretch" />
-
-
-
           <div className="min-w-0 flex-1">
-
-
-
             <div className="flex items-center justify-start gap-2 bg-background px-4 py-3 flex-wrap">
-
               <Button type="button" variant="default" className="h-10" onClick={onAddApprover}>
-
                 <div className="flex items-center gap-2">
-
                   <img src="/WhitePlusIcon.png" alt="Add Approver" className="h-5 w-5 object-contain" />
-
                   <span className="ml-0">Add Approver</span>
-
                 </div>
-
               </Button>
-
               <Button type="button" variant="default" className="h-10" onClick={onAddAdmin}>
-
                 <div className="flex items-center gap-2">
-
                   <img src="/WhitePlusIcon.png" alt="Add Admin" className="h-5 w-5 object-contain" />
-
                   <span>Add Admin</span>
-
                 </div>
-
               </Button>
-
             </div>
-
-
-
             <Divider color="border-[hsl(var(--gray-border))]" />
-
-
-
-
-
-
-
             <div>
-
-
-
               {users.map((user, idx) => (
-
-
-
                 <React.Fragment key={user.id}>
-
-
-
                   <div className="flex items-start gap-4 px-4 py-5">
-
-
-
                     <div className="min-w-0 flex-1">
-
-
-
                       <div className="flex w-full items-center justify-between gap-3">
-
-
-
                         <span className="text-xl font-bold text-gray-900">{user.name}</span>
-
-
-
-
-
-
-
                         <div className="flex items-center gap-2">
-
-
-
                           <Button
 
-
-
                             type="button"
-
-
 
                             variant="action"
 
-
-
                             className="h-7 rounded-md px-3 text-xs font-bold"
-
-
 
                             onClick={() => onEditUser?.(user)}
 
-
-
                             disabled={user.email === currentUserEmail}
 
-
-
                           >
-
-
 
                             EDIT
 
-
-
                           </Button>
-
-
-
-
-
-
-
                           <Button
-
-
 
                             type="button"
 
-
-
                             variant="destructive"
-
-
 
                             className="h-7 rounded-md px-3 text-xs font-bold"
 
-
-
                             onClick={() => onRemoveUser?.(user)}
-
-
 
                             disabled={user.email === currentUserEmail}
 
-
-
                           >
-
-
 
                             REMOVE
 
-
-
                           </Button>
-
-
-
                         </div>
-
-
-
                       </div>
-
-
-
-
-
-
-
                       <div className="mt-4 grid grid-cols-[110px_1fr] gap-x-3 gap-y-1 text-md">
-
-
-
                         <div className="font-semibold text-md text-gray-900">System ID</div>
-
-
-
                         <div className="text-muted-foreground">{user.systemId}</div>
-
-
-
-
-
-
-
                         <div className="font-semibold text-md text-gray-900">User Role</div>
-
-
-
                         <div className="text-muted-foreground">{user.userRole}</div>
-
-
-
-
-
-
-
                         <div className="font-semibold text-md text-gray-900">University ID</div>
-
-
-
                         <div className="text-muted-foreground">{user.universityId}</div>
-
-
-
-
-
-
-
                         <div className="font-semibold text-gray-900">College</div>
-
-
-
                         <div className="text-muted-foreground">{user.college}</div>
-
-
-
-
-
-
-
                         <div className="font-semibold text-gray-900">Department</div>
-
-
-
                         <div className="text-muted-foreground">{user.department}</div>
-
-
-
-
-
-
-
                         <div className="font-semibold text-gray-900">Email</div>
-
-
-
                         <div className="break-all text-muted-foreground">{user.email}</div>
-
-
-
                       </div>
-
-
-
                     </div>
-
-
-
                   </div>
-
-
-
-
-
-
-
                   {idx < users.length - 1 ? (
-
-
-
                     <Divider color="border-[hsl(var(--gray-border))]" />
 
-
-
                   ) : null}
-
-
-
                 </React.Fragment>
 
-
-
               ))}
-
-
-
             </div>
-
-
-
           </div>
-
-
-
           <Divider orientation="vertical" className="h-auto self-stretch" />
-
-
-
         </div>
-
-
-
       </CardContent>
-
-
-
     </Card>
-
-
 
   );
 
-
-
 }
-
-
-
-
-
-
 
 export function SystemGuidlinesCard({
 
-
-
   items,
-
-
-
   className,
-
-
-
   onClose,
-
-
-
   headerActionHref,
-
-
-
   headerActionImgSrc,
-
-
-
   headerActionImgAlt = "Open",
 
-
-
   headerActionOnClick,
-
-
-
   cardName,
-
-
-
   onViewItem,
-
-
-
   onAddRequirement,
-
-
-
   addDisabled,
-
-
-
 }: SystemGuidlinesCardProps) {
 
-
-
   return (
-
-
-
     <SectionListCard
-
-
 
       title={cardName ?? "System Guidelines"}
 
-
-
       className={className}
-
-
 
       onClose={onClose}
 
-
-
       headerActionHref={headerActionHref}
-
-
 
       headerActionImgSrc={headerActionImgSrc}
 
-
-
       headerActionImgAlt={headerActionImgAlt}
-
-
 
       headerActionOnClick={headerActionOnClick}
 
-
-
     >
-
-
-
       <div className="p-4">
-
-
-
         <div className="space-y-3">
-
-
-
           {items.map((item) => (
-
-
-
             <React.Fragment key={item.title}>
-
-
-
               <div className=" items-start gap-3 rounded-md bg-muted p-4">
-
-
-
                 <div>
-
-
-
                   <div className="mt-2 text-lg font-bold text-gray-900">{item.title}</div>
-
-
-
-
-
-
-
                   <div className="mt-3 text-md text-gray-900">
-
-
-
                     {Array.isArray(item.description) ? (
 
-
-
                       <ol className="mb-2 ml-4 list-decimal space-y-1">
-
-
-
                         {item.description.map((desc, i) => (
 
-
-
                           <li key={i}>
-
-
-
                             {typeof desc === "string" ? desc : desc.text}
-
-
-
-
-
-
-
                             {typeof desc !== "string" && desc.subitems ? (
 
-
-
                               <ol className="ml-6 mt-1 list-lower-alpha space-y-1">
-
-
-
                                 {desc.subitems.map((sub, j) => (
-
-
 
                                   <li key={j}>{sub}</li>
 
-
-
                                 ))}
-
-
-
                               </ol>
 
-
-
                             ) : null}
-
-
-
                           </li>
 
-
-
                         ))}
-
-
-
                       </ol>
-
-
 
                     ) : (
 
-
-
-                      <div 
+                      <div
 
                         className="text-md text-gray-900 whitespace-pre-line"
 
@@ -10762,296 +6239,108 @@ export function SystemGuidlinesCard({
 
                       />
 
-
-
                     )}
-
-
-
-
-
-
-
                     <Link to={item.email} className="text-primary font-bold underline">
-
-
-
                       {item.email}
-
-
-
                     </Link>
-
-
-
                   </div>
-
-
-
                 </div>
-
-
-
-
-
-
-
                 <div className="flex items-start justify-between mt-3 text-sm text-muted-foreground">
 
-
-
                   Created: {item.timestamp}
-
-
-
                 </div>
-
-
-
               </div>
-
-
-
             </React.Fragment>
 
-
-
           ))}
-
-
-
         </div>
-
-
-
       </div>
-
-
-
     </SectionListCard>
-
-
 
   );
 
-
-
 }
-
-
-
-
-
-
 
 export type ClearanceTimelineStatus = "active" | "inactive";
 
-
-
-
-
-
-
 export type ClearanceTimelineItem = {
-
-
 
   id?: string;
 
-
-
   schoolYear: string;
-
-
 
   term: string;
 
-
-
   status: ClearanceTimelineStatus;
-
-
 
   Name: string;
 
-
-
   Timeline: string;
-
-
 
   Date: String;
 
-
-
   Time: String;
 
-
-
 };
-
-
-
-
-
-
 
 export type ClearanceTimelineCardProps = {
 
-
-
   title: string;
-
-
 
   items: ClearanceTimelineItem[];
 
-
-
   className?: string;
-
-
 
   headerActionHref?: string;
 
-
-
   headerActionImgSrc?: string;
-
-
 
   headerActionImgAlt?: string;
 
-
-
   headerActionOnClick?: () => void;
-
-
 
   onEditItem?: (item: ClearanceTimelineItem) => void;
 
-
-
 };
-
-
-
-
-
-
 
 export function ClearanceTimelineCard({
 
-
-
   title,
-
-
-
   items,
-
-
-
   className,
-
-
-
   headerActionHref,
-
-
-
   headerActionImgSrc,
-
-
-
   headerActionImgAlt = "Open",
 
-
-
   headerActionOnClick,
-
-
-
   onEditItem,
-
-
-
 }: ClearanceTimelineCardProps) {
 
-
-
   return (
-
-
-
     <SectionListCard
-
-
 
       title={title}
 
-
-
       className={className}
-
-
 
       headerActionHref={headerActionHref}
 
-
-
       headerActionImgSrc={headerActionImgSrc}
-
-
 
       headerActionImgAlt={headerActionImgAlt}
 
-
-
       headerActionOnClick={headerActionOnClick}
 
-
-
     >
-
-
-
       <div className="space-y-3">
-
-
-
         {items.map((item, idx) => (
-
-
-
           <React.Fragment key={`${item.schoolYear}-${item.term}-${idx}`}>
-
-
-
             <div className="overflow-hidden rounded-md bg-white p-4">
-
-
-
               <div className="flex items-center justify-between px-4 py-3">
-
-
-
                 <div className="min-w-0 flex-1">
-
-
-
                   <div className="text-lg font-bold text-gray-900">{item.term}</div>
-
-
-
                 </div>
-
-
-
                 <div className="flex items-center gap-2">
-
-
-
                   <GuidelinesToggle
 
                     checked={item.status === "active"}
@@ -11065,628 +6354,224 @@ export function ClearanceTimelineCard({
                     }}
 
                   />
-
-
-
                   {item.status === "active" && (
-
-
-
                     <Button
-
-
 
                       type="button"
 
-
-
                       variant="secondary"
-
-
 
                       size="sm"
 
-
-
                       className="h-8 rounded-md px-3 text-xs font-bold"
-
-
 
                       onClick={() => onEditItem?.(item)}
 
-
-
                     >
-
-
 
                       EDIT
 
-
-
                     </Button>
 
-
-
                   )}
-
-
-
                 </div>
-
-
-
               </div>
-
-
-
               <div className="px-4 py-4 bg-white">
-
-
-
                 <div className="space-y-0 bg-foregroundLight rounded-md border border-gray-200 p-4">
-
-
-
                   <div className="flex items-center gap-3">
-
                       <div className="text-md font-bold text-gray-900 w-32">Name:</div>
-
                       <div className="mt-1 text-sm font-semibold text-gray-900">{item.Name || 'unset'}</div>
-
                     </div>
-
-
-
                   <div className="flex items-center gap-3">
-
                     <div className="text-md font-bold text-gray-900 w-32">School Year:</div>
-
                     <div className="mt-1 text-sm font-semibold text-gray-900">{item.schoolYear || 'unset'}</div>
-
                   </div>
-
-
-
                   <div className="flex items-center gap-3">
-
                     <div className="text-md font-bold text-gray-900 w-32">Timeline:</div>
-
                     <div className="mt-1 text-sm font-semibold text-gray-900">{item.Timeline || 'unset'}</div>
-
                   </div>
-
-
-
                   <div className="flex items-center justify-between">
-
                     <div className="text-sm text-gray-900  italic">Last Update: {item.Date} {item.Time}</div>
-
                   </div>
-
-
-
                 </div>
-
-
-
                 <div className="flex justify-between gap-3 mt-4">
-
                   {item.Name === 'unset' || item.Timeline === 'unset' ? (
-
                     <Button variant="default" className="w-full">ADD</Button>
 
                   ) : (
 
                     <>
-
                       <Button variant="default" className="flex-1">ARCHIVE</Button>
-
                       <Button variant="back" className="flex-1">EDIT</Button>
-
                     </>
 
                   )}
-
                 </div>
-
-
-
               </div>
-
-
-
             </div>
-
-
-
             {idx < items.length - 1 && (
 
               <div className="border-b-2 border-[hsl(var(--gray-border))] shadow-[0_2px_2px_-2px_rgba(0,0,0,0.25)]" />
 
             )}
-
-
-
           </React.Fragment>
 
-
-
         ))}
-
-
-
       </div>
-
-
-
     </SectionListCard>
-
-
 
   );
 
-
-
 }
-
-
-
-
-
-
 
 export type AnalyticsDonutCardProps = {
 
-
-
   title: string;
-
-
 
   completed: number;
 
-
-
   total: number;
-
-
 
   className?: string;
 
-
-
 };
-
-
-
-
-
-
 
 export function AnalyticsDonutCard({ title, completed, total, className }: AnalyticsDonutCardProps) {
 
-
-
   const safeTotal = Math.max(0, total);
-
-
 
   const safeCompleted = Math.max(0, Math.min(completed, safeTotal));
 
-
-
   const pct = safeTotal > 0 ? (safeCompleted / safeTotal) * 100 : 0;
-
-
 
   const clamped = Math.max(0, Math.min(100, pct));
 
-
-
-
-
-
-
   return (
-
-
-
     <Card className={cn("overflow-hidden", className)}>
-
-
-
       <CardHeader className="bg-primary py-3">
-
-
-
         <CardTitle className="text-center text-base font-bold text-primary-foreground">{title}</CardTitle>
-
-
-
       </CardHeader>
-
-
-
-
-
-
-
       <CardContent className="p-4">
-
-
-
         <div className="mx-auto w-full max-w-[320px] rounded-md border border-[hsl(var(--gray-border))] bg-background p-4">
-
-
-
           <div className="mx-auto flex items-center justify-center">
-
-
-
             <div
-
-
 
               className="relative h-48 w-48 rounded-full"
 
-
-
               style={{
-
-
 
                 background: `conic-gradient(hsl(var(--success)) ${clamped}%, hsl(var(--muted)) ${clamped}% 100%)`,
 
-
-
               }}
 
-
-
             >
-
-
-
               <div className="absolute inset-7 rounded-full bg-background" />
-
-
-
             </div>
-
-
-
           </div>
-
-
-
-
-
-
-
           <div className="mt-4 flex items-center justify-center gap-8 text-xs font-semibold text-muted-foreground">
-
-
-
             <div className="flex items-center gap-2">
-
-
-
               <div className="h-2.5 w-6 rounded-sm bg-[hsl(var(--muted))]" />
-
-
-
               <div>Incomplete</div>
-
-
-
             </div>
-
-
-
-
-
-
-
             <div className="flex items-center gap-2">
-
-
-
               <div className="h-2.5 w-6 rounded-sm bg-success" />
-
-
-
               <div>Completed</div>
-
-
-
             </div>
-
-
-
           </div>
-
-
-
         </div>
-
-
-
       </CardContent>
-
-
-
     </Card>
-
-
 
   );
 
-
-
 }
-
-
-
-
-
-
 
 export type DepartmentCompletionRateItem = {
 
-
-
   label: string;
-
-
 
   completed: number;
 
-
-
   total: number;
 
-
-
 };
-
-
-
-
-
-
 
 export type DepartmentCompletionRateSection = {
 
-
-
   title: string;
-
-
 
   items: DepartmentCompletionRateItem[];
 
-
-
 };
-
-
-
-
-
-
 
 export type DepartmentCompletionRateCardProps = {
 
-
-
   title?: string;
-
-
 
   sections: DepartmentCompletionRateSection[];
 
-
-
   className?: string;
-
-
 
 };
 
-
-
-
-
-
-
 export function DepartmentCompletionRateCard({
-
-
 
   title = "Department Completion Rate",
 
-
-
   sections,
-
-
-
   className,
-
-
-
 }: DepartmentCompletionRateCardProps) {
 
-
-
   return (
-
-
-
     <Card className={cn("overflow-hidden", className)}>
-
-
-
       <CardHeader className="bg-primary py-3">
-
-
-
         <CardTitle className="text-center text-base font-bold text-primary-foreground">{title}</CardTitle>
-
-
-
       </CardHeader>
-
-
-
-
-
-
-
       <CardContent className="p-4">
-
-
-
         <div className="space-y-4">
-
-
-
           {sections.map((section) => (
 
-
-
             <div key={section.title}>
-
-
-
               <div className="text-sm font-bold text-gray-900">{section.title}</div>
-
-
-
-
-
-
-
               <div className="mt-3 space-y-3">
-
-
-
                 {section.items.map((item) => {
-
-
 
                   const safeTotal = Math.max(0, item.total);
 
-
-
                   const safeCompleted = Math.max(0, Math.min(item.completed, safeTotal));
-
-
 
                   const pct = safeTotal > 0 ? (safeCompleted / safeTotal) * 100 : 0;
 
-
-
                   const clamped = Math.max(0, Math.min(100, pct));
-
-
-
-
-
-
 
                   return (
 
-
-
                     <div key={item.label} className="rounded-md bg-muted px-4 py-3">
-
-
-
                       <div className="flex items-center justify-between gap-3">
-
-
-
                         <div className="text-sm font-semibold text-gray-900">{item.label} </div>
-
-
-
                         <div className="text-xs font-semibold text-muted-foreground">
-
-
-
                           {safeCompleted}/{safeTotal}
-
-
-
                         </div>
-
-
-
                       </div>
-
-
-
-
-
-
-
                       <div className="mt-3 h-1.5 w-full rounded-full bg-background">
-
-
-
                         <div className="h-1.5 rounded-full bg-success" style={{ width: `${clamped}%` }} />
-
-
-
                       </div>
-
-
-
                     </div>
-
-
 
                   );
 
-
-
                 })}
-
-
-
               </div>
-
-
-
             </div>
 
-
-
           ))}
-
-
-
         </div>
-
-
-
       </CardContent>
-
-
-
     </Card>
-
-
 
   );
 
-
-
 }
-
-
 
 export type AgreementCardProps = {
 
@@ -11724,16 +6609,11 @@ export type AgreementCardProps = {
 
 };
 
-
-
 export function AgreementCard({
 
   className,
-
   disabled = false,
-
   onConfirm,
-
 }: AgreementCardProps) {
 
   const [agreeChecked, setAgreeChecked] = React.useState(false);
@@ -11742,26 +6622,14 @@ export function AgreementCard({
 
   const [understandConsequencesChecked, setUnderstandConsequencesChecked] = React.useState(false);
 
-
-
   const allChecked = agreeChecked && understandChecked && understandConsequencesChecked;
-
-
 
   return (
 
     <div className={cn("rounded-xl border bg-card text-card-foreground shadow", className)}>
-
       <div className="pt-9 pb-4 pl-4 pr-4" >
-
-
-
-
-
         <div>
-
         <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
-
           <Checkbox
 
             variant="gray"
@@ -11773,27 +6641,14 @@ export function AgreementCard({
             onCheckedChange={(v) => setAgreeChecked(v === true)}
 
           />
-
            <label className="text-sm text-gray-700">
-
               <span className="font-bold">I agree</span> that I have created all the necessary clearance requirements that I need for my Department/Office
 
             </label>
-
-
-
         </div>
-
         </div>
-
-
-
         <div className="pt-4">
-
-
-
         <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
-
           <Checkbox
 
             variant="gray"
@@ -11805,23 +6660,14 @@ export function AgreementCard({
             onCheckedChange={(v) => setUnderstandChecked(v === true)}
 
           />
-
           <label className="text-sm text-gray-700">
-
             <span className="font-bold">I understand</span> that once a Clearance Timeline is in an “Active” state, I cannot make any changes to my requirements.
 
           </label>
-
         </div>
-
         </div>
-
-
-
         <div className="pt-4">
-
         <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
-
           <Checkbox
 
             variant="gray"
@@ -11833,21 +6679,13 @@ export function AgreementCard({
             onCheckedChange={(v) => setUnderstandConsequencesChecked(v === true)}
 
           />
-
           <label className="text-sm text-gray-700">
-
             <span className="font-bold">I understand</span> that if I was not able to create the requirements for my departments on time, the system will reject the faculty member by default.
 
           </label>
-
         </div>
-
         </div>
-
-
-
         <div className="pt-6">
-
           <Button
 
             type="button"
@@ -11865,18 +6703,13 @@ export function AgreementCard({
             I Agree and Understand
 
           </Button>
-
         </div>
-
       </div>
-
     </div>
 
   );
 
 }
-
-
 
 export type TrueAgreementCardProps = {
 
@@ -11912,34 +6745,20 @@ export type TrueAgreementCardProps = {
 
 };
 
-
-
 export function TrueAgreementCard({
 
   className,
-
   onConfirm,
-
 }: TrueAgreementCardProps) {
 
   const allChecked = true;
 
-
-
   return (
 
     <div className={cn("rounded-xl border bg-card text-card-foreground shadow", className)}>
-
       <div className="pt-9 pb-4 pl-4 pr-4" >
-
-
-
-
-
         <div>
-
         <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
-
           <Checkbox
 
             variant="gray"
@@ -11949,25 +6768,14 @@ export function TrueAgreementCard({
             disabled
 
           />
-
            <label className="text-sm text-gray-700">
-
               <span className="font-bold">I agree</span> that I have created all the necessary clearance requirements that I need for my Department/Office
 
             </label>
-
         </div>
-
         </div>
-
-
-
         <div className="pt-4">
-
-
-
         <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
-
           <Checkbox
 
             variant="gray"
@@ -11977,23 +6785,14 @@ export function TrueAgreementCard({
             disabled
 
           />
-
           <label className="text-sm text-gray-700">
-
             <span className="font-bold">I understand</span> that once a Clearance Timeline is in an “Active” state, I cannot make any changes to my requirements.
 
           </label>
-
         </div>
-
         </div>
-
-
-
         <div className="pt-4">
-
         <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
-
           <Checkbox
 
             variant="gray"
@@ -12003,30 +6802,18 @@ export function TrueAgreementCard({
             disabled
 
           />
-
           <label className="text-sm text-gray-700">
-
             <span className="font-bold">I understand</span> that if I was not able to create the requirements for my departments on time, the system will reject the faculty member by default.
 
           </label>
-
         </div>
-
         </div>
-
-
-
-
-
       </div>
-
     </div>
 
   );
 
 }
-
-
 
 export type NoLinkClearanceRequestItem = {
 
@@ -12048,8 +6835,6 @@ export type NoLinkClearanceRequestItem = {
 
 };
 
-
-
 export type NoClearanceRequestsCardProps = {
 
   items?: NoLinkClearanceRequestItem[];
@@ -12058,76 +6843,40 @@ export type NoClearanceRequestsCardProps = {
 
 };
 
-
-
 export function NoLinkClearanceRequestsCard({
 
   items = [],
 
   className,
-
 }: NoClearanceRequestsCardProps) {
 
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set());
 
-
-
   return (
-
     <Card className={cn("overflow-hidden", className)}>
-
       <CardContent className="p-0">
-
         <div className="flex">
-
           <Divider orientation="vertical" className="h-auto self-stretch " />
-
           <div className="min-w-0 flex-1">
-
-
-
             <div>
-
               {items.length === 0 ? (
 
                 <div className="px-4 py-6 text-sm text-muted-foreground">No clearance requests.</div>
 
               ) : null}
-
               {items.map((item, idx) => (
-
                 <React.Fragment key={item.id}>
-
                   <div className="flex gap-3 px-4 py-6">
-
                     <div className="pt-1">
-
-
-
                     </div>
-
-
-
                     <div className="min-w-0 flex-1">
-
                       <div className="grid grid-cols-[1fr_auto] items-start gap-3">
-
                         <div className="min-w-0">
-
-
-
                             <div className="break-words whitespace-normal text-left text-2xl font-bold text-primary">
-
                               {item.name}
-
                             </div>
-
                         </div>
-
-
-
                         <div className="shrink-0">
-
                           <Badge
 
                             variant={getClearanceStatusBadgeVariant(item.status)}
@@ -12135,75 +6884,36 @@ export function NoLinkClearanceRequestsCard({
                             className="px-3 py-1 text-xs font-bold"
 
                           >
-
                             {item.status.toUpperCase()}
-
                           </Badge>
-
                         </div>
-
                       </div>
-
-
-
                       <div className="mt-3 grid grid-cols-[88px_1fr] gap-x-3 gap-y-1 text-sm">
-
                         <div className="font-bold text-gray-900">Request ID</div>
-
                         <div className="text-gray-900">{item.requestId}</div>
-
                         <div className="font-bold text-gray-900">Employee ID</div>
-
                         <div className="text-gray-900">{item.employeeId}</div>
-
-
-
                         <div className="font-bold text-gray-900">College</div>
-
                         <div className="text-gray-900">{item.college}</div>
-
-
-
                         <div className="font-bold text-gray-900">Department</div>
-
                         <div className="text-gray-900">{item.department}</div>
-
-
-
                         <div className="font-bold text-gray-900">Faculty Type</div>
-
                         <div className="text-gray-900">{item.facultyType}</div>
-
                       </div>
-
                     </div>
-
                   </div>
-
-
-
                   {idx < items.length - 1 ? (
-
                     <Divider color="border-[hsl(var(--gray-border))]" />
 
                   ) : null}
-
                 </React.Fragment>
 
               ))}
-
             </div>
-
           </div>
-
-
-
           <Divider orientation="vertical" className="h-auto self-stretch" />
-
         </div>
-
       </CardContent>
-
     </Card>
 
   );

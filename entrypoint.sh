@@ -752,9 +752,9 @@ SET @assistant_user_id = (SELECT id FROM FC_user WHERE email = 'assistant.seed@x
 SET @faculty_user_id = (SELECT id FROM FC_user WHERE email = 'faculty.seed@xu.edu.ph' LIMIT 1);
 SET @farrah_user_id = (SELECT id FROM FC_user WHERE email = '201131134@my.xu.edu.ph' LIMIT 1);
 
--- Seed Approver for main user (20220025546@my.xu.edu.ph) as Office approver in Library
+-- Seed Approver for main user (20220025546@my.xu.edu.ph) as Office approver in Human Resources Office
 INSERT INTO FC_approver (user_id, approver_type, office_id)
-VALUES (@ciso_user_id, 'Office', (SELECT id FROM FC_office WHERE abbreviation = 'LIB' LIMIT 1))
+VALUES (@ciso_user_id, 'Office', (SELECT id FROM FC_office WHERE abbreviation = 'HRO' LIMIT 1))
 ON DUPLICATE KEY UPDATE
     approver_type = VALUES(approver_type),
     college_id = NULL,

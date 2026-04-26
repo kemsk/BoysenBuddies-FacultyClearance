@@ -28,6 +28,7 @@ import ApproverAchivedClearance from "./pages/approver/approver-archived-clearan
 import ApproverViewClearance from "./pages/approver/approver-view-clearance";
 import ApproverIndividualApproval from "./pages/approver/approver-individual-approval";
 import ApproverArchivedIndividualApproval from "./pages/approver/approver-archived-individual";
+import ApproverTools from "./pages/approver/approver-tools";
 
 
 
@@ -118,6 +119,96 @@ function ProtectedRoute({ children, allowedRoles }: { children: ReactElement; al
       cancelled = true;
     };
   }, [location.pathname, allowedRoles]);
+
+  if (status === "checking") return null;
+  if (status === "unauthed") {
+    return <Navigate to="/" replace />;
+  }
+  if (status === "unauthorized") {
+    // Redirect to user's appropriate dashboard based on their role
+    const getDashboardForRole = (role: number) => {
+      switch (role) {
+        case 1: return "/CISO-dashboard";
+        case 2: return "/OVPHE-dashboard";
+        case 3: return "/approver-dashboard";
+        case 4: return "/assistant-approver-dashboard";
+        case 5: return "/faculty-dashboard";
+        default: return "/";
+      }
+    };
+    
+    const redirectPath = userRole ? getDashboardForRole(userRole) : "/";
+    return <Navigate to={redirectPath} replace />;
+  }
+  return children;
+}
+
+function ProtectedRouteForSystemAnalytics({ children }: { children: ReactElement }) {
+  const [status, setStatus] = useState<"checking" | "authed" | "unauthed" | "unauthorized">(
+    "checking"
+  );
+  const [userRole, setUserRole] = useState<number | null>(null);
+  const location = useLocation();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const check = async () => {
+      if (cancelled) return;
+      setStatus("checking");
+      
+      try {
+        const res = await fetch("/admin/xu-faculty-clearance/api/me", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        if (cancelled) return;
+        
+        if (!res.ok) {
+          setStatus("unauthed");
+          return;
+        }
+
+        const data = await res.json();
+        const roleValue = data.role_value;
+        const roles = data.roles || [];
+        const office = data.roles_payload?.[0]?.office || null;
+        
+        setUserRole(roleValue);
+        
+        // Allow access if:
+        // 1. User is OVPHE (role 2), OR
+        // 2. User has Approver role (role 3) AND their roles_payload contains "Human Resources Office"
+        const hasApproverRole = roles.includes(3);
+        const hasHROOffice = data.roles_payload?.some(
+          (role: any) => role.office === "Human Resources Office"
+        ) || false;
+        
+        const hasAccess = 
+          (roleValue === 2) || 
+          (hasApproverRole && hasHROOffice);
+        
+        if (hasAccess) {
+          setStatus("authed");
+        } else {
+          setStatus("unauthorized");
+        }
+      } catch {
+        if (cancelled) return;
+        setStatus("unauthed");
+      }
+    };
+
+    check();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location.pathname]);
 
   if (status === "checking") return null;
   if (status === "unauthed") {
@@ -447,6 +538,16 @@ function App() {
             }
           />
         }
+        {
+          <Route
+            path="/approver-tools"
+            element={
+              <ProtectedRoute allowedRoles={[3]}>
+                <ApproverTools />
+              </ProtectedRoute>
+            }
+          />
+        }
         
         {
           <Route
@@ -555,9 +656,9 @@ function App() {
           <Route
             path="/OVPHE-system-analytics"
             element={
-              <ProtectedRoute allowedRoles={[2]}>
+              <ProtectedRouteForSystemAnalytics>
                 <OVPHESystemAnalytics />
-              </ProtectedRoute>
+              </ProtectedRouteForSystemAnalytics>
             }
           />
         }
