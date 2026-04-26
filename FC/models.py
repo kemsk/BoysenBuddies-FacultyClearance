@@ -13,6 +13,11 @@ class User(models.Model):
     def __str__(self):
         return self.email
 
+    def get_full_name(self):
+        """Get the user's full name"""
+        parts = [p for p in [self.first_name, self.middle_name, self.last_name] if p]
+        return " ".join(parts) if parts else self.email
+
     def get_active_roles(self):
         """Get all active roles for this user"""
         return self.userrole_set.filter(is_active=True).select_related('role')
