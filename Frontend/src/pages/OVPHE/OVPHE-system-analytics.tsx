@@ -482,21 +482,7 @@ export default function SystemAnalytics() {
             
           </div>
 
-          <div className="flex items-start gap-5 mt-10">
-
-            <StatCardWithActions
-              leftContent={<span className="text-primary text-lg font-bold">Clearance Pipeline</span>}
-              rightContent={
-                <span className="text-gray-600 text-md italic">
-                  As of {analyticsData?.currentDateTime ? new Date(analyticsData.currentDateTime).toLocaleDateString() : new Date().toLocaleDateString()}, 
-                  {analyticsData?.currentDateTime ? new Date(analyticsData.currentDateTime).toLocaleTimeString() : new Date().toLocaleTimeString()}
-                </span>
-              }
-            />
-          </div>
-
-
-          <div className="flex flex-wrap items-stretch gap-5 mt-2">
+          <div className="flex flex-wrap items-stretch gap-5 mt-10">
 
             <ClearanceDistributionCard
               className="self-stretch h-[220px] w-full lg:w-[calc(50%-10px)]"
@@ -511,7 +497,6 @@ export default function SystemAnalytics() {
               subtitle="by employment type"
               items={analyticsData?.facultyComposition || []}
             />
-  
           </div>
 
           <div className="mt-10 flex flex-col gap-2">
@@ -519,8 +504,11 @@ export default function SystemAnalytics() {
               leftContent={<span className="text-primary text-lg font-bold">Office Clearance Bottlenecks</span>}
               rightContent={
                 <span className="text-gray-600 text-base italic">
-                  As of {analyticsData?.currentDateTime ? new Date(analyticsData.currentDateTime).toLocaleDateString() : new Date().toLocaleDateString()}, 
-                  {analyticsData?.currentDateTime ? new Date(analyticsData.currentDateTime).toLocaleTimeString() : new Date().toLocaleTimeString()}
+                  As of {analyticsData?.currentDateTime ? new Date(analyticsData.currentDateTime).toLocaleDateString() : new Date().toLocaleDateString()},
+                  {" "}
+                  {analyticsData?.currentDateTime
+                    ? new Date(analyticsData.currentDateTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+                    : new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                 </span>
               }
             />
@@ -541,8 +529,10 @@ export default function SystemAnalytics() {
               leftContent={<span className="text-primary text-lg font-bold">College Clearance Progress</span>}
               rightContent={
                 <span className="text-gray-600 text-base italic">
-                  As of {analyticsData?.currentDateTime ? new Date(analyticsData.currentDateTime).toLocaleDateString() : new Date().toLocaleDateString()}, 
-                  {analyticsData?.currentDateTime ? new Date(analyticsData.currentDateTime).toLocaleTimeString() : new Date().toLocaleTimeString()}
+                  As of {analyticsData?.currentDateTime ? new Date(analyticsData.currentDateTime).toLocaleDateString() : new Date().toLocaleDateString()}, {""}
+                  {analyticsData?.currentDateTime
+                    ? new Date(analyticsData.currentDateTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+                    : new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                 </span>
               }
             />
@@ -552,19 +542,47 @@ export default function SystemAnalytics() {
           </div>      
 
           <div className="mt-10 flex flex-col gap-2">
-            <CollegeClearanceStatusCard
-              className="w-full"
-              items={analyticsData?.collegeClearanceStatus || []}
-              totalRow={{
-                facultyMembers: analyticsData?.collegeClearanceStatus?.reduce((sum, item) => sum + item.facultyMembers, 0) || 0,
-                completed: analyticsData?.collegeClearanceStatus?.reduce((sum, item) => sum + item.completed, 0) || 0,
-                total: analyticsData?.collegeClearanceStatus?.reduce((sum, item) => sum + item.total, 0) || 0,
-                status: "in_progress"
-              }}
-              footerLeft={`${analyticsData?.collegeClearanceStatus?.length || 0} colleges · Sorted by rate (ascending)`}
-              footerActionLabel="View All Faculty"
-              onFooterAction={() => setClearanceProgressOpen(true)}
-            />
+            {(() => {
+              const collegeStatus = analyticsData?.collegeClearanceStatus || [];
+
+              const totalFacultyMembers = collegeStatus.reduce(
+                (sum: number, item: any) => sum + (item?.facultyMembers || 0),
+                0,
+              );
+              const totalCompleted = collegeStatus.reduce(
+                (sum: number, item: any) => sum + (item?.completed || 0),
+                0,
+              );
+              const totalRequired = collegeStatus.reduce(
+                (sum: number, item: any) => sum + (item?.total || 0),
+                0,
+              );
+
+              const overallRate = totalRequired > 0 ? (totalCompleted / totalRequired) * 100 : 0;
+
+              let overallStatus: "cleared" | "in_progress" | "at_risk" = "in_progress";
+              if (overallRate === 100) {
+                overallStatus = "cleared";
+              } else if (overallRate < 50) {
+                overallStatus = "at_risk";
+              }
+
+              return (
+                <CollegeClearanceStatusCard
+                  className="w-full"
+                  items={collegeStatus}
+                  totalRow={{
+                    facultyMembers: totalFacultyMembers,
+                    completed: totalCompleted,
+                    total: totalRequired,
+                    status: overallStatus,
+                  }}
+                  footerLeft={`${collegeStatus.length || 0} colleges · Sorted by rate (ascending)`}
+                  footerActionLabel="View All Faculty"
+                  onFooterAction={() => setClearanceProgressOpen(true)}
+                />
+              );
+            })()}
           </div>                  
       </main>
 
