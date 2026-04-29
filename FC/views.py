@@ -5149,6 +5149,26 @@ def ovphe_system_analytics_api(request):
 
     # Get office bottleneck data
     office_bottlenecks = []
+    department_buckets = {}
+    office_buckets = {}
+    selected_college_name = ""
+
+    for item in faculty_items:
+        if not selected_college_name and item.get("college__name"):
+            selected_college_name = item.get("college__name") or ""
+
+        department_id = item.get("department_id")
+        department_name = item.get("department__name") or "Unassigned Department"
+        if department_id not in department_buckets:
+            department_buckets[department_id] = {"label": department_name, "faculty_ids": set()}
+        department_buckets[department_id]["faculty_ids"].add(item["id"])
+
+        office_id = item.get("office_id")
+        office_name = item.get("office__name") or "Unassigned Office"
+        if office_id not in office_buckets:
+            office_buckets[office_id] = {"label": office_name, "faculty_ids": set()}
+        office_buckets[office_id]["faculty_ids"].add(item["id"])
+
     for office_id, bucket in office_buckets.items():
         office_name = bucket["label"]
         office_faculty_ids = bucket["faculty_ids"]
@@ -5158,7 +5178,7 @@ def ovphe_system_analytics_api(request):
         office_bottlenecks.append({
             "office": office_name,
             "cleared": cleared_in_office,
-            "pending": pending_in_office
+            "pending": pending_in_office,
         })
 
     office_bottlenecks.sort(key=lambda x: x["pending"], reverse=True)
@@ -5207,46 +5227,25 @@ def ovphe_system_analytics_api(request):
 
     # Calculate clearance deadline info
     clearance_deadline = None
-    if timeline and timeline.end_date:
+    if timeline and timeline.clearance_end_date:
         current_date = timezone.now().date()
-        end_date = timeline.end_date.date()
+        end_date = timeline.clearance_end_date.date()
         days_remaining = (end_date - current_date).days
 
-        if days_remaining <= 14 and days_remaining >= 0:
+        if 0 <= days_remaining <= 14:
             clearance_deadline = {
                 "showBanner": True,
                 "daysRemaining": days_remaining,
                 "deadlineDate": end_date.strftime("%B %d, %Y"),
-                "message": "Clearance deadline is approaching"
+                "message": "Clearance deadline is approaching",
             }
         else:
             clearance_deadline = {
                 "showBanner": False,
                 "daysRemaining": days_remaining,
                 "deadlineDate": end_date.strftime("%B %d, %Y"),
-                "message": "Clearance deadline is approaching"
+                "message": "Clearance deadline is approaching",
             }
-
-    # Create department and office buckets first
-    department_buckets = {}
-    office_buckets = {}
-    selected_college_name = ""
-
-    for item in faculty_items:
-        if not selected_college_name and item.get("college__name"):
-            selected_college_name = item.get("college__name") or ""
-
-        department_id = item.get("department_id")
-        department_name = item.get("department__name") or "Unassigned Department"
-        if department_id not in department_buckets:
-            department_buckets[department_id] = {"label": department_name, "faculty_ids": set()}
-        department_buckets[department_id]["faculty_ids"].add(item["id"])
-
-        office_id = item.get("office_id")
-        office_name = item.get("office__name") or "Unassigned Office"
-        if office_id not in office_buckets:
-            office_buckets[office_id] = {"label": office_name, "faculty_ids": set()}
-        office_buckets[office_id]["faculty_ids"].add(item["id"])
 
     # Calculate overall completion percentage
     overall_completion_pct = (completed_count / total_faculty * 100) if total_faculty > 0 else 0
