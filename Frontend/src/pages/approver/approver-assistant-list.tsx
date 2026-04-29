@@ -34,11 +34,22 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../../stories/components/button";
 
+import {
+  ErrorModal,
+  SuccessModal,
+  SuccessErrorModalMessages,
+} from "../../stories/components/success-and-error-modals";
+
 export default function ApproverAssistantList() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<StudentAssistantItem[]>([]);
   const [mode, setMode] = useState<"assistants" | "admins">("assistants");
+
+  const [successOpen, setSuccessOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<React.ReactNode>("");
+  const [errorOpen, setErrorOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<React.ReactNode>("");
   const [orgColleges, setOrgColleges] = useState<string[]>([]);
   const [orgDepartments, setOrgDepartments] = useState<string[]>([]);
   const [orgOffices, setOrgOffices] = useState<string[]>([]);
@@ -66,6 +77,16 @@ export default function ApproverAssistantList() {
 
     return `Request failed (HTTP ${r.status})`;
   }
+
+  const openError = useCallback((message: React.ReactNode) => {
+    setErrorMessage(message);
+    setErrorOpen(true);
+  }, []);
+
+  const openSuccess = useCallback((message: React.ReactNode) => {
+    setSuccessMessage(message);
+    setSuccessOpen(true);
+  }, []);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -386,6 +407,18 @@ export default function ApproverAssistantList() {
 
  return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
+
+      <SuccessModal
+        open={successOpen}
+        onOpenChange={setSuccessOpen}
+        message={successMessage}
+      />
+
+      <ErrorModal
+        open={errorOpen}
+        onOpenChange={setErrorOpen}
+        message={errorMessage}
+      />
       
       {/* HEADER */}
       <div className="header mb-3">
@@ -489,7 +522,7 @@ export default function ApproverAssistantList() {
             (async () => {
               // Assistants must use student email domain
               if (!payload.email.endsWith("@my.xu.edu.ph")) {
-                window.alert("Email must be a student XU email (@my.xu.edu.ph)");
+                openError(SuccessErrorModalMessages.EMAIL_MUST_BE_XU_STUDENT);
                 return;
               }
 
@@ -513,7 +546,8 @@ export default function ApproverAssistantList() {
               });
 
               if (!r.ok) {
-                window.alert(await readErrorDetail(r));
+                const detail = await readErrorDetail(r);
+                openError(detail || SuccessErrorModalMessages.ERROR_DETAIL_FROM_API);
                 return;
               }
 
@@ -578,7 +612,7 @@ export default function ApproverAssistantList() {
 
               setAddOpen(false);
               await fetchUsers();
-              window.alert("Assistant created successfully!");
+              openSuccess(SuccessErrorModalMessages.ASSISTANT_CREATED);
             })();
           }}
         />
@@ -599,7 +633,7 @@ export default function ApproverAssistantList() {
             (async () => {
               // Admins must use @xu.edu.ph domain
               if (!payload.email.endsWith("@xu.edu.ph")) {
-                window.alert("Email must be an XU email (@xu.edu.ph)");
+                openError(SuccessErrorModalMessages.EMAIL_MUST_BE_XU_FACULTY);
                 return;
               }
               // Derive assistantType based on selected department/office
@@ -633,7 +667,8 @@ export default function ApproverAssistantList() {
               });
 
               if (!r.ok) {
-                window.alert(await readErrorDetail(r));
+                const detail = await readErrorDetail(r);
+                openError(detail || SuccessErrorModalMessages.ERROR_DETAIL_FROM_API);
                 return;
               }
 
@@ -699,7 +734,7 @@ export default function ApproverAssistantList() {
 
               setAddAdminOpen(false);
               await fetchUsers();
-              window.alert("Admin created successfully!");
+              openSuccess(SuccessErrorModalMessages.ADMIN_CREATED);
             })();
           }}
         />
@@ -754,7 +789,8 @@ export default function ApproverAssistantList() {
               });
 
               if (!r.ok) {
-                window.alert(await readErrorDetail(r));
+                const detail = await readErrorDetail(r);
+                openError(detail || SuccessErrorModalMessages.ERROR_DETAIL_FROM_API);
                 return;
               }
 
@@ -784,7 +820,7 @@ export default function ApproverAssistantList() {
               setEditOpen(false);
               setActiveAssistantId(null);
               await fetchUsers();
-              window.alert("Assistant updated successfully!");
+              openSuccess(SuccessErrorModalMessages.ASSISTANT_UPDATED);
             })();
           }}
         />
@@ -798,6 +834,8 @@ export default function ApproverAssistantList() {
           userName={activeAssistant?.name ?? ""}
           userEmail={activeAssistant?.email ?? ""}
           adminEmail={approverEmail}
+          mismatchMessage={SuccessErrorModalMessages.EMAIL_DOES_NOT_MATCH_APPROVER}
+          onError={(msg) => openError(msg || SuccessErrorModalMessages.EMAIL_DOES_NOT_MATCH_APPROVER)}
           onRemove={() => {
             if (!activeAssistant) return;
             (async () => {
@@ -807,7 +845,8 @@ export default function ApproverAssistantList() {
               });
 
               if (!r.ok) {
-                window.alert(await readErrorDetail(r));
+                const detail = await readErrorDetail(r);
+                openError(detail || SuccessErrorModalMessages.ERROR_DETAIL_FROM_API);
                 return;
               }
 
@@ -867,7 +906,7 @@ export default function ApproverAssistantList() {
               setRemoveOpen(false);
               setActiveAssistantId(null);
               await fetchUsers();
-              window.alert("Assistant removed successfully!");
+              openSuccess(SuccessErrorModalMessages.ASSISTANT_REMOVED);
             })();
           }}
         />

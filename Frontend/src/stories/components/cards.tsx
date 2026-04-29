@@ -39,147 +39,95 @@ import {
   SelectValue,
 } from "./select";
 
-export function GuidelinesToggle({
+import {
+  ErrorModal,
+  SuccessModal,
+  SuccessErrorModalMessages,
+} from "./success-and-error-modals";
 
+export function GuidelinesToggle({
   checked = false,
   onChange,
 }: {
-
   checked?: boolean;
-
   onChange: (next: boolean) => void;
-
 }) {
 
   const [isChecked, setIsChecked] = React.useState(checked);
-
   const [showAlert, setShowAlert] = React.useState(false);
-
   const [alertType, setAlertType] = React.useState<'activate' | 'deactivate'>('deactivate');
-
   const handleToggle = () => {
 
     if (isChecked) {
-
       // If currently active, show deactivation alert
-
       setAlertType('deactivate');
-
       setShowAlert(true);
-
     } else {
 
       // If currently inactive, show activation alert
-
       setAlertType('activate');
-
       setShowAlert(true);
-
     }
-
   };
 
   const confirmToggle = () => {
-
     setShowAlert(false);
-
     const newValue = alertType === 'activate' ? true : false;
-
     setIsChecked(newValue);
-
     onChange(newValue);
-
   };
 
   return (
-
     <>
       <button
-
         type="button"
-
         role="switch"
-
         aria-checked={isChecked}
-
         className={
-
           isChecked
-
             ? "relative h-6 w-12 rounded-full bg-success pointer-events-auto z-10 cursor-pointer"
-
             : "relative h-6 w-12 rounded-full bg-muted-foreground/30 pointer-events-auto z-10 cursor-pointer"
-
         }
-
         onClick={handleToggle}
-
         onMouseDown={() => {
-
           console.log("Mouse down on toggle");
-
         }}
-
       >
         <span
-
           className={
-
             isChecked
-
               ? "absolute left-[26px] top-1 h-4 w-4 rounded-full bg-white pointer-events-none"
-
               : "absolute left-1 top-1 h-4 w-4 rounded-full bg-white pointer-events-none"
-
           }
-
         />
       </button>
       {showAlert && (
-
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-sm mx-4">
             {alertType === 'activate' ? (
               <ActivateAlert
-
                 onDelete={confirmToggle}
-
                 onCancel={() => setShowAlert(false)}
-
               />
-
             ) : (
               <DeactivateAlert
-
                 onDelete={confirmToggle}
-
                 onCancel={() => setShowAlert(false)}
-
               />
-
             )}
           </div>
         </div>
-
       )}
     </>
-
   );
-
 }
 
 type DashboardBadgeVariant = "default" | "success" | "warning" | "muted" | "destructive";
-
 function getBadgeVariant(variant: DashboardBadgeVariant | undefined) {
-
   if (variant === "warning") return "warning" as const;
-
   if (variant === "muted") return "secondary" as const;
-
   if (variant === "destructive") return "destructive" as const;
-
   return "default" as const;
-
 }
 
 export type WelcomeCardProps = {
@@ -838,6 +786,24 @@ export function ClearanceRequestsCard({
 
   const [loading, setLoading] = React.useState(false);
 
+  const [successOpen, setSuccessOpen] = React.useState(false);
+  const [successMessage, setSuccessMessage] = React.useState<React.ReactNode>("");
+  const [successContinue, setSuccessContinue] = React.useState<(() => void) | undefined>(undefined);
+
+  const [errorOpen, setErrorOpen] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState<React.ReactNode>("");
+
+  const openSuccess = React.useCallback((message: React.ReactNode, onContinue?: () => void) => {
+    setSuccessMessage(message);
+    setSuccessContinue(() => onContinue);
+    setSuccessOpen(true);
+  }, []);
+
+  const openError = React.useCallback((message: React.ReactNode) => {
+    setErrorMessage(message);
+    setErrorOpen(true);
+  }, []);
+
   const allSelected = items.length > 0 && selectedIds.size === items.length;
 
   const handleBulkApprove = async () => {
@@ -897,61 +863,41 @@ export function ClearanceRequestsCard({
         } else if (errorData.message) {
 
           throw new Error(`Failed to approve: ${errorData.message}`);
-
         } else {
-
           throw new Error(`Failed to approve: ${response.statusText}`);
-
         }
 
       }
 
       const result = await response.json();
-
       console.log("Bulk approve successful:", result);
-
-      if (isAssistantApprover) {
-
-        window.location.reload();
-
+            if (isAssistantApprover) {
+        openSuccess(SuccessErrorModalMessages.REQUEST_APPROVED, () => window.location.reload());
         return;
-
       }
 
       // Log activity for each approved request
-
       try {
 
         // Get user profile for activity logging
-
         const profileResponse = await fetch("/admin/xu-faculty-clearance/api/approver/profile", {
-
           credentials: "include",
-
         });
 
         console.log("[DEBUG] Profile response status:", profileResponse.status);
-
         const userProfile = profileResponse.ok ? await profileResponse.json() : null;
-
         console.log("[DEBUG] User profile:", userProfile);
 
         // Check if current user is an assistant approver by checking the current URL
-
         const isAssistantApprover = window.location.pathname.includes('/assistant-approver');
-
         console.log("[DEBUG] Is assistant approver:", isAssistantApprover);
 
         // Create activity log for each request
-
         const activityPromises = Array.from(selectedIds).map(async (requestId) => {
-
           const requestItem = items.find(item => item.id === requestId);
-
           if (requestItem) {
 
             // Debug: Log the requestItem structure
-
             console.log("[DEBUG] requestItem:", requestItem);
 
             // Use faculty member's data from the clearance request
@@ -1057,13 +1003,13 @@ export function ClearanceRequestsCard({
 
       // Refresh the page to show updated status
 
-      window.location.reload();
+      openSuccess(SuccessErrorModalMessages.REQUEST_APPROVED, () => window.location.reload());
 
     } catch (err) {
 
       console.error("Error approving:", err);
 
-      alert(err instanceof Error ? err.message : "Failed to approve requests");
+      openError(SuccessErrorModalMessages.REQUEST_APPROVE_FAILED);
 
     } finally {
 
@@ -1242,62 +1188,45 @@ export function ClearanceRequestsCard({
 
       if (isAssistantApprover) {
 
-        window.location.reload();
-
+        openSuccess(SuccessErrorModalMessages.REQUEST_REJECTED, () => window.location.reload());
         return;
 
       }
 
       // Log activity for each rejected request
-
       try {
 
         // Get user profile for activity logging
-
         const profileResponse = await fetch("/admin/xu-faculty-clearance/api/approver/profile", {
-
           credentials: "include",
-
         });
 
         const userProfile = await profileResponse.json();
 
         // Check if current user is an assistant approver by checking the current URL
-
         const isAssistantApprover = window.location.pathname.includes('/assistant-approver');
-
         console.log("[DEBUG] Is assistant approver (reject):", isAssistantApprover);
 
         // Create activity log for each request
-
         const activityPromises = Array.from(selectedIds).map(async (requestId) => {
-
           const requestItem = items.find(item => item.id === requestId);
-
           if (requestItem) {
 
             // Debug: Log the requestItem structure
-
             console.log("[DEBUG] requestItem (reject):", requestItem);
 
             // Use faculty member's data from the clearance request
-
             const facultyDepartment = requestItem.department || null;
-
             const facultyCollege = requestItem.college || null;
-
             const facultyEmployeeId = requestItem.employeeId || "N/A";
 
             // Use session user's office (approver's office)
-
             const userOffice = userProfile?.roles_payload?.[0]?.office || null;
 
             // Determine event type based on whether user is assistant approver
-
             const eventType = "rejected_clearance";
 
             console.log("[DEBUG] Extracted data (reject):", {
-
               facultyDepartment,
               facultyCollege,
               facultyEmployeeId,
@@ -1362,101 +1291,80 @@ export function ClearanceRequestsCard({
 
       // Refresh the page to show updated status
 
-      window.location.reload();
+      openSuccess(SuccessErrorModalMessages.REQUEST_REJECTED, () => window.location.reload());
 
     } catch (err) {
 
       console.error("Error rejecting:", err);
-
-      alert(err instanceof Error ? err.message : "Failed to reject requests");
+      openError(SuccessErrorModalMessages.REQUEST_REJECT_FAILED);
 
     } finally {
 
       setLoading(false);
 
     }
-
   };
 
   // Helper function to get CSRF token
-
   function getCookie(name: string): string {
-
     let cookieValue = "";
-
     if (document.cookie && document.cookie !== "") {
-
       const cookies = document.cookie.split(";");
-
       for (let i = 0; i < cookies.length; i++) {
-
         const cookie = cookies[i].trim();
-
         if (cookie.substring(0, name.length + 1) === (name + "=")) {
-
           cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-
           break;
-
         }
-
       }
-
     }
-
     return cookieValue;
-
   }
 
   return (
-    <Card className={cn("overflow-hidden", className)}>
+    <>
+      <SuccessModal
+        open={successOpen}
+        onOpenChange={setSuccessOpen}
+        message={successMessage}
+        onContinue={successContinue}
+      />
+
+      <ErrorModal
+        open={errorOpen}
+        onOpenChange={setErrorOpen}
+        message={errorMessage}
+      />
+
+      <Card className={cn("overflow-hidden", className)}>
       <CardContent className="p-0">
         <div className="hidden lg:block">
           <div className="flex items-center gap-3 border-b px-4 py-4">
             <Checkbox
-
               variant="primary"
-
               checked={allSelected}
-
               onCheckedChange={(v) => {
-
                 if (v) {
-
                   setSelectedIds(new Set(items.map((i) => i.id)));
-
                 } else {
-
                   setSelectedIds(new Set());
-
                 }
-
               }}
-
             />
+
             <div className="text-sm font-bold text-primary">Select All</div>
             {selectedIds.size > 0 ? (
-
               <div className="ml-auto flex items-center gap-2">
                 <RejectAlertDialog
-
                   count={selectedIds.size}
-
                   trigger={
                     <Button
-
                       type="button"
-
                       variant="destructive"
-
                       className="h-8 rounded-md px-3 text-sm font-semibold"
-
                       disabled={loading}
-
                     >
-
                       Reject
-
                     </Button>
 
                   }
@@ -1465,32 +1373,21 @@ export function ClearanceRequestsCard({
 
                 />
                 <ApproveConfirmDialog
-
                   count={selectedIds.size}
-
                   trigger={
                     <Button
-
                       type="button"
-
                       className="h-8 rounded-md bg-[hsl(var(--success))] px-3 text-sm font-semibold text-white hover:bg-[hsl(var(--success))]/90"
-
                       disabled={loading}
-
                     >
                       <div className="flex items-center gap-2">
                         <Check className="h-4 w-4" /> Approve
-
                       </div>
                     </Button>
-
                   }
-
                   onApprove={handleBulkApprove}
-
                 />
               </div>
-
             ) : null}
           </div>
           <div>
@@ -1513,27 +1410,16 @@ export function ClearanceRequestsCard({
                   <tr key={item.id} className="border-b last:border-b-0">
                     <td className="w-12 px-4 py-4 align-top">
                       <Checkbox
-
                         variant="primary"
-
                         checked={selectedIds.has(item.id)}
-
                         onCheckedChange={() => {
-
                           setSelectedIds((prev) => {
-
                             const next = new Set(prev);
-
                             if (next.has(item.id)) next.delete(item.id);
-
                             else next.add(item.id);
-
                             return next;
-
                           });
-
                         }}
-
                       />
                     </td>
                     <td className="px-2 py-4 align-top text-sm font-semibold text-gray-900 break-words">
@@ -1541,7 +1427,6 @@ export function ClearanceRequestsCard({
                         <Link to={getItemHref(item)} className="hover:underline">
                           {item.name}
                         </Link>
-
                       ) : (
 
                         item.name
@@ -1555,11 +1440,8 @@ export function ClearanceRequestsCard({
                     <td className="px-2 py-4 align-top text-sm text-gray-900 break-words">{item.requirementTitle || ""}</td>
                     <td className="px-2 py-4 align-top">
                       <Badge
-
                         variant={getClearanceStatusBadgeVariant(item.status)}
-
                         className="px-3 py-1 text-xs font-bold"
-
                       >
                         {item.status.toUpperCase()}
                       </Badge>
@@ -1577,23 +1459,15 @@ export function ClearanceRequestsCard({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-3 border-b px-4 py-4">
                 <Checkbox
-
                   variant="primary"
-
                   checked={allSelected}
-
                   onCheckedChange={(v) => {
 
                     if (v) {
-
                       setSelectedIds(new Set(items.map((i) => i.id)));
-
                     } else {
-
                       setSelectedIds(new Set());
-
                     }
-
                   }}
 
                 />
@@ -1602,58 +1476,36 @@ export function ClearanceRequestsCard({
 
                   <div className="ml-auto flex items-center gap-2">
                     <RejectAlertDialog
-
                       count={selectedIds.size}
-
                       trigger={
                         <Button
-
                           type="button"
-
                           variant="destructive"
-
                           className="h-7 rounded-md px-3 text-sm font-semibold"
-
                           disabled={loading}
-
-                        >
-
+                      >
                           Reject
-
                         </Button>
-
                       }
-
                       onReject={handleBulkReject}
-
                     />
+
                     <ApproveConfirmDialog
-
                       count={selectedIds.size}
-
                       trigger={
                         <Button
-
                           type="button"
-
                           className="h-7 rounded-l bg-[hsl(var(--success))] px-2 text-sm font-semibold text-white hover:bg-[hsl(var(--success))]/90"
-
                           disabled={loading}
-
                         >
                           <div className="flex items-center gap-2">
                             <Check className="h-4 w-4" /> Approve
-
                           </div>
                         </Button>
-
                       }
-
                       onApprove={handleBulkApprove}
-
                     />
                   </div>
-
                 ) : null}
               </div>
               <Divider color="border-[hsl(var(--gray-border))]" />
@@ -1663,27 +1515,16 @@ export function ClearanceRequestsCard({
                     <div className="flex gap-3 px-4 py-6">
                       <div className="pt-1">
                         <Checkbox
-
                           variant="primary"
-
                           checked={selectedIds.has(item.id)}
-
                           onCheckedChange={() => {
-
                             setSelectedIds((prev) => {
-
                               const next = new Set(prev);
-
                               if (next.has(item.id)) next.delete(item.id);
-
                               else next.add(item.id);
-
                               return next;
-
                             });
-
                           }}
-
                         />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -1691,30 +1532,21 @@ export function ClearanceRequestsCard({
                           <div className="min-w-0">
                             {getItemHref ? (
                               <Link
-
                                 to={getItemHref(item)}
-
                                 className="truncate text-left text-2xl font-bold text-primary"
-
                               >
                                 {item.name}
                               </Link>
-
                             ) : (
-
                               <div className="truncate text-left text-2xl font-bold text-primary">
                                 {item.name}
                               </div>
-
                             )}
                           </div>
                           <div className="shrink-0">
                             <Badge
-
                               variant={getClearanceStatusBadgeVariant(item.status)}
-
                               className="px-3 py-1 text-xs font-bold"
-
                             >
                               {item.status.toUpperCase()}
                             </Badge>
@@ -1748,41 +1580,27 @@ export function ClearanceRequestsCard({
         </div>
       </CardContent>
     </Card>
+    </>
 
   );
 
 }
 
 export type RequestCardProps = {
-
   requestId?: string;
-
   employeeId?: string;
-
   name?: string;
-
   college?: string;
-
   department?: string;
-
   facultyType?: string;
-
   SchoolID?: string;
-
   FullName?: string;
-
   SchoolEmail?: string;
-
   status?: "pending" | "approved" | "rejected";
-
   className?: string;
-
-  onApprove?: () => void;
-
+  onApprove?: () => void
   onReject?: () => void;
-
   onViewDetails?: () => void;
-
 };
 
 export function RequestCard({
@@ -1803,19 +1621,14 @@ export function RequestCard({
 }: RequestCardProps) {
 
   const getStatusVariant = (status: string) => {
-
     if (status === "approved") return "success" as const;
-
     if (status === "rejected") return "destructive" as const;
-
     return "warning" as const;
 
   };
 
   const getStatusText = (status: string) => {
-
     return status.toUpperCase();
-
   };
 
   return (
@@ -1854,25 +1667,16 @@ export function RequestCard({
 }
 
 export type RequirementApprovalCardProps = {
-
   requirementName?: string;
-
   submissionNotes?: string;
-
   className?: string;
-
   onApprove?: () => void;
-
   onReject?: () => void;
-
 };
 
 export function RequirementApprovalCard({
-
   requirementName = "Library Clearance",
-
   submissionNotes = "Submit library clearance form with signature",
-
   onApprove,
   onReject,
 }: RequirementApprovalCardProps) {
@@ -1887,11 +1691,8 @@ export function RequirementApprovalCard({
           <div>
             <div className="text-md font-bold text-gray-900">Submission Notes</div>
             <div
-
               className="text-sm text-gray-900 mt-3 p-3 border border-foreground rounded-md pb-"
-
               dangerouslySetInnerHTML={{ __html: applyRichTextStyles(submissionNotes) }}
-
             />
           </div>
           <div>
@@ -1915,11 +1716,8 @@ export function RequirementApprovalCard({
           <div className="mt-3">
             <div className="mt-2">
               <InputGroupWithAddon
-
                 placeholder="Enter remarks or comments..."
-
                 className="text-md"
-
               />
             </div>
           </div>
@@ -1940,13 +1738,9 @@ export function RequirementApprovalCard({
               </div>
             </Button>
             <Button
-
               type="button"
-
               variant="default"
-
               className="h-8 rounded-md px-4 text-sm font-bold flex-1"
-
             >
               <div className="flex items-center justify-center gap-2">
 
@@ -4388,116 +4182,108 @@ export function ExpandableClearanceStepCard({
 }: ExpandableClearanceStepCardProps) {
 
   // Initialize state with existing submitted requirements
+  const [successOpen, setSuccessOpen] = React.useState(false);
+  const [successMessage, setSuccessMessage] = React.useState<React.ReactNode>("");
+  const [successContinue, setSuccessContinue] = React.useState<(() => void) | undefined>(undefined);
+
+  const [errorOpen, setErrorOpen] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState<React.ReactNode>("");
+
+  const openSuccess = React.useCallback((message: React.ReactNode, onContinue?: () => void) => {
+    setSuccessMessage(message);
+    setSuccessContinue(() => onContinue);
+    setSuccessOpen(true);
+  }, []);
+
+  const openError = React.useCallback((message: React.ReactNode) => {
+    setErrorMessage(message);
+    setErrorOpen(true);
+  }, []);
 
   React.useEffect(() => {
-
     const initialComments: Record<string, string> = {};
-
     const initialCheckboxes: Record<string, boolean> = {};
-
     requirements.forEach((req) => {
-
       if (req.submitted && req.requestId && !req.rejected) {
 
-        // This requirement was already submitted and not rejected
-
+        // This requirement was already submitted and not rejecte
         initialCheckboxes[req.title] = true;
-
         // Use the actual submission notes from the API
-
         initialComments[req.title] = req.submissionNotes || "Submitted via clearance system";
 
       } else if (req.completed) {
-
         // This requirement was approved
 
         initialCheckboxes[req.title] = true;
-
         initialComments[req.title] = req.submissionNotes || "Approved";
 
       } else if (req.rejected) {
 
         // This requirement was rejected - allow resubmission
-
         initialCheckboxes[req.title] = false;
-
         initialComments[req.title] = ""; // Clear previous submission notes
-
       }
-
     });
 
     setSavedComments(initialComments);
-
     setCheckboxStates(initialCheckboxes);
 
   }, [requirements]);
 
   const [savedComments, setSavedComments] = React.useState<Record<string, string>>({});
-
   const [checkboxStates, setCheckboxStates] = React.useState<Record<string, boolean>>({});
-
   const [showCommentDialog, setShowCommentDialog] = React.useState<string | null>(null);
-
   const [showConfirmDialog, setShowConfirmDialog] = React.useState<string | null>(null);
-
   const [pendingComment, setPendingComment] = React.useState<string>("");
-
   const isLocked = collapsedType === "locked";
-
   const effectiveExpanded = expanded && !isLocked;
-
   const showBadge = collapsedType === "status" && !!statusLabel;
-
   const showArrow = collapsedType !== "locked";
 
   return (
-    <Card className={cn("overflow-hidden border-muted-foreground/20 shadow-sm", className)}>
+    <>
+      <SuccessModal
+        open={successOpen}
+        onOpenChange={setSuccessOpen}
+        message={successMessage}
+        onContinue={successContinue}
+      />
+
+      <ErrorModal
+        open={errorOpen}
+        onOpenChange={setErrorOpen}
+        message={errorMessage}
+      />
+
+      <Card className={cn("overflow-hidden border-muted-foreground/20 shadow-sm", className)}>
+      
       <button
-
         type="button"
-
         className={cn(
-
           "flex w-full items-center justify-between px-6 py-4 text-left",
-
           effectiveExpanded ? "bg-primary" : "bg-transparent",
-
           isLocked ? "cursor-not-allowed" : ""
-
         )}
 
         onClick={isLocked ? undefined : onToggle}
-
         disabled={isLocked}
-
       >
         <div className="flex items-center gap-3">
           <div
-
             className={cn(
-
               "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold",
-
               effectiveExpanded
-
                 ? "bg-primary-foreground text-primary"
-
                 : "bg-primary text-primary-foreground"
-
             )}
-
           >
             {index}
           </div>
           <div
 
             className={cn(
-
               "text-sm font-bold",
-
               effectiveExpanded ? "text-primary-foreground" : "text-primary"
-
             )}
 
           >
@@ -4510,35 +4296,20 @@ export function ExpandableClearanceStepCard({
 
           ) : null}
           {showArrow ? (
-
             <img
-
               src="/PrimaryArrowIcon.png"
-
               alt={effectiveExpanded ? "Collapse" : "Expand"}
-
               className={cn(
-
                 "h-7 w-7 object-contain transition-transform",
-
                 effectiveExpanded ? "rotate-180 brightness-0 invert" : "rotate-0"
-
               )}
-
             />
-
           ) : (
-
             <img
-
               src="/PrimaryLockIcon.png"
-
               alt="Locked"
-
               className="h-5 w-5 object-contain"
-
             />
-
           )}
         </div>
       </button>
@@ -4548,14 +4319,10 @@ export function ExpandableClearanceStepCard({
             <div>
               <div className="text-sm font-bold text-gray-900">Status</div>
               {submittedTo ? (
-
                 <div className="mt-2 text-sm text-gray-900">Submitted to: {submittedTo}</div>
-
               ) : null}
               {submittedOn ? (
-
                 <div className="mt-1 text-sm text-gray-900">Submitted on: {submittedOn}</div>
-
               ) : null}
             </div>
             <div>
@@ -4564,61 +4331,38 @@ export function ExpandableClearanceStepCard({
                 {requirements.map((req) => (
 
                   (() => {
-
                     const savedComment = savedComments[req.title]?.trim() ?? "";
-
                     const hasSavedComment = savedComment.length > 0;
-
                     return (
-
                   <div
 
                     key={req.title}
-
                     className={cn(
-
                       "flex gap-4 rounded-md px-4 py-4",
-
                       req.completed ? "bg-green-50 border border-green-200" : "bg-foregroundLight"
-
                     )}
 
                   >
                     <div className="mt-1">
                       <Checkbox
-
                         variant="success"
-
                         checked={checkboxStates[req.title] || req.completed || false}
-
                         onCheckedChange={(checked) => {
-
                           const isSubmitted = req.submitted || req.completed;
-
                           // Prevent unchecking if already submitted or approved
-
                           if (!checked && isSubmitted) {
-
                             return;
-
                           }
 
                           if (checked && !savedComments[req.title]) {
-
                             // Show comment dialog for new submissions
-
                             setShowCommentDialog(req.title);
-
                           } else if (!checked) {
 
-                            // Allow unchecking only if not submitted
-
+                           // Allow unchecking only if not submitted
                             setCheckboxStates(prev => ({ ...prev, [req.title]: false }));
-
                           }
-
                         }}
-
                       />
                     </div>
                     <div className="flex-1">
@@ -4626,46 +4370,33 @@ export function ExpandableClearanceStepCard({
                         <div className="text-sm font-bold text-gray-900">{req.title}</div>
                         {req.required_physical && (
                           <Badge variant="secondary" className="text-xs">
-
                             Physical Submission
-
                           </Badge>
 
                         )}
                         {req.completed && (
                           <Badge variant="success" className="text-xs">
-
                             APPROVED
-
                           </Badge>
-
                         )}
                       </div>
                       <div
 
                       className="mt-1 text-sm text-gray-900 whitespace-pre-line"
-
                       dangerouslySetInnerHTML={{ __html: applyRichTextStyles(req.description) }}
 
                     />
                       {hasSavedComment && !req.rejected ? (
-
                         <div
-
                           className="bg-white p-4 border border-black rounded-md mt-3"
-
                           dangerouslySetInnerHTML={{ __html: savedComment }}
-
                         />
 
                       ) : null}
                     </div>
                   </div>
-
                     );
-
                   })()
-
                 ))}
               </div>
             </div>
@@ -4676,27 +4407,17 @@ export function ExpandableClearanceStepCard({
       {/* Comment Dialog for checkbox submission */}
       {showCommentDialog && (
         <CommentDialog
-
           open={true}
-
           onOpenChange={(open) => !open && setShowCommentDialog(null)}
-
           title={showCommentDialog}
-
           placeholder="Enter your submission message for this requirement..."
-
           initialValue=""
 
           onSubmit={(comment) => {
-
             setPendingComment(comment.trim());
-
             setShowCommentDialog(null);
-
             setShowConfirmDialog(showCommentDialog);
-
           }}
-
         />
 
       )}
@@ -4709,44 +4430,30 @@ export function ExpandableClearanceStepCard({
                 <img src="/PrimaryAlertIcon.png" width="50" height="50" />
               </div>
               <div className="text-xl text-center text-black font-bold">
-
                 You are about to submit '{showConfirmDialog}'.
-
               </div>
             </div>
               <div className="text-lg text-center text-black font-bold">
-
                 Do you wish to continue?
-
               </div>
               <div className="flex flex-row gap-3 justify-end">
+
               <Button variant="back" className="w-full font-bold" onClick={() => setShowConfirmDialog(null)}>
-
                 Cancel
-
               </Button>
               <Button variant="default"
 
                 className="w-full font-bold"
-
                 onClick={async () => {
-
                   // Make API call to submit ClearanceRequest first
-
                   try {
 
                     const response = await fetch('/admin/xu-faculty-clearance/api/faculty/submit-requirement', {
-
                       method: 'POST',
-
                       credentials: 'include',
-
                       headers: {
-
                         'Content-Type': 'application/json',
-
                         'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.getAttribute('value') || ''
-
                       },
 
                       body: JSON.stringify({
@@ -4760,40 +4467,26 @@ export function ExpandableClearanceStepCard({
                     });
 
                     if (!response.ok) {
-
                       const errorData = await response.json();
-
                       console.error('Failed to submit requirement:', errorData.detail || 'Unknown error');
-
-                      alert(`Failed to submit: ${errorData.detail || 'Unknown error'}`);
+                      openError(SuccessErrorModalMessages.REQUIREMENT_SUBMIT_FAILED);
 
                       // Don't update state if submission failed
-
                       setShowConfirmDialog(null);
-
                       setPendingComment("");
-
                       return;
-
                     }
 
                     const result = await response.json();
-
                     console.log('Requirement submitted successfully:', result);
 
                     try {
-
                       console.log('[DEBUG] Creating submission notification...');
-
                       const notifRes = await fetch('/admin/xu-faculty-clearance/api/faculty/notifications', {
-
                         method: 'POST',
-
                         credentials: 'include',
-
                         keepalive: true,
                         headers: {
-
                           'Content-Type': 'application/json',
 
                           'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.getAttribute('value') || ''
@@ -4801,24 +4494,16 @@ export function ExpandableClearanceStepCard({
                         },
 
                         body: JSON.stringify({
-
                           title: 'Submission Submitted',
-
                           status: 'submitted',
-
                           body: `Your submission has been SUBMITTED.\n\nSubmission of ${showConfirmDialog}\nRemarks:\n${pendingComment}`,
-
                           details: [
-
                             `Requirement = "${showConfirmDialog}"`,
-
                             `Remark = "${pendingComment}"`,
-
                           ],
 
                           is_read: false,
                           user_role: 'Faculty',
-
                           created_by_id: null,
                           approver_id: result?.approverId ?? null,
                         })
@@ -4826,71 +4511,45 @@ export function ExpandableClearanceStepCard({
                       });
 
                       if (!notifRes.ok) {
-
                         let errDetail = '';
-
                         try {
-
                           errDetail = await notifRes.text();
-
                         } catch {
-
                           errDetail = '';
-
                         }
 
                         console.error('Failed to create submission notification:', notifRes.status, errDetail);
 
                       } else {
-
                         console.log('[DEBUG] Submission notification created.');
-
                       }
 
                     } catch (e) {
-
                       console.error('Failed to create submission notification:', e);
-
                     }
 
                     // Only update state after successful submission
-
                     setSavedComments(prev => ({ ...prev, [showConfirmDialog]: pendingComment }));
-
                     setCheckboxStates(prev => ({ ...prev, [showConfirmDialog]: true }));
-
                     setShowConfirmDialog(null);
-
                     setPendingComment("");
 
-                    // Show success message with request ID
-
-                    alert(`Requirement submitted successfully!\nRequest ID: ${result.requestId}`);
-
-                    // Optionally refresh the page to get updated state
-
-                    window.location.reload();
+                    openSuccess(
+                      SuccessErrorModalMessages.REQUIREMENT_SUBMITTED_SUCCESSFULLY,
+                        () => window.location.reload()
+                    );
 
                   } catch (error) {
-
                     console.error('Error submitting requirement:', error);
-
-                    alert('Error submitting requirement. Please try again.');
-
+                    openError(SuccessErrorModalMessages.REQUIREMENT_SUBMIT_FAILED);
                     // Don't update state if submission failed
 
                     setShowConfirmDialog(null);
-
                     setPendingComment("");
-
                   }
-
                 }}
-
               >
-
                 Submit
-
               </Button>
               </div>
           </AlertDialogContent>
@@ -4898,9 +4557,9 @@ export function ExpandableClearanceStepCard({
 
       )}
     </Card>
-
-  );
-
+  </>
+ 
+);
 }
 
 export function ClearanceStepCard({
@@ -4918,32 +4577,20 @@ export function ClearanceStepCard({
   const effectiveRightIcon =
 
     rightIcon ?? (
-
       <img
-
         src="/PrimaryArrowIcon.png"
-
         alt="Open"
-
         className="h-7 w-7 object-contain"
-
       />
-
     );
 
   return (
     <Card
-
       className={cn(
-
         "border-muted-foreground/20 shadow-sm",
-
         onClick ? "cursor-pointer" : "",
-
         className
-
       )}
-
       onClick={onClick}
 
     >
@@ -4962,7 +4609,7 @@ export function ClearanceStepCard({
           {effectiveRightIcon}
         </div>
       </CardContent>
-    </Card>
+      </Card>
 
   );
 
@@ -4971,63 +4618,38 @@ export function ClearanceStepCard({
 export type SystemGuidlinesItem = {
 
   title: string;
-
   description: string;
-
   email: string;
-
   created_by: string;
-
   timestamp: string;
-
   enabled?: boolean;
-
 };
 
 export type SystemGuidlinesCardProps = {
 
   items: SystemGuidlinesItem[];
-
   className?: string;
-
   onClose?: () => void;
-
   headerActionHref?: string;
-
   headerActionImgSrc?: string;
-
   headerActionImgAlt?: string;
-
   headerActionOnClick?: () => void;
-
   onViewItem?: (item: SystemGuidlinesItem) => void;
-
   onAddRequirement?: () => void;
-
   addDisabled?: boolean;
-
   cardName?: string;
-
 };
 
 export interface SectionListCardProps {
 
   title: string;
-
   className?: string;
-
   onClose?: () => void;
-
   headerActionHref?: string;
-
   headerActionImgSrc?: string;
-
   headerActionImgAlt?: string;
-
   headerActionOnClick?: () => void;
-
   headerActions?: React.ReactNode;
-
   children: React.ReactNode;
 
 }
@@ -5049,50 +4671,33 @@ export function SectionListCard(props: SectionListCardProps) {
   } = props;
 
   const headerAction = headerActionHref && headerActionImgSrc ? (
+
     <Button
-
       asChild
-
       variant="icon"
-
       size="icon"
-
       className="absolute right-3 top-[40%] -translate-y-1/2 text-primary-foreground"
-
     >
       <Link to={headerActionHref}>
         <img
-
           src={headerActionImgSrc}
-
           alt={headerActionImgAlt}
-
           className="h-6 w-6 object-contain"
-
         />
       </Link>
     </Button>
 
   ) : headerActionOnClick && headerActionImgSrc ? (
     <Button
-
       type="button"
-
       variant="icon"
-
       size="icon"
-
       className="absolute right-3 top-[40%] -translate-y-1/2 text-primary-foreground"
-
       onClick={headerActionOnClick}
-
     >
       <img
-
         src={headerActionImgSrc}
-
         alt={headerActionImgAlt}
-
         className="h-6 w-6 object-contain"
 
       />
@@ -5100,17 +4705,11 @@ export function SectionListCard(props: SectionListCardProps) {
 
   ) : onClose ? (
     <Button
-
       type="button"
-
       variant="icon"
-
       size="icon"
-
       className="absolute right-3 top-1/2 -translate-y-1/2 text-primary-foreground"
-
       onClick={onClose}
-
     >
       <X className="h-5 w-5" />
     </Button>
@@ -5124,62 +4723,36 @@ export function SectionListCard(props: SectionListCardProps) {
           {title}
         </CardTitle>
         {headerActions ? (
-
           <div className="absolute right-3 top-[40%] -translate-y-1/2">{headerActions}</div>
-
         ) : (
-
           headerAction
-
         )}
       </CardHeader>
       <CardContent className="p-0">{children}</CardContent>
     </Card>
-
   );
-
 }
 
 export interface FacultyDataDumpCardProps {
-
   title?: string;
-
   className?: string;
-
   onFileSelected?: (file: File) => void;
-
   selectedFile?: File | null;
-
   uploadStatus?: "idle" | "uploading" | "success" | "error";
-
   uploadProgress?: number;
-
   uploadStatusText?: string;
-
   onCancelUpload?: () => void;
-
   onRemoveFile?: () => void;
-
   onActivate?: () => void;
-
   activateDisabled?: boolean;
-
   onDownloadTemplate?: () => void;
-
   maxSizeLabel?: string;
-
   accept?: string;
-
   semesters?: { id: string; label: string }[];
-
   selectedSemesterId?: string;
-
   onSemesterChange?: (id: string) => void;
-
   isFileReady?: boolean;
-
   onClearFile?: () => void;
-
 }
 
 export function FacultyDataDumpCard({
@@ -5208,25 +4781,17 @@ export function FacultyDataDumpCard({
   isFileReady = false,
   onClearFile,
 }: FacultyDataDumpCardProps) {
-
   const inputRef = React.useRef<HTMLInputElement | null>(null);
-
   const [internalSemesterId, setInternalSemesterId] = React.useState("");
-
   const [internalFile, setInternalFile] = React.useState<File | null>(null);
-
   const currentSemesterId = selectedSemesterId ?? internalSemesterId;
-
   const currentFile = selectedFile ?? internalFile;
 
   function handleFiles(files: FileList | null) {
 
     const file = files?.[0];
-
     if (!file) return;
-
     setInternalFile(file);
-
     onFileSelected?.(file);
 
   }
@@ -5234,13 +4799,9 @@ export function FacultyDataDumpCard({
   const prettyBytes = (bytes: number) => {
 
     if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
-
     const units = ["B", "KB", "MB", "GB"];
-
     const idx = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-
     const val = bytes / Math.pow(1024, idx);
-
     return `${val.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`;
 
   };
@@ -5248,13 +4809,9 @@ export function FacultyDataDumpCard({
   const statusLabel = (() => {
 
     if (uploadStatusText?.trim()) return uploadStatusText.trim();
-
     if (uploadStatus === "uploading") return "Uploading...";
-
     if (uploadStatus === "success") return "Upload complete.";
-
     if (uploadStatus === "error") return "Upload failed.";
-
     return "";
 
   })();
@@ -5267,13 +4824,9 @@ export function FacultyDataDumpCard({
           <Select
 
             value={currentSemesterId}
-
             onValueChange={(val) => {
-
               setInternalSemesterId(val);
-
               onSemesterChange?.(val);
-
             }}
 
           >
@@ -6574,37 +6127,21 @@ export function DepartmentCompletionRateCard({
 }
 
 export type AgreementCardProps = {
-
   requestId?: string;
-
   employeeId?: string;
-
   name?: string;
-
   college?: string;
-
   department?: string;
-
   facultyType?: string;
-
   SchoolID?:string;
-
   FullName?:string;
-
   SchoolEmail?:string;
-
   status?: "pending" | "approved" | "rejected";
-
   className?: string;
-
   disabled?: boolean;
-
   onApprove?: () => void;
-
   onReject?: () => void;
-
   onViewDetails?: () => void;
-
   onConfirm?: () => void;
 
 };
@@ -6631,13 +6168,9 @@ export function AgreementCard({
         <div>
         <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
           <Checkbox
-
             variant="gray"
-
             checked={agreeChecked}
-
             disabled={disabled}
-
             onCheckedChange={(v) => setAgreeChecked(v === true)}
 
           />
@@ -6649,35 +6182,27 @@ export function AgreementCard({
         </div>
         <div className="pt-4">
         <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
+
           <Checkbox
-
             variant="gray"
-
             checked={understandChecked}
-
             disabled={disabled}
-
             onCheckedChange={(v) => setUnderstandChecked(v === true)}
-
           />
+
           <label className="text-sm text-gray-700">
             <span className="font-bold">I understand</span> that once a Clearance Timeline is in an “Active” state, I cannot make any changes to my requirements.
-
           </label>
         </div>
         </div>
         <div className="pt-4">
         <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
+
           <Checkbox
-
             variant="gray"
-
             checked={understandConsequencesChecked}
-
             disabled={disabled}
-
             onCheckedChange={(v) => setUnderstandConsequencesChecked(v === true)}
-
           />
           <label className="text-sm text-gray-700">
             <span className="font-bold">I understand</span> that if I was not able to create the requirements for my departments on time, the system will reject the faculty member by default.
@@ -6686,22 +6211,15 @@ export function AgreementCard({
         </div>
         </div>
         <div className="pt-6">
+
           <Button
-
             type="button"
-
             variant="default"
-
             className="w-full justify-center  text-center font-bold"
-
             disabled={disabled || !allChecked}
-
             onClick={onConfirm}
-
           >
-
             I Agree and Understand
-
           </Button>
         </div>
       </div>
@@ -6712,37 +6230,21 @@ export function AgreementCard({
 }
 
 export type TrueAgreementCardProps = {
-
   requestId?: string;
-
   employeeId?: string;
-
   name?: string;
-
   college?: string;
-
   department?: string;
-
   facultyType?: string;
-
   SchoolID?:string;
-
   FullName?:string;
-
   SchoolEmail?:string;
-
   status?: "pending" | "approved" | "rejected";
-
   className?: string;
-
   onApprove?: () => void;
-
   onReject?: () => void;
-
   onViewDetails?: () => void;
-
   onConfirm?: () => void;
-
 };
 
 export function TrueAgreementCard({
@@ -6760,13 +6262,9 @@ export function TrueAgreementCard({
         <div>
         <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
           <Checkbox
-
             variant="gray"
-
             checked={true}
-
             disabled
-
           />
            <label className="text-sm text-gray-700">
               <span className="font-bold">I agree</span> that I have created all the necessary clearance requirements that I need for my Department/Office
@@ -6777,13 +6275,9 @@ export function TrueAgreementCard({
         <div className="pt-4">
         <div className="flex items-center gap-4 border-2 border-muted-foreground p-4 rounded bg-foregroundLight">
           <Checkbox
-
             variant="gray"
-
             checked={true}
-
             disabled
-
           />
           <label className="text-sm text-gray-700">
             <span className="font-bold">I understand</span> that once a Clearance Timeline is in an “Active” state, I cannot make any changes to my requirements.
@@ -6816,42 +6310,26 @@ export function TrueAgreementCard({
 }
 
 export type NoLinkClearanceRequestItem = {
-
   id: string;
-
   name: string;
-
   requestId: string;
-
   employeeId: string;
-
   college: string;
-
   department: string;
-
   facultyType: string;
-
   status: ClearanceRequestStatus;
-
 };
 
 export type NoClearanceRequestsCardProps = {
-
   items?: NoLinkClearanceRequestItem[];
-
   className?: string;
-
 };
 
 export function NoLinkClearanceRequestsCard({
-
   items = [],
-
   className,
 }: NoClearanceRequestsCardProps) {
-
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set());
-
   return (
     <Card className={cn("overflow-hidden", className)}>
       <CardContent className="p-0">
@@ -6916,6 +6394,6 @@ export function NoLinkClearanceRequestsCard({
       </CardContent>
     </Card>
 
+            
   );
-
 }

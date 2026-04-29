@@ -7,6 +7,12 @@ import { Button } from "../../stories/components/button";
 import { useNavigate } from "react-router-dom";
 import { Textarea } from "../../stories/components/textarea";
 
+import {
+  ErrorModal,
+  SuccessErrorModalMessages,
+  SuccessModal,
+} from "../../stories/components/success-and-error-modals";
+
 async function parseApiResponse<T>(res: Response): Promise<T> {
   const text = await res.text();
   let data: unknown = {};
@@ -65,6 +71,25 @@ export default function AssitantApproverIndividualApproval() {
   const [isSaving, setIsSaving] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
 
+  const [successOpen, setSuccessOpen] = React.useState(false);
+  const [successMessage, setSuccessMessage] = React.useState<React.ReactNode>("");
+
+  const [errorOpen, setErrorOpen] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState<React.ReactNode>("");
+
+  const openSuccess = React.useCallback((msg: React.ReactNode) => {
+    setSuccessMessage(msg);
+    setSuccessOpen(true);
+  }, []);
+
+  const openError = React.useCallback((msg: React.ReactNode) => {
+    setErrorMessage(msg);
+    setErrorOpen(true);
+  }, []);
+
+  const isProcessed = Boolean(item && (item.status === "approved" || item.status === "rejected"));
+  const remarksEmpty = !remarks.trim();
+
   React.useEffect(() => {
     if (!requestId) {
       setLoading(false);
@@ -90,6 +115,17 @@ export default function AssitantApproverIndividualApproval() {
 
   const handleAction = React.useCallback((action: "approve" | "reject") => {
     if (!item) return;
+
+    if (isProcessed) {
+      openError("This request has been processed and cannot be modified.");
+      return;
+    }
+
+    if (!remarks.trim()) {
+      openError("Remarks are required.");
+      return;
+    }
+
     setIsSaving(true);
     setError("");
     setMessage("");
@@ -106,14 +142,36 @@ export default function AssitantApproverIndividualApproval() {
           setItem(data.item);
           setRemarks(data.item.remarks ?? "");
         }
-        setMessage(action === "approve" ? "Request approved successfully." : "Request rejected successfully.");
+        openSuccess(
+          action === "approve"
+            ? SuccessErrorModalMessages.REQUEST_APPROVED
+            : SuccessErrorModalMessages.REQUEST_REJECTED,
+        );
       })
-      .catch((err: Error) => setError(err.message || "Failed to save action."))
+      .catch(() => {
+        openError(
+          action === "approve"
+            ? SuccessErrorModalMessages.REQUEST_APPROVE_FAILED
+            : SuccessErrorModalMessages.REQUEST_REJECT_FAILED,
+        );
+      })
       .finally(() => setIsSaving(false));
-  }, [item, remarks]);
+  }, [item, openError, openSuccess, remarks]);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
+
+      <SuccessModal
+        open={successOpen}
+        onOpenChange={setSuccessOpen}
+        message={successMessage}
+      />
+
+      <ErrorModal
+        open={errorOpen}
+        onOpenChange={setErrorOpen}
+        message={errorMessage}
+      />
       
       {/* HEADER */}
       <div className="header mb-3">
@@ -188,8 +246,14 @@ export default function AssitantApproverIndividualApproval() {
                     placeholder="Enter remarks for the approval or rejection"
                     value={remarks}
                     onChange={(e) => setRemarks(e.target.value)}
-                    disabled={isSaving}
+                    disabled={isSaving || isProcessed}
                   />
+
+                  {isProcessed ? (
+                    <div className="mt-2 text-sm text-black">
+                      Remarks cannot be modified for processed requests.
+                    </div>
+                  ) : null}
 
                   {error ? <div className="mt-3 text-sm font-medium text-red-600">{error}</div> : null}
                   {message ? <div className="mt-3 text-sm font-medium text-green-700">{message}</div> : null}
@@ -197,18 +261,9 @@ export default function AssitantApproverIndividualApproval() {
                   <div className="mt-6 flex items-center gap-3">
                     <Button
                       type="button"
-                      variant="back"
-                      className="h-10 rounded-md px-4 text-sm font-bold flex-1"
-                      disabled={isSaving}
-                      onClick={() => navigate("/assistant-approver-clearance")}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="button"
                       variant="destructive"
                       className="h-10 rounded-md px-4 text-sm font-bold flex-1"
-                      disabled={isSaving}
+                      disabled={isSaving || isProcessed || remarksEmpty}
                       onClick={() => handleAction("reject")}
                     >
                       Reject
@@ -217,7 +272,7 @@ export default function AssitantApproverIndividualApproval() {
                       type="button"
                       variant="default"
                       className="h-10 rounded-md px-4 text-sm font-bold flex-1"
-                      disabled={isSaving}
+                      disabled={isSaving || isProcessed || remarksEmpty}
                       onClick={() => handleAction("approve")}
                     >
                       Approve

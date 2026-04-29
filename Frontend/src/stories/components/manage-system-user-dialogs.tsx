@@ -467,6 +467,8 @@ export type RemoveSystemUserDialogProps = {
   userEmail: string;
   adminEmail: string;
   onRemove?: () => void;
+  onError?: (message: string) => void;
+  mismatchMessage?: string;
 };
 
 export function RemoveSystemUserDialog({
@@ -476,6 +478,8 @@ export function RemoveSystemUserDialog({
   userEmail,
   adminEmail,
   onRemove,
+  onError,
+  mismatchMessage,
 }: RemoveSystemUserDialogProps) {
   const [step, setStep] = React.useState<1 | 2>(1);
   const [confirmEmail, setConfirmEmail] = React.useState("");
@@ -556,7 +560,7 @@ export function RemoveSystemUserDialog({
                       onRemove?.();
                       onOpenChange?.(false);
                     } else {
-                      alert("Email does not match the logged-in admin's email. Please try again.");
+                      onError?.(mismatchMessage || "Email does not match the logged-in admin's email. Please try again.");
                     }
                   }}
                 >

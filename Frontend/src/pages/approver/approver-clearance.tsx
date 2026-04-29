@@ -17,6 +17,12 @@ import {
   AlertDialogTitle 
 } from "../../stories/components/alert-dialog";
 
+import {
+  ErrorModal,
+  SuccessModal,
+  SuccessErrorModalMessages,
+} from "../../stories/components/success-and-error-modals";
+
 type ConfirmSystemUserDialogProps = {
 
   open?: boolean;
@@ -33,6 +39,8 @@ type ConfirmSystemUserDialogProps = {
 
   onConfirm?: (requestId: string) => void;
 
+  onError?: (message: string) => void;
+
 };
 
 
@@ -45,6 +53,7 @@ function ConfirmSystemUserDialog({
   requestId,
   adminEmail,
   onConfirm,
+  onError,
 }: ConfirmSystemUserDialogProps) {
   const [step, setStep] = React.useState<1 | 2>(1);
   const [confirmEmail, setConfirmEmail] = React.useState("");
@@ -131,7 +140,7 @@ function ConfirmSystemUserDialog({
                       onConfirm?.(requestId);
                       onOpenChange?.(false);
                     } else {
-                      alert("Email does not match the logged-in approver's email. Please try again.");
+                      onError?.(SuccessErrorModalMessages.EMAIL_DOES_NOT_MATCH_APPROVER);
                     }
                   }}
                 >
@@ -164,6 +173,41 @@ export default function ApproverClearance() {
   const [approverEmail, setApproverEmail] = React.useState("");
   const [sortBy, setSortBy] = React.useState("name");
   const [statusFilter, setStatusFilter] = React.useState("all");
+
+  const [successOpen, setSuccessOpen] = React.useState(false);
+  const [successMessage, setSuccessMessage] = React.useState<React.ReactNode>("");
+
+  const [errorOpen, setErrorOpen] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState<React.ReactNode>("");
+
+  const openError = React.useCallback((message: React.ReactNode) => {
+    setErrorMessage(message);
+    setErrorOpen(true);
+  }, []);
+
+  const openSuccess = React.useCallback((message: React.ReactNode) => {
+    setSuccessMessage(message);
+    setSuccessOpen(true);
+  }, []);
+
+  async function readErrorDetail(r: Response) {
+    try {
+      const data = (await r.json()) as { detail?: string; message?: string };
+      if (data?.detail) return data.detail;
+      if (data?.message) return data.message;
+    } catch {
+      // ignore
+    }
+
+    try {
+      const t = (await r.text()) || "";
+      if (t.trim()) return t;
+    } catch {
+      // ignore
+    }
+
+    return `Request failed (HTTP ${r.status})`;
+  }
 
   React.useEffect(() => {
     fetch("/admin/xu-faculty-clearance/api/approver/clearance", {
@@ -259,7 +303,9 @@ export default function ApproverClearance() {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to ${confirmAction} request: ${response.statusText}`);
+        const detail = await readErrorDetail(response);
+        openError(detail || SuccessErrorModalMessages.ERROR_MESSAGE_FROM_API);
+        return;
       }
 
       // Refresh the requests list
@@ -272,10 +318,19 @@ export default function ApproverClearance() {
         setRequests(Array.isArray(data?.items) ? data.items : []);
       }
 
-      alert(`Request ${confirmAction}d successfully!`);
+      openSuccess(
+        confirmAction === "approve"
+          ? SuccessErrorModalMessages.REQUEST_APPROVED
+          : SuccessErrorModalMessages.REQUEST_REJECTED
+      );
     } catch (error) {
       console.error(`Error ${confirmAction}ing request:`, error);
-      alert(`Failed to ${confirmAction} request. Please try again.`);
+
+      openError(
+        confirmAction === "approve"
+          ? SuccessErrorModalMessages.REQUEST_APPROVE_FAILED
+          : SuccessErrorModalMessages.REQUEST_REJECT_FAILED
+      );
     }
   };
 
@@ -362,6 +417,19 @@ export default function ApproverClearance() {
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
+
+      <SuccessModal
+        open={successOpen}
+        onOpenChange={setSuccessOpen}
+        message={successMessage}
+      />
+
+      <ErrorModal
+        open={errorOpen}
+        onOpenChange={setErrorOpen}
+        message={errorMessage}
+      />
+
       {/* HEADER */}
       <div className="header mb-3">
         <DynamicApproverHeader />

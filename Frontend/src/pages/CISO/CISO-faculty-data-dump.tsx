@@ -16,6 +16,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../../stories/components/button";
 import * as React from "react";
 
+import {
+  ErrorModal,
+  SuccessErrorModalMessages,
+  SuccessModal,
+} from "../../stories/components/success-and-error-modals";
+
 export default function CISOFacultyDataDump() {
   const navigate = useNavigate();
   const [busy, setBusy] = React.useState(false);
@@ -25,6 +31,32 @@ export default function CISOFacultyDataDump() {
   const [uploadStatus, setUploadStatus] = React.useState<"idle" | "uploading" | "success" | "error">("idle");
   const [uploadProgress, setUploadProgress] = React.useState(0);
   const [isFileReady, setIsFileReady] = React.useState(false);
+
+  const [successOpen, setSuccessOpen] = React.useState(false);
+  const [successMessage, setSuccessMessage] = React.useState<React.ReactNode>("");
+
+  const [errorOpen, setErrorOpen] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState<React.ReactNode>("");
+
+  const openSuccess = React.useCallback((message: React.ReactNode) => {
+    setSuccessMessage(message);
+    setSuccessOpen(true);
+  }, []);
+
+  const openError = React.useCallback((message: React.ReactNode) => {
+    setErrorMessage(message);
+    setErrorOpen(true);
+  }, []);
+
+  const buildImportCompleteMessage = React.useCallback(
+    (created: number, updated: number, skipped: number) => {
+      return SuccessErrorModalMessages.IMPORT_COMPLETE_WITH_COUNTS
+        .replace("Created: X", `Created: ${created}`)
+        .replace("Updated: Y", `Updated: ${updated}`)
+        .replace("Skipped: Z", `Skipped: ${skipped}`);
+    },
+    [],
+  );
 
   const selectedTimelineLabel = React.useMemo(() => {
     const found = timelines.find((t) => t.id === selectedTimelineId);
@@ -75,11 +107,23 @@ export default function CISOFacultyDataDump() {
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
+
+      <SuccessModal
+        open={successOpen}
+        onOpenChange={setSuccessOpen}
+        message={successMessage}
+      />
+
+      <ErrorModal
+        open={errorOpen}
+        onOpenChange={setErrorOpen}
+        message={errorMessage}
+      />
       
       {/* HEADER */}
       <div className="header mb-3">
         <CISOHeader />
-      </div>a
+      </div>
 
       {/* DASHBOARD CONTENT */}
       <main className="dashboard p-4 lg:max-w-4xl lg:mx-auto lg:p-8">
@@ -149,7 +193,7 @@ export default function CISOFacultyDataDump() {
           onActivate={async () => {
             if (!uploadedFile || busy) return;
             if (!selectedTimelineId) {
-              alert("Please select a semester based on an existing clearance timeline before importing the faculty CSV.");
+              openError(SuccessErrorModalMessages.IMPORT_SELECT_SEMESTER);
               return;
             }
             setBusy(true);
@@ -167,8 +211,8 @@ export default function CISOFacultyDataDump() {
 
               const data = await res.json().catch(() => null);
               if (!res.ok) {
-                const msg = (data && (data.detail || JSON.stringify(data))) || "Import failed";
-                alert(msg);
+                const msg = (data && (data.detail || data.message)) || SuccessErrorModalMessages.IMPORT_ERROR_FROM_API;
+                openError(msg);
                 setUploadStatus("error");
                 try {
                   await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
@@ -219,7 +263,7 @@ export default function CISOFacultyDataDump() {
                 ? "\n\nErrors:\n" + errors.map((e: any) => `Row ${e.row}: ${e.message}`).join("\n")
                 : "";
 
-              alert(`Import complete. Created: ${created}, Updated: ${updated}, Skipped: ${skipped}${errorText}`);
+              openSuccess(`${buildImportCompleteMessage(created, updated, skipped)}${errorText}`);
             } finally {
               setBusy(false);
             }
@@ -227,7 +271,7 @@ export default function CISOFacultyDataDump() {
           onFileSelected={async (file) => {
             if (busy) return;
             if (!selectedTimelineId) {
-              alert("Please select a semester based on an existing clearance timeline before importing the faculty CSV.");
+              openError(SuccessErrorModalMessages.IMPORT_SELECT_SEMESTER);
               return;
             }
             // Just store the file locally, don't upload yet
@@ -242,7 +286,7 @@ export default function CISOFacultyDataDump() {
             try {
               const res = await fetch("/admin/xu-faculty-clearance/api/ciso/faculty-dump/template");
               if (!res.ok) {
-                alert("Failed to download template");
+                openError(SuccessErrorModalMessages.DOWNLOAD_TEMPLATE_FAILED);
                 return;
               }
               const blob = await res.blob();
@@ -254,6 +298,8 @@ export default function CISOFacultyDataDump() {
               a.click();
               a.remove();
               URL.revokeObjectURL(url);
+            } catch {
+              openError(SuccessErrorModalMessages.DOWNLOAD_CSV_FAILED);
             } finally {
               setBusy(false);
             }

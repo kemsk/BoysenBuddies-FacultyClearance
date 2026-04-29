@@ -36,10 +36,22 @@ import {
   type ManageSystemApproverPayload,
 } from "../../stories/components/manage-system-user-dialogs";
 
+import {
+  ErrorModal,
+  SuccessModal,
+  SuccessErrorModalMessages,
+} from "../../stories/components/success-and-error-modals";
+
  export default function CISOManageSystemUser() {
   const navigate = useNavigate();
   const [page, setPage] = React.useState(1);
   const pageSize = 20;
+
+  const [successOpen, setSuccessOpen] = React.useState(false);
+  const [successMessage, setSuccessMessage] = React.useState<React.ReactNode>("");
+
+  const [errorOpen, setErrorOpen] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState<React.ReactNode>("");
 
   const [users, setUsers] = React.useState<SystemUser[]>([]);
   const [filteredUsers, setFilteredUsers] = React.useState<SystemUser[]>([]);
@@ -56,6 +68,16 @@ import {
     const e = (email || "").trim().toLowerCase();
     return e.endsWith("@xu.edu.ph") || e.endsWith("@my.xu.edu.ph");
   }
+
+  const openError = React.useCallback((message: React.ReactNode) => {
+    setErrorMessage(message);
+    setErrorOpen(true);
+  }, []);
+
+  const openSuccess = React.useCallback((message: React.ReactNode) => {
+    setSuccessMessage(message);
+    setSuccessOpen(true);
+  }, []);
 
   async function readErrorDetail(r: Response) {
     try {
@@ -223,6 +245,18 @@ import {
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
+
+      <SuccessModal
+        open={successOpen}
+        onOpenChange={setSuccessOpen}
+        message={successMessage}
+      />
+
+      <ErrorModal
+        open={errorOpen}
+        onOpenChange={setErrorOpen}
+        message={errorMessage}
+      />
       
       {/* HEADER */}
       <div className="header mb-3">
@@ -345,7 +379,7 @@ import {
           onSubmit={(payload: ManageSystemApproverPayload) => {
             (async () => {
               if (!isXuEmail(payload.email)) {
-                window.alert("Email must be an XU email (@xu.edu.ph or @my.xu.edu.ph)");
+                openError(SuccessErrorModalMessages.EMAIL_MUST_BE_XU);
                 return;
               }
               const r = await fetch(apiBase, {
@@ -367,14 +401,15 @@ import {
               });
 
               if (!r.ok) {
-                window.alert(await readErrorDetail(r));
+                const detail = await readErrorDetail(r);
+                openError(detail || SuccessErrorModalMessages.ERROR_DETAIL_FROM_API);
                 return;
               }
 
               setAddApproverOpen(false);
               setPage(1);
               await fetchUsers();
-              window.alert("Approver created successfully!");
+              openSuccess(SuccessErrorModalMessages.APPROVER_CREATED);
             })();
           }}
         />
@@ -409,7 +444,7 @@ import {
             if (!activeUser) return;
             (async () => {
               if (!isXuEmail(payload.email)) {
-                window.alert("Email must be an XU email (@xu.edu.ph or @my.xu.edu.ph)");
+                openError(SuccessErrorModalMessages.EMAIL_MUST_BE_XU);
                 return;
               }
               const r = await fetch(`${apiBase}/${activeUser.id}`, {
@@ -431,14 +466,15 @@ import {
               });
 
               if (!r.ok) {
-                window.alert(await readErrorDetail(r));
+                const detail = await readErrorDetail(r);
+                openError(detail || SuccessErrorModalMessages.ERROR_DETAIL_FROM_API);
                 return;
               }
 
               setEditApproverOpen(false);
               setActiveUserId(null);
               await fetchUsers();
-              window.alert("Approver updated successfully!");
+              openSuccess(SuccessErrorModalMessages.APPROVER_UPDATED);
             })();
           }}
         />
@@ -451,7 +487,7 @@ import {
           onSubmit={(payload: ManageSystemAdminPayload) => {
             (async () => {
               if (!isXuEmail(payload.email)) {
-                window.alert("Email must be an XU email (@xu.edu.ph or @my.xu.edu.ph)");
+                openError(SuccessErrorModalMessages.EMAIL_MUST_BE_XU);
                 return;
               }
               const r = await fetch(apiBase, {
@@ -470,14 +506,15 @@ import {
               });
 
               if (!r.ok) {
-                window.alert(await readErrorDetail(r));
+                const detail = await readErrorDetail(r);
+                openError(detail || SuccessErrorModalMessages.ERROR_DETAIL_FROM_API);
                 return;
               }
 
               setAddAdminOpen(false);
               setPage(1);
               await fetchUsers();
-              window.alert("System Admin created successfully!");
+              openSuccess(SuccessErrorModalMessages.SYSTEM_ADMIN_CREATED);
             })();
           }}
         />
@@ -505,7 +542,7 @@ import {
             if (!activeUser) return;
             (async () => {
               if (!isXuEmail(payload.email)) {
-                window.alert("Email must be an XU email (@xu.edu.ph or @my.xu.edu.ph)");
+                openError(SuccessErrorModalMessages.EMAIL_MUST_BE_XU);
                 return;
               }
               const r = await fetch(`${apiBase}/${activeUser.id}`, {
@@ -524,14 +561,15 @@ import {
               });
 
               if (!r.ok) {
-                window.alert(await readErrorDetail(r));
+                const detail = await readErrorDetail(r);
+                openError(detail || SuccessErrorModalMessages.ERROR_DETAIL_FROM_API);
                 return;
               }
 
               setEditAdminOpen(false);
               setActiveUserId(null);
               await fetchUsers();
-              window.alert("System Admin updated successfully!");
+              openSuccess(SuccessErrorModalMessages.SYSTEM_ADMIN_UPDATED);
             })();
           }}
         />
@@ -545,6 +583,7 @@ import {
           userName={activeUser?.name ?? ""}
           userEmail={activeUser?.email ?? ""}
           adminEmail={adminEmail}
+          onError={(msg) => openError(msg || SuccessErrorModalMessages.ERROR_MATCH_EMAIL)}
           onRemove={() => {
             if (!activeUser) return;
             (async () => {
@@ -554,14 +593,15 @@ import {
               });
 
               if (!r.ok) {
-                window.alert(await readErrorDetail(r));
+                const detail = await readErrorDetail(r);
+                openError(detail || SuccessErrorModalMessages.ERROR_DETAIL_FROM_API);
                 return;
               }
 
               setRemoveOpen(false);
               setActiveUserId(null);
               await fetchUsers();
-              window.alert("User removed successfully!");
+              openSuccess(SuccessErrorModalMessages.USER_REMOVED);
             })();
           }}
         />

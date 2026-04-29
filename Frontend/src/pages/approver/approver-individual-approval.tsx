@@ -9,6 +9,7 @@ import { Lock} from 'lucide-react';
 import { Dialog } from "../../stories/components/dialog";
 import { ConfirmAlert, OverrideAlert } from "../../stories/components/alert";
 import { useState } from "react";
+import { ErrorModal, SuccessErrorModalMessages, SuccessModal } from "../../stories/components/success-and-error-modals";
 
 // Helper function to get CSRF token
 function getCookie(name: string): string {
@@ -62,9 +63,28 @@ export default function ApproverIndividualApproval() {
   const [saving, setSaving] = React.useState(false);
   const [userProfile, setUserProfile] = React.useState<any>(null);
   const [showOverrideAlert, setShowOverrideAlert] = useState(false);
-  const [showConfirmAlert, setShowConfirmAlert] = useState(false);  // ← ADD THIS
-  const [overrideReason, setOverrideReason] = useState('');        // ← ADD THIS
+  const [showConfirmAlert, setShowConfirmAlert] = useState(false);  
+  const [overrideReason, setOverrideReason] = useState('');        
   const [overrideStatus, setOverrideStatus] = useState<'approved' | 'rejected'>('approved');
+
+  const [successOpen, setSuccessOpen] = React.useState(false);
+  const [successMessage, setSuccessMessage] = React.useState<React.ReactNode>("");
+  const [successContinue, setSuccessContinue] = React.useState<(() => void) | undefined>(undefined);
+
+  const [errorOpen, setErrorOpen] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState<React.ReactNode>("");
+
+  const openSuccess = React.useCallback((message: React.ReactNode, onContinue?: () => void) => {
+    setSuccessMessage(message);
+    setSuccessContinue(() => onContinue);
+    setSuccessOpen(true);
+  }, []);
+
+  const openError = React.useCallback((message: React.ReactNode) => {
+    setErrorMessage(message);
+    setErrorOpen(true);
+  }, []);
+
   React.useEffect(() => {
     if (!requestId) {
       setError("No request ID provided");
@@ -131,7 +151,7 @@ export default function ApproverIndividualApproval() {
 
     // Validate remarks for rejected status
     if (status === "rejected" && !remarks.trim()) {
-      setError("Remarks are required when rejecting a clearance request");
+      openError("Remarks are required when rejecting a clearance request");
       return;
     }
 
@@ -224,9 +244,21 @@ export default function ApproverIndividualApproval() {
       // Activity log is now created by the backend with complete data
       
       // Navigate back to clearance list
-      navigate("/approver-clearance");
+      openSuccess(
+        status === "rejected"
+          ? SuccessErrorModalMessages.REQUEST_REJECTED
+          : SuccessErrorModalMessages.REQUEST_APPROVED,
+        () => navigate("/approver-clearance"),
+      );
     } catch (err) {
       console.error("Error saving:", err);
+
+      openError(
+        status === "rejected"
+          ? SuccessErrorModalMessages.REQUEST_REJECT_FAILED
+          : SuccessErrorModalMessages.REQUEST_APPROVE_FAILED,
+      );
+
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setSaving(false);
@@ -332,6 +364,18 @@ export default function ApproverIndividualApproval() {
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
+      <SuccessModal
+        open={successOpen}
+        onOpenChange={setSuccessOpen}
+        message={successMessage}
+        onContinue={successContinue}
+      />
+
+      <ErrorModal
+        open={errorOpen}
+        onOpenChange={setErrorOpen}
+        message={errorMessage}
+      />
       
       {/* HEADER */}
       <div className="header mb-3">
@@ -508,11 +552,6 @@ export default function ApproverIndividualApproval() {
                   className="mt-2 min-h-[140px] text-black border-foreground placeholder:text-gray-400"
                   disabled={isDisabled}
                 />
-                {status === "rejected" && !remarks.trim() ? (
-                  <div className="mt-2 text-sm text-red-600">
-                    Remarks are required when rejecting a clearance request
-                  </div>
-                ) : null}
                 {isProcessed ? (
                   <div className="mt-2 text-sm text-black">
                     Remarks cannot be modified for processed requests.

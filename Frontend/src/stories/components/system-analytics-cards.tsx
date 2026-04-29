@@ -459,495 +459,261 @@ export function OfficeBottlenecksCard({
             </div>
           </div>
 
-
-
           <div className="mt-5 flex items-center justify-center gap-6 text-xs text-gray-600">
-
             <div className="flex items-center gap-2">
-
               <span className="h-2 w-2 rounded-full bg-success" />
-
               <span>{clearedLabel}</span>
-
             </div>
 
             <div className="flex items-center gap-2">
-
               <span className="h-2 w-2 rounded-full bg-orange-400" />
-
               <span>{pendingLabel}</span>
-
             </div>
-
           </div>
-
         </div>
-
-
 
         <div className="mt-5 w-full overflow-x-auto touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch]">
           <div className="min-w-[640px] overflow-hidden rounded-lg border border-black/10">
-
             <div className="grid grid-cols-[1fr_110px_110px_180px] bg-slate-50 px-4 py-3 text-sm font-bold text-primary">
-
               <div>Office</div>
-
               <div className="text-center">Cleared</div>
-
               <div className="text-center">Pending</div>
-
               <div className="text-center">Pending Rate</div>
-
             </div>
 
-
-
             <div className="divide-y divide-black/10">
-
               {rows.map((row, idx) => (
-
                 <div key={idx} className="grid grid-cols-[1fr_110px_110px_180px] items-center px-4 py-4 text-sm">
 
                   <div className="min-w-0 truncate text-gray-800">{row.office}</div>
-
                   <div className="text-center font-semibold text-success">{row.cleared}</div>
-
                   <div className="text-center font-semibold text-orange-500">{row.pending}</div>
 
                   <div className="flex items-center justify-center gap-3">
-
                     <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-200">
-
                       <div
-
                         className="h-full rounded-full bg-orange-400"
-
                         style={{ width: `${Math.max(0, Math.min(100, row.pendingRate))}%` }}
-
                       />
-
                     </div>
-
                     <div className="w-10 text-right text-xs font-semibold text-orange-600">
-
                       {Math.round(row.pendingRate)}%
-
                     </div>
-
                   </div>
-
                 </div>
-
               ))}
-
             </div>
-
           </div>
         </div>
-
       </div>
-
     </BaseCard>
-
   );
-
 }
 
-
-
 type FacultyCompositionItem = {
-
   label: React.ReactNode;
-
   value: number;
-
   color: string;
-
   dotClassName?: string;
-
   valueClassName?: string;
-
 };
 
 
-
 export function FacultyCompositionCard({
-
   className,
-
   title,
-
   subtitle,
-
   items,
 
 }: {
-
   title: React.ReactNode;
-
   subtitle?: React.ReactNode;
-
   items: FacultyCompositionItem[];
 
 } & BaseCardProps) {
-
   const total = items.reduce((acc, item) => acc + (Number.isFinite(item.value) ? item.value : 0), 0);
-
   const safeTotal = total > 0 ? total : 1;
 
-
-
   const stops = items
-
     .reduce<{ pct: number; color: string }[]>((acc, item) => {
-
       const pct = Math.max(0, (item.value / safeTotal) * 100);
-
       acc.push({ pct, color: item.color });
-
       return acc;
-
     }, [])
-
     .map((x) => x);
-
-
-
   let cumulative = 0;
 
   const gradient = stops
-
     .map((s) => {
-
       const start = cumulative;
-
       cumulative += s.pct;
-
       const end = cumulative;
-
       return `${s.color} ${start.toFixed(2)}% ${end.toFixed(2)}%`;
-
     })
-
     .join(", ");
 
-
-
   const donutStyle: React.CSSProperties = {
-
     background: `conic-gradient(${gradient})`,
-
   };
 
-
-
   return (
-
     <BaseCard className={cn("max-w-full", className)}>
-
       <div className="w-full h-full px-6 py-5 flex items-center">
-
         <div className="flex w-full items-center gap-6">
-
           <div className="shrink-0">
-
             <div className="relative h-28 w-28">
-
               <div
-
                 className="absolute inset-0 rounded-full"
-
                 style={donutStyle}
-
               />
 
               <div className="absolute inset-0 flex items-center justify-center">
-
                 <div className="h-14 w-14 rounded-full bg-white" />
-
               </div>
-
             </div>
-
           </div>
-
-
 
           <div className="min-w-0 flex-1">
-
             <div className="text-base font-semibold text-primary">{title}</div>
-
             {subtitle != null ? (
-
               <div className="mt-1 text-sm text-gray-600">{subtitle}</div>
-
             ) : null}
 
-
-
             <div className="mt-4 space-y-2">
-
               {items.map((item, idx) => {
-
                 const pct = Math.round((item.value / safeTotal) * 100);
 
-
-
                 return (
-
                   <div key={idx} className="flex items-center justify-between gap-6">
-
                     <div className="flex min-w-0 items-center gap-3">
-
                       <span
-
                         className={cn("h-3 w-3 rounded-full", item.dotClassName)}
-
                         style={{ backgroundColor: item.color }}
-
                       />
-
                       <div className="min-w-0 truncate text-sm text-gray-700">{item.label}</div>
-
                     </div>
-
-
 
                     <div className="flex shrink-0 items-center gap-3">
-
                       <span className={cn("text-sm font-semibold text-gray-700", item.valueClassName)}>
-
                         {item.value}
-
                       </span>
-
                       <span className="text-sm text-gray-500">({pct}%)</span>
-
                     </div>
-
                   </div>
-
                 );
-
               })}
-
             </div>
-
           </div>
-
         </div>
-
       </div>
-
     </BaseCard>
-
   );
-
 }
-
-
-
-
 
 
 
 export function StatCardWithActions({ 
-
   className, 
-
   leftContent, 
-
   rightContent,
-
   ...props 
-
 }: {
-
   leftContent: React.ReactNode;
-
   rightContent: React.ReactNode;
-
 } & React.HTMLAttributes<HTMLDivElement>) {
 
   return (
-
     <div className={cn("w-full flex items-center justify-between", className)} {...props}>
-
       <div className="min-w-0 flex-1">
-
         {leftContent}
-
       </div>
 
       <div className="shrink-0 ml-4">
-
         {rightContent}
-
       </div>
-
     </div>
-
   );
-
 }
 
-
-
 type ClearanceDistributionItem = {
-
   label: React.ReactNode;
-
   value: number;
-
   percentage?: number;
-
   barClassName: string;
-
   dotClassName?: string;
-
   valueClassName?: string;
-
 };
 
-
-
 export function ClearanceDistributionCard({
-
   className,
-
   title,
-
   total,
-
   items,
-
   showRemainder = true,
-
 }: {
 
   title: React.ReactNode;
-
   total: number;
-
   items: ClearanceDistributionItem[];
-
   showRemainder?: boolean;
 
 } & BaseCardProps) {
-
   const safeTotal = total > 0 ? total : 0;
-
   const computedItems = items.map((item) => {
-
     const pctFromProp = typeof item.percentage === "number" ? item.percentage : undefined;
-
     const pctFromValue = safeTotal ? (item.value / safeTotal) * 100 : 0;
-
     const pct = Math.max(0, Math.min(100, pctFromProp ?? pctFromValue));
-
     return { ...item, _pct: pct };
-
   });
 
-
-
   const usedPct = computedItems.reduce((acc, item) => acc + item._pct, 0);
-
   const remainderPct = showRemainder ? Math.max(0, Math.min(100, 100 - usedPct)) : 0;
 
-
-
   return (
-
     <BaseCard className={cn("max-w-full", className)}>
-
       <div className="w-full h-full px-6 py-5 flex flex-col justify-center">
-
         <div className="text-sm font-medium text-gray-700">{title}</div>
-
-
-
         <div className="mt-4 w-full overflow-hidden rounded-md bg-gray-200">
-
           <div className="flex h-8 w-full">
-
             {computedItems.map((item, idx) => (
-
               <div
-
                 key={idx}
-
                 className={cn("h-full", item.barClassName)}
-
                 style={{ width: `${item._pct}%` }}
-
               />
-
             ))}
-
             {remainderPct > 0 ? (
-
               <div className="h-full bg-gray-200" style={{ width: `${remainderPct}%` }} />
-
             ) : null}
-
           </div>
-
         </div>
-
 
 
         <div className="mt-5 space-y-2">
-
           {computedItems.map((item, idx) => (
-
             <div key={idx} className="flex items-center justify-between gap-6">
-
               <div className="flex min-w-0 items-center gap-3">
-
                 <span
-
                   className={cn(
-
                     "h-3 w-3 rounded-full",
-
                     item.dotClassName ?? item.barClassName,
-
                   )}
-
                 />
-
                 <div className="min-w-0 truncate text-sm text-gray-700">{item.label}</div>
-
               </div>
-
-
 
               <div className="flex shrink-0 items-center gap-3">
-
                 <span className={cn("text-sm font-semibold", item.valueClassName ?? "text-gray-700")}
-
                 >
-
                   {item.value}
-
                 </span>
-
                 <span className="text-sm text-gray-500">({Math.round(item._pct)}%)</span>
-
               </div>
-
             </div>
-
           ))}
-
         </div>
-
       </div>
-
     </BaseCard>
-
   );
-
 }
 
