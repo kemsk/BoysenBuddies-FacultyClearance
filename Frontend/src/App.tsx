@@ -654,7 +654,7 @@ function App() {
         }
         {
           <Route
-            path="/OVPHE-system-analytics"
+            path="/system-analytics"
             element={
               <ProtectedRouteForSystemAnalytics>
                 <OVPHESystemAnalytics />

@@ -25,7 +25,7 @@ export default function ApproverTools() {
             }
             title="System Analytics"
             description="Check the completion rate per college"
-            to="/OVPHE-system-analytics"
+            to="/system-analytics"
           />
         </div>
       </main>

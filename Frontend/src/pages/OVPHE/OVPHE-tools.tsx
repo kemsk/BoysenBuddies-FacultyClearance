@@ -26,7 +26,7 @@ export default function OVPHETools() {
             }
             title="System Analytics"
             description="Check the completion rate per college"
-            to="/OVPHE-system-analytics"
+            to="/system-analytics"
           />
 
           <ActionNavCard
