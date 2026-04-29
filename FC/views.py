@@ -2803,6 +2803,19 @@ def _build_timeline_completion_lookup(timeline: ClearanceTimeline, faculty_rows)
             )
         )
 
+        missing_step_categories: set[str] = set()
+        for requirement in applicable_requirements:
+            req_obj = requirement
+            request = request_by_requirement_id.get(req_obj.id)
+            is_approved = request and request.status == ClearanceRequest.Status.APPROVED
+            if is_approved:
+                continue
+
+            step = getattr(req_obj, "approver_flow_step", None)
+            category = getattr(step, "category", None)
+            if category:
+                missing_step_categories.add(category)
+
         total_count = len(applicable_requirements)
         is_completed = total_count > 0 and approved_count == total_count
         completed_at = None
@@ -2820,6 +2833,7 @@ def _build_timeline_completion_lookup(timeline: ClearanceTimeline, faculty_rows)
             "total_count": total_count,
             "is_completed": is_completed,
             "completed_at": completed_at,
+            "missing_categories": sorted(missing_step_categories),
         }
 
     return completion_lookup
@@ -5404,14 +5418,27 @@ def ovphe_clearance_progress_api(request):
 
     timeline = ClearanceTimeline.objects.filter(academic_year_start=year_val, term=term_val).order_by("-is_active", "-id").first()
 
-    completed_faculty_ids = set()
+    completed_faculty_ids: set[int] = set()
+    completion_lookup: dict[int, dict] = {}
+
     if timeline and timeline.archive_date:
         _ensure_archived_timeline_records(timeline)
-        archived_clearances = ArchivedClearance.objects.filter(clearance_timeline=timeline, faculty_id__in=[f.id for f in faculty_items])
-        completed_faculty_ids = set(archived_clearances.filter(status=ArchivedClearance.Status.COMPLETED).values_list("faculty_id", flat=True))
+        archived_clearances = ArchivedClearance.objects.filter(
+            clearance_timeline=timeline,
+            faculty_id__in=[f.id for f in faculty_items],
+        )
+        completed_faculty_ids = set(
+            archived_clearances
+            .filter(status=ArchivedClearance.Status.COMPLETED)
+            .values_list("faculty_id", flat=True)
+        )
     else:
         completion_lookup = _build_timeline_completion_lookup(timeline, faculty_items) if timeline else {}
-        completed_faculty_ids = {faculty_id for faculty_id, info in completion_lookup.items() if info["is_completed"]}
+        completed_faculty_ids = {
+            faculty_id
+            for faculty_id, info in completion_lookup.items()
+            if info.get("is_completed")
+        }
 
     # Build clearance progress rows
     rows = []
@@ -5424,7 +5451,11 @@ def ovphe_clearance_progress_api(request):
         ]
         faculty_name = " ".join([part for part in name_parts if part]).strip() or (getattr(user, "email", "") or faculty.employee_id)
 
-        is_completed = faculty.id in completed_faculty_ids
+        info = completion_lookup.get(
+            faculty.id,
+            {"missing_categories": [], "is_completed": faculty.id in completed_faculty_ids},
+        )
+        is_completed = bool(info.get("is_completed"))
         status = "CLEARED" if is_completed else "INCOMPLETE"
 
         # Apply status filter
@@ -5437,8 +5468,9 @@ def ovphe_clearance_progress_api(request):
         # Get missing approvals for incomplete clearances
         missing_approval = "None"
         if not is_completed and timeline:
-            # This would need to be implemented based on your approval logic
-            missing_approval = "Department Chair, University Library"
+            missing_categories = info.get("missing_categories") or []
+            if missing_categories:
+                missing_approval = ", ".join(missing_categories)
 
         rows.append({
             "name": faculty_name,
