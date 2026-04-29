@@ -43,52 +43,9 @@ export default function SystemAnalytics() {
   const navigate = useNavigate();
 
   const [clearanceProgressOpen, setClearanceProgressOpen] = React.useState(false);
-
-  const clearanceProgressRows: ClearanceProgressRow[] = React.useMemo(
-    () => [
-      {
-        name: "Alexander H. Hamilton",
-        requestId: "2526-001",
-        employeeId: "2005123456789",
-        college: "College of Computer Studies",
-        department: "Information Technology",
-        facultyType: "Full-time Faculty",
-        missingApproval: "HRO",
-        status: "INCOMPLETE",
-      },
-      {
-        name: "Alexander H. Hamilton",
-        requestId: "2526-001",
-        employeeId: "2005123456789",
-        college: "College of Computer Studies",
-        department: "Information Technology",
-        facultyType: "Part-time Faculty",
-        missingApproval: "University Registrar, OVPHE",
-        status: "INCOMPLETE",
-      },
-      {
-        name: "Alexander H. Hamilton",
-        requestId: "2526-001",
-        employeeId: "2005123456789",
-        college: "College of Computer Studies",
-        department: "Information Technology",
-        facultyType: "Part-time Faculty",
-        missingApproval: "Department Chair, University Library",
-        status: "INCOMPLETE",
-      },
-      {
-        name: "Alexander H. Hamilton",
-        requestId: "2526-001",
-        employeeId: "2005123456789",
-        college: "College of Computer Studies",
-        department: "Information Technology",
-        facultyType: "Full-time Faculty",
-        missingApproval: "None",
-        status: "INCOMPLETE",
-      },
-    ],
-    [],
-  );
+  const [clearanceProgressRows, setClearanceProgressRows] = React.useState<ClearanceProgressRow[]>([]);
+  const [analyticsData, setAnalyticsData] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
 
   const [selectedTerm, setSelectedTerm] = React.useState("Term");
   const [selectedClearance, setSelectedClearance] = React.useState("All Clearances");
@@ -235,65 +192,71 @@ export default function SystemAnalytics() {
       .catch(() => setColleges([]));
   }, []);
 
-  React.useEffect(() => {
+  // Enhanced analytics data fetching
+  const fetchAnalyticsData = React.useCallback(() => {
     if (!timelineReady) {
       return;
     }
 
     const params = buildAnalyticsParams();
 
+    setLoading(true);
     fetch(`/admin/xu-faculty-clearance/api/ovphe/system-analytics?${params.toString()}`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then(
-        (data: {
-          summary?: {
-            label?: string;
-            completedCount?: number;
-            totalCount?: number;
-          };
-          sections?: DepartmentCompletionRateSection[];
-          rows: {
-            collegeName: string;
-            completionRate: number;
-            completedCount?: number;
-            totalCount?: number;
-          }[];
-        }) => {
-        const summary = data.summary;
-        const rows = data.rows ?? [];
-        const fallback = rows[0];
-
-        setDonutTitle(summary?.label || fallback?.collegeName || "Overall Count");
-        setDonutCompleted(
-          Math.max(
-            0,
-            typeof summary?.completedCount === "number"
-              ? summary.completedCount
-              : typeof fallback?.completedCount === "number"
-                ? fallback.completedCount
-                : 0,
-          ),
-        );
-        setDonutTotal(
-          Math.max(
-            0,
-            typeof summary?.totalCount === "number"
-              ? summary.totalCount
-              : typeof fallback?.totalCount === "number"
-                ? fallback.totalCount
-                : 0,
-          ),
-        );
-
+      .then((data) => {
+        setAnalyticsData(data);
         setCompletionSections(data.sections ?? []);
       })
       .catch(() => {
-        setDonutTitle("Overall Count");
-        setDonutCompleted(0);
-        setDonutTotal(0);
+        setAnalyticsData(null);
         setCompletionSections([]);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   }, [buildAnalyticsParams, timelineReady]);
+
+  // Fetch clearance progress data
+  const fetchClearanceProgress = React.useCallback(() => {
+    if (!timelineReady) {
+      return;
+    }
+
+    const params = buildAnalyticsParams();
+    const progressParams = new URLSearchParams(params);
+    progressParams.set('pageSize', '100'); // Fetch more data for the dialog
+
+    fetch(`/admin/xu-faculty-clearance/api/ovphe/clearance-progress?${progressParams.toString()}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => {
+        const rows: ClearanceProgressRow[] = data.rows || [];
+        setClearanceProgressRows(rows);
+      })
+      .catch(() => {
+        setClearanceProgressRows([]);
+      });
+  }, [buildAnalyticsParams, timelineReady]);
+
+  // Main analytics data fetching effect
+  React.useEffect(() => {
+    fetchAnalyticsData();
+  }, [fetchAnalyticsData]);
+
+  // Auto-refresh effect (every 5 minutes)
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      fetchAnalyticsData();
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(interval);
+  }, [fetchAnalyticsData]);
+
+  // Fetch clearance progress when dialog opens
+  React.useEffect(() => {
+    if (clearanceProgressOpen) {
+      fetchClearanceProgress();
+    }
+  }, [clearanceProgressOpen, fetchClearanceProgress]);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -432,6 +395,7 @@ export default function SystemAnalytics() {
           </div>
         </div>  
 
+          {analyticsData?.clearanceDeadline?.showBanner && (
           <div className="min-w-0 flex-1 my-4">
             <Badge
               variant="warning"
@@ -466,43 +430,54 @@ export default function SystemAnalytics() {
                   />
                 </svg>
                 <div className="min-w-0">
-                  Clearance deadline is approaching - 10 days remaining
+                  {analyticsData?.clearanceDeadline?.message} - {analyticsData?.clearanceDeadline?.daysRemaining} days remaining
                 </div>
               </div>
 
               <div className="shrink-0 rounded-full border border-yellow-300 bg-yellow-200 px-3 py-1 text-xs font-semibold text-yellow-800">
-                Deadline: May 31, 2025
+                Deadline: {analyticsData?.clearanceDeadline?.deadlineDate}
               </div>
             </Badge>
           </div>
+        )}
         
           <div className="flex flex-wrap gap-3">
             <StatCard 
               variant="TotalFaculty" 
-              number="527"
-              descriptionValues={{ fullTime: "289", partTime: "238" }}
+              number={analyticsData?.summary?.totalFaculty?.toString() || "0"}
+              descriptionValues={{ 
+                fullTime: analyticsData?.summary?.fullTimeFaculty?.toString() || "0", 
+                partTime: analyticsData?.summary?.partTimeFaculty?.toString() || "0" 
+              }}
             />
             
             <StatCard 
               variant="CompleteClearance" 
-              number="89"
-              descriptionValues={{ percentage: "17" }}
+              number={analyticsData?.summary?.completeClearance?.toString() || "0"}
+              descriptionValues={{ 
+                percentage: analyticsData?.summary?.totalFaculty 
+                  ? Math.round((analyticsData.summary.completeClearance / analyticsData.summary.totalFaculty) * 100).toString()
+                  : "0"
+              }}
             />
 
             <StatCard 
               variant="IncompleteClearance" 
-              number="83"
+              number={analyticsData?.summary?.incompleteClearance?.toString() || "0"}
             />
 
             <StatCard 
               variant="Unprocessed" 
-              number="83"
+              number={analyticsData?.summary?.unprocessedClearance?.toString() || "0"}
             />
 
             <StatCard 
               variant="OverallCompletion" 
-              number="83"
-              descriptionValues={{ cleared: "213", total: "254" }}
+              number={analyticsData?.summary?.overallCompletion?.percentage?.toString() || "0"}
+              descriptionValues={{ 
+                cleared: analyticsData?.summary?.overallCompletion?.cleared?.toString() || "0", 
+                total: analyticsData?.summary?.overallCompletion?.total?.toString() || "0" 
+              }}
             />
             
           </div>
@@ -511,7 +486,12 @@ export default function SystemAnalytics() {
 
             <StatCardWithActions
               leftContent={<span className="text-primary text-lg font-bold">Clearance Pipeline</span>}
-              rightContent={<span className="text-gray-600 text-md italic">As of [Date], [Time]</span>}
+              rightContent={
+                <span className="text-gray-600 text-md italic">
+                  As of {analyticsData?.currentDateTime ? new Date(analyticsData.currentDateTime).toLocaleDateString() : new Date().toLocaleDateString()}, 
+                  {analyticsData?.currentDateTime ? new Date(analyticsData.currentDateTime).toLocaleTimeString() : new Date().toLocaleTimeString()}
+                </span>
+              }
             />
           </div>
 
@@ -520,38 +500,16 @@ export default function SystemAnalytics() {
 
             <ClearanceDistributionCard
               className="self-stretch h-[220px] w-full lg:w-[calc(50%-10px)]"
-              title="Distribution of 527 faculty by clearance status"
-              total={527}
-              items={[
-                {
-                  label: "Cleared Clearance",
-                  value: 93,
-                  barClassName: "bg-success",
-                  valueClassName: "text-success",
-                },
-                {
-                  label: "Incomplete Clearance",
-                  value: 27,
-                  barClassName: "bg-orange-400",
-                  valueClassName: "text-orange-400",
-                },
-                {
-                  label: "Unprocessed Clearance",
-                  value: 18,
-                  barClassName: "bg-blue-500",
-                  valueClassName: "text-blue-500",
-                },
-              ]}
+              title={`Distribution of ${analyticsData?.summary?.totalFaculty || 0} faculty by clearance status`}
+              total={analyticsData?.summary?.totalFaculty || 0}
+              items={analyticsData?.clearanceDistribution || []}
             />
               
             <FacultyCompositionCard
               className="self-stretch h-[220px] w-full lg:w-[calc(50%-10px)]"
               title="Faculty Composition"
               subtitle="by employment type"
-              items={[
-              { label: "Full-Time", value: 289, color: "#0b1b8f" },
-              { label: "Part-Time", value: 238, color: "#5a73ff" },
-              ]}
+              items={analyticsData?.facultyComposition || []}
             />
   
           </div>
@@ -559,7 +517,12 @@ export default function SystemAnalytics() {
           <div className="mt-10 flex flex-col gap-2">
             <StatCardWithActions
               leftContent={<span className="text-primary text-lg font-bold">Office Clearance Bottlenecks</span>}
-              rightContent={<span className="text-gray-600 text-base italic">As of [Date], [Time]</span>}
+              rightContent={
+                <span className="text-gray-600 text-base italic">
+                  As of {analyticsData?.currentDateTime ? new Date(analyticsData.currentDateTime).toLocaleDateString() : new Date().toLocaleDateString()}, 
+                  {analyticsData?.currentDateTime ? new Date(analyticsData.currentDateTime).toLocaleTimeString() : new Date().toLocaleTimeString()}
+                </span>
+              }
             />
             <div className="text-gray-600 text-sm">
               Office are sorted by pending count (highest first) to surface processing delays.
@@ -569,36 +532,36 @@ export default function SystemAnalytics() {
           <div className="gap-5 my-4">
             <OfficeBottlenecksCard
             className="w-full"
-            items={[
-              { office: "Office of the Vice President for Higher Education", cleared: 65, pending: 65 },
-              { office: "University Registrar", cleared: 65, pending: 65 },
-              { office: "University Library", cleared: 65, pending: 65 },
-              { office: "Accounting Office", cleared: 65, pending: 55 },
-              { office: "Human Resources", cleared: 65, pending: 23 },
-            ]}
+            items={analyticsData?.officeBottlenecks || []}
             />
           </div>
 
           <div className="mt-10 flex flex-col gap-2">
             <StatCardWithActions
-              leftContent={<span className="text-primary text-lg font-bold">Office Clearance Bottlenecks</span>}
-              rightContent={<span className="text-gray-600 text-base italic">As of [Date], [Time]</span>}
+              leftContent={<span className="text-primary text-lg font-bold">College Clearance Progress</span>}
+              rightContent={
+                <span className="text-gray-600 text-base italic">
+                  As of {analyticsData?.currentDateTime ? new Date(analyticsData.currentDateTime).toLocaleDateString() : new Date().toLocaleDateString()}, 
+                  {analyticsData?.currentDateTime ? new Date(analyticsData.currentDateTime).toLocaleTimeString() : new Date().toLocaleTimeString()}
+                </span>
+              }
             />
             <div className="text-gray-600 text-sm">
-              Office are sorted by pending count (highest first) to surface processing delays.
+              Colleges are sorted by completion rate (ascending) to surface those needing attention.
             </div>
           </div>      
 
           <div className="mt-10 flex flex-col gap-2">
             <CollegeClearanceStatusCard
               className="w-full"
-              items={[
-                { college: "College of Agriculture", facultyMembers: 23, completed: 23, total: 50, status: "at_risk" },
-                { college: "College of Arts & Sciences", facultyMembers: 21, completed: 30, total: 38, status: "in_progress" },
-                { college: "College of Computer Studies", facultyMembers: 45, completed: 23, total: 23, status: "cleared" },
-              ]}
-              totalRow={{ facultyMembers: 254, completed: 30, total: 38, status: "in_progress" }}
-              footerLeft="5 colleges · Sorted by rate (ascending)"
+              items={analyticsData?.collegeClearanceStatus || []}
+              totalRow={{
+                facultyMembers: analyticsData?.collegeClearanceStatus?.reduce((sum, item) => sum + item.facultyMembers, 0) || 0,
+                completed: analyticsData?.collegeClearanceStatus?.reduce((sum, item) => sum + item.completed, 0) || 0,
+                total: analyticsData?.collegeClearanceStatus?.reduce((sum, item) => sum + item.total, 0) || 0,
+                status: "in_progress"
+              }}
+              footerLeft={`${analyticsData?.collegeClearanceStatus?.length || 0} colleges · Sorted by rate (ascending)`}
               footerActionLabel="View All Faculty"
               onFooterAction={() => setClearanceProgressOpen(true)}
             />

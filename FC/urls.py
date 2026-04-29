@@ -97,6 +97,7 @@ urlpatterns = [
     path('api/ovphe/tools', views.ovphe_tools_api, name='OVPHETools'),
     path('api/ovphe/archived-clearance', views.ovphe_archived_clearance_api, name='OVPHEArchivedClearance'),
     path('api/ovphe/view-clearance', views.ovphe_view_clearance_api, name='OVPHEViewClearance'),
+    path('api/ovphe/clearance-progress', views.ovphe_clearance_progress_api, name='OVPHEClearanceProgress'),
     path('api/approver/assistant-approvers', views.approver_assistant_approvers_api, name='ApproverAssistantApprovers'),
     path('api/approver/assistant-approvers/<int:user_id>', views.approver_assistant_approver_detail_api, name='ApproverAssistantApproverDetail'),
 ]
