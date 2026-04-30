@@ -458,9 +458,12 @@ export function EditDepartmentAssistantDialog({
   }, [effectiveOpen, initialValues]);
 
   React.useEffect(() => {
-    // Reset department when college changes
-    setDepartment("");
-  }, [college]);
+    // Reset department when college changes, but only if we don't have an initial department
+    // This preserves the original department value when editing
+    if (!initialValues?.department) {
+      setDepartment("");
+    }
+  }, [college, initialValues?.department]);
 
   const filteredDepartments = React.useMemo(() => {
     // Only show departments for the selected college

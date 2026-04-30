@@ -7618,7 +7618,7 @@ def approver_assistant_approver_detail_api(request, user_id):
                         "department": aa.department.name if aa.department else (aa.office.name if aa.office else "N/A"),
                         "office": aa.office.name if aa.office else "",
                         "email": target_user.email,
-                        "isActive": bool(aa.is_active and target_user.is_active),
+                        "isActive": bool(aa.is_active and target_user.get_active_roles().exists()),
                     }
                 }
             )
@@ -7634,7 +7634,7 @@ def approver_assistant_approver_detail_api(request, user_id):
                     "department": assistant_profile.department.name if assistant_profile.department else "N/A",
                     "office": assistant_profile.office.name if assistant_profile.office else "N/A",
                     "email": target_user.email,
-                    "isActive": bool(target_user.is_active),
+                    "isActive": bool(target_user.get_active_roles().exists()),
                 }
             })
 
@@ -7724,17 +7724,17 @@ def approver_assistant_approver_detail_api(request, user_id):
                 print(f"[DEBUG] No assistant_profile or department found")
                 return JsonResponse({"detail": "Department is required"}, status=400)
 
-    # Only look up college if it's provided (for student assistants)
-
+    # Look up college - for student assistants, college is required
     college = None
 
     if college_name:
-
         college = College.objects.filter(name__iexact=college_name, is_active=True).first()
-
         if not college:
             return JsonResponse({"detail": "College not found"}, status=400)
-
+    
+    # For student assistants, ensure college is always valid
+    if not admin_assistant and not college:
+        return JsonResponse({"detail": "Valid college is required for student assistants"}, status=400)
 
 
     # Look up department if provided
@@ -7773,50 +7773,63 @@ def approver_assistant_approver_detail_api(request, user_id):
         if not office:
             return JsonResponse({"detail": "Office not found"}, status=400)
 
-    with transaction.atomic():
-        # Check if email exists for a different user
-        existing_email_user = User.objects.filter(email__iexact=email).first()
-        if existing_email_user and existing_email_user.id != target_user.id:
-            return JsonResponse({"detail": "Email already assigned to a different user"}, status=400)
+    try:
+        with transaction.atomic():
+            # Check if email exists for a different user
+            existing_email_user = User.objects.filter(email__iexact=email).first()
+            if existing_email_user and existing_email_user.id != target_user.id:
+                return JsonResponse({"detail": "Email already assigned to a different user"}, status=400)
 
-        # Check if university_id exists for a different user
-        existing_id_user = User.objects.filter(university_id__iexact=university_id).first()
-        if existing_id_user and existing_id_user.id != target_user.id:
-            return JsonResponse({"detail": "University ID already assigned to a different user"}, status=400)
+            # Check if university_id exists for a different user
+            existing_id_user = User.objects.filter(university_id__iexact=university_id).first()
+            if existing_id_user and existing_id_user.id != target_user.id:
+                return JsonResponse({"detail": "University ID already assigned to a different user"}, status=400)
 
-        target_user.email = email
-        target_user.university_id = university_id
-        target_user.first_name = first_name
-        target_user.middle_name = middle_name
-        target_user.last_name = last_name
-        target_user.is_active = is_active
-        target_user.save(
-            update_fields=[
-                "email",
-                "university_id",
-                "first_name",
-                "middle_name",
-                "last_name",
-                "is_active",
-            ]
-        )
+            target_user.email = email
+            target_user.university_id = university_id
+            target_user.first_name = first_name
+            target_user.middle_name = middle_name
+            target_user.last_name = last_name
+            target_user.save(
+                update_fields=[
+                    "email",
+                    "university_id",
+                    "first_name",
+                    "middle_name",
+                    "last_name",
+                ]
+            )
 
-        # Update either StudentAssistant or ApproverAssistant profile
-        if assistant_profile:
-            print(f"[DEBUG] Updating assistant_profile: college={college}, department={department}, office={office}")
-            assistant_profile.college = college
-            assistant_profile.department = department
-            assistant_profile.office = office
-            assistant_profile.save(update_fields=["college", "department", "office"])
-        
-        if admin_assistant:
-            print(f"[DEBUG] Updating admin_assistant: college={college}, department={department}, office={office}")
-            admin_assistant.college = college
-            admin_assistant.department = department
-            admin_assistant.office = office
-            admin_assistant.save(update_fields=["college", "department", "office"])
+            # Update user role active status if needed
+            if is_active:
+                # Activate user's roles
+                target_user.userrole_set.all().update(is_active=True)
+            else:
+                # Deactivate user's roles
+                target_user.userrole_set.all().update(is_active=False)
 
-    return JsonResponse({"ok": True})
+            # Update either StudentAssistant or ApproverAssistant profile
+            if assistant_profile:
+                print(f"[DEBUG] Updating assistant_profile: college={college}, department={department}, office={office}")
+                assistant_profile.college = college
+                assistant_profile.department = department
+                assistant_profile.office = office
+                assistant_profile.save(update_fields=["college", "department", "office"])
+            
+            if admin_assistant:
+                print(f"[DEBUG] Updating admin_assistant: college={college}, department={department}, office={office}")
+                admin_assistant.college = college
+                admin_assistant.department = department
+                admin_assistant.office = office
+                admin_assistant.save(update_fields=["college", "department", "office"])
+
+        return JsonResponse({"ok": True})
+
+    except Exception as e:
+        import traceback
+        print(f"[ERROR] PUT request failed: {str(e)}")
+        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        return JsonResponse({"detail": f"Internal server error: {str(e)}", "traceback": traceback.format_exc()}, status=500)
 
 
 def get_approver_flow_config(timeline_id=None):
