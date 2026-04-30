@@ -7698,7 +7698,8 @@ def approver_assistant_approver_detail_api(request, user_id):
     else:
         print(f"[DEBUG] Treating as student assistant")
 
-    
+    # Get assistant profile before validation
+    assistant_profile = getattr(target_user, "assistant_profile", None)
 
     if admin_assistant:
         # Admin assistant: only need department OR office
@@ -7772,7 +7773,6 @@ def approver_assistant_approver_detail_api(request, user_id):
         if not office:
             return JsonResponse({"detail": "Office not found"}, status=400)
 
-    assistant_profile = getattr(target_user, "assistant_profile", None)
     with transaction.atomic():
         # Check if email exists for a different user
         existing_email_user = User.objects.filter(email__iexact=email).first()
@@ -7803,16 +7803,17 @@ def approver_assistant_approver_detail_api(request, user_id):
 
         # Update either StudentAssistant or ApproverAssistant profile
         if assistant_profile:
-            print(f"[DEBUG] Updating assistant_profile: college={college}, department={department}")
+            print(f"[DEBUG] Updating assistant_profile: college={college}, department={department}, office={office}")
             assistant_profile.college = college
             assistant_profile.department = department
-            assistant_profile.save(update_fields=["college", "department"])
+            assistant_profile.office = office
+            assistant_profile.save(update_fields=["college", "department", "office"])
         
         if admin_assistant:
-            print(f"[DEBUG] Updating admin_assistant: college={college}, department={department}, office=None")
+            print(f"[DEBUG] Updating admin_assistant: college={college}, department={department}, office={office}")
             admin_assistant.college = college
             admin_assistant.department = department
-            admin_assistant.office = None
+            admin_assistant.office = office
             admin_assistant.save(update_fields=["college", "department", "office"])
 
     return JsonResponse({"ok": True})

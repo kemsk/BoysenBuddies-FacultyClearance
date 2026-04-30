@@ -713,6 +713,8 @@ export default function ApproverAssistantList() {
           colleges={visibleColleges}
           departments={visibleDepartments}
           collegeDepartmentsMap={visibleCollegeDepartmentsMap}
+          offices={visibleOffices}
+          approverLevel={approverLevel}
           initialValues={
             activeAssistant
               ? {
@@ -720,6 +722,7 @@ export default function ApproverAssistantList() {
                   universityId: activeAssistant.universityId ?? "",
                   college: activeAssistant.college,
                   department: activeAssistant.department,
+                  office: activeAssistant.office,
                   email: activeAssistant.email,
                   isActive: activeAssistant.isActive,
                 }
