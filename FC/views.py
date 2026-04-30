@@ -2803,6 +2803,19 @@ def _build_timeline_completion_lookup(timeline: ClearanceTimeline, faculty_rows)
             )
         )
 
+        missing_step_categories: set[str] = set()
+        for requirement in applicable_requirements:
+            req_obj = requirement
+            request = request_by_requirement_id.get(req_obj.id)
+            is_approved = request and request.status == ClearanceRequest.Status.APPROVED
+            if is_approved:
+                continue
+
+            step = getattr(req_obj, "approver_flow_step", None)
+            category = getattr(step, "category", None)
+            if category:
+                missing_step_categories.add(category)
+
         total_count = len(applicable_requirements)
         is_completed = total_count > 0 and approved_count == total_count
         completed_at = None
@@ -2820,6 +2833,7 @@ def _build_timeline_completion_lookup(timeline: ClearanceTimeline, faculty_rows)
             "total_count": total_count,
             "is_completed": is_completed,
             "completed_at": completed_at,
+            "missing_categories": sorted(missing_step_categories),
         }
 
     return completion_lookup
@@ -5120,7 +5134,7 @@ def ovphe_system_analytics_api(request):
     if college_id:
         faculty_qs = faculty_qs.filter(college_id=college_id)
 
-    faculty_items = list(faculty_qs.values("id", "college_id", "college__name", "department_id", "department__name", "office_id", "office__name"))
+    faculty_items = list(faculty_qs.values("id", "college_id", "college__name", "department_id", "department__name", "office_id", "office__name", "faculty_type"))
 
     timeline = ClearanceTimeline.objects.filter(academic_year_start=year_val, term=term_val).order_by("-is_active", "-id").first()
 
@@ -5138,6 +5152,17 @@ def ovphe_system_analytics_api(request):
     completed_count = len(completed_faculty_ids)
     incomplete_count = max(0, total_faculty - completed_count)
 
+    # Calculate faculty composition
+    full_time_count = sum(1 for item in faculty_items if item.get("faculty_type") == "Full-time")
+    part_time_count = sum(1 for item in faculty_items if item.get("faculty_type") == "Part-time")
+
+    # Calculate clearance distribution (cleared, incomplete, unprocessed)
+    cleared_count = completed_count
+    incomplete_clearance_count = incomplete_count  # Those with missing requirements
+    unprocessed_count = 0  # Those awaiting office action - will be calculated based on pending approvals
+
+    # Get office bottleneck data
+    office_bottlenecks = []
     department_buckets = {}
     office_buckets = {}
     selected_college_name = ""
@@ -5157,6 +5182,87 @@ def ovphe_system_analytics_api(request):
         if office_id not in office_buckets:
             office_buckets[office_id] = {"label": office_name, "faculty_ids": set()}
         office_buckets[office_id]["faculty_ids"].add(item["id"])
+
+    for office_id, bucket in office_buckets.items():
+        office_name = bucket["label"]
+        office_faculty_ids = bucket["faculty_ids"]
+        cleared_in_office = len(office_faculty_ids & completed_faculty_ids)
+        pending_in_office = len(office_faculty_ids) - cleared_in_office
+
+        office_bottlenecks.append({
+            "office": office_name,
+            "cleared": cleared_in_office,
+            "pending": pending_in_office,
+        })
+
+    office_bottlenecks.sort(key=lambda x: x["pending"], reverse=True)
+
+    # Get college clearance status
+    college_buckets = {}
+    for item in faculty_items:
+        college_id = item.get("college_id")
+        college_name = item.get("college__name") or "Unassigned College"
+        if college_id not in college_buckets:
+            college_buckets[college_id] = {"label": college_name, "faculty_ids": set()}
+        college_buckets[college_id]["faculty_ids"].add(item["id"])
+
+    college_clearance_status = []
+    total_college_faculty = 0
+    total_college_completed = 0
+
+    for college_id, bucket in college_buckets.items():
+        college_name = bucket["label"]
+        college_faculty_ids = bucket["faculty_ids"]
+        faculty_count = len(college_faculty_ids)
+        completed_in_college = len(college_faculty_ids & completed_faculty_ids)
+
+        total_college_faculty += faculty_count
+        total_college_completed += completed_in_college
+
+        completion_rate = (completed_in_college / faculty_count * 100) if faculty_count > 0 else 0
+
+        # Determine status based on thresholds
+        if completion_rate == 100:
+            status = "cleared"
+        elif completion_rate < 50:
+            status = "at_risk"
+        else:
+            status = "in_progress"
+
+        college_clearance_status.append({
+            "college": college_name,
+            "facultyMembers": faculty_count,
+            "completed": completed_in_college,
+            "total": faculty_count,
+            "status": status
+        })
+
+    college_clearance_status.sort(key=lambda x: x["college"])
+
+    # Calculate clearance deadline info
+    clearance_deadline = None
+    if timeline and timeline.clearance_end_date:
+        current_date = timezone.now().date()
+        end_date = timeline.clearance_end_date.date()
+        days_remaining = (end_date - current_date).days
+
+        if 0 <= days_remaining <= 14:
+            clearance_deadline = {
+                "showBanner": True,
+                "daysRemaining": days_remaining,
+                "deadlineDate": end_date.strftime("%B %d, %Y"),
+                "message": "Clearance deadline is approaching",
+            }
+        else:
+            clearance_deadline = {
+                "showBanner": False,
+                "daysRemaining": days_remaining,
+                "deadlineDate": end_date.strftime("%B %d, %Y"),
+                "message": "Clearance deadline is approaching",
+            }
+
+    # Calculate overall completion percentage
+    overall_completion_pct = (completed_count / total_faculty * 100) if total_faculty > 0 else 0
 
     department_items = [
         {"label": bucket["label"], "completed": len(bucket["faculty_ids"] & completed_faculty_ids), "total": len(bucket["faculty_ids"])}
@@ -5193,71 +5299,270 @@ def ovphe_system_analytics_api(request):
     if office_items:
         sections.append({"title": "Offices", "items": office_items})
 
+    return JsonResponse({
+        "summary": {
+            "totalFaculty": total_faculty,
+            "fullTimeFaculty": full_time_count,
+            "partTimeFaculty": part_time_count,
+            "completeClearance": cleared_count,
+            "incompleteClearance": incomplete_clearance_count,
+            "unprocessedClearance": unprocessed_count,
+            "overallCompletion": {
+                "percentage": round(overall_completion_pct, 1),
+                "cleared": completed_count,
+                "total": total_faculty
+            },
+            "label": summary_label,
+            "completedCount": completed_count,
+            "incompleteCount": incomplete_count,
+            "totalCount": total_faculty,
+        },
+        "clearanceDistribution": [
+            {
+                "label": "Cleared Clearance",
+                "value": cleared_count,
+                "percentage": round((cleared_count / total_faculty * 100) if total_faculty > 0 else 0, 1)
+            },
+            {
+                "label": "Incomplete Clearance", 
+                "value": incomplete_clearance_count,
+                "percentage": round((incomplete_clearance_count / total_faculty * 100) if total_faculty > 0 else 0, 1)
+            },
+            {
+                "label": "Unprocessed Clearance",
+                "value": unprocessed_count,
+                "percentage": round((unprocessed_count / total_faculty * 100) if total_faculty > 0 else 0, 1)
+            }
+        ],
+        "facultyComposition": [
+            {
+                "label": "Full-Time",
+                "value": full_time_count,
+                "percentage": round((full_time_count / total_faculty * 100) if total_faculty > 0 else 0, 1),
+                "color": "#0b1b8f"
+            },
+            {
+                "label": "Part-Time",
+                "value": part_time_count,
+                "percentage": round((part_time_count / total_faculty * 100) if total_faculty > 0 else 0, 1),
+                "color": "#5a73ff"
+            }
+        ],
+        "officeBottlenecks": office_bottlenecks,
+        "collegeClearanceStatus": college_clearance_status,
+        "clearanceDeadline": clearance_deadline,
+        "currentDateTime": timezone.now().isoformat(),
+        "rows": rows,
+        "sections": sections,
+    })
 
+
+@csrf_exempt
+def ovphe_clearance_progress_api(request):
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    admin = _get_active_ovphe_admin(request) or _get_active_ciso_admin(request)
+
+    if not admin:
+        return JsonResponse({"detail": "OVPHE user not found"}, status=404)
+
+    academic_year = (request.GET.get("academic_year") or "").strip()
+    term = (request.GET.get("term") or "").strip()
+    college_id = (request.GET.get("college_id") or "").strip()
+    search = (request.GET.get("search") or "").strip()
+    sort = (request.GET.get("sort") or "").strip()
+    status_filter = (request.GET.get("status") or "").strip()
+    page = int(request.GET.get("page") or 1)
+    page_size = int(request.GET.get("pageSize") or 50)
+
+    try:
+        year_val = int(academic_year) if academic_year else None
+    except Exception:
+        return JsonResponse({"detail": "Invalid academic_year"}, status=400)
+
+    term_upper = term.upper()
+    if term_upper == "FIRST":
+        term_val = Clearance.Term.FIRST
+    elif term_upper == "SECOND":
+        term_val = Clearance.Term.SECOND
+    elif term_upper in {"INTERSESSION", str(Clearance.Term.INTERSESSION)}:
+        term_val = Clearance.Term.INTERSESSION
+    elif term:
+        term_val = term
+    else:
+        term_val = None
+
+    if not year_val or not term_val:
+        active_timeline = ClearanceTimeline.objects.filter(is_active=True).order_by("-academic_year_start", "-id").first()
+        if active_timeline:
+            year_val = year_val or active_timeline.academic_year_start
+            term_val = term_val or active_timeline.term
+
+    if not year_val or not term_val:
+        return JsonResponse({"rows": [], "total": 0, "page": page, "pageSize": page_size})
+
+    faculty_qs = Faculty.objects.select_related("user", "college", "department", "office")
+
+    if college_id:
+        faculty_qs = faculty_qs.filter(college_id=college_id)
+
+    if search:
+        faculty_qs = faculty_qs.filter(
+            models.Q(user__first_name__icontains=search) |
+            models.Q(user__last_name__icontains=search) |
+            models.Q(employee_id__icontains=search)
+        )
+
+    faculty_items = list(faculty_qs)
+
+    timeline = ClearanceTimeline.objects.filter(academic_year_start=year_val, term=term_val).order_by("-is_active", "-id").first()
+
+    completed_faculty_ids: set[int] = set()
+    completion_lookup: dict[int, dict] = {}
+
+    if timeline and timeline.archive_date:
+        _ensure_archived_timeline_records(timeline)
+        archived_clearances = ArchivedClearance.objects.filter(
+            clearance_timeline=timeline,
+            faculty_id__in=[f.id for f in faculty_items],
+        )
+        completed_faculty_ids = set(
+            archived_clearances
+            .filter(status=ArchivedClearance.Status.COMPLETED)
+            .values_list("faculty_id", flat=True)
+        )
+    else:
+        completion_lookup = _build_timeline_completion_lookup(timeline, faculty_items) if timeline else {}
+        completed_faculty_ids = {
+            faculty_id
+            for faculty_id, info in completion_lookup.items()
+            if info.get("is_completed")
+        }
+
+    # Build clearance progress rows
+    rows = []
+    for faculty in faculty_items:
+        user = getattr(faculty, "user", None)
+        name_parts = [
+            (getattr(user, "first_name", "") or getattr(faculty, "first_name", "") or "").strip(),
+            (getattr(user, "middle_name", "") or getattr(faculty, "middle_name", "") or "").strip(),
+            (getattr(user, "last_name", "") or getattr(faculty, "last_name", "") or "").strip(),
+        ]
+        faculty_name = " ".join([part for part in name_parts if part]).strip() or (getattr(user, "email", "") or faculty.employee_id)
+
+        info = completion_lookup.get(
+            faculty.id,
+            {"missing_categories": [], "is_completed": faculty.id in completed_faculty_ids},
+        )
+        is_completed = bool(info.get("is_completed"))
+        status = "CLEARED" if is_completed else "INCOMPLETE"
+
+        # Apply status filter
+        if status_filter:
+            if status_filter == "complete" and status != "CLEARED":
+                continue
+            elif status_filter == "incomplete" and status != "INCOMPLETE":
+                continue
+
+        # Get missing approvals for incomplete clearances
+        missing_approval = "None"
+        if not is_completed and timeline:
+            missing_categories = info.get("missing_categories") or []
+            if missing_categories:
+                missing_approval = ", ".join(missing_categories)
+
+        rows.append({
+            "name": faculty_name,
+            "requestId": f"{year_val}-001",  # Generate appropriate request ID
+            "employeeId": getattr(user, "university_id", "") or faculty.employee_id or "",
+            "college": faculty.college.name if faculty.college else "",
+            "department": faculty.department.name if faculty.department else "",
+            "facultyType": faculty.faculty_type or "",
+            "missingApproval": missing_approval,
+            "status": status,
+        })
+
+    # Apply sorting
+    if sort:
+        sort_key_map = {
+            "name": lambda x: x["name"],
+            "request_id": lambda x: x["requestId"],
+            "employee_id": lambda x: x["employeeId"],
+            "college": lambda x: x["college"],
+            "department": lambda x: x["department"],
+            "faculty_type": lambda x: x["facultyType"],
+        }
+        if sort in sort_key_map:
+            rows.sort(key=sort_key_map[sort])
+
+    # Apply pagination
+    total = len(rows)
+    start = (page - 1) * page_size
+    end = start + page_size
+    paginated_rows = rows[start:end]
 
     return JsonResponse({
-            "rows": rows,
-            "summary": {
-                "label": summary_label,
-                "completedCount": completed_count,
-                "incompleteCount": incomplete_count,
-                "totalCount": total_faculty,
-            },
-            "sections": sections,
-        })
+        "rows": paginated_rows,
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+    })
 
 
 @csrf_exempt
 def ovphe_activity_logs_api(request):
+    admin = _get_active_ovphe_admin(request)
+    
+    if not admin:
+        return JsonResponse({"detail": "OVPHE user not found"}, status=404)
 
     if request.method == "POST":
-        admin = _get_active_ovphe_admin(request)
+        try:
+            data, jerr = _parse_json_body(request)
+            
+            if jerr:
+                return jerr
 
-        if not admin:
-            return JsonResponse({"detail": "OVPHE user not found"}, status=404)
+            event_type = (data.get("event_type") or "").strip()
+            
+            if not event_type:
+                return JsonResponse({"detail": "event_type is required"}, status=400)
 
-        data, jerr = _parse_json_body(request)
+            allowed_event_types = {choice[0] for choice in ActivityLog.EventType.choices}
+            
+            if event_type not in allowed_event_types:
+                return JsonResponse({"detail": "Invalid event_type"}, status=400)
 
-        if jerr:
-            return jerr
+            details = data.get("details")
+            
+            if details is None:
+                details = []
+            
+            if not isinstance(details, list):
+                return JsonResponse({"detail": "details must be a list"}, status=400)
+            
+            details = [str(d) for d in details if str(d).strip()]
 
-        if data is None:
-            return JsonResponse({"detail": "Invalid JSON"}, status=400)
+            log = ActivityLog.objects.create(
+                event_type=event_type,
+                user=admin,
+                user_role="OVPHE",
+                details=details,
+            )
 
-        event_type = (data.get("event_type") or "").strip()
-        details = data.get("details") or []
-
-        if not event_type:
-            return JsonResponse({"detail": "event_type is required"}, status=400)
-
-        # Check if event_type is valid - include exported_clearance_results
-
-        valid_event_types = {c[0] for c in ActivityLog.EventType.choices}
-        valid_event_types.add('exported_clearance_results')  # Add the new event type
-
-        if event_type not in valid_event_types:
-            return JsonResponse({"detail": "Invalid event_type"}, status=400)
-
-        if not isinstance(details, list):
-            return JsonResponse({"detail": "details must be a list"}, status=400)
-
-
-
-        obj = ActivityLog.objects.create(
-            event_type=event_type,
-            user=admin,
-            user_role="OVPHE",
-            details=[str(x) for x in details if x is not None],
-        )
-
-        return JsonResponse({
-                "id": str(obj.id),
-                "event_type": obj.event_type,
-                "details": list(obj.details or []),
-                "created_at": obj.created_at.isoformat() if obj.created_at else None,
-            },
-            status=201,
-        )
+            return JsonResponse(
+                {"id": str(log.id), "event_type": log.event_type, "details": list(log.details or [])},
+                status=201,
+            )
+        except Exception as e:
+            import traceback
+            print("[ERROR] ovphe_activity_logs_api POST failed:", str(e))
+            print(traceback.format_exc())
+            
+            return JsonResponse(
+                {"detail": "Internal server error"}, status=500
+            )
 
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
@@ -7313,7 +7618,7 @@ def approver_assistant_approver_detail_api(request, user_id):
                         "department": aa.department.name if aa.department else (aa.office.name if aa.office else "N/A"),
                         "office": aa.office.name if aa.office else "",
                         "email": target_user.email,
-                        "isActive": bool(aa.is_active and target_user.is_active),
+                        "isActive": bool(aa.is_active and target_user.get_active_roles().exists()),
                     }
                 }
             )
@@ -7329,7 +7634,7 @@ def approver_assistant_approver_detail_api(request, user_id):
                     "department": assistant_profile.department.name if assistant_profile.department else "N/A",
                     "office": assistant_profile.office.name if assistant_profile.office else "N/A",
                     "email": target_user.email,
-                    "isActive": bool(target_user.is_active),
+                    "isActive": bool(target_user.get_active_roles().exists()),
                 }
             })
 
@@ -7393,7 +7698,8 @@ def approver_assistant_approver_detail_api(request, user_id):
     else:
         print(f"[DEBUG] Treating as student assistant")
 
-    
+    # Get assistant profile before validation
+    assistant_profile = getattr(target_user, "assistant_profile", None)
 
     if admin_assistant:
         # Admin assistant: only need department OR office
@@ -7418,17 +7724,17 @@ def approver_assistant_approver_detail_api(request, user_id):
                 print(f"[DEBUG] No assistant_profile or department found")
                 return JsonResponse({"detail": "Department is required"}, status=400)
 
-    # Only look up college if it's provided (for student assistants)
-
+    # Look up college - for student assistants, college is required
     college = None
 
     if college_name:
-
         college = College.objects.filter(name__iexact=college_name, is_active=True).first()
-
         if not college:
             return JsonResponse({"detail": "College not found"}, status=400)
-
+    
+    # For student assistants, ensure college is always valid
+    if not admin_assistant and not college:
+        return JsonResponse({"detail": "Valid college is required for student assistants"}, status=400)
 
 
     # Look up department if provided
@@ -7467,50 +7773,63 @@ def approver_assistant_approver_detail_api(request, user_id):
         if not office:
             return JsonResponse({"detail": "Office not found"}, status=400)
 
-    assistant_profile = getattr(target_user, "assistant_profile", None)
-    with transaction.atomic():
-        # Check if email exists for a different user
-        existing_email_user = User.objects.filter(email__iexact=email).first()
-        if existing_email_user and existing_email_user.id != target_user.id:
-            return JsonResponse({"detail": "Email already assigned to a different user"}, status=400)
+    try:
+        with transaction.atomic():
+            # Check if email exists for a different user
+            existing_email_user = User.objects.filter(email__iexact=email).first()
+            if existing_email_user and existing_email_user.id != target_user.id:
+                return JsonResponse({"detail": "Email already assigned to a different user"}, status=400)
 
-        # Check if university_id exists for a different user
-        existing_id_user = User.objects.filter(university_id__iexact=university_id).first()
-        if existing_id_user and existing_id_user.id != target_user.id:
-            return JsonResponse({"detail": "University ID already assigned to a different user"}, status=400)
+            # Check if university_id exists for a different user
+            existing_id_user = User.objects.filter(university_id__iexact=university_id).first()
+            if existing_id_user and existing_id_user.id != target_user.id:
+                return JsonResponse({"detail": "University ID already assigned to a different user"}, status=400)
 
-        target_user.email = email
-        target_user.university_id = university_id
-        target_user.first_name = first_name
-        target_user.middle_name = middle_name
-        target_user.last_name = last_name
-        target_user.is_active = is_active
-        target_user.save(
-            update_fields=[
-                "email",
-                "university_id",
-                "first_name",
-                "middle_name",
-                "last_name",
-                "is_active",
-            ]
-        )
+            target_user.email = email
+            target_user.university_id = university_id
+            target_user.first_name = first_name
+            target_user.middle_name = middle_name
+            target_user.last_name = last_name
+            target_user.save(
+                update_fields=[
+                    "email",
+                    "university_id",
+                    "first_name",
+                    "middle_name",
+                    "last_name",
+                ]
+            )
 
-        # Update either StudentAssistant or ApproverAssistant profile
-        if assistant_profile:
-            print(f"[DEBUG] Updating assistant_profile: college={college}, department={department}")
-            assistant_profile.college = college
-            assistant_profile.department = department
-            assistant_profile.save(update_fields=["college", "department"])
-        
-        if admin_assistant:
-            print(f"[DEBUG] Updating admin_assistant: college={college}, department={department}, office=None")
-            admin_assistant.college = college
-            admin_assistant.department = department
-            admin_assistant.office = None
-            admin_assistant.save(update_fields=["college", "department", "office"])
+            # Update user role active status if needed
+            if is_active:
+                # Activate user's roles
+                target_user.userrole_set.all().update(is_active=True)
+            else:
+                # Deactivate user's roles
+                target_user.userrole_set.all().update(is_active=False)
 
-    return JsonResponse({"ok": True})
+            # Update either StudentAssistant or ApproverAssistant profile
+            if assistant_profile:
+                print(f"[DEBUG] Updating assistant_profile: college={college}, department={department}, office={office}")
+                assistant_profile.college = college
+                assistant_profile.department = department
+                assistant_profile.office = office
+                assistant_profile.save(update_fields=["college", "department", "office"])
+            
+            if admin_assistant:
+                print(f"[DEBUG] Updating admin_assistant: college={college}, department={department}, office={office}")
+                admin_assistant.college = college
+                admin_assistant.department = department
+                admin_assistant.office = office
+                admin_assistant.save(update_fields=["college", "department", "office"])
+
+        return JsonResponse({"ok": True})
+
+    except Exception as e:
+        import traceback
+        print(f"[ERROR] PUT request failed: {str(e)}")
+        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        return JsonResponse({"detail": f"Internal server error: {str(e)}", "traceback": traceback.format_exc()}, status=500)
 
 
 def get_approver_flow_config(timeline_id=None):

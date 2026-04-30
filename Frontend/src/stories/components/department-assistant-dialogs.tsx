@@ -422,6 +422,8 @@ export type EditDepartmentAssistantDialogProps = {
   collegeDepartmentsMap?: Record<string, string[]>;
   emailDisabled?: boolean;
   emailHelpText?: string;
+  offices?: string[];
+  approverLevel?: "dean" | "chair" | "office";
 };
 
 export function EditDepartmentAssistantDialog({
@@ -434,6 +436,8 @@ export function EditDepartmentAssistantDialog({
   collegeDepartmentsMap = {},
   emailDisabled = false,
   emailHelpText = "Only @xu.edu.ph email address is allowed",
+  offices = [],
+  approverLevel,
 }: EditDepartmentAssistantDialogProps) {
   const [internalOpen, setInternalOpen] = React.useState(false);
   const isControlled = typeof open === "boolean";
@@ -449,6 +453,7 @@ export function EditDepartmentAssistantDialog({
   const [universityId, setUniversityId] = React.useState("");
   const [college, setCollege] = React.useState<string>("");
   const [department, setDepartment] = React.useState<string>("");
+  const [office, setOffice] = React.useState<string>("");
   const [email, setEmail] = React.useState("");
   const [isActive, setIsActive] = React.useState(true);
 
@@ -460,14 +465,18 @@ export function EditDepartmentAssistantDialog({
     setUniversityId(initialValues?.universityId ?? "");
     setCollege(initialValues?.college ?? "");
     setDepartment(initialValues?.department ?? "");
+    setOffice(initialValues?.office ?? "");
     setEmail(initialValues?.email ?? "");
     setIsActive(initialValues?.isActive ?? true);
   }, [effectiveOpen, initialValues]);
 
   React.useEffect(() => {
-    // Reset department when college changes
-    setDepartment("");
-  }, [college]);
+    // Reset department when college changes, but only if we don't have an initial department
+    // This preserves the original department value when editing
+    if (!initialValues?.department) {
+      setDepartment("");
+    }
+  }, [college, initialValues?.department]);
 
   const filteredDepartments = React.useMemo(() => {
     // Only show departments for the selected college
@@ -561,6 +570,22 @@ export function EditDepartmentAssistantDialog({
                 </Select>
               </div>
 
+              <div className="space-y-1.5">
+                <div className="text-xs font-semibold text-foreground">Select Office</div>
+                <Select value={office} onValueChange={setOffice} disabled={approverLevel === "dean" || approverLevel === "chair"}>
+                  <SelectTrigger className="h-10 w-full">
+                    <SelectValue placeholder="Choose from dropdown" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {offices.map((o) => (
+                      <SelectItem key={o} value={o}>
+                        {o}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <label className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
                 <Checkbox variant="primary" checked={isActive} onCheckedChange={(v: boolean) => setIsActive(v)} />
                 <span>Set as Active</span>
@@ -589,6 +614,7 @@ export function EditDepartmentAssistantDialog({
                     universityId,
                     college,
                     department,
+                    office,
                     email,
                     isActive,
                   });
