@@ -55,6 +55,10 @@ export default function ApproverIndividualApproval() {
   const [searchParams] = useSearchParams();
   const requestId = searchParams.get("request_id");
 
+  const handleCancel = React.useCallback(() => {
+    navigate("/approver-clearance");
+  }, [navigate]);
+
   const [request, setRequest] = React.useState<IndividualRequestData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -110,7 +114,6 @@ export default function ApproverIndividualApproval() {
         console.log('[DEBUG] Response headers:', res.headers);
         if (!res.ok) {
           throw new Error(`Failed to load request: ${res.statusText}`);
-          throw new Error(`Failed to load request: ${res.status}`);
         }
         return res.json();
       })
@@ -265,18 +268,8 @@ export default function ApproverIndividualApproval() {
     }
   };
 
-  const handleCancel = () => {
-    navigate("/approver-clearance");
-  };
-
   const handleOverride = async () => {
-    if (!request || !overrideReason.trim()) {
-      setError("Override reason is required");
-      return;
-    }
-
-    setSaving(true);
-    setError(null);
+    if (!request) return;
 
     try {
       const response = await fetch("/admin/xu-faculty-clearance/api/approver/override", {
@@ -284,7 +277,7 @@ export default function ApproverIndividualApproval() {
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRFToken": getCookie("csrftoken") || "",
+          "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]')?.getAttribute("value") || "",
         },
         body: JSON.stringify({
           request_id: request.item.requestId,
@@ -294,53 +287,40 @@ export default function ApproverIndividualApproval() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || errorData.message || `Failed to override: ${response.statusText}`);
+        let apiDetail = "";
+        try {
+          const data = await response.json();
+          apiDetail = typeof data?.detail === "string" ? data.detail : "";
+        } catch {
+          apiDetail = "";
+        }
+
+        openError(
+          apiDetail ||
+            (overrideStatus === "rejected"
+              ? SuccessErrorModalMessages.REQUEST_REJECT_FAILED
+              : SuccessErrorModalMessages.REQUEST_APPROVE_FAILED),
+        );
+        return;
       }
 
-      const result = await response.json();
-      console.log("Override successful:", result);
-
-      // Reset override state
       setShowOverrideAlert(false);
       setShowConfirmAlert(false);
-      setOverrideReason("");
-      setOverrideStatus('approved');
 
-      // Refresh the request data
-      const updatedResponse = await fetch(`/admin/xu-faculty-clearance/api/approver/individual-approval?request_id=${requestId}`, {
-        credentials: "include",
-      });
-      
-      if (updatedResponse.ok) {
-        const updatedData = await updatedResponse.json();
-        setRequest(updatedData);
-        setStatus(updatedData.item.status.toLowerCase() as "approved" | "rejected" | "pending");
-        setRemarks(updatedData.item.remarks || "");
-      }
-
-    } catch (err) {
-      console.error("Error overriding:", err);
-      setError(err instanceof Error ? err.message : "Failed to override request");
-    } finally {
-      setSaving(false);
+      openSuccess(
+        overrideStatus === "rejected"
+          ? SuccessErrorModalMessages.REQUEST_REJECTED
+          : SuccessErrorModalMessages.REQUEST_APPROVED,
+        () => navigate("/approver-clearance"),
+      );
+    } catch (e) {
+      openError(
+        overrideStatus === "rejected"
+          ? SuccessErrorModalMessages.REQUEST_REJECT_FAILED
+          : SuccessErrorModalMessages.REQUEST_APPROVE_FAILED,
+      );
     }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-primary-foreground text-primary-foreground">
-        <div className="header mb-3">
-          <DynamicApproverHeader />
-        </div>
-        <main className="dashboard p-4">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-lg">Loading...</div>
-          </div>
-        </main>
-      </div>
-    );
-  }
 
   if (error || !request) {
     return (
@@ -521,7 +501,7 @@ export default function ApproverIndividualApproval() {
 
                       // Require that the entered email matches the logged-in approver's email
                       if (!approverEmail || entered !== approverEmail) {
-                        setError("Please enter your XU email to confirm the override");
+                        openError(SuccessErrorModalMessages.EMAIL_DOES_NOT_MATCH_APPROVER);
                         return;
                       }
 

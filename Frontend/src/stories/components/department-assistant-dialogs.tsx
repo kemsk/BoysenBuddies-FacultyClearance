@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "./select";
 import { Checkbox } from "./checkbox";
+import { ErrorModal, SuccessErrorModalMessages } from "./success-and-error-modals";
 
 export type DepartmentAssistantPayload = {
   firstName: string;
@@ -72,6 +73,14 @@ export function AddDepartmentAssistantDialog({
     onOpenChange?.(next);
   };
 
+  const [errorOpen, setErrorOpen] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState<React.ReactNode>("");
+
+  const openError = React.useCallback((message: React.ReactNode) => {
+    setErrorMessage(message);
+    setErrorOpen(true);
+  }, []);
+
   
   const [firstName, setFirstName] = React.useState("");
   const [middleName, setMiddleName] = React.useState("");
@@ -127,7 +136,10 @@ export function AddDepartmentAssistantDialog({
   }, [mode, filteredDepartments, department]);
 
   return (
-    <Dialog open={effectiveOpen} onOpenChange={setOpen}>
+    <>
+      <ErrorModal open={errorOpen} onOpenChange={setErrorOpen} message={errorMessage} />
+
+      <Dialog open={effectiveOpen} onOpenChange={setOpen}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent className="left-6 right-6 w-auto max-w-[420px] translate-x-0 rounded-xl p-0 sm:left-[50%] sm:right-auto sm:w-full sm:max-w-lg sm:translate-x-[-50%]">
         <div className="rounded-xl bg-background">
@@ -321,7 +333,7 @@ export function AddDepartmentAssistantDialog({
                 className="h-11 w-full rounded-md"
                 onClick={() => {
                   if (mode === "admin" && !termsAccepted) {
-                    alert("You must accept the terms and agreements to continue.");
+                    openError(SuccessErrorModalMessages.MUST_ACCEPT_TERMS);
                     return;
                   }
                   if (mode === "admin") {
@@ -394,7 +406,8 @@ export function AddDepartmentAssistantDialog({
           </div>
         </div>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+    </>
   );
 }
 

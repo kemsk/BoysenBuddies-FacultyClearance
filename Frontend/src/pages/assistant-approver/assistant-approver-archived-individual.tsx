@@ -5,6 +5,7 @@ import { RequestCard } from "../../stories/components/cards";
 import { Button } from "../../stories/components/button";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
+import { ErrorModal } from "../../stories/components/success-and-error-modals";
 
 type ArchivedAssistantRequest = {
   id: string;
@@ -46,6 +47,14 @@ export default function AssistantApproverArchivedIndividualApproval() {
   const [error, setError] = React.useState("");
   const [remarksByRequest, setRemarksByRequest] = React.useState<Record<string, string>>({});
   const [submittingRequestId, setSubmittingRequestId] = React.useState<string>("");
+
+  const [errorOpen, setErrorOpen] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState<React.ReactNode>("");
+
+  const openError = React.useCallback((message: React.ReactNode) => {
+    setErrorMessage(message);
+    setErrorOpen(true);
+  }, []);
 
   const loadArchivedDetail = React.useCallback(() => {
     if (!timelineId || !archivedId) {
@@ -104,7 +113,7 @@ export default function AssistantApproverArchivedIndividualApproval() {
       await loadArchivedDetail();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to update archived request.";
-      window.alert(message);
+      openError(message);
     } finally {
       setSubmittingRequestId("");
     }
@@ -112,6 +121,9 @@ export default function AssistantApproverArchivedIndividualApproval() {
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
+
+      <ErrorModal open={errorOpen} onOpenChange={setErrorOpen} message={errorMessage} />
+
       <div className="header mb-3">
         <AssistantApproverHeader />
       </div>

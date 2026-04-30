@@ -583,6 +583,7 @@ import {
           userName={activeUser?.name ?? ""}
           userEmail={activeUser?.email ?? ""}
           adminEmail={adminEmail}
+          mismatchMessage={SuccessErrorModalMessages.ERROR_MATCH_EMAIL}
           onError={(msg) => openError(msg || SuccessErrorModalMessages.ERROR_MATCH_EMAIL)}
           onRemove={() => {
             if (!activeUser) return;

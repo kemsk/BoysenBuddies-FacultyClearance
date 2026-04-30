@@ -20,6 +20,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { Link, useNavigate } from "react-router-dom";
 import { SearchInputGroup } from "../../stories/components/input-group";
 import { useState } from "react";
+import { ErrorModal, SuccessErrorModalMessages } from "../../stories/components/success-and-error-modals";
 
 interface ArchivedFacultyData {
   id: string;
@@ -46,6 +47,14 @@ export default function CISOArchivedFaculty() {
   const [archivedData, setArchivedData] = React.useState<ArchivedFacultyData[]>([]);
   const [loading, setLoading] = React.useState(false);
 
+  const [errorOpen, setErrorOpen] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState<React.ReactNode>("");
+
+  const openError = React.useCallback((message: React.ReactNode) => {
+    setErrorMessage(message);
+    setErrorOpen(true);
+  }, []);
+
   const fetchArchivedFaculty = React.useCallback(async () => {
     setLoading(true);
     try {
@@ -71,7 +80,8 @@ export default function CISOArchivedFaculty() {
     try {
       const res = await fetch(`/admin/xu-faculty-clearance/api/ciso/archived-faculty/${archivedId}/download`);
       if (!res.ok) {
-        throw new Error("Failed to download CSV");
+        openError(SuccessErrorModalMessages.DOWNLOAD_CSV_FAILED);
+        return;
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -84,7 +94,7 @@ export default function CISOArchivedFaculty() {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error downloading CSV:", error);
-      alert("Failed to download CSV file");
+      openError(SuccessErrorModalMessages.DOWNLOAD_CSV_FAILED);
     }
   };
 
@@ -111,6 +121,8 @@ export default function CISOArchivedFaculty() {
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
+
+      <ErrorModal open={errorOpen} onOpenChange={setErrorOpen} message={errorMessage} />
       
       {/* HEADER */}
       <div className="header mb-3">
