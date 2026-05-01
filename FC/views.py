@@ -5133,7 +5133,6 @@ def ovphe_system_analytics_api(request):
 
     if college_id:
         faculty_qs = faculty_qs.filter(college_id=college_id)
-
     faculty_items = list(faculty_qs.values("id", "college_id", "college__name", "department_id", "department__name", "office_id", "office__name", "faculty_type"))
 
     timeline = ClearanceTimeline.objects.filter(academic_year_start=year_val, term=term_val).order_by("-is_active", "-id").first()
@@ -5167,6 +5166,7 @@ def ovphe_system_analytics_api(request):
     office_buckets = {}
     selected_college_name = ""
 
+    # First, collect offices from faculty assignments
     for item in faculty_items:
         if not selected_college_name and item.get("college__name"):
             selected_college_name = item.get("college__name") or ""
@@ -5182,6 +5182,114 @@ def ovphe_system_analytics_api(request):
         if office_id not in office_buckets:
             office_buckets[office_id] = {"label": office_name, "faculty_ids": set()}
         office_buckets[office_id]["faculty_ids"].add(item["id"])
+
+    # Also include offices that have processed clearance requests, even if no faculty are assigned
+    from FC.models import ClearanceRequest, Requirement, Office
+
+    # Get all offices that have requirements in this timeline
+    timeline_requirements = Requirement.objects.filter(clearance_timeline=timeline).prefetch_related("target_offices")
+    
+    for requirement in timeline_requirements:
+        target_offices = list(requirement.target_offices.all())
+        for office in target_offices:
+            if office.id not in office_buckets:
+                office_buckets[office.id] = {"label": office.name, "faculty_ids": set()}
+    
+    # Also include offices that have actually processed clearance requests (both pending and approved)
+    processed_offices = ClearanceRequest.objects.filter(
+        requirement__clearance_timeline=timeline,
+        requirement__target_offices__isnull=False
+    ).select_related('requirement').prefetch_related('requirement__target_offices')
+    
+    for request in processed_offices:
+        target_offices = list(request.requirement.target_offices.all())
+        for office in target_offices:
+            if office.id not in office_buckets:
+                office_buckets[office.id] = {"label": office.name, "faculty_ids": set()}
+            office_buckets[office.id]["faculty_ids"].add(request.faculty_id)
+
+    # Since there are no Clearance records matching the current timeline, 
+    # we need to use the completion lookup data and attribute faculty to offices
+    # Use the recipient scope logic to properly attribute faculty to offices
+    
+    for completed_faculty_id in completed_faculty_ids:
+        # Get faculty details to check recipient scope matching
+        try:
+            faculty_obj = Faculty.objects.get(id=completed_faculty_id)
+        except Faculty.DoesNotExist:
+            continue
+        
+        # Check each timeline requirement to see if this faculty should be attributed to its target offices
+        for requirement in timeline_requirements:
+            faculty_matches_scope = False
+            
+            if requirement.recipient_scope == 'all':
+                faculty_matches_scope = True
+            elif requirement.recipient_scope == 'college' and faculty_obj.college_id:
+                faculty_matches_scope = requirement.target_colleges.filter(id=faculty_obj.college_id).exists()
+            elif requirement.recipient_scope == 'department' and faculty_obj.department_id:
+                faculty_matches_scope = requirement.target_departments.filter(id=faculty_obj.department_id).exists()
+            elif requirement.recipient_scope == 'office' and faculty_obj.office_id:
+                faculty_matches_scope = requirement.target_offices.filter(id=faculty_obj.office_id).exists()
+            elif requirement.recipient_scope == 'individual':
+                faculty_matches_scope = requirement.target_faculty.filter(id=completed_faculty_id).exists()
+            
+            if faculty_matches_scope:
+                # Attribute faculty to the target offices of this requirement
+                target_offices = list(requirement.target_offices.all())
+                
+                if not target_offices and requirement.approver_flow_step and requirement.approver_flow_step.office:
+                    # Fallback: Use the approver flow step office if requirement has no target offices
+                    approver_office = requirement.approver_flow_step.office
+                    if approver_office.id not in office_buckets:
+                        office_buckets[approver_office.id] = {"label": approver_office.name, "faculty_ids": set()}
+                    office_buckets[approver_office.id]["faculty_ids"].add(completed_faculty_id)
+                    
+                    # Remove faculty from Unassigned Office since they now have a proper office assignment
+                    if None in office_buckets:
+                        office_buckets[None]["faculty_ids"].discard(completed_faculty_id)
+                elif not target_offices:
+                    # Final fallback: If no target offices and no approver office, attribute to all active offices
+                    all_active_offices = Office.objects.filter(is_active=True)
+                    for office in all_active_offices:
+                        if office.id not in office_buckets:
+                            office_buckets[office.id] = {"label": office.name, "faculty_ids": set()}
+                        office_buckets[office.id]["faculty_ids"].add(completed_faculty_id)
+                else:
+                    for office in target_offices:
+                        if office.id not in office_buckets:
+                            office_buckets[office.id] = {"label": office.name, "faculty_ids": set()}
+                        office_buckets[office.id]["faculty_ids"].add(completed_faculty_id)
+
+    # For all faculty (completed and pending), attribute them to offices based on their Clearances
+    # Get all faculty with Clearances in this timeline (both completed and pending)
+    all_faculty_clearances = Clearance.objects.filter(
+        academic_year=year_val,
+        term=term_val
+    ).values_list('faculty_id', flat=True).distinct()
+    
+    for faculty_id in all_faculty_clearances:
+        # Find all Clearances for this faculty in the current timeline
+        faculty_clearances = Clearance.objects.filter(
+            faculty_id=faculty_id,
+            academic_year=year_val,
+            term=term_val
+        ).prefetch_related('requirements')
+        
+        # Attribute faculty to the offices that are processing their requirements
+        for clearance in faculty_clearances:
+            for requirement in clearance.requirements.all():
+                for office in requirement.target_offices.all():
+                    if office.id not in office_buckets:
+                        office_buckets[office.id] = {"label": office.name, "faculty_ids": set()}
+                    office_buckets[office.id]["faculty_ids"].add(faculty_id)
+
+    # Include all active offices to ensure they appear even if no faculty or requests are assigned
+    all_active_offices = Office.objects.filter(is_active=True)
+    
+    for office in all_active_offices:
+        if office.id not in office_buckets:
+            office_buckets[office.id] = {"label": office.name, "faculty_ids": set()}
 
     for office_id, bucket in office_buckets.items():
         office_name = bucket["label"]
