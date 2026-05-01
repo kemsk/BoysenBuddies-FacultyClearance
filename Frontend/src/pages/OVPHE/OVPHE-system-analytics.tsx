@@ -55,7 +55,23 @@ async function exportToPDF(elementId: string, filename: string) {
     element.style.display = 'block';
     element.style.visibility = 'visible';
     
-    // Trigger reflow to ensure CSS gradients are rendered
+    // Temporarily replace conic gradients with solid colors for PDF export
+    const conicElements = element.querySelectorAll('[style*="conic-gradient"]');
+    const originalStyles: Array<{ element: HTMLElement; style: string }> = [];
+    
+    conicElements.forEach((el) => {
+      const element = el as HTMLElement;
+      const originalStyle = element.style.background;
+      originalStyles.push({ element, style: originalStyle });
+      
+      // Extract first color from gradient and use as solid background
+      const colorMatch = originalStyle.match(/#[a-fA-F0-9]{6}|#[a-fA-F0-9]{3}|rgb\([^)]+\)|rgba\([^)]+\)/);
+      if (colorMatch) {
+        element.style.background = colorMatch[0];
+      }
+    });
+    
+    // Trigger reflow to ensure CSS is rendered
     element.offsetHeight;
     
     // Wait a moment for charts to fully render
@@ -73,7 +89,8 @@ async function exportToPDF(elementId: string, filename: string) {
       scrollX: -50, // Offset to capture more content
       scrollY: -50,
       imageTimeout: 15000, // Extended timeout for chart rendering
-      foreignObjectRendering: false // Better for CSS gradients and complex styling
+      foreignObjectRendering: false, // Better for CSS gradients and complex styling
+      removeContainer: false // Keep container for proper chart rendering
     });
 
     // Create PDF with portrait orientation for mobile PWA
@@ -124,6 +141,11 @@ async function exportToPDF(elementId: string, filename: string) {
 
     // Save the PDF
     pdf.save(filename);
+
+    // Restore original conic gradient styles
+    originalStyles.forEach(({ element, style }) => {
+      element.style.background = style;
+    });
 
     // Restore button
     if (originalButton) {
