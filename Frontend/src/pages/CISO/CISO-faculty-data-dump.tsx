@@ -257,13 +257,8 @@ export default function CISOFacultyDataDump() {
               const created = data?.created_count ?? 0;
               const updated = data?.updated_count ?? 0;
               const skipped = data?.skipped_count ?? 0;
-              const errors = Array.isArray(data?.errors) ? data.errors : [];
 
-              const errorText = errors.length
-                ? "\n\nErrors:\n" + errors.map((e: any) => `Row ${e.row}: ${e.message}`).join("\n")
-                : "";
-
-              openSuccess(`${buildImportCompleteMessage(created, updated, skipped)}${errorText}`);
+              openSuccess(buildImportCompleteMessage(created, updated, skipped));
             } finally {
               setBusy(false);
             }
