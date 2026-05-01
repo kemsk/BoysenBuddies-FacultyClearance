@@ -629,7 +629,14 @@ export default function SystemAnalytics() {
               className="self-stretch h-[220px] w-full lg:w-[calc(50%-10px)]"
               title={`Distribution of ${analyticsData?.summary?.totalFaculty || 0} faculty by clearance status`}
               total={analyticsData?.summary?.totalFaculty || 0}
-              items={analyticsData?.clearanceDistribution || []}
+              items={(analyticsData?.clearanceDistribution || []).map((item: any) => ({
+                ...item,
+                barClassName: 
+                  item.label === "Cleared Clearance" ? "bg-success" :
+                  item.label === "Incomplete Clearance" ? "bg-orange-400" :
+                  item.label === "Unprocessed Clearance" ? "bg-blue-500" :
+                  "bg-gray-400"
+              }))}
             />
               
             <FacultyCompositionCard

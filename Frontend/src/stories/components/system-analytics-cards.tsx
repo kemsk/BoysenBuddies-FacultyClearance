@@ -155,6 +155,17 @@ export function StatCard({ className, children, variant, title, number, descript
 
         {finalDescription != null && <span className="text-xs text-gray-600">{finalDescription}</span>}
 
+        {variant === "OverallCompletion" && number != null && number !== "" && (
+          <div className="mt-3 w-full">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
+              <div
+                className="h-full rounded-full bg-success"
+                style={{ width: `${Math.max(0, Math.min(100, Number(number)))}%` }}
+              />
+            </div>
+          </div>
+        )}
+
         {children}
 
       </div>
