@@ -2,13 +2,10 @@ import * as React from "react";
 
 import "../../index.css";
 import { Link, useNavigate } from "react-router-dom";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 import { OVPHEHeader } from "../../stories/components/header";
-import {
-  AnalyticsDonutCard,
-  DepartmentCompletionRateCard,
-  type DepartmentCompletionRateSection,
-} from "../../stories/components/cards";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -18,7 +15,6 @@ import {
   BreadcrumbSeparator,
 } from "../../stories/components/breadcrumb";
 import { Button } from "../../stories/components/button";
-import { Card, CardContent } from "../../stories/components/card";
 import { Badge } from "../../stories/components/badge";
 import {
   Select,
@@ -39,6 +35,120 @@ function postOVPHEActivityLog(payload: { event_type: string; details?: string[] 
   }).catch(() => {});
 }
 
+async function exportToPDF(elementId: string, filename: string) {
+  try {
+    const element = document.getElementById(elementId);
+    if (!element) {
+      console.error(`Element with ID "${elementId}" not found.`);
+      return;
+    }
+
+    // Show loading state
+    const originalButton = document.querySelector('[data-export-button]') as HTMLButtonElement;
+    const originalContent = originalButton?.innerHTML;
+    if (originalButton) {
+      originalButton.disabled = true;
+      originalButton.innerHTML = '<div class="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div> Generating PDF...';
+    }
+
+    // Force CSS rendering before capture
+    element.style.display = 'block';
+    element.style.visibility = 'visible';
+    
+    // Trigger reflow to ensure CSS gradients are rendered
+    element.offsetHeight;
+    
+    // Wait a moment for charts to fully render
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Create canvas from the element with foreign object rendering
+    const canvas = await html2canvas(element, {
+      scale: 1.5, // Reduced scale to prevent cutoff
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      windowWidth: element.scrollWidth + 100, // Add extra width
+      windowHeight: element.scrollHeight + 100, // Add extra height
+      scrollX: -50, // Offset to capture more content
+      scrollY: -50,
+      imageTimeout: 15000, // Extended timeout for chart rendering
+      foreignObjectRendering: false // Better for CSS gradients and complex styling
+    });
+
+    // Create PDF with portrait orientation for mobile PWA
+    const imgData = canvas.toDataURL('image/png', 0.95);
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true
+    });
+
+    // Calculate dimensions with optimized margins for mobile
+    const pageWidth = 210; // A4 portrait width in mm
+    const pageHeight = 297; // A4 portrait height in mm
+    const margin = 8; // 8mm margins for balanced layout
+    const usableWidth = pageWidth - (margin * 2);
+    const usableHeight = pageHeight - (margin * 2);
+
+    // Calculate image dimensions with better scaling
+    const canvasAspectRatio = canvas.width / canvas.height;
+    const pageAspectRatio = usableWidth / usableHeight;
+    
+    let imgWidth, imgHeight;
+    if (canvasAspectRatio > pageAspectRatio) {
+      // Canvas is wider, fit to width
+      imgWidth = usableWidth;
+      imgHeight = usableWidth / canvasAspectRatio;
+    } else {
+      // Canvas is taller, fit to height
+      imgHeight = usableHeight;
+      imgWidth = usableHeight * canvasAspectRatio;
+    }
+
+    let heightLeft = imgHeight;
+    let position = margin;
+
+    // Add first page with margin
+    pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+    heightLeft -= usableHeight;
+
+    // Add additional pages if needed
+    while (heightLeft > 0) {
+      position = margin - (imgHeight - heightLeft);
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+      heightLeft -= usableHeight;
+    }
+
+    // Save the PDF
+    pdf.save(filename);
+
+    // Restore button
+    if (originalButton) {
+      originalButton.disabled = false;
+      originalButton.innerHTML = originalContent;
+    }
+
+    // Log the activity
+    postOVPHEActivityLog({
+      event_type: "exported_analytics_pdf",
+      details: [`PDF exported: ${filename}`]
+    });
+
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    
+    // Restore button on error
+    const originalButton = document.querySelector('[data-export-button]') as HTMLButtonElement;
+    if (originalButton) {
+      originalButton.disabled = false;
+      originalButton.innerHTML = '<img src="/WhiteExportIcon.png" alt="Export analytics" className="h-5 w-5 object-contain" /> Export Analytics';
+    }
+  }
+}
+
 export default function SystemAnalytics() {
   const navigate = useNavigate();
 
@@ -57,10 +167,6 @@ export default function SystemAnalytics() {
   >([]);
   const [timelineTermsByYear, setTimelineTermsByYear] = React.useState<Record<string, string[]>>({});
   const [colleges, setColleges] = React.useState<{ id: string; name: string }[]>([]);
-  const [donutTitle, setDonutTitle] = React.useState("Overall Count");
-  const [donutCompleted, setDonutCompleted] = React.useState(0);
-  const [donutTotal, setDonutTotal] = React.useState(100);
-  const [completionSections, setCompletionSections] = React.useState<DepartmentCompletionRateSection[]>([]);
 
   const buildAnalyticsParams = React.useCallback(() => {
     const params = new URLSearchParams();
@@ -205,11 +311,9 @@ export default function SystemAnalytics() {
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => {
         setAnalyticsData(data);
-        setCompletionSections(data.sections ?? []);
       })
       .catch(() => {
         setAnalyticsData(null);
-        setCompletionSections([]);
       })
       .finally(() => {
         setLoading(false);
@@ -272,7 +376,7 @@ export default function SystemAnalytics() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4 w-full lg:max-w-4xl lg:mx-auto lg:p-8">
+      <main id="analytics-content" className="dashboard p-4 w-full lg:max-w-4xl lg:mx-auto lg:p-8">
         
         <h1 className="text-2xl text-left text-primary font-bold">System Analytics</h1>
 
@@ -344,54 +448,69 @@ export default function SystemAnalytics() {
 
               <Button 
                 type="button" 
-                variant="default" 
-                  onClick={() => {
-                    postOVPHEActivityLog({
-                      event_type: "exported_clearance_results",
-                      details: [
-                        `User: ${localStorage.getItem('firstName') || 'Unknown'} ${localStorage.getItem('lastName') || ''}`,
-                        selectedCollege !== "College" ? `College: ${selectedCollege}` : "",
-                        selectedClearance !== "All Clearances" && selectedTerm !== "Term" 
-                          ? `Details: (${selectedClearance} ${selectedTerm})`
-                          : selectedClearance !== "All Clearances" 
-                            ? `Details: (${selectedClearance})`
-                            : selectedTerm !== "Term"
-                              ? `Details: (${selectedTerm})`
-                              : ""
-                      ].filter(Boolean),
-                    });
-                    const params = buildAnalyticsParams();
-                    const url = `/admin/xu-faculty-clearance/api/ovphe/export-clearance-results?${params.toString()}`;
-                    fetch(url, { credentials: "include" })
-                      .then((response) => {
-                        if (!response.ok) {
-                          return Promise.reject();
-                        }
-                        const disposition = response.headers.get("content-disposition") || "";
-                        const match = disposition.match(/filename="?([^";]+)"?/i);
-                        const fallbackYear =
-                          selectedClearance && selectedClearance !== "All Clearances"
-                            ? selectedClearance.replace(/[^\d-]+/g, "_").replace(/^_+|_+$/g, "")
-                            : "active";
-                        const filename = match?.[1] || `clearance_results_${fallbackYear}.csv`;
-                        return response.blob().then((blob) => ({ blob, filename }));
-                      })
-                      .then(({ blob, filename }) => {
-                        const blobUrl = window.URL.createObjectURL(blob);
-                        const link = document.createElement("a");
-                        link.href = blobUrl;
-                        link.download = filename;
-                        document.body.appendChild(link);
-                        link.click();
-                        link.remove();
-                        window.URL.revokeObjectURL(blobUrl);
-                      })
-                      .catch(() => {});
-                  }}
-                >
-                  <img src="/WhiteExportIcon.png" alt="Export analytics" className="h-5 w-5 object-contain" />
-                  Export Analytics
-                </Button>            
+                variant="default"
+                data-export-button
+                onClick={() => {
+                  // Generate filename in the format: [Start Year]-[End Year]_[Semester/Period] - ClearanceProgress [Export Date].pdf
+                  let academicYear = "";
+                  let semester = "";
+                  
+                  // Extract academic year from selectedClearance
+                  if (selectedClearance && selectedClearance !== "All Clearances") {
+                    const yearMatch = selectedClearance.match(/S\.Y\. (\d{4})-(\d{4})/);
+                    if (yearMatch) {
+                      academicYear = `${yearMatch[1]}-${yearMatch[2]}`;
+                    }
+                  }
+                  
+                  // Map selectedTerm to semester format
+                  if (selectedTerm && selectedTerm !== "Term") {
+                    const termMap: Record<string, string> = {
+                      "First Semester": "1stSemester",
+                      "Second Semester": "2ndSemester", 
+                      "Intersession": "Intersession"
+                    };
+                    semester = termMap[selectedTerm] || selectedTerm;
+                  }
+                  
+                  // Generate export date in MMDDYYYY format
+                  const today = new Date();
+                  const exportDate = `${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}${today.getFullYear()}`;
+                  
+                  // Build filename
+                  let filename = "";
+                  if (academicYear && semester) {
+                    filename = `${academicYear}_${semester}-ClearanceProgress ${exportDate}.pdf`;
+                  } else if (academicYear) {
+                    filename = `${academicYear}-ClearanceProgress ${exportDate}.pdf`;
+                  } else {
+                    filename = `ClearanceProgress ${exportDate}.pdf`;
+                  }
+                  
+                  // Log the activity with current filters
+                  postOVPHEActivityLog({
+                    event_type: "exported_analytics_pdf",
+                    details: [
+                      `User: ${localStorage.getItem('firstName') || 'Unknown'} ${localStorage.getItem('lastName') || ''}`,
+                      selectedCollege !== "College" ? `College: ${selectedCollege}` : "",
+                      selectedClearance !== "All Clearances" && selectedTerm !== "Term" 
+                        ? `Details: (${selectedClearance} ${selectedTerm})`
+                        : selectedClearance !== "All Clearances" 
+                          ? `Details: (${selectedClearance})`
+                          : selectedTerm !== "Term"
+                            ? `Details: (${selectedTerm})`
+                            : "",
+                      `Format: PDF`
+                    ].filter(Boolean),
+                  });
+                  
+                  // Export to PDF
+                  exportToPDF('analytics-content', filename);
+                }}
+              >
+                <img src="/WhiteExportIcon.png" alt="Export analytics" className="h-5 w-5 object-contain" />
+                Export Analytics
+              </Button>            
           </div>
         </div>  
 
