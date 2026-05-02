@@ -12,13 +12,13 @@ export default function Action() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4 w-full lg:max-w-4xl lg:mx-auto lg:p-8">
+      <main className="dashboard p-4 w-full ">
 
         <div className="mt-0 grid gap-4">
           <ActionNavCard
             icon={<Users className="h-7 w-7" />}
             title="View Student Assistants"
-            description="Check the list of Student Assistants\nin your department"
+            description="Check the list of Student Assistants in your department"
             to="/approver-assistant-list"
           />
 

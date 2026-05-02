@@ -815,53 +815,33 @@ export function ClearanceRequestsCard({
     try {
 
       // Check if current user is an assistant approver by checking the current URL
-
       const isAssistantApprover = window.location.pathname.includes('/assistant-approver');
-
       console.log("[DEBUG] Is assistant approver:", isAssistantApprover);
-
       // Use appropriate endpoint based on user type
-
       const actionEndpoint = isAssistantApprover ? "/admin/xu-faculty-clearance/api/assistant-approver/clearance" : "/admin/xu-faculty-clearance/api/approver/action";
 
       const response = await fetch(actionEndpoint, {
-
         method: "POST",
-
         credentials: "include",
-
         headers: {
-
           "Content-Type": "application/json",
-
           "X-CSRFToken": getCookie("csrftoken") || "",
-
         },
 
         body: JSON.stringify({
-
           request_ids: Array.from(selectedIds),
-
           action: "approve",
-
           remarks: "",
-
         }),
 
       });
 
       if (!response.ok) {
-
         const errorData = await response.json().catch(() => ({}));
-
         const errorMessage = errorData.detail || errorData.message || `Failed to approve: ${response.statusText}`;
-
         if (errorData.detail) {
-
           throw new Error(`Failed to approve: ${errorData.detail}`);
-
         } else if (errorData.message) {
-
           throw new Error(`Failed to approve: ${errorData.message}`);
         } else {
           throw new Error(`Failed to approve: ${response.statusText}`);

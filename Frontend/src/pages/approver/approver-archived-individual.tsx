@@ -128,7 +128,7 @@ export default function ApproverArchivedIndividualApproval() {
         <DynamicApproverHeader />
       </div>
 
-      <main className="dashboard p-4 w-full lg:max-w-4xl lg:mx-auto lg:p-8">
+      <main className="dashboard p-4 w-full">
         <div className="mt-3 space-y-4">
           <Breadcrumb className="mt-2">
             <BreadcrumbList>

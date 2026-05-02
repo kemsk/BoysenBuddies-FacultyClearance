@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import "../../index.css"; 
-import { OVPHEHeader } from "../../stories/components/header";
+import { CISOHeader } from "../../stories/components/header";
 
 import {
   type AnnouncementItem,
@@ -27,7 +27,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { Link, useNavigate } from "react-router-dom";
 
 // Helper to POST notifications for multiple roles
-function postOVPHENotification(payload: {
+function postCISONotification(payload: {
   title: string;
   body: string;
   details: string[];
@@ -35,8 +35,8 @@ function postOVPHENotification(payload: {
   is_read?: number | boolean;
   user_roles?: string[];
   user_ids?: number[];
-  created_by_id?: string | number | null;
-  approver_id?: string | number | null;
+  created_by_id?: number | null;
+  approver_id?: number | null;
   clearance_period_start_date?: string | null;
   clearance_period_end_date?: string | null;
 }) {
@@ -53,23 +53,6 @@ function postOVPHENotification(payload: {
     })
     .catch((e) => {
       console.error("CISO notification POST threw", e);
-    });
-}
-
-function postOVPHEActivityLog(payload: { event_type: string; details?: string[] }) {
-  fetch("/admin/xu-faculty-clearance/api/ovphe/activity-logs", {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...payload, user_role: "OVPHE" }),
-  })
-    .then(async (r) => {
-      if (r.ok) return;
-      const text = await r.text().catch(() => "");
-      console.error("[OVPHE] activity log POST failed:", r.status, text);
-    })
-    .catch((e) => {
-      console.error("[OVPHE] activity log POST error:", e);
     });
 }
 
@@ -103,7 +86,7 @@ function GuidelinesToggle({
   );
 }
 
-export default function OVPHEAnnouncements() {
+export default function CISOAccessControl() {
   const navigate = useNavigate();
 
   type AnnouncementApiItem = AnnouncementItem & { id: number; email?: string };
@@ -117,7 +100,7 @@ export default function OVPHEAnnouncements() {
   >({ open: false });
 
   const refresh = React.useCallback(() => {
-    return fetch("/admin/xu-faculty-clearance/api/ovphe/announcements")
+    return fetch("/admin/xu-faculty-clearance/api/ciso/announcements")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: { items: AnnouncementApiItem[] }) => {
         const initial = (data.items ?? []).map((item) => ({
@@ -140,11 +123,11 @@ export default function OVPHEAnnouncements() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <OVPHEHeader />
+        <CISOHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4 mt-2 space-y-3 w-full">
+      <main className="dashboard p-4 mt-2 space-y-3">
 
         <h1 className="text-2xl text-left text-primary font-bold">Announcements</h1>
 
@@ -152,7 +135,7 @@ export default function OVPHEAnnouncements() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/OVPHE-dashboard">Dashboard</Link>
+                <Link to="/CISO-dashboard">Dashboard</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -162,13 +145,13 @@ export default function OVPHEAnnouncements() {
           </BreadcrumbList>
         </Breadcrumb>
 
-        <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" size="back" onClick={() => navigate("/OVPHE-dashboard")}> 
-            <div className="flex items-center gap-2">
-              <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
-            </div>
-          </Button>
-        </div>
+         <div className="mb-3 mt-2 flex items-center justify-end">
+           <Button variant="back" size="back" onClick={() => navigate("/CISO-dashboard")}> 
+             <div className="flex items-center gap-2">
+               <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
+             </div>
+           </Button>
+         </div>       
 
           <SectionListCard
             title="Announcements"
@@ -335,12 +318,26 @@ export default function OVPHEAnnouncements() {
                             }
 
                             if (confirm.type === "delete") {
-                              postOVPHEActivityLog({
-                                event_type: "deleted_announcement",
-                                details: title ? [`Announcement: ${title}`] : [],
-                              });
+                              fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                                method: "POST",
+                                credentials: "include",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  user_role: "CISO",
+                                  event_type: "deleted_announcement",
+                                  details: title ? [`Announcement : ${title}`] : [],
+                                }),
+                              })
+                                .then(async (r) => {
+                                  if (r.ok) return;
+                                  const t = await r.text().catch(() => "");
+                                  console.error("CISO activity log POST failed", r.status, t);
+                                })
+                                .catch((e) => {
+                                  console.error("CISO activity log POST error", e);
+                                });
                               fetch(
-                                `/admin/xu-faculty-clearance/api/ovphe/announcements/${current.id}`,
+                                `/admin/xu-faculty-clearance/api/ciso/announcements/${current.id}`,
                                 { method: "DELETE" }
                               ).finally(() => {
                                 setConfirm({ open: false });
@@ -350,12 +347,28 @@ export default function OVPHEAnnouncements() {
                             }
 
                             const nextEnabled = confirm.type === "enable";
-                            postOVPHEActivityLog({
-                              event_type: nextEnabled ? "enabled_announcement" : "disabled_announcement",
-                              details: title ? [`Announcement: ${title}`] : [],
-                            });
+                            fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                              method: "POST",
+                              credentials: "include",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                user_role: "CISO",
+                                event_type: nextEnabled
+                                  ? "enabled_announcement"
+                                  : "disabled_announcement",
+                                details: title ? [`Announcement : ${title}`] : [],
+                              }),
+                            })
+                              .then(async (r) => {
+                                if (r.ok) return;
+                                const t = await r.text().catch(() => "");
+                                console.error("CISO activity log POST failed", r.status, t);
+                              })
+                              .catch((e) => {
+                                console.error("CISO activity log POST error", e);
+                              });
                             fetch(
-                              `/admin/xu-faculty-clearance/api/ovphe/announcements/${current.id}`,
+                              `/admin/xu-faculty-clearance/api/ciso/announcements/${current.id}`,
                               {
                                 method: "PATCH",
                                 headers: { "Content-Type": "application/json" },
@@ -366,15 +379,19 @@ export default function OVPHEAnnouncements() {
                               refresh().catch(() => null);
                               // POST Inactive notification only when deactivating
                               if (!nextEnabled) {
-                                postOVPHENotification({
+                                postCISONotification({
                                     title: "Content Archived",
                                     body: `"${title}" has been moved to archives by [User Name].`,
                                     details: [`Announcement title = "${title}"`],
                                     status: null,
                                     is_read: 0,
                                     user_roles: ["CISO", "OVPHE"],
-                                  });                               
-                                postOVPHENotification({
+                                    created_by_id: null,
+                                    approver_id: null,
+                                    clearance_period_start_date: null,
+                                    clearance_period_end_date: null,                                  
+                                  });
+                                postCISONotification({
                                   title: "Notice",
                                   body: `The announcement "${title}" has been set to Inactive and is no longer visible to the approvers and their approver assistants.`,
                                   details: [`Announcement = "${title}"`],
@@ -425,11 +442,25 @@ export default function OVPHEAnnouncements() {
                   setEditingIndex(null);
                   return;
                 }
-                postOVPHEActivityLog({
-                  event_type: "edited_announcement",
-                  details: title ? [`Announcement: ${title}`] : [],
-                });
-                fetch(`/admin/xu-faculty-clearance/api/ovphe/announcements/${current.id}`, {
+                fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    user_role: "CISO",
+                    event_type: "edited_announcement",
+                    details: title ? [`Announcement : ${title}`] : [],
+                  }),
+                })
+                  .then(async (r) => {
+                    if (r.ok) return;
+                    const t = await r.text().catch(() => "");
+                    console.error("CISO activity log POST failed", r.status, t);
+                  })
+                  .catch((e) => {
+                    console.error("CISO activity log POST error", e);
+                  });
+                fetch(`/admin/xu-faculty-clearance/api/ciso/announcements/${current.id}`, {
                   method: "PUT",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ title, description, pinned }),
@@ -437,7 +468,8 @@ export default function OVPHEAnnouncements() {
                   setEditingIndex(null);
                   refresh().catch(() => null);
                   // POST Edit notifications
-                  postOVPHENotification({
+                  // Still send to other roles as role-based notifications
+                  postCISONotification({
                     title: "Update",
                     body: `The announcement "${title}" has been updated by the System Admin.`,
                     details: [`Announcement = "${title}"`],
@@ -453,19 +485,33 @@ export default function OVPHEAnnouncements() {
                 return;
               }
 
-              // CREATE: Create announcement then POST notifications
-              postOVPHEActivityLog({
-                event_type: "created_announcement",
-                details: title ? [`Announcement: ${title}`] : [],
-              });
-              fetch("/admin/xu-faculty-clearance/api/ovphe/announcements", {
+              fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  user_role: "CISO",
+                  event_type: "created_announcement",
+                  details: title ? [`Announcement : ${title}`] : [],
+                }),
+              })
+                .then(async (r) => {
+                  if (r.ok) return;
+                  const t = await r.text().catch(() => "");
+                  console.error("CISO activity log POST failed", r.status, t);
+                })
+                .catch((e) => {
+                  console.error("CISO activity log POST error", e);
+                });
+              fetch("/admin/xu-faculty-clearance/api/ciso/announcements", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ title, description, pinned }),
               }).finally(() => {
                 refresh().catch(() => null);
                 // POST Create notifications
-                postOVPHENotification({
+                // Still send to other roles as role-based notifications
+                postCISONotification({
                   title: "New Announcement",
                   body: `${title}. Check announcements section for more details.`,
                   details: [`Announcement = "${title}"`],
