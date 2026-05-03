@@ -11,7 +11,7 @@ import { Divider } from "../../stories/components/divider";
 
 import { Button } from "../../stories/components/button";
 
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Upload } from "lucide-react";
 
 import {
   AddApproverDialog,
@@ -125,96 +125,102 @@ function postCISOActivityLog(_payload: { event_type: string; details?: string[] 
 function AddCollegeDialog(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreate: (payload: { college: { name: string; short: string }; departments: DraftDepartment[] }) => void;
+  onCreate: (payload: { college?: { name: string; short: string }; file?: File | null }) => void;
 }) {
   const { open, onOpenChange, onCreate } = props;
-  const [step, setStep] = React.useState<1 | 2>(1);
   const [name, setName] = React.useState("");
   const [short, setShort] = React.useState("");
-  const [departments, setDepartments] = React.useState<DraftDepartment[]>([]);
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  const hasManualCollege = Boolean(name.trim() && short.trim());
 
   React.useEffect(() => {
     if (!open) return;
-    setStep(1);
     setName("");
     setShort("");
-    setDepartments([]);
+    setSelectedFile(null);
+
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
   }, [open]);
+
+  const handleFiles = (files: FileList | null) => {
+    const file = files?.[0] ?? null;
+    setSelectedFile(file);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[420px] max-w-[calc(100vw-3rem)] rounded-xl p-0">
         <div className="rounded-xl bg-background">
-          <div className="px-6 pb-4 pt-6">
-            <div className="text-center text-base font-bold text-foreground">
-              {step === 1 ? "Add College" : "Add Department"}
-            </div>
+          <div className="pb-4 pt-6">
+            <div className="px-6 text-center text-base font-bold text-foreground">Add College</div>
 
-            {step === 1 ? (
-              <div className="mt-6 space-y-4">
-                <div>
-                  <div className="text-xs font-semibold text-foreground">College Name</div>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-2 h-10" />
-                </div>
-
-                <div>
-                  <div className="text-xs font-semibold text-foreground">Abbreviation</div>
-                  <Input value={short} onChange={(e) => setShort(e.target.value)} className="mt-2 h-10" />
-                </div>
-              </div>
-            ) : (
-              <div className="mt-6 space-y-4">
-                <div>
-                  <div className="text-xs font-semibold text-foreground">College Name</div>
-                  <div className="mt-1 text-sm text-foreground">{name || "-"}</div>
-                </div>
-
-                <div>
-                  <div className="text-xs font-semibold text-foreground">College Departments</div>
-
-                  <div className="mt-2 space-y-2">
-                    {departments.map((d, idx) => (
-                      <div key={idx} className="grid grid-cols-[1fr,120px] gap-2">
-                        <Input
-                          value={d.name}
-                          onChange={(e) => {
-                            const next = [...departments];
-                            next[idx] = { ...next[idx], name: e.target.value };
-                            setDepartments(next);
-                          }}
-                          placeholder="Department Name"
-                          className="h-10"
-                        />
-                        <Input
-                          value={d.short}
-                          onChange={(e) => {
-                            const next = [...departments];
-                            next[idx] = { ...next[idx], short: e.target.value };
-                            setDepartments(next);
-                          }}
-                          placeholder="Abbreviation"
-                          className="h-10"
-                        />
+            <div className="mt-6 space-y-4">
+              {selectedFile ? (
+                <div className="mx-6 rounded-lg bg-muted p-5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-12 w-12 items-center justify-center">
+                        <img src="BlackFileIcon.png"/>
                       </div>
-                    ))}
+                      <div>
+                        <div className="text-base font-semibold text-foreground">{selectedFile.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {(selectedFile.size / (1024 * 1024)).toFixed(0)} MB
+                        </div>
+                        <div className="mt-1 text-sm text-muted-foreground">Uploaded!</div>
+                      </div>
+                    </div>
+                    <img src="BlackCheckIcon.png"></img>
+                  </div>
+                </div>
+              ) : (
+                <div className="mx-6 mt-4 rounded-md border-2 border-dashed border-muted-foreground/40 bg-muted/30">
+                  <button
+                    type="button"
+                    className="mx-auto flex w-full flex-col items-center justify-center gap-3 p-8"
+                    onClick={() => inputRef.current?.click()}
+                  >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-md text-muted-foreground">
+                      <Upload className="h-10 w-10" />
+                    </div>
+                    <div className="text-md text-muted-foreground">
+                      {" "}
+                      <span className="font-bold">Click to upload </span> or drag and drop
+                    </div>
+                    <div className="text-xs text-muted-foreground">CSV or Excel files (Max size 50 MB)</div>
+                  </button>
+                </div>
+              )}
+
+              <input
+                ref={inputRef}
+                type="file"
+                className="hidden"
+                onChange={(e) => handleFiles(e.target.files)}
+              />
+
+              {!selectedFile ? (
+                <>
+                  <div className="border-t border-[hsl(var(--gray-border))] px-6 mt-4"> </div>
+
+                  <div className="px-6">
+                  <div className="">
+                    <div className="text-xs font-semibold text-foreground">College Name</div>
+                    <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-2 h-10" />
                   </div>
 
-                  <Button
-                    type="button"
-                    className="mt-3 h-10 w-full rounded-md bg-primary text-primary-foreground"
-                    onClick={() => {
-                      const newDept = { name: "", short: "" };
-                      setDepartments((prev) => [...prev, newDept]);
-                    }}
-                  >
-                    <div className="flex w-full items-center justify-between">
-                      <span className="text-sm font-semibold">Add New Department</span>
-                      <span className="text-lg font-bold">+</span>
-                    </div>
-                  </Button>
-                </div>
-              </div>
-            )}
+                  <div className="mt-2"> 
+                    <div className="text-xs font-semibold text-foreground">College Code</div>
+                    <Input value={short} onChange={(e) => setShort(e.target.value)} className="mt-2 h-10" />
+                  </div>
+                  </div>
+                </>
+              ) : null}
+            </div>
           </div>
 
           <div className="border-t border-[hsl(var(--gray-border))] px-6 py-4">
@@ -228,26 +234,212 @@ function AddCollegeDialog(props: {
                 Cancel
               </Button>
 
-              {step === 1 ? (
-                <Button
-                  type="button"
-                  className="h-11 w-full rounded-md"
-                  onClick={() => setStep(2)}
-                >
-                  Next
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  className="h-11 w-full rounded-md"
-                  onClick={() => {
-                    onCreate({ college: { name, short }, departments });
+              <Button
+                type="button"
+                className="h-11 w-full rounded-md"
+                onClick={() => {
+                  if (selectedFile) {
+                    onCreate({ file: selectedFile });
                     onOpenChange(false);
-                  }}
-                >
-                  Create
-                </Button>
+                    return;
+                  }
+
+                  onCreate({ college: { name, short } });
+                  onOpenChange(false);
+                }}
+              >
+                Create
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddDepartmentDialog(props: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  colleges: CollegeItem[];
+  collegeId: string;
+  onCollegeIdChange: (collegeId: string) => void;
+  onCreate: (payload: { collegeId: string; departments?: DraftDepartment[]; file?: File | null }) => void;
+}) {
+  const { open, onOpenChange, colleges, collegeId, onCollegeIdChange, onCreate } = props;
+  const [departments, setDepartments] = React.useState<DraftDepartment[]>([{ name: "", short: "" }]);
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    setDepartments([{ name: "", short: "" }]);
+    setSelectedFile(null);
+
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+  }, [open]);
+
+  const handleFiles = (files: FileList | null) => {
+    const file = files?.[0] ?? null;
+    setSelectedFile(file);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[420px] max-w-[calc(100vw-3rem)] rounded-xl p-0">
+        <div className="rounded-xl bg-background">
+          <div className="pb-4 pt-6">
+            <div className="px-6 text-center text-base font-bold text-foreground">Add Department</div>
+
+            <div className="mt-6 space-y-4">
+              {selectedFile ? (
+                <div className="mx-6 rounded-lg bg-muted p-5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-12 w-12 items-center justify-center">
+                        <img src="BlackFileIcon.png" />
+                      </div>
+                      <div>
+                        <div className="text-base font-semibold text-foreground">{selectedFile.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {(selectedFile.size / (1024 * 1024)).toFixed(0)} MB
+                        </div>
+                        <div className="mt-1 text-sm text-muted-foreground">Uploaded!</div>
+                      </div>
+                    </div>
+                    <img src="BlackCheckIcon.png" />
+                  </div>
+                </div>
+              ) : (
+                <div className="mx-6 mt-4 rounded-md border-2 border-dashed border-muted-foreground/40 bg-muted/30">
+                  <button
+                    type="button"
+                    className="mx-auto flex w-full flex-col items-center justify-center gap-3 p-8"
+                    onClick={() => inputRef.current?.click()}
+                  >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-md text-muted-foreground">
+                      <Upload className="h-10 w-10" />
+                    </div>
+                    <div className="text-md text-muted-foreground">
+                      {" "}
+                      <span className="font-bold">Click to upload </span> or drag and drop
+                    </div>
+                    <div className="text-xs text-muted-foreground">CSV or Excel files (Max size 50 MB)</div>
+                  </button>
+                </div>
               )}
+
+              <input
+                ref={inputRef}
+                type="file"
+                className="hidden"
+                onChange={(e) => handleFiles(e.target.files)}
+              />
+
+              {!selectedFile ? (
+                <>
+                  <div className="border-t border-[hsl(var(--gray-border))] px-6 mt-4"> </div>
+
+                  <div className="px-6">
+                    <div>
+                      <div className="text-xs font-semibold text-foreground">College</div>
+                      <div className="mt-2">
+                        <Select value={collegeId} onValueChange={onCollegeIdChange}>
+                          <SelectTrigger className="h-10 w-full">
+                            <SelectValue placeholder="Choose from dropdown" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {colleges.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <Divider className="my-4 border-[hsl(var(--gray-border))]" />
+
+                    <div>
+                      <div className="text-xs font-semibold text-foreground">College Departments</div>
+
+                      <div className="mt-2 space-y-2">
+                        {departments.map((d, idx) => (
+                          <div key={idx} className="grid grid-cols-[1fr,120px] gap-2">
+                            <Input
+                              value={d.name}
+                              onChange={(e) => {
+                                const next = [...departments];
+                                next[idx] = { ...next[idx], name: e.target.value };
+                                setDepartments(next);
+                              }}
+                              placeholder="Department Name"
+                              className="h-10"
+                            />
+                            <Input
+                              value={d.short}
+                              onChange={(e) => {
+                                const next = [...departments];
+                                next[idx] = { ...next[idx], short: e.target.value };
+                                setDepartments(next);
+                              }}
+                              placeholder="Code"
+                              className="h-10"
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <Button
+                        type="button"
+                        className="mt-3 h-10 w-full rounded-md bg-primary text-primary-foreground"
+                        onClick={() => {
+                          setDepartments((prev) => [...prev, { name: "", short: "" }]);
+                        }}
+                      >
+                        <div className="flex w-full items-center justify-between">
+                          <span className="text-sm font-semibold">Add New Department</span>
+                          <span className="text-lg font-bold">+</span>
+                        </div>
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="border-t border-[hsl(var(--gray-border))] px-6 py-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                type="button"
+                variant="cancel"
+                className="h-11 w-full"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type="button"
+                className="h-11 w-full rounded-md"
+                onClick={() => {
+                  if (selectedFile) {
+                    onCreate({ collegeId, file: selectedFile });
+                    onOpenChange(false);
+                    return;
+                  }
+
+                  const deptDrafts = (departments || []).filter((d) => d.name.trim() || d.short.trim());
+                  onCreate({ collegeId, departments: deptDrafts });
+                  onOpenChange(false);
+                }}
+              >
+                Create
+              </Button>
             </div>
           </div>
         </div>
@@ -441,85 +633,6 @@ function EditOfficeDialog(props: {
                 }}
               >
                 Save
-              </Button>
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function AddDepartmentDialog(props: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  collegeName: string;
-  onCreate: (payload: DraftDepartment) => void;
-}) {
-  const { open, onOpenChange, collegeName, onCreate } = props;
-  const [name, setName] = React.useState("");
-  const [short, setShort] = React.useState("");
-
-  React.useEffect(() => {
-    if (!open) return;
-    setName("");
-    setShort("");
-  }, [open]);
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[420px] max-w-[calc(100vw-3rem)] rounded-xl p-0">
-        <div className="rounded-xl bg-background">
-          <div className="px-6 pb-4 pt-6">
-            <div className="text-center text-base font-bold text-foreground">Add Department</div>
-
-            <div className="mt-6 space-y-4">
-              <div>
-                <div className="text-xs font-semibold text-foreground">College Name</div>
-                <div className="mt-1 text-sm text-foreground">{collegeName || "-"}</div>
-              </div>
-
-              <div className="grid grid-cols-[1fr,120px] gap-2">
-                <div>
-                  <div className="text-xs font-semibold text-foreground">Department Name</div>
-                  <Input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="mt-2 h-10"
-                  />
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-foreground">Abbreviation</div>
-                  <Input
-                    value={short}
-                    onChange={(e) => setShort(e.target.value)}
-                    className="mt-2 h-10"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-[hsl(var(--gray-border))] px-6 py-4">
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                type="button"
-                variant="cancel"
-                className="h-11 w-full"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
-
-              <Button
-                type="button"
-                className="h-11 w-full rounded-md"
-                onClick={() => {
-                  onCreate({ name, short });
-                  onOpenChange(false);
-                }}
-              >
-                Create
               </Button>
             </div>
           </div>
@@ -1550,8 +1663,16 @@ export default function CISOCollegeOfficeConfiguration() {
         <AddCollegeDialog
           open={addCollegeOpen}
           onOpenChange={setAddCollegeOpen}
-          onCreate={({ college, departments: newDepartments }) => {
+          onCreate={({ college, file }) => {
             (async () => {
+              if (file) {
+                return;
+              }
+
+              if (!college) {
+                return;
+              }
+
               const created = await apiJson<CollegeItem>(
                 "/admin/xu-faculty-clearance/api/ciso/colleges",
                 {
@@ -1582,50 +1703,6 @@ export default function CISOCollegeOfficeConfiguration() {
 
               setColleges((prev) => [...prev, created]);
               setSelectedCollegeId(created.id);
-
-              const deptDrafts = (newDepartments || []).filter((d) => d.name.trim() || d.short.trim());
-              if (deptDrafts.length) {
-                const createdDepts = await Promise.all(
-                  deptDrafts.map((d) =>
-                    apiJson<DepartmentItem>("/admin/xu-faculty-clearance/api/ciso/departments", {
-                      method: "POST",
-                      body: JSON.stringify({
-                        collegeId: created.id,
-                        name: d.name,
-                        short: d.short,
-                      }),
-                    })
-                  )
-                );
-                for (const dept of createdDepts) {
-                  try {
-                    await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
-                      method: "POST",
-                      credentials: "include",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        event_type: "created_department",
-                        details: [
-                          dept?.name ? `Department: ${dept.name}` : "",
-                          created?.name ? `College: ${created.name}` : "",
-                        ].filter(Boolean),
-                        user_role: "CISO",
-                      }),
-                    });
-                  } catch {
-                    // ignore
-                  }
-
-                  postCISOActivityLog({
-                    event_type: "created_department",
-                    details: [
-                      dept?.name ? `Department: ${dept.name}` : "",
-                      created?.name ? `College: ${created.name}` : "",
-                    ].filter(Boolean),
-                  });
-                }
-                setDepartments((prev) => [...prev, ...createdDepts]);
-              }
             })().catch(() => {
               // ignore; can be handled by UI later
             });
@@ -1700,48 +1777,63 @@ export default function CISOCollegeOfficeConfiguration() {
         <AddDepartmentDialog
           open={addDepartmentOpen}
           onOpenChange={setAddDepartmentOpen}
-          collegeName={selectedCollegeName}
-          onCreate={(payload) => {
-            if (!selectedCollegeId) return;
+          colleges={colleges}
+          collegeId={selectedCollegeId}
+          onCollegeIdChange={setSelectedCollegeId}
+          onCreate={({ collegeId, departments: deptDrafts, file }) => {
+            if (file) {
+              return;
+            }
+
+            if (!collegeId) return;
+
+            const selectedCollegeNameForLog = colleges.find((c) => c.id === collegeId)?.name ?? "";
+            const drafts = (deptDrafts || []).filter((d) => d.name.trim() || d.short.trim());
+            if (!drafts.length) return;
+
             (async () => {
-              const created = await apiJson<DepartmentItem>(
-                "/admin/xu-faculty-clearance/api/ciso/departments",
-                {
-                  method: "POST",
-                  body: JSON.stringify({
-                    collegeId: selectedCollegeId,
-                    name: payload.name,
-                    short: payload.short,
-                  }),
-                }
+              const createdDepts = await Promise.all(
+                drafts.map((d) =>
+                  apiJson<DepartmentItem>("/admin/xu-faculty-clearance/api/ciso/departments", {
+                    method: "POST",
+                    body: JSON.stringify({
+                      collegeId,
+                      name: d.name,
+                      short: d.short,
+                    }),
+                  })
+                )
               );
 
-              try {
-                await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
-                  method: "POST",
-                  credentials: "include",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    event_type: "created_department",
-                    details: [
-                      created?.name ? `Department: ${created.name}` : "",
-                      selectedCollegeName ? `College: ${selectedCollegeName}` : "",
-                    ].filter(Boolean),
-                    user_role: "CISO",
-                  }),
+              for (const created of createdDepts) {
+                try {
+                  await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      event_type: "created_department",
+                      details: [
+                        created?.name ? `Department: ${created.name}` : "",
+                        selectedCollegeNameForLog ? `College: ${selectedCollegeNameForLog}` : "",
+                      ].filter(Boolean),
+                      user_role: "CISO",
+                    }),
+                  });
+                } catch {
+                  // ignore
+                }
+
+                postCISOActivityLog({
+                  event_type: "created_department",
+                  details: [
+                    created?.name ? `Department: ${created.name}` : "",
+                    selectedCollegeNameForLog ? `College: ${selectedCollegeNameForLog}` : "",
+                  ].filter(Boolean),
                 });
-              } catch {
-                // ignore
               }
 
-              postCISOActivityLog({
-                event_type: "created_department",
-                details: [
-                  created?.name ? `Department: ${created.name}` : "",
-                  selectedCollegeName ? `College: ${selectedCollegeName}` : "",
-                ].filter(Boolean),
-              });
-              setDepartments((prev) => [...prev, created]);
+              setDepartments((prev) => [...prev, ...createdDepts]);
             })().catch(() => {
               // ignore; can be handled by UI later
             });

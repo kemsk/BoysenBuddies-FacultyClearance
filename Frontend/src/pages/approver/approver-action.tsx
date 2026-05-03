@@ -30,7 +30,7 @@ export default function Action() {
                   className="h-9 w-9"
                 />
             }
-            title="View Archived Clearance"
+            title="View Clearance Records"
             description="Check clearance requests from the previous terms"
             to="/approver-archived-clearance"
           />

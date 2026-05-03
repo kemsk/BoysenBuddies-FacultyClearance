@@ -95,7 +95,7 @@ export default function FacultyArchiveClearance() {
       {/* DASHBOARD CONTENT */}
       <main className="dashboard p-4 w-full lg:max-w-4xl lg:mx-auto lg:p-8">
 
-        <h1 className="text-2xl text-left text-primary font-bold">View Archived Clearance</h1>
+        <h1 className="text-2xl text-left text-primary font-bold">View Clearance Records</h1>
 
 
         <div className="mt-5 space-y-5">

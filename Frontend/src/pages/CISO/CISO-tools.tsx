@@ -1,7 +1,7 @@
 import "../../index.css";
 import { CISOHeader } from "../../stories/components/header";
 import { ActionNavCard } from "../../stories/components/cards";
-import { Eye, Users } from "lucide-react";
+import { Eye, ShieldCheck  } from "lucide-react";
 
 export default function CISOTools() {
   return (
@@ -77,9 +77,16 @@ export default function CISOTools() {
                   className="h-9 w-9"
                 />
             }
-            title="View Archived Clearance"
+            title="View Clearance Records"
             description="Check clearance requests from the previous terms"
             to="/CISO-archived-clearance"
+          />
+
+          <ActionNavCard
+            icon={<ShieldCheck  className="h-9 w-9" />}
+            title="Access Control"
+            description="Review system users access control & permissions"
+            to="/CISO-access-control"
           />
 
           <ActionNavCard
@@ -90,7 +97,7 @@ export default function CISOTools() {
                   className="h-9 w-9"
                 />
             }
-            title="View Archived Faculty"
+            title="View Faculty Import History"
             description="Access previously uploaded .csv files"
             to="/CISO-archived-faculty"
           />

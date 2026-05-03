@@ -192,7 +192,7 @@ export default function FacultyViewClearance() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/faculty-archive-clearance">View Archived Clearance</Link>
+                <Link to="/faculty-archive-clearance">View Clearance Records</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />

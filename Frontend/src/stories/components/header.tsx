@@ -1117,7 +1117,7 @@ export function CISOHeader() {
                       to="/CISO-archived-faculty"
                       className="text-xl font-regular text-primary"
                     >
-                      View Archived Faculty
+                      View Faculty Import History
                     </Link>
                   </SheetClose>
                   

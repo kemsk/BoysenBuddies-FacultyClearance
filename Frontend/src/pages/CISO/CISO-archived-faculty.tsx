@@ -132,7 +132,7 @@ export default function CISOArchivedFaculty() {
       {/* DASHBOARD CONTENT */}
       <main className="dashboard p-4 mt-2 space-y-3">
 
-        <h1 className="text-2xl text-left text-primary font-bold">View Archived Faculty</h1>
+        <h1 className="text-2xl text-left text-primary font-bold">View Faculty Import History</h1>
 
         <Breadcrumb className="mt-2">
           <BreadcrumbList>
@@ -143,7 +143,7 @@ export default function CISOArchivedFaculty() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>View Archived Faculty</BreadcrumbPage>
+              <BreadcrumbPage>View Faculty Import History</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>

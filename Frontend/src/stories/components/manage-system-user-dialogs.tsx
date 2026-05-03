@@ -70,9 +70,17 @@ function RadioRow<T extends string>({
       <div className="text-xs font-semibold text-foreground">{label}</div>
       <div className="flex items-center gap-6">
         {options.map((opt) => (
-          <label key={opt.value} className="flex items-center gap-2 text-sm text-muted-foreground">
+          <label
+            key={opt.value}
+            className={
+              value === opt.value
+                ? "flex items-center gap-2 text-sm text-foreground"
+                : "flex items-center gap-2 text-sm text-muted-foreground"
+            }
+          >
             <input
               type="radio"
+              className="h-4 w-4 accent-primary"
               checked={value === opt.value}
               onChange={() => onChange(opt.value)}
             />
@@ -254,53 +262,59 @@ export function ManageSystemApproverDialog({
                 ]}
               />
 
-              <div className="space-y-1.5">
-                <div className="text-xs font-semibold text-foreground">Select College</div>
-                <Select value={college} onValueChange={setCollege} disabled={approverType !== "College"}>
-                  <SelectTrigger className="h-10 w-full">
-                    <SelectValue placeholder="Choose from dropdown" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {colleges.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {approverType === "College" ? (
+                <>
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-semibold text-foreground">Select College</div>
+                    <Select value={college} onValueChange={setCollege}>
+                      <SelectTrigger className="h-10 w-full">
+                        <SelectValue placeholder="Choose from dropdown" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {colleges.map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {c}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div className="space-y-1.5">
-                <div className="text-xs font-semibold text-foreground">Select Department</div>
-                <Select value={department} onValueChange={setDepartment} disabled={approverType !== "College"}>
-                  <SelectTrigger className="h-10 w-full">
-                    <SelectValue placeholder="Choose from dropdown" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredDepartments.map((d) => (
-                      <SelectItem key={d} value={d}>
-                        {d}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-semibold text-foreground">Select Department</div>
+                    <Select value={department} onValueChange={setDepartment}>
+                      <SelectTrigger className="h-10 w-full">
+                        <SelectValue placeholder="Choose from dropdown" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredDepartments.map((d) => (
+                          <SelectItem key={d} value={d}>
+                            {d}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              ) : null}
 
-              <div className="space-y-1.5">
-                <div className="text-xs font-semibold text-foreground">Select Office</div>
-                <Select value={office} onValueChange={setOffice} disabled={approverType !== "Office"}>
-                  <SelectTrigger className="h-10 w-full">
-                    <SelectValue placeholder="Choose from dropdown" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {offices.map((o) => (
-                      <SelectItem key={o} value={o}>
-                        {o}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {approverType === "Office" ? (
+                <div className="space-y-1.5">
+                  <div className="text-xs font-semibold text-foreground">Select Office</div>
+                  <Select value={office} onValueChange={setOffice}>
+                    <SelectTrigger className="h-10 w-full">
+                      <SelectValue placeholder="Choose from dropdown" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {offices.map((o) => (
+                        <SelectItem key={o} value={o}>
+                          {o}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
 
               <label className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
                 <Checkbox checked={isActive} onCheckedChange={(v) => setIsActive(Boolean(v))} />
@@ -426,8 +440,8 @@ export function ManageSystemAdminDialog({
                 value={systemAdminOffice}
                 onChange={setSystemAdminOffice}
                 options={[
-                  { value: "OVPHE", label: "OVPHE" },
-                  { value: "CISO", label: "CISO" },
+                  { value: "OVPHE", label: "Analytics Admin" },
+                  { value: "CISO", label: "System Administrator" },
                 ]}
               />
 

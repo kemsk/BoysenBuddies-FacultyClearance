@@ -134,7 +134,7 @@ export default function AssistantApproverArchivedIndividualApproval() {
             <BreadcrumbList>
               <BreadcrumbItem>
                 <BreadcrumbLink asChild>
-                  <Link to="/assistant-approver-archived-clearance">View Archived Clearance</Link>
+                  <Link to="/assistant-approver-archived-clearance">View Clearance Records</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />

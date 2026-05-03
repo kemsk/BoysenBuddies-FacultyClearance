@@ -243,6 +243,10 @@ import {
   const onPrevPage = () => setPage((p) => Math.max(1, p - 1));
   const onNextPage = () => setPage((p) => Math.min(pageCount, p + 1));
 
+  const onAddApprover = React.useCallback(() => {
+    setAddApproverOpen(true);
+  }, []);
+
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
 
@@ -291,35 +295,16 @@ import {
         </div>
        
        <div className="mt-4 space-y-3">
-            <div className="w-full max-w-[520px]">
-            <SearchInputGroup
-              containerClassName="h-10"
-              placeholder="Search by name, ID, or email..."
-            />
-          </div>
         
-        <div className="flex flex-wrap items-start gap-3 mt-4">
-
-            <Select onValueChange={(v) => console.log(v)}>
-                <SelectTrigger variant="pill" className="w-max">
-                    <SelectValue placeholder="User Role" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="SystemAdmin">System Admin</SelectItem>
-                    <SelectItem value="Approver">Approver</SelectItem>
-                </SelectContent>
-            </Select>
-
-
-            <Select onValueChange={(v) => console.log(v)}>
-                <SelectTrigger variant="pill" className="w-max">
-                    <SelectValue placeholder="Approver Type" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="SystemAdmin">System Admin</SelectItem>
-                    <SelectItem value="Approver">Approver</SelectItem>
-                </SelectContent>
-            </Select>
+        <div className="mt-4">
+          <div className="text-primary text-md font-semibold"> Administrive Roles</div>
+          <div className="mt-3 flex flex-col items-start gap-3 md:flex-row md:items-center md:flex-nowrap">
+            <div className="w-full md:flex-1 md:min-w-[320px]">
+              <SearchInputGroup
+                containerClassName="h-10"
+                placeholder="Search by name, ID, or email..."
+              />
+            </div>
 
             <Select defaultValue="name">
               <SelectTrigger variant="pill" className="w-max gap-2">
@@ -328,19 +313,36 @@ import {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="name">Name</SelectItem>
-                <SelectItem value="college">College</SelectItem>
-                <SelectItem value="department">Department</SelectItem>
-                <SelectItem value="email">Email</SelectItem>
-                <SelectItem value="SystemID">System ID</SelectItem>
+                <SelectItem value="email">XU Email</SelectItem>
                 <SelectItem value="UniversityID">University ID</SelectItem>
+                <SelectItem value="Office">Office</SelectItem>
               </SelectContent>
             </Select>
+
+            <Select onValueChange={(v) => console.log(v)}>
+                <SelectTrigger variant="pill" className="w-max">
+                    <SelectValue placeholder="User Role" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="SystemAdmin">All</SelectItem>
+                    <SelectItem value="Approver">System Admin</SelectItem>
+                    <SelectItem value="Approver">Analytics Admin</SelectItem>
+                </SelectContent>
+            </Select>
+            <div className="w-full md:w-auto md:ml-auto flex justify-end">
+              <Button type="button" variant="default" className="h-10" onClick={onAddApprover}>
+                <div className="flex items-center gap-2">
+                  <img src="/WhitePlusIcon.png" alt="Add Approver" className="h-5 w-5 object-contain" />
+                  <span className="ml-0">Add Approver</span>
+                </div>
+              </Button>
+            </div>
           </div>
+        </div>
 
           <div className="pt-3">
             <SystemUsersCard
               users={pagedUsers}
-              onAddApprover={() => setAddApproverOpen(true)}
               onAddAdmin={() => setAddAdminOpen(true)}
               currentUserEmail={adminEmail}
               onEditUser={(user) => {
@@ -365,6 +367,79 @@ import {
               }}
             />
           </div>
+        <div className="mt-4">
+          <div className="text-primary text-md font-semibold"> Approver Roles</div>
+          <div className="mt-3 flex flex-col items-start gap-3 md:flex-row md:items-center md:flex-nowrap">
+            <div className="w-full md:flex-1 md:min-w-[320px]">
+              <SearchInputGroup
+                containerClassName="h-10"
+                placeholder="Search by name, ID, or email..."
+              />
+            </div>
+
+            <Select defaultValue="name">
+              <SelectTrigger variant="pill" className="w-max gap-2">
+                <span>Sort by:</span>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">Name</SelectItem>
+                <SelectItem value="email">XU Email</SelectItem>
+                <SelectItem value="UniversityID">University ID</SelectItem>
+                <SelectItem value="Office">Office</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select onValueChange={(v) => console.log(v)}>
+                <SelectTrigger variant="pill" className="w-max">
+                    <SelectValue placeholder="User Role" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="SystemAdmin">All</SelectItem>
+                    <SelectItem value="Approver">System Admin</SelectItem>
+                    <SelectItem value="Approver">Analytics Admin</SelectItem>
+                </SelectContent>
+            </Select>
+            <div className="w-full md:w-auto md:ml-auto flex justify-end">
+              <Button type="button" variant="default" className="h-10" onClick={onAddApprover}>
+                <div className="flex items-center gap-2">
+                  <img src="/WhitePlusIcon.png" alt="Add Approver" className="h-5 w-5 object-contain" />
+                  <span className="ml-0">Add Approver</span>
+                </div>
+              </Button>
+            </div>
+          </div>
+        </div>
+
+          <div className="pt-3">
+            <SystemUsersCard
+              users={pagedUsers}
+              onAddAdmin={() => setAddAdminOpen(true)}
+              currentUserEmail={adminEmail}
+              onEditUser={(user) => {
+                if (user.email.trim().toLowerCase() === adminEmail.trim().toLowerCase()) {
+                  window.alert("You cannot edit your own account from Manage System Users.");
+                  return;
+                }
+                setActiveUserId(user.id);
+                if (isSystemLevelRole(user)) {
+                  setEditAdminOpen(true);
+                } else {
+                  setEditApproverOpen(true);
+                }
+              }}
+              onRemoveUser={(user) => {
+                if (user.email.trim().toLowerCase() === adminEmail.trim().toLowerCase()) {
+                  window.alert("You cannot remove your own account from Manage System Users.");
+                  return;
+                }
+                setActiveUserId(user.id);
+                setRemoveOpen(true);
+              }}
+            />
+          </div>
+
+          
        </div>
 
         <ManageSystemApproverDialog

@@ -5017,15 +5017,10 @@ export function FacultyDataDumpCard({
             </div>
 
           ) : (
-
             <button
-
               type="button"
-
               className="mx-auto flex w-full flex-col items-center justify-center gap-3"
-
               onClick={() => inputRef.current?.click()}
-
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-md text-muted-foreground">
                 <Upload className="h-10 w-10" />
@@ -5033,11 +5028,9 @@ export function FacultyDataDumpCard({
               <div className="text-md text-muted-foreground">
                 {" "}
                 <span className="font-bold">Click to upload </span> or drag and drop
-
               </div>
               <div className="text-xs text-muted-foreground">CSV or Excel files ({maxSizeLabel})</div>
             </button>
-
           )}
           <input
 
@@ -5585,6 +5578,12 @@ export type SystemUsersCardProps = {
 
   onNextPage?: () => void;
 
+  page?: number;
+
+  pageCount?: number;
+
+  onPageChange?: (page: number) => void;
+
 };
 
 export function SystemUsersCard({
@@ -5596,6 +5595,9 @@ export function SystemUsersCard({
   onEditUser,
   onRemoveUser,
   currentUserEmail,
+  page,
+  pageCount,
+  onPageChange,
 }: SystemUsersCardProps) {
 
   return (
@@ -5605,21 +5607,108 @@ export function SystemUsersCard({
           <Divider orientation="vertical" className="h-auto self-stretch" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-start gap-2 bg-background px-4 py-3 flex-wrap">
-              <Button type="button" variant="default" className="h-10" onClick={onAddApprover}>
-                <div className="flex items-center gap-2">
-                  <img src="/WhitePlusIcon.png" alt="Add Approver" className="h-5 w-5 object-contain" />
-                  <span className="ml-0">Add Approver</span>
-                </div>
-              </Button>
-              <Button type="button" variant="default" className="h-10" onClick={onAddAdmin}>
-                <div className="flex items-center gap-2">
-                  <img src="/WhitePlusIcon.png" alt="Add Admin" className="h-5 w-5 object-contain" />
-                  <span>Add Admin</span>
-                </div>
-              </Button>
+              {onAddApprover ? (
+                <Button type="button" variant="default" className="h-10" onClick={onAddApprover}>
+                  <div className="flex items-center gap-2">
+                    <img src="/WhitePlusIcon.png" alt="Add Approver" className="h-5 w-5 object-contain" />
+                    <span className="ml-0">Add Approver</span>
+                  </div>
+                </Button>
+              ) : null}
+
+              {onAddAdmin ? (
+                <Button type="button" variant="default" className="h-10" onClick={onAddAdmin}>
+                  <div className="flex items-center gap-2">
+                    <img src="/WhitePlusIcon.png" alt="Add Admin" className="h-5 w-5 object-contain" />
+                    <span>Add Admin</span>
+                  </div>
+                </Button>
+              ) : null}
             </div>
             <Divider color="border-[hsl(var(--gray-border))]" />
-            <div>
+            <div className="hidden md:block">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-muted/30">
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground">Name</th>
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground">University ID</th>
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground">XU Email</th>
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground">Office</th>
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground">User Role</th>
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((user, idx) => {
+                      const office = user.college === "N/A" ? user.department : user.college;
+                      return (
+                        <tr
+                          key={user.id}
+                          className={cn("border-t border-[hsl(var(--gray-border))]", idx === 0 ? "border-t-0" : "")}
+                        >
+                          <td className="px-4 py-3 text-sm font-semibold text-gray-900">{user.name}</td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground">{user.universityId}</td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground">{user.email}</td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground">{office}</td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground">{user.userRole}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                variant="action"
+                                className="h-7 rounded-md px-3 text-xs font-bold"
+                                onClick={() => onEditUser?.(user)}
+                                disabled={user.email === currentUserEmail}
+                              >
+                                EDIT
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                className="h-7 rounded-md px-3 text-xs font-bold"
+                                onClick={() => onRemoveUser?.(user)}
+                                disabled={user.email === currentUserEmail}
+                              >
+                                REMOVE
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  {typeof page === "number" && typeof pageCount === "number" && pageCount > 1 ? (
+                    <tfoot>
+                      <tr>
+                        <td colSpan={6}>
+                          <div className="flex items-center justify-center gap-3 px-4 py-3">
+                            <div className="text-sm text-muted-foreground">Page</div>
+
+                            <select
+                              className="h-9 rounded-md border border-muted-foreground/30 bg-background px-3 text-sm font-semibold text-foreground"
+                              value={page}
+                              onChange={(e) => onPageChange?.(Number(e.target.value))}
+                            >
+                              {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => (
+                                <option key={p} value={p}>
+                                  {p}
+                                </option>
+                              ))}
+                            </select>
+
+                            <div className="text-sm text-muted-foreground">of {pageCount}</div>
+                          </div>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  ) : null}
+                </table>
+              </div>
+
+            </div>
+
+            <div className="md:hidden">
               {users.map((user, idx) => (
                 <React.Fragment key={user.id}>
                   <div className="flex items-start gap-4 px-4 py-5">
@@ -5628,38 +5717,22 @@ export function SystemUsersCard({
                         <span className="text-xl font-bold text-gray-900">{user.name}</span>
                         <div className="flex items-center gap-2">
                           <Button
-
                             type="button"
-
                             variant="action"
-
                             className="h-7 rounded-md px-3 text-xs font-bold"
-
                             onClick={() => onEditUser?.(user)}
-
                             disabled={user.email === currentUserEmail}
-
                           >
-
                             EDIT
-
                           </Button>
                           <Button
-
                             type="button"
-
                             variant="destructive"
-
                             className="h-7 rounded-md px-3 text-xs font-bold"
-
                             onClick={() => onRemoveUser?.(user)}
-
                             disabled={user.email === currentUserEmail}
-
                           >
-
                             REMOVE
-
                           </Button>
                         </div>
                       </div>
@@ -5679,12 +5752,8 @@ export function SystemUsersCard({
                       </div>
                     </div>
                   </div>
-                  {idx < users.length - 1 ? (
-                    <Divider color="border-[hsl(var(--gray-border))]" />
-
-                  ) : null}
+                  {idx < users.length - 1 ? <Divider color="border-[hsl(var(--gray-border))]" /> : null}
                 </React.Fragment>
-
               ))}
             </div>
           </div>
@@ -5692,7 +5761,6 @@ export function SystemUsersCard({
         </div>
       </CardContent>
     </Card>
-
   );
 
 }

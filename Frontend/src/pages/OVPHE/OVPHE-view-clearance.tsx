@@ -139,7 +139,7 @@ export default function OVPHEViewClearance() {
             <BreadcrumbSeparator />
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/OVPHE-archived-clearance">View Archived Clearance</Link>
+                <Link to="/OVPHE-archived-clearance">View Clearance Records</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />

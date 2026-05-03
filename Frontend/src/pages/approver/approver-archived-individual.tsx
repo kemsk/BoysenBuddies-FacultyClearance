@@ -134,7 +134,7 @@ export default function ApproverArchivedIndividualApproval() {
             <BreadcrumbList>
               <BreadcrumbItem>
                 <BreadcrumbLink asChild>
-                  <Link to="/approver-archived-clearance">View Archived Clearance</Link>
+                  <Link to="/approver-archived-clearance">View Clearance Records</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
@@ -145,7 +145,7 @@ export default function ApproverArchivedIndividualApproval() {
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbPage>{item?.fullName || item?.name || "Archived Individual"}</BreadcrumbPage>
+                <BreadcrumbPage>{item?.fullName || item?.name || "Individual Record"}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>

@@ -114,7 +114,7 @@ React.useEffect(() => {
       {/* DASHBOARD CONTENT */}
       <main className="dashboard p-4 mt-2 space-y-3 w-full">
 
-        <h1 className="text-2xl text-left text-primary font-bold">View Archived Clearance</h1>
+        <h1 className="text-2xl text-left text-primary font-bold">View Clearance Records</h1>
 
         <div className="mt-5 space-y-5">
           <div className="w-full mt-5">

@@ -149,7 +149,7 @@ React.useEffect(() => {
             <BreadcrumbSeparator />
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="CISO-archived-clearance">View Archived Clearance</Link>
+                <Link to="CISO-archived-clearance">View Clearance Records</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />

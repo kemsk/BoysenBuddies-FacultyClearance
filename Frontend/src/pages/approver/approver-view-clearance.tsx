@@ -212,7 +212,7 @@ export default function ApproverViewClearance() {
             <BreadcrumbSeparator />
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/approver-archived-clearance">View Archived Clearance</Link>
+                <Link to="/approver-archived-clearance">View Clearance Records</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />

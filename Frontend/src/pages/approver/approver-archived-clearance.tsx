@@ -113,7 +113,7 @@ export default function ApproverAchivedClearance() {
       {/* DASHBOARD CONTENT */}
       <main className="dashboard p-4 mt-2 space-y-3 w-full">
 
-        <h1 className="text-2xl text-left text-primary font-bold">View Archived Clearance</h1>
+        <h1 className="text-2xl text-left text-primary font-bold">View Clearance Records</h1>
 
         <Breadcrumb className="mt-2">
           <BreadcrumbList>
@@ -124,7 +124,7 @@ export default function ApproverAchivedClearance() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>View Archived Clearance</BreadcrumbPage>
+              <BreadcrumbPage>View Clearance Records</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
