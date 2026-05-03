@@ -9178,46 +9178,66 @@ def approver_action_api(request):
             clearance_request.remarks = remarks
             clearance_request.save()
 
-            if action == "approve":
-                try:
-                    faculty_user = None
-                    try:
-                        if clearance_request.faculty and clearance_request.faculty.user:
-                            faculty_user = clearance_request.faculty.user
-                    except Exception:
-                        faculty_user = None
-
-                    requirement_title = ""
-                    try:
-                        if clearance_request.requirement and clearance_request.requirement.title:
-                            requirement_title = str(clearance_request.requirement.title)
-                    except Exception:
-                        requirement_title = ""
-
-                    remarks_text = str(remarks or "")
-
+            # Send email and notification for both approve and reject
+            try:
+                faculty = clearance_request.faculty
+                faculty_user = None
+                faculty_email = ""
+                faculty_name = ""
+                
+                if faculty:
+                    faculty_user = getattr(faculty, "user", None)
                     if faculty_user:
-                        Notification.objects.create(
-                            user=faculty_user,
-                            created_by=user,
-                            approver=user,
-                            user_role="Faculty",
-                            title="Submission Approved",
-                            status=Notification.Status.APPROVED,
-                            body=(
-                                "Your submission has been APPROVED.\n\n"
-                                f"Submission of {requirement_title}\n"
-                                f"Remarks: {remarks_text}"
-                            ),
-                            details=[
-                                f"Requirement = \"{requirement_title}\"",
-                                f"Remarks = {remarks_text}",
-                            ],
-                            is_read=False,
-                        )
-                except Exception:
+                        faculty_email = faculty_user.email
+                        faculty_name = faculty_user.get_full_name() or faculty_user.email
+                    else:
+                        faculty_name = f"{faculty.first_name} {faculty.last_name}".strip()
 
-                    pass
+                requirement_title = ""
+                if clearance_request.requirement:
+                    requirement_title = str(clearance_request.requirement.title)
+
+                remarks_text = str(remarks or "")
+                approver_name = user.get_full_name() or user.email
+
+                if faculty_user:
+                    Notification.objects.create(
+                        user=faculty_user,
+                        created_by=user,
+                        approver=user,
+                        user_role="Faculty",
+                        title="Submission Approved" if action == "approve" else "Submission Rejected",
+                        status=Notification.Status.APPROVED if action == "approve" else Notification.Status.REJECTED,
+                        body=(
+                            f"Your submission has been {action.upper()}.\n\n"
+                            f"Submission of {requirement_title}\n"
+                            f"Remarks: {remarks_text}"
+                        ),
+                        details=[
+                            f"Requirement = \"{requirement_title}\"",
+                            f"Remarks = {remarks_text}",
+                        ],
+                        is_read=False,
+                    )
+
+                if faculty_email:
+                    print(f"DEBUG: Sending bulk {action} email to {faculty_email} for request {clearance_request.request_id}")
+                    send_faculty_notification_email(
+                        faculty_email=faculty_email,
+                        faculty_name=faculty_name,
+                        requirement_title=requirement_title,
+                        action=action,
+                        remarks=remarks_text,
+                        approver_name=approver_name
+                    )
+                    print(f"DEBUG: Bulk {action} email sent successfully to {faculty_email}")
+                else:
+                    print(f"DEBUG: No faculty email found for bulk {action} request {clearance_request.request_id}")
+
+            except Exception as e:
+                print(f"Error sending notifications for bulk {action} request {clearance_request.request_id}: {str(e)}")
+                import traceback
+                traceback.print_exc()
 
             updated_requests.append({
                 "id": str(clearance_request.id),
