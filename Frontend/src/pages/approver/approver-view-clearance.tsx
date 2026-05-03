@@ -37,13 +37,40 @@ export default function ApproverViewClearance() {
   const [requests, setRequests] = React.useState<ClearanceRequestItem[]>([]);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set());
   const [bulkLoading, setBulkLoading] = React.useState(false);
+  const [timelineData, setTimelineData] = React.useState<any>(null);
+
+  const formattedTimelineId = React.useMemo(() => {
+    // Use timeline name directly like CISO archived clearance page
+    if (timelineData && timelineData.name) {
+      return timelineData.name;
+    }
+    
+    // Return empty if no timeline data available
+    return "";
+  }, [timelineId, timelineData]);
 
   React.useEffect(() => {
     if (!timelineId) {
       setRequests([]);
+      setTimelineData(null);
       return;
     }
 
+    // Fetch timeline details from archived clearance API (like CISO page)
+    fetch("/admin/xu-faculty-clearance/api/approver/archived-clearance", {
+      credentials: "include",
+    })
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data: { items: any[] }) => {
+        // Find the timeline with matching ID
+        const timeline = data.items?.find((item: any) => item.id === timelineId);
+        setTimelineData(timeline || null);
+      })
+      .catch(() => {
+        setTimelineData(null);
+      });
+
+    // Fetch clearance requests
     const params = new URLSearchParams({ timelineId });
 
     fetch(`/admin/xu-faculty-clearance/api/approver/view-clearance?${params.toString()}`, {
@@ -200,7 +227,7 @@ export default function ApproverViewClearance() {
       {/* DASHBOARD CONTENT */}
       <main className="dashboard p-4 mt-2 space-y-3 w-full">
 
-        <h1 className="text-2xl text-left text-primary font-bold">2501 Faculty Clearance</h1>
+        <h1 className="text-2xl text-left text-primary font-bold">{formattedTimelineId}</h1>
 
         <Breadcrumb className="mt-2">
           <BreadcrumbList>
@@ -217,7 +244,7 @@ export default function ApproverViewClearance() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                <BreadcrumbPage>2501 Faculty Clearance</BreadcrumbPage>
+                <BreadcrumbPage>{formattedTimelineId}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>

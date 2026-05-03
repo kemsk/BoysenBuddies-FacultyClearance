@@ -71,6 +71,16 @@ export default function CISOViewClearance() {
   const [query, setQuery] = useState("");
   const [selectedYear, setSelectedYear] = useState("all");
   const [sortBy, setSortBy] = useState("name");
+  const timelineId = React.useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    const rawTimelineId = params.get("timelineId") || "";
+    // Format timelineId to ensure it's in [end year][term] format (e.g., 2501, 2601)
+    // If it's a simple number, pad it to 4 digits
+    if (/^\d+$/.test(rawTimelineId)) {
+      return rawTimelineId.padStart(4, '0');
+    }
+    return rawTimelineId;
+  }, []);
 
   const dummyClearanceRequests: NoLinkClearanceRequestItem[] = [
       {
@@ -137,7 +147,7 @@ React.useEffect(() => {
       {/* DASHBOARD CONTENT */}
         <main className="dashboard p-4 mt-2 space-y-3 w-full">
 
-        <h1 className="text-2xl text-left text-primary font-bold">2501 Faculty Clearance</h1>
+        <h1 className="text-2xl text-left text-primary font-bold">{timelineId} Faculty Clearance</h1>
 
         <Breadcrumb className="mt-2">
           <BreadcrumbList>
@@ -154,7 +164,7 @@ React.useEffect(() => {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                <BreadcrumbPage>2501 Faculty Clearance</BreadcrumbPage>
+                <BreadcrumbPage>{timelineId} Faculty Clearance</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>

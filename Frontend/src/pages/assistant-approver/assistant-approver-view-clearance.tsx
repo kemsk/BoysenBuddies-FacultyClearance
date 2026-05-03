@@ -30,10 +30,22 @@ export default function AssistantApproverViewClearance() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [requests, setRequests] = React.useState<ClearanceRequestItem[]>([]);
-  const timelineId = React.useMemo(() => {
+  const rawTimelineId = React.useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get("timelineId") || "";
   }, []);
+
+  const [timelineData, setTimelineData] = React.useState<any>(null);
+
+  const formattedTimelineId = React.useMemo(() => {
+    // Use timeline name directly like CISO archived clearance page
+    if (timelineData && timelineData.name) {
+      return timelineData.name;
+    }
+    
+    // Return empty if no timeline data available
+    return "";
+  }, [rawTimelineId, timelineData]);
   
 
   type AnnouncementApiItem = AnnouncementItem & { id: number; email?: string };
@@ -62,12 +74,27 @@ React.useEffect(() => {
 }, [refresh]);
 
   React.useEffect(() => {
-    if (!timelineId) {
+    if (!rawTimelineId) {
       setRequests([]);
+      setTimelineData(null);
       return;
     }
 
-    const params = new URLSearchParams({ timelineId });
+    // Fetch timeline details from archived clearance API (like CISO page)
+    fetch("/admin/xu-faculty-clearance/api/assistant-approver/archived-clearance", {
+      credentials: "include",
+    })
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data: { items: any[] }) => {
+        // Find the timeline with matching ID
+        const timeline = data.items?.find((item: any) => item.id === rawTimelineId);
+        setTimelineData(timeline || null);
+      })
+      .catch(() => {
+        setTimelineData(null);
+      });
+
+    const params = new URLSearchParams({ timelineId: rawTimelineId });
 
     fetch(`/admin/xu-faculty-clearance/api/assistant-approver/view-clearance?${params.toString()}`, {
       credentials: "include",
@@ -86,7 +113,7 @@ React.useEffect(() => {
       .catch(() => {
         setRequests([]);
       });
-  }, [timelineId]);
+  }, [rawTimelineId]);
 
   const filteredRequests = React.useMemo(() => {
       const q = query.trim().toLowerCase();
@@ -101,7 +128,7 @@ React.useEffect(() => {
     }, [query, requests]);
   
   const handleExport = React.useCallback(() => {
-    if (!timelineId || filteredRequests.length === 0) return;
+    if (!rawTimelineId || filteredRequests.length === 0) return;
 
     const headers = ["Employee ID", "Name", "College", "Department", "Faculty Type", "Status"];
     const rows = filteredRequests.map((item) => [
@@ -120,10 +147,10 @@ React.useEffect(() => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `assistant-approver-archived-clearance-${timelineId}-export.csv`;
+    a.download = `assistant-approver-archived-clearance-${rawTimelineId}-export.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
-  }, [filteredRequests, timelineId]);
+  }, [filteredRequests, rawTimelineId]);
   
 
   return (
@@ -137,7 +164,7 @@ React.useEffect(() => {
       {/* DASHBOARD CONTENT */}
       <main className="dashboard p-4 mt-2 space-y-3">
 
-        <h1 className="text-2xl text-left text-primary font-bold">2501 Faculty Clearance</h1>
+        <h1 className="text-2xl text-left text-primary font-bold">{formattedTimelineId}</h1>
 
         <Breadcrumb className="mt-2">
           <BreadcrumbList>
@@ -148,7 +175,7 @@ React.useEffect(() => {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                <BreadcrumbPage>2501 Faculty Clearance</BreadcrumbPage>
+                <BreadcrumbPage>{formattedTimelineId}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -236,7 +263,7 @@ React.useEffect(() => {
             <div className="mt-6">
               <ClearanceRequestsCard
                 items={filteredRequests}
-                getItemHref={(item) => `/assistant-approver-archived-individual?timelineId=${encodeURIComponent(timelineId)}&archivedId=${encodeURIComponent(item.id)}`}
+                getItemHref={(item) => `/assistant-approver-archived-individual?timelineId=${encodeURIComponent(rawTimelineId)}&archivedId=${encodeURIComponent(item.id)}`}
               />
             </div>
           </div>
