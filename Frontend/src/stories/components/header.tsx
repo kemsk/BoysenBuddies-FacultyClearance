@@ -187,10 +187,10 @@ export function FacultyHeader() {
               >
                 <img
                   src="/PrimaryArchiveIcon.png"
-                  alt="View Archived Clearance"
+                  alt="View Clearance Records"
                   className="h-5 w-5 object-contain"
                 />
-                <span>View Archived Clearance</span>
+                <span>View Clearance Records</span>
               </Link>
             </SheetClose>
             </div>
@@ -479,7 +479,7 @@ export function ApprovalHeader() {
                       to="/approver-archived-clearance"
                       className="text-xl font-regular text-primary"
                     >
-                      View Archived Clearance
+                      View Clearance Records
                     </Link>
                   </SheetClose>
 
@@ -1108,7 +1108,7 @@ export function CISOHeader() {
                       to="/CISO-archived-clearance"
                       className="text-xl font-regular text-primary"
                     >
-                      View Archived Clearance
+                      View Clearance Records
                     </Link>
                   </SheetClose>
 
@@ -1118,6 +1118,15 @@ export function CISOHeader() {
                       className="text-xl font-regular text-primary"
                     >
                       View Archived Faculty
+                    </Link>
+                  </SheetClose>
+                  
+                  <SheetClose asChild>
+                    <Link
+                      to="/CISO-access-control"
+                      className="text-xl font-regular text-primary"
+                    >
+                      Access Control
                     </Link>
                   </SheetClose>
 
@@ -1387,7 +1396,7 @@ export function OVPHEHeader() {
                       to="/OVPHE-archived-clearance"
                       className="text-xl font-regular text-primary"
                     >
-                      View Archived Clearance
+                      View Clearance Records
                     </Link>
                   </SheetClose>
 
@@ -1645,10 +1654,10 @@ export function AssistantApproverHeader() {
                 >
                 <img
                   src="/PrimaryArchiveIcon.png"
-                  alt="View Archived Clearance"
+                  alt="View Clearance Records"
                   className="h-5 w-5 object-contain"
                 />
-                <span>View Archived Clearance</span>
+                <span>View Clearance Records</span>
                 </Link>
               </SheetClose>
             </div>

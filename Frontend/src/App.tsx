@@ -65,6 +65,7 @@ import CISOClearanceTimeline from "./pages/CISO/CISO-clearance-timeline";
 import CISOViewClearance from "./pages/CISO/CISO-view-clearance";
 import CISOArchivedClearance from "./pages/CISO/CISO-archived-clearance";
 import CISOArchivedFaculty from "./pages/CISO/CISO-archived-faculty";
+import CISOAccessControl from "./pages/CISO/CISO-access-control"
 
 function ProtectedRoute({ children, allowedRoles }: { children: ReactElement; allowedRoles?: number[] }) {
   const [status, setStatus] = useState<"checking" | "authed" | "unauthed" | "unauthorized">(
@@ -733,6 +734,18 @@ function App() {
             }
           />
         }
+
+        {
+          <Route
+            path="/CISO-access-control"
+            element={
+              <ProtectedRoute allowedRoles={[1]}>
+                <CISOAccessControl />
+              </ProtectedRoute>
+            }
+          />
+        }
+
         {
           <Route
             path="/CISO-tools"

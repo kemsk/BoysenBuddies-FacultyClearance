@@ -121,7 +121,7 @@ export default function CISONotification() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4 lg:max-w-4xl lg:mx-auto lg:p-8">
+      <main className="dashboard p-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-primary">Notifications</h1>
         </div>
