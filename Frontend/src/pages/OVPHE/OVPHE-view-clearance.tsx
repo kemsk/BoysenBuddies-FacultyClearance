@@ -68,6 +68,22 @@ export default function OVPHEViewClearance() {
   const [query, setQuery] = useState("");
   const [selectedYear, setSelectedYear] = useState("all");
   const [sortBy, setSortBy] = useState("name");
+  const rawTimelineId = React.useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("timelineId") || "";
+  }, []);
+
+  const [timelineData, setTimelineData] = React.useState<any>(null);
+
+  const formattedTimelineId = React.useMemo(() => {
+    // Use timeline name directly like CISO archived clearance page
+    if (timelineData && timelineData.name) {
+      return timelineData.name;
+    }
+    
+    // Return empty if no timeline data available
+    return "";
+  }, [rawTimelineId, timelineData]);
 
   const dummyClearanceRequests: NoLinkClearanceRequestItem[] = [
     {
@@ -102,17 +118,26 @@ export default function OVPHEViewClearance() {
     | { open: false }
   >({ open: false });
 
-  const refresh = React.useCallback(() => {
-    return fetch("/admin/xu-faculty-clearance/api/ovphe/announcements")
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: { items: AnnouncementApiItem[] }) => {
-        const initial = (data.items ?? []).map((item) => ({
-          ...item,
-          enabled: item.enabled ?? true,
-        }));
-        setItems(initial);
+  React.useEffect(() => {
+    if (!rawTimelineId) {
+      setTimelineData(null);
+      return;
+    }
+
+    // Fetch timeline details from archived clearance API (like CISO page)
+    fetch("/admin/xu-faculty-clearance/api/ovphe/archived-clearance", {
+      credentials: "include",
+    })
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data: { items: any[] }) => {
+        // Find the timeline with matching ID
+        const timeline = data.items?.find((item: any) => item.id === rawTimelineId);
+        setTimelineData(timeline || null);
+      })
+      .catch(() => {
+        setTimelineData(null);
       });
-  }, []);
+  }, [rawTimelineId]);
 
 
 
@@ -127,7 +152,7 @@ export default function OVPHEViewClearance() {
       {/* DASHBOARD CONTENT */}
       <main className="dashboard p-4 mt-2 space-y-3 w-full ">
 
-        <h1 className="text-2xl text-left text-primary font-bold">2501 Faculty Clearance</h1>
+        <h1 className="text-2xl text-left text-primary font-bold">{formattedTimelineId}</h1>
 
         <Breadcrumb className="mt-2">
           <BreadcrumbList>
@@ -144,7 +169,7 @@ export default function OVPHEViewClearance() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                <BreadcrumbPage>2501 Faculty Clearance</BreadcrumbPage>
+                <BreadcrumbPage>{formattedTimelineId}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
