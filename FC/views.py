@@ -2468,6 +2468,34 @@ def ciso_faculty_dump_import_api(request):
         
         return len(missing_fields) == 0, missing_fields
 
+    def _validate_college_department(college_name, department_name, existing_colleges, existing_departments, dept_to_college):
+        """Validate college and department against existing records with case-sensitive matching"""
+        invalid_fields = []
+        
+        # Validate college if provided
+        if college_name and college_name not in existing_colleges:
+            invalid_fields.append("college")
+        
+        # Validate department if provided
+        if department_name:
+            if department_name not in existing_departments:
+                invalid_fields.append("department")
+            else:
+                # Check if department belongs to the specified college
+                if college_name:
+                    expected_college = dept_to_college.get(department_name)
+                    if expected_college != college_name:
+                        invalid_fields.append("department")
+        
+        return invalid_fields
+
+    # Get existing colleges and departments for case-sensitive validation
+    existing_colleges = {college.name: college for college in College.objects.filter(is_active=True)}
+    existing_departments = {dept.name: dept for dept in Department.objects.filter(is_active=True).select_related('college')}
+    
+    # Create mapping of departments to their college names for validation
+    dept_to_college = {dept.name: dept.college.name for dept in Department.objects.filter(is_active=True).select_related('college')}
+
     # Get or create Faculty role
     try:
         faculty_role = Role.objects.get(name='Faculty')
@@ -2475,7 +2503,9 @@ def ciso_faculty_dump_import_api(request):
     except Role.DoesNotExist:
         faculty_role = Role.objects.create(name='Faculty', description='Faculty member', is_system_role=True)
 
-    # Process CSV and create faculty directly
+    # Store processed rows with validation info for archived CSV
+    processed_rows = []
+
     for idx, row in enumerate(reader, start=2):
         email = _clean(row.get("email"))
         university_id = _clean(row.get("university_id"))
@@ -2484,16 +2514,37 @@ def ciso_faculty_dump_import_api(request):
         if not employee_id:
             errors.append({"row": idx, "message": "employee_id is required"})
             skipped_count += 1
+            # Store row info for archived CSV
+            processed_rows.append({
+                'row': row,
+                'validation_status': 'SKIPPED',
+                'missing_fields': 'employee_id',
+                'invalid_fields': ''
+            })
             continue
 
         if not email:
             errors.append({"row": idx, "message": "email is required"})
             skipped_count += 1
+            # Store row info for archived CSV
+            processed_rows.append({
+                'row': row,
+                'validation_status': 'SKIPPED',
+                'missing_fields': 'email',
+                'invalid_fields': ''
+            })
             continue
 
         if not university_id:
             errors.append({"row": idx, "message": "university_id is required"})
             skipped_count += 1
+            # Store row info for archived CSV
+            processed_rows.append({
+                'row': row,
+                'validation_status': 'SKIPPED',
+                'missing_fields': 'university_id',
+                'invalid_fields': ''
+            })
             continue
 
         first_name = _clean(row.get("first_name"))
@@ -2515,6 +2566,31 @@ def ciso_faculty_dump_import_api(request):
                 "message": f"Skipping incomplete faculty record. Missing required fields: {', '.join(missing_fields)}"
             })
             skipped_count += 1
+            # Store row info for archived CSV with missing fields
+            processed_rows.append({
+                'row': row,
+                'validation_status': 'SKIPPED',
+                'missing_fields': ', '.join(missing_fields),
+                'invalid_fields': ''
+            })
+            continue
+
+        # Validate college and department against existing records (case-sensitive)
+        invalid_fields = _validate_college_department(college_name, department_name, existing_colleges, existing_departments, dept_to_college)
+        
+        if invalid_fields:
+            errors.append({
+                "row": idx, 
+                "message": f"Skipping faculty record due to invalid college/department: {', '.join(invalid_fields)}"
+            })
+            skipped_count += 1
+            # Store row info for archived CSV with invalid fields
+            processed_rows.append({
+                'row': row,
+                'validation_status': 'SKIPPED',
+                'missing_fields': '',
+                'invalid_fields': ', '.join(invalid_fields)
+            })
             continue
 
         try:
@@ -2593,11 +2669,26 @@ def ciso_faculty_dump_import_api(request):
                 else:
                     updated_count += 1
 
+                # Store successful row for archived CSV
+                processed_rows.append({
+                    'row': row,
+                    'validation_status': 'COMPLETE',
+                    'missing_fields': '',
+                    'invalid_fields': ''
+                })
+
         except Exception as e:
             errors.append({"row": idx, "message": f"Error creating faculty: {str(e)}"})
             skipped_count += 1
+            # Store error row for archived CSV
+            processed_rows.append({
+                'row': row,
+                'validation_status': 'ERROR',
+                'missing_fields': '',
+                'invalid_fields': f"Error: {str(e)}"
+            })
 
-    # After processing rows, save the uploaded CSV to disk and create
+    # After processing rows, save the uploaded CSV to disk with validation info and create
     # a FacultyDumpArchive entry tied to the selected clearance timeline.
 
     try:
@@ -2616,8 +2707,31 @@ def ciso_faculty_dump_import_api(request):
         file_name = f"timeline-{clearance_timeline.id}-{timestamp}-{safe_name}"
         file_path = os.path.join(dumps_dir, file_name)
 
+        # Create enhanced CSV with validation columns
+        original_fieldnames = reader.fieldnames or []
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header with original columns + validation columns
+        new_fieldnames = list(original_fieldnames) + ["Validation Status", "Missing Fields", "Invalid Fields"]
+        writer.writerow(new_fieldnames)
+        
+        # Write all processed rows with validation info
+        for processed_row in processed_rows:
+            row = processed_row['row']
+            validation_status = processed_row['validation_status']
+            missing_fields = processed_row['missing_fields']
+            invalid_fields = processed_row['invalid_fields']
+            
+            # Write row with validation columns
+            new_row = [row.get(field, "") for field in original_fieldnames] + [validation_status, missing_fields, invalid_fields]
+            writer.writerow(new_row)
+        
+        # Write the enhanced CSV to file
+        csv_content = output.getvalue()
+        bom_content = '\ufeff' + csv_content  # Add BOM for Excel compatibility
         with open(file_path, "wb") as f:
-            f.write(raw)
+            f.write(bom_content.encode('utf-8'))
 
         size_bytes = os.path.getsize(file_path)
         size_mb = size_bytes / (1024 * 1024) if size_bytes else 0
@@ -2625,7 +2739,8 @@ def ciso_faculty_dump_import_api(request):
 
         relative_path = os.path.relpath(file_path, media_root) if media_root else file_name
 
-        FacultyDumpArchive.objects.create(
+        # Create archive entry and return the ID for frontend download
+        archive_entry = FacultyDumpArchive.objects.create(
             clearance_timeline=clearance_timeline,
             academic_year_start=clearance_timeline.academic_year_start,
             academic_year_end=clearance_timeline.academic_year_end,
@@ -2642,6 +2757,7 @@ def ciso_faculty_dump_import_api(request):
             "updated_count": updated_count,
             "skipped_count": skipped_count,
             "errors": errors,
+            "archive_id": archive_entry.id if 'archive_entry' in locals() else None,
         }
     )
 
@@ -11376,8 +11492,36 @@ def ciso_archived_faculty_download_api(request, archived_id: int):
         output = io.StringIO()
         writer = csv.writer(output)
         
+        # Get existing colleges and departments for case-sensitive validation
+        existing_colleges = {college.name: college for college in College.objects.filter(is_active=True)}
+        existing_departments = {dept.name: dept for dept in Department.objects.filter(is_active=True).select_related('college')}
+        
+        # Create mapping of departments to their college names for validation
+        dept_to_college = {dept.name: dept.college.name for dept in Department.objects.filter(is_active=True).select_related('college')}
+
+        def _validate_college_department(college_name, department_name, existing_colleges, existing_departments, dept_to_college):
+            """Validate college and department against existing records with case-sensitive matching"""
+            invalid_fields = []
+            
+            # Validate college if provided
+            if college_name and college_name not in existing_colleges:
+                invalid_fields.append("college")
+            
+            # Validate department if provided
+            if department_name:
+                if department_name not in existing_departments:
+                    invalid_fields.append("department")
+                else:
+                    # Check if department belongs to the specified college
+                    if college_name:
+                        expected_college = dept_to_college.get(department_name)
+                        if expected_college != college_name:
+                            invalid_fields.append("department")
+            
+            return invalid_fields
+
         # Write header with original columns + validation columns
-        new_fieldnames = list(original_fieldnames) + ["Validation Status", "Missing Fields"]
+        new_fieldnames = list(original_fieldnames) + ["Validation Status", "Missing Fields", "Invalid Fields"]
         writer.writerow(new_fieldnames)
         
         def _clean(value: str | None):
@@ -11396,35 +11540,48 @@ def ciso_archived_faculty_download_api(request, archived_id: int):
             department_name = _clean(row.get("department"))
             office_name = _clean(row.get("office"))
             
-            # Validate faculty data
-            missing_fields = []
+            # Check if this is a newly processed CSV with validation info
+            has_validation_info = any(field in original_fieldnames for field in ["Validation Status", "Missing Fields", "Invalid Fields"])
             
-            if not email or not email.strip():
-                missing_fields.append("email")
-            
-            if not university_id or not university_id.strip():
-                missing_fields.append("university_id")
-            
-            if not employee_id or not employee_id.strip():
-                missing_fields.append("employee_id")
-            
-            if not first_name or not first_name.strip():
-                missing_fields.append("first_name")
-            
-            if not last_name or not last_name.strip():
-                missing_fields.append("last_name")
-            
-            if not faculty_type or not faculty_type.strip():
-                missing_fields.append("faculty_type")
-            
-            if not (college_name or department_name or office_name):
-                missing_fields.append("organization_assignment")
-            
-            validation_status = "COMPLETE" if len(missing_fields) == 0 else "INCOMPLETE"
-            missing_fields_str = ", ".join(missing_fields) if missing_fields else ""
+            if has_validation_info:
+                # Use existing validation info from the CSV
+                validation_status = row.get("Validation Status", "UNKNOWN")
+                missing_fields_str = row.get("Missing Fields", "")
+                invalid_fields_str = row.get("Invalid Fields", "")
+            else:
+                # Legacy CSV - perform validation
+                missing_fields = []
+                
+                if not email or not email.strip():
+                    missing_fields.append("email")
+                
+                if not university_id or not university_id.strip():
+                    missing_fields.append("university_id")
+                
+                if not employee_id or not employee_id.strip():
+                    missing_fields.append("employee_id")
+                
+                if not first_name or not first_name.strip():
+                    missing_fields.append("first_name")
+                
+                if not last_name or not last_name.strip():
+                    missing_fields.append("last_name")
+                
+                if not faculty_type or not faculty_type.strip():
+                    missing_fields.append("faculty_type")
+                
+                if not (college_name or department_name or office_name):
+                    missing_fields.append("organization_assignment")
+                
+                # Validate college and department
+                invalid_fields = _validate_college_department(college_name, department_name, existing_colleges, existing_departments, dept_to_college)
+                
+                validation_status = "COMPLETE" if len(missing_fields) == 0 and len(invalid_fields) == 0 else "INCOMPLETE"
+                missing_fields_str = ", ".join(missing_fields) if missing_fields else ""
+                invalid_fields_str = ", ".join(invalid_fields) if invalid_fields else ""
             
             # Write row with validation columns
-            new_row = [row.get(field, "") for field in original_fieldnames] + [validation_status, missing_fields_str]
+            new_row = [row.get(field, "") for field in original_fieldnames] + [validation_status, missing_fields_str, invalid_fields_str]
             writer.writerow(new_row)
         
         # Create response

@@ -257,8 +257,30 @@ export default function CISOFacultyDataDump() {
               const created = data?.created_count ?? 0;
               const updated = data?.updated_count ?? 0;
               const skipped = data?.skipped_count ?? 0;
+              const archiveId = data?.archive_id;
 
               openSuccess(buildImportCompleteMessage(created, updated, skipped));
+
+              // Automatically download the archived CSV if archive ID is available
+              if (archiveId) {
+                try {
+                  const downloadRes = await fetch(`/admin/xu-faculty-clearance/api/ciso/archived-faculty/${archiveId}/download`);
+                  if (downloadRes.ok) {
+                    const blob = await downloadRes.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `faculty_import_results_${new Date().toISOString().slice(0, 10)}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                  }
+                } catch (error) {
+                  // Silently fail download - don't show error to user since import was successful
+                  console.error("Failed to download archived CSV:", error);
+                }
+              }
             } finally {
               setBusy(false);
             }

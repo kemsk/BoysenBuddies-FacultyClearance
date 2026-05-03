@@ -122,7 +122,7 @@ export const SuccessErrorModalMessages = {
   IMPORT_SELECT_SEMESTER:
     "Please select a semester based on an existing clearance timeline before importing the faculty CSV.",
   IMPORT_ERROR_FROM_API: "Import error message from API",
-  IMPORT_COMPLETE_WITH_COUNTS: "Import complete. Created: X, Updated: Y, Skipped: Z",
+  IMPORT_COMPLETE_WITH_COUNTS: "Import complete. Created: X, Updated: Y, Skipped: Z\n\nPlease check the CSV file again for the faculty that have been skipped.",
   DOWNLOAD_TEMPLATE_FAILED: "Failed to download template",
   DOWNLOAD_CSV_FAILED: "Failed to download CSV file",
 } as const;
