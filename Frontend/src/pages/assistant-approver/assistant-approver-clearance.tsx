@@ -73,7 +73,7 @@ export default function AssistantApproverClearance() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4  w-full lg:w-[80%] lg:mx-auto lg:p-8">
+      <main className="dashboard px-[1in] pt-4 pb-4 w-full">
         
         <h1 className="text-2xl text-left text-primary font-bold">Clearance Requests</h1>
 

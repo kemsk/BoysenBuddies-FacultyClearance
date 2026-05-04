@@ -7,7 +7,7 @@ function BaseCard({ className, children, ...props }: BaseCardProps) {
   return (
     <div
       className={cn(
-        "w-full max-w-[340px] flex-1 bg-white rounded-xl shadow-md border border-black/10",
+        "w-full flex-1 basis-0 min-w-0 bg-white rounded-xl shadow-md border border-black/10",
         className,
       )}
       {...props}
@@ -22,29 +22,19 @@ type StatCardVariant = "TotalFaculty" | "CompleteClearance" | "IncompleteClearan
 
 type StatCardProps = BaseCardProps & {
   variant?: StatCardVariant;
-
   title?: React.ReactNode;
-
   number?: React.ReactNode;
-
   description?: React.ReactNode;
-
   descriptionValues?: Record<string, React.ReactNode>;
-
 };
 
 
 
 type VariantConfig = {
-
   title: string;
-
   numberColor: string;
-
   description: string;
-
   numberSuffix?: string;
-
 };
 
 
@@ -52,55 +42,34 @@ type VariantConfig = {
 const variantDefaults: Record<StatCardVariant, VariantConfig> = {
 
   TotalFaculty: {
-
     title: "Total Faculty Members",
-
     numberColor: "text-primary",
-
     description: "{fullTime} Full-Time · {partTime} Part-Time",
-
   },
 
   CompleteClearance: {
-
     title: "Complete Clearance",
-
     numberColor: "text-success",
-
     description: "{percentage}% of total faculty",
-
   },
 
   IncompleteClearance: {
-
     title: "Incomplete Clearance",
-
     numberColor: "text-orange-400",
-
     description: "Missing Requirements",
-
   },
 
   Unprocessed: {
-
     title: "Unprocessed Clearance",
-
     numberColor: "text-blue-500",
-
     description: "Awaiting Office Action",
-
   },
 
   OverallCompletion: {
-
     title: "Overall Completion",
-
     numberColor: "text-black",
-
     description: "{cleared} of {total} faculty cleared",
-
     numberSuffix: "%",
-
   },
 
 };
@@ -154,17 +123,6 @@ export function StatCard({ className, children, variant, title, number, descript
         )}
 
         {finalDescription != null && <span className="text-xs text-gray-600">{finalDescription}</span>}
-
-        {variant === "OverallCompletion" && number != null && number !== "" && (
-          <div className="mt-3 w-full">
-            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-              <div
-                className="h-full rounded-full bg-success"
-                style={{ width: `${Math.max(0, Math.min(100, Number(number)))}%` }}
-              />
-            </div>
-          </div>
-        )}
 
         {children}
 

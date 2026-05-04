@@ -66,6 +66,7 @@ import CISOViewClearance from "./pages/CISO/CISO-view-clearance";
 import CISOArchivedClearance from "./pages/CISO/CISO-archived-clearance";
 import CISOArchivedFaculty from "./pages/CISO/CISO-archived-faculty";
 import CISOAccessControl from "./pages/CISO/CISO-access-control"
+import CISOSystemAnalytics from "./pages/CISO/CISO-system-analytics";
 
 function ProtectedRoute({ children, allowedRoles }: { children: ReactElement; allowedRoles?: number[] }) {
   const [status, setStatus] = useState<"checking" | "authed" | "unauthed" | "unauthorized">(
@@ -655,7 +656,7 @@ function App() {
         }
         {
           <Route
-            path="/system-analytics"
+            path="/OVPHE-system-analytics"
             element={
               <ProtectedRouteForSystemAnalytics>
                 <OVPHESystemAnalytics />
@@ -745,7 +746,16 @@ function App() {
             }
           />
         }
-
+        {
+          <Route
+            path="/CISO-system-analytics"
+            element={
+              <ProtectedRoute allowedRoles={[1]}>
+                <CISOSystemAnalytics />
+              </ProtectedRoute>
+            }
+          />
+        }
         {
           <Route
             path="/CISO-tools"

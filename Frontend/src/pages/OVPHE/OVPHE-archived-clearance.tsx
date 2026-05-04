@@ -203,7 +203,7 @@ React.useEffect(() => {
           <OVPHEHeader />
         </div>
 
-        <main className="dashboard p-4 mt-2 space-y-3 w-full lg:max-w-6xl lg:mx-auto lg:p-8">
+        <main className="dashboard px-[1in] pt-4 pb-4 w-full">
           <h1 className="text-2xl text-left text-primary font-bold">{selectedTimeline.name}</h1>
 
           <Breadcrumb className="mt-2">
@@ -223,7 +223,7 @@ React.useEffect(() => {
           <div className="mb-3 mt-2 flex items-center justify-between">
             <Button variant="default" onClick={handleExport} disabled={faculty.length === 0}>
               <div className="flex items-center gap-2">
-                <img src="/WhiteDownloadIcon.png"></img>
+                <img src="/WhiteDownloadIcon.png" />
                 <span> Export Current View</span>
               </div>
             </Button>            
@@ -389,7 +389,7 @@ React.useEffect(() => {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4 mt-2 space-y-3 w-full">
+      <main className="dashboard px-[1in] pt-4 pb-4 w-full">
 
         <h1 className="text-2xl text-left text-primary font-bold">View Clearance Records</h1>
 

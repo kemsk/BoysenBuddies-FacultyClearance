@@ -517,7 +517,7 @@ export function RemoveSystemUserDialog({
           <div className="rounded-xl bg-background">
             <AlertDialogHeader className="px-6 pb-4 pt-7 gap-3">
               <div className="mx-auto flex h-10 w-10 items-center justify-center ">
-                <img src="/RedAlertIcon.png"></img>
+                <img src="/RedAlertIcon.png" />
               </div>
               <AlertDialogTitle className="mt-3 mb-2 text-center text-lg font-bold text-foreground">
                 You are about to <span className="text-red-500">REMOVE </span>

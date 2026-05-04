@@ -1129,7 +1129,14 @@ export function CISOHeader() {
                       Access Control
                     </Link>
                   </SheetClose>
-
+                  <SheetClose asChild>
+                    <Link
+                      to="/CISO-system-analytics"
+                      className="text-xl font-regular text-primary"
+                    >
+                      System Analytics
+                    </Link>
+                  </SheetClose>
                   <SheetClose asChild>
                     <Link
                       to="/CISO-activity-logs"

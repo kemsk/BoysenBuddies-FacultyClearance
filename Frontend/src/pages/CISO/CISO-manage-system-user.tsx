@@ -24,10 +24,7 @@ import {
 } from "../../stories/components/select";
 
 import { Button } from "../../stories/components/button";
-import {
-  SystemUsersCard,
-  type SystemUser,
-} from "../../stories/components/cards";
+import { type SystemUser } from "../../stories/components/system-users-cards";
 import {
   ManageSystemAdminDialog,
   ManageSystemApproverDialog,
@@ -41,11 +38,12 @@ import {
   SuccessModal,
   SuccessErrorModalMessages,
 } from "../../stories/components/success-and-error-modals";
+import { AdminSystemUsersCard, ApproverSystemUsersCard } from "../../stories/components/system-users-cards";
 
  export default function CISOManageSystemUser() {
   const navigate = useNavigate();
   const [page, setPage] = React.useState(1);
-  const pageSize = 20;
+  const pageSize = 10;
 
   const [successOpen, setSuccessOpen] = React.useState(false);
   const [successMessage, setSuccessMessage] = React.useState<React.ReactNode>("");
@@ -268,7 +266,7 @@ import {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4 w-full">
+      <main className="dashboard px-[1in] pt-4 pb-4 w-full">
         
         <h1 className="text-2xl text-left text-primary font-bold">Manage System Users</h1>
 
@@ -296,55 +294,18 @@ import {
        
        <div className="mt-4 space-y-3">
         
-        <div className="mt-4">
-          <div className="text-primary text-md font-semibold"> Administrive Roles</div>
-          <div className="mt-3 flex flex-col items-start gap-3 md:flex-row md:items-center md:flex-nowrap">
-            <div className="w-full md:flex-1 md:min-w-[320px]">
-              <SearchInputGroup
-                containerClassName="h-10"
-                placeholder="Search by name, ID, or email..."
-              />
-            </div>
-
-            <Select defaultValue="name">
-              <SelectTrigger variant="pill" className="w-max gap-2">
-                <span>Sort by:</span>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="name">Name</SelectItem>
-                <SelectItem value="email">XU Email</SelectItem>
-                <SelectItem value="UniversityID">University ID</SelectItem>
-                <SelectItem value="Office">Office</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select onValueChange={(v) => console.log(v)}>
-                <SelectTrigger variant="pill" className="w-max">
-                    <SelectValue placeholder="User Role" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="SystemAdmin">All</SelectItem>
-                    <SelectItem value="Approver">System Admin</SelectItem>
-                    <SelectItem value="Approver">Analytics Admin</SelectItem>
-                </SelectContent>
-            </Select>
-            <div className="w-full md:w-auto md:ml-auto flex justify-end">
-              <Button type="button" variant="default" className="h-10" onClick={onAddApprover}>
-                <div className="flex items-center gap-2">
-                  <img src="/WhitePlusIcon.png" alt="Add Approver" className="h-5 w-5 object-contain" />
-                  <span className="ml-0">Add Approver</span>
-                </div>
-              </Button>
-            </div>
-          </div>
+        <div className="pt-4">
+          <div className="text-primary text-md font-semibold"> Administrative Roles</div>
         </div>
 
-          <div className="pt-3">
-            <SystemUsersCard
+          <div className="mt-3">
+            <AdminSystemUsersCard
               users={pagedUsers}
               onAddAdmin={() => setAddAdminOpen(true)}
               currentUserEmail={adminEmail}
+              page={safePage}
+              pageCount={pageCount}
+              onPageChange={(p) => setPage(p)}
               onEditUser={(user) => {
                 if (user.email.trim().toLowerCase() === adminEmail.trim().toLowerCase()) {
                   window.alert("You cannot edit your own account from Manage System Users.");
@@ -367,55 +328,18 @@ import {
               }}
             />
           </div>
-        <div className="mt-4">
+        <div className="pt-4">
           <div className="text-primary text-md font-semibold"> Approver Roles</div>
-          <div className="mt-3 flex flex-col items-start gap-3 md:flex-row md:items-center md:flex-nowrap">
-            <div className="w-full md:flex-1 md:min-w-[320px]">
-              <SearchInputGroup
-                containerClassName="h-10"
-                placeholder="Search by name, ID, or email..."
-              />
-            </div>
-
-            <Select defaultValue="name">
-              <SelectTrigger variant="pill" className="w-max gap-2">
-                <span>Sort by:</span>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="name">Name</SelectItem>
-                <SelectItem value="email">XU Email</SelectItem>
-                <SelectItem value="UniversityID">University ID</SelectItem>
-                <SelectItem value="Office">Office</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select onValueChange={(v) => console.log(v)}>
-                <SelectTrigger variant="pill" className="w-max">
-                    <SelectValue placeholder="User Role" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="SystemAdmin">All</SelectItem>
-                    <SelectItem value="Approver">System Admin</SelectItem>
-                    <SelectItem value="Approver">Analytics Admin</SelectItem>
-                </SelectContent>
-            </Select>
-            <div className="w-full md:w-auto md:ml-auto flex justify-end">
-              <Button type="button" variant="default" className="h-10" onClick={onAddApprover}>
-                <div className="flex items-center gap-2">
-                  <img src="/WhitePlusIcon.png" alt="Add Approver" className="h-5 w-5 object-contain" />
-                  <span className="ml-0">Add Approver</span>
-                </div>
-              </Button>
-            </div>
-          </div>
         </div>
 
-          <div className="pt-3">
-            <SystemUsersCard
+          <div className="mt-3">
+            <ApproverSystemUsersCard 
               users={pagedUsers}
               onAddAdmin={() => setAddAdminOpen(true)}
               currentUserEmail={adminEmail}
+              page={safePage}
+              pageCount={pageCount}
+              onPageChange={(p) => setPage(p)}
               onEditUser={(user) => {
                 if (user.email.trim().toLowerCase() === adminEmail.trim().toLowerCase()) {
                   window.alert("You cannot edit your own account from Manage System Users.");
@@ -681,25 +605,6 @@ import {
             })();
           }}
         />
-
-         <div className="flex items-center justify-center gap-3  px-4 py-3">
-          <div className="text-sm text-muted-foreground">Page</div>
-
-          <Button type="button" variant="icon" size="icon" className="h-9 w-9" onClick={onPrevPage}>
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-
-          <div className="flex h-9 min-w-[44px] items-center justify-center rounded-md border border-muted-foreground/30 bg-background px-3 text-sm font-semibold text-foreground">
-            {safePage}
-          </div>
-
-          <Button type="button" variant="icon" size="icon" className="h-9 w-9" onClick={onNextPage}>
-            <ChevronRight className="h-5 w-5" />
-          </Button>
-
-          <div className="text-sm text-muted-foreground">of {pageCount}</div>
-
-        </div>
 
       </main>
 

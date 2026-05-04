@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
-import { OVPHEHeader } from "../../stories/components/header";
+import { CISOHeader, OVPHEHeader } from "../../stories/components/header";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -171,7 +171,7 @@ async function exportToPDF(elementId: string, filename: string) {
   }
 }
 
-export default function OVPHESystemAnalytics() {
+export default function CISOSystemAnalytics() {
   const navigate = useNavigate();
 
   const [clearanceProgressOpen, setClearanceProgressOpen] = React.useState(false);
@@ -394,7 +394,7 @@ export default function OVPHESystemAnalytics() {
       
       {/* HEADER */}
       <div className="header mb-3">
-        <OVPHEHeader />
+        <CISOHeader />
       </div>
 
       {/* DASHBOARD CONTENT */}
@@ -417,7 +417,7 @@ export default function OVPHESystemAnalytics() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" size="back" onClick={() => navigate("/OVPHE-tools")}> 
+          <Button variant="back" size="back" onClick={() => navigate("/CISO-tools")}> 
             <div className="flex items-center gap-2">
               <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
             </div>

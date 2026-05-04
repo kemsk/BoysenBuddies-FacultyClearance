@@ -41,7 +41,7 @@ export default function AssistantApproverRequirementList() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4 w-full">
+      <main className="dashboard px-[1in] pt-4 pb-4 w-full">
         
         <h1 className="text-2xl text-left text-primary font-bold">Requirement List</h1>
 

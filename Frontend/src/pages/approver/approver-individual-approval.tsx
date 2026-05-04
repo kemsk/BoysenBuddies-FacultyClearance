@@ -767,23 +767,14 @@ export default function ApproverIndividualApproval() {
 
 
       {/* DASHBOARD CONTENT */}
-
-      <main className="dashboard p-4 w-full lg:max-w-6xl lg:mx-auto lg:p-8 ">
-
+      <main className="dashboard px-[1in] pt-4 pb-4 w-full">
         <div className="flex items-center justify-between gap-4">
-
           <h1 className="text-2xl text-left text-primary font-bold">Clearance Requests</h1>
-
           <Button variant="back" size="back" onClick={handleCancel}>
-
             <div className="flex items-center gap-2">
-
               <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
-
             </div>
-
           </Button>
-
         </div>
 
 

@@ -77,7 +77,7 @@ function ConfirmSystemUserDialog({
           <div className="rounded-xl bg-background">
             <AlertDialogHeader className="px-6 pb-4 pt-7 gap-3">
               <div className="mx-auto flex h-10 w-10 items-center justify-center">
-                <img src="/RedAlertIcon.png"></img>
+                <img src="/RedAlertIcon.png" />
               </div>
               <AlertDialogTitle className="mt-3 mb-2 text-center text-lg font-bold text-foreground">
                 You are about to <span className={action === "approve" ? "text-green-500" : "text-red-500"}>
@@ -436,7 +436,7 @@ export default function ApproverClearance() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-[2%] w-full lg:w-[90%] lg:mx-auto lg:p-[3%]">
+      <main className="dashboard px-[1in] pt-4 pb-4 w-full">
         <h1 className="text-2xl text-left text-primary font-bold">Clearance Requests</h1>
 
         <div className="mt-4 space-y-5">

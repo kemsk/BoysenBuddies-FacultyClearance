@@ -38,14 +38,14 @@ export default function Login() {
     {
       value: 1,
       name: 'ciso',
-      display_name: 'CISO System Admin',
+      display_name: 'System Admin',
       icon_primary: '/public/PrimaryShieldIcon.png',
       icon_white: '/public/WhiteShieldIcon.png'
     },
     {
       value: 2,
       name: 'ovphe',
-      display_name: 'OVPHE System Admin',
+      display_name: 'Analytics Admin',
       icon_primary: '/public/PrimaryAnalysisIcon.png',
       icon_white: '/public/WhiteAnalysisIcon.png'
     },

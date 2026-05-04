@@ -192,7 +192,7 @@ React.useEffect(() => {
           <CISOHeader />
         </div>
 
-        <main className="dashboard p-4 mt-2 space-y-3">
+        <main className="dashboard px-[1in] pt-4 pb-4 w-full">
           <h1 className="text-2xl text-left text-primary font-bold">{selectedTimeline.name}</h1>
 
           <Breadcrumb className="mt-2">
@@ -210,14 +210,14 @@ React.useEffect(() => {
           </Breadcrumb>
 
           <div className="mb-3 mt-2 flex items-center justify-between">
+            <Button variant="default" onClick={handleExport} disabled={faculty.length === 0}>
+              <div className="flex items-center">
+                <img src="WhiteExportIcon.png" className="mr-3" /> Export Current View
+              </div>
+            </Button>            
             <Button variant="back" size="back" onClick={() => setSelectedTimeline(null)}>
               <div className="flex items-center gap-2">
                 <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
-              </div>
-            </Button>
-            <Button variant="default" onClick={handleExport} disabled={faculty.length === 0}>
-              <div className="flex items-center gap-2">
-                <span>📥 Export Current View</span>
               </div>
             </Button>
           </div>
@@ -236,16 +236,57 @@ React.useEffect(() => {
           <div className="mt-3 space-y-4">
             <div className="w-full flex flex-col sm:flex-row gap-3 justify-start mt-5">
               <div className="flex gap-3">
-                <Select value={selectedStatus} onValueChange={handleStatusChange}>
+                <Select>
                   <SelectTrigger variant="pill" className="w-max gap-2">
-                    <SelectValue placeholder="Status" />
+                    <SelectValue>
+                      {selectedStatus ? selectedStatus : <span className="text-muted">Status:</span>}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="completed">Complete</SelectItem>
-                    <SelectItem value="incomplete">Incomplete</SelectItem>
+                    <SelectItem value="completed">Peding</SelectItem>
+                    <SelectItem value="incomplete">Approved</SelectItem>
                   </SelectContent>
                 </Select>
+
+                <Select>
+                  <SelectTrigger variant="pill" className="w-max gap-2">
+                    <SelectValue>
+                      {selectedStatus ? selectedStatus : <span className="text-muted">Faculty Type:</span>}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="completed">Part-time</SelectItem>
+                    <SelectItem value="incomplete">Full-time</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select >
+                  <SelectTrigger variant="pill" className="w-max gap-2">
+                    <SelectValue>
+                      {selectedStatus ? selectedStatus : <span className="text-muted">College:</span>}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="completed">Peding</SelectItem>
+                    <SelectItem value="incomplete">Approved</SelectItem>
+                  </SelectContent>
+                </Select>                
+
+                <Select>
+                  <SelectTrigger variant="pill" className="w-max gap-2">
+                    <SelectValue>
+                      {selectedStatus ? selectedStatus : <span className="text-muted">Department:</span>}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="completed">Peding</SelectItem>
+                    <SelectItem value="incomplete">Approved</SelectItem>
+                  </SelectContent>
+                </Select>                
               </div>
             </div>
 
@@ -295,7 +336,7 @@ React.useEffect(() => {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4 mt-2 space-y-3">
+      <main className="dashboard px-[1in] pt-4 pb-4 w-full">
 
         <h1 className="text-2xl text-left text-primary font-bold">View Clearance Records</h1>
 

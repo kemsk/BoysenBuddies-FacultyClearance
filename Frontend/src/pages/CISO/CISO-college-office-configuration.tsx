@@ -164,7 +164,7 @@ function AddCollegeDialog(props: {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className="flex h-12 w-12 items-center justify-center">
-                        <img src="BlackFileIcon.png"/>
+                        <img src="BlackFileIcon.png" />
                       </div>
                       <div>
                         <div className="text-base font-semibold text-foreground">{selectedFile.name}</div>
@@ -174,7 +174,7 @@ function AddCollegeDialog(props: {
                         <div className="mt-1 text-sm text-muted-foreground">Uploaded!</div>
                       </div>
                     </div>
-                    <img src="BlackCheckIcon.png"></img>
+                    <img src="BlackCheckIcon.png" />
                   </div>
                 </div>
               ) : (
@@ -940,7 +940,7 @@ export default function CISOCollegeOfficeConfiguration() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard p-4 ">
+      <main className="dashboard px-[1in] pt-4 pb-4 w-full">
         
         <h1 className="text-2xl text-left text-primary font-bold">College & Office Configuration</h1>
 
