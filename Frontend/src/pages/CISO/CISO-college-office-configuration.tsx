@@ -364,7 +364,7 @@ function AddDepartmentDialog(props: {
                     <Divider className="my-4 border-[hsl(var(--gray-border))]" />
 
                     <div>
-                      <div className="text-xs font-semibold text-foreground">College Departments</div>
+                      <div className="text-xs font-semibold text-foreground">College Departments/Level Coordinator</div>
 
                       <div className="mt-2 space-y-2">
                         {departments.map((d, idx) => (
@@ -1081,7 +1081,7 @@ export default function CISOCollegeOfficeConfiguration() {
             </SectionListCard>
 
             <SectionListCard
-              title="College Departments"
+              title="College Departments/Level Coordinator"
               headerActionImgAlt="Add"
               headerActionImgSrc="/WhitePlusIcon.png"
               headerActionOnClick={() => setAddDepartmentOpen(true)}
@@ -1531,7 +1531,7 @@ export default function CISOCollegeOfficeConfiguration() {
 
           <div className="lg:col-span-1">
             <SectionListCard
-              title="College Departments"
+              title="College Departments/Level Coordinator"
               headerActionImgAlt="Add"
               headerActionImgSrc="/WhitePlusIcon.png"
               headerActionOnClick={() => setAddDepartmentOpen(true)}

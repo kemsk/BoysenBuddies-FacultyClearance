@@ -7,7 +7,7 @@ import { Badge } from "./badge";
 import { Button } from "./button";
 import { Dialog, DialogContent } from "./dialog";
 import { Input } from "./input";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "./select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
 
 export type ClearanceProgressRow = {
   name: React.ReactNode;
@@ -30,12 +30,14 @@ export function ClearanceProgressDialog({ open, onOpenChange, rows }: ClearanceP
   const [query, setQuery] = React.useState("");
   const [sort, setSort] = React.useState("college");
   const [statusFilter, setStatusFilter] = React.useState<"complete" | "incomplete">("incomplete");
+  const [facultyTypeFilter, setFacultyTypeFilter] = React.useState<"" | "all" | "part_time" | "full_time">("");
 
   React.useEffect(() => {
     if (!open) return;
     setQuery("");
     setSort("college");
     setStatusFilter("incomplete");
+    setFacultyTypeFilter("");
   }, [open]);
 
   const filteredRows = React.useMemo(() => {
@@ -47,16 +49,24 @@ export function ClearanceProgressDialog({ open, onOpenChange, rows }: ClearanceP
       return r.status === "INCOMPLETE";
     });
 
-    if (!q) return statusFiltered;
+    const facultyTypeFiltered = statusFiltered.filter((r) => {
+      if (!facultyTypeFilter || facultyTypeFilter === "all") return true;
+      const t = String(r.facultyType ?? "").trim().toLowerCase();
+      if (facultyTypeFilter === "part_time") return t.includes("part") || t.includes("part-time") || t.includes("part time");
+      if (facultyTypeFilter === "full_time") return t.includes("full") || t.includes("full-time") || t.includes("full time");
+      return true;
+    });
 
-    return statusFiltered.filter((r) => {
+    if (!q) return facultyTypeFiltered;
+
+    return facultyTypeFiltered.filter((r) => {
       const asText = [r.name, r.requestId, r.employeeId, r.college, r.department]
         .map((x) => (typeof x === "string" ? x : ""))
         .join(" ")
         .toLowerCase();
       return asText.includes(q);
     });
-  }, [query, rows, statusFilter]);
+  }, [facultyTypeFilter, query, rows, statusFilter]);
 
   const sortedRows = React.useMemo(() => {
     const clone = [...filteredRows];
@@ -207,6 +217,25 @@ export function ClearanceProgressDialog({ open, onOpenChange, rows }: ClearanceP
                       </SelectContent>
                     </Select>
                   </div>
+
+                  <div className="w-fit sm:w-auto sm:min-w-[190px]">
+                    <Select
+                      value={facultyTypeFilter}
+                      onValueChange={(v) => setFacultyTypeFilter(v as typeof facultyTypeFilter)}
+                    >
+                      <SelectTrigger
+                        variant="primaryoutline"
+                        className="w-fit sm:w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                      >
+                        <SelectValue placeholder="Faculty Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Faculty</SelectItem>
+                        <SelectItem value="part_time">Part-time </SelectItem>
+                        <SelectItem value="full_time">Full-time </SelectItem>                        
+                      </SelectContent>
+                    </Select>
+                  </div>                  
                 </div>
 
                 <Button

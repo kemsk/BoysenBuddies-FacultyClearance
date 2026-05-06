@@ -1,7 +1,6 @@
 import "../../index.css"; 
 import { CISOHeader } from "../../stories/components/header";
-
-import { FacultyDataDumpCard } from "../../stories/components/cards";
+import { FacultyDataDumpCard } from "../../stories/components/faculty-dump-cards";
 
 import {
   Breadcrumb,
@@ -17,9 +16,9 @@ import { Button } from "../../stories/components/button";
 import * as React from "react";
 
 import {
+  DataDumpSuccessModal,
   ErrorModal,
   SuccessErrorModalMessages,
-  SuccessModal,
 } from "../../stories/components/success-and-error-modals";
 
 export default function CISOFacultyDataDump() {
@@ -33,30 +32,17 @@ export default function CISOFacultyDataDump() {
   const [isFileReady, setIsFileReady] = React.useState(false);
 
   const [successOpen, setSuccessOpen] = React.useState(false);
-  const [successMessage, setSuccessMessage] = React.useState<React.ReactNode>("");
+  const [createdCount, setCreatedCount] = React.useState(0);
+  const [updatedCount, setUpdatedCount] = React.useState(0);
+  const [skippedCount, setSkippedCount] = React.useState(0);
 
   const [errorOpen, setErrorOpen] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<React.ReactNode>("");
-
-  const openSuccess = React.useCallback((message: React.ReactNode) => {
-    setSuccessMessage(message);
-    setSuccessOpen(true);
-  }, []);
 
   const openError = React.useCallback((message: React.ReactNode) => {
     setErrorMessage(message);
     setErrorOpen(true);
   }, []);
-
-  const buildImportCompleteMessage = React.useCallback(
-    (created: number, updated: number, skipped: number) => {
-      return SuccessErrorModalMessages.IMPORT_COMPLETE_WITH_COUNTS
-        .replace("Created: X", `Created: ${created}`)
-        .replace("Updated: Y", `Updated: ${updated}`)
-        .replace("Skipped: Z", `Skipped: ${skipped}`);
-    },
-    [],
-  );
 
   const selectedTimelineLabel = React.useMemo(() => {
     const found = timelines.find((t) => t.id === selectedTimelineId);
@@ -108,10 +94,15 @@ export default function CISOFacultyDataDump() {
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
 
-      <SuccessModal
+      <DataDumpSuccessModal
         open={successOpen}
         onOpenChange={setSuccessOpen}
-        message={successMessage}
+        created={createdCount}
+        updated={updatedCount}
+        skipped={skippedCount}
+        skippedRows={[
+          { rowLabel: "Row 23", reason: "Missing details: employee_id, first_name, last_name" },
+        ]}
       />
 
       <ErrorModal
@@ -153,9 +144,8 @@ export default function CISOFacultyDataDump() {
         </div>
       
        <div className="mt-2 space-y-3">
-
         <FacultyDataDumpCard
-          accept=".csv,text/csv"
+          title="Upload Faculty Data"
           semesters={timelines}
           selectedSemesterId={selectedTimelineId}
           onSemesterChange={setSelectedTimelineId}
@@ -163,7 +153,16 @@ export default function CISOFacultyDataDump() {
           uploadStatus={uploadStatus}
           uploadProgress={uploadProgress}
           isFileReady={isFileReady}
-          onClearFile={() => setIsFileReady(false)}
+          tableUsers={[]}
+          tablePage={1}
+          tablePageCount={1}
+          onTablePageChange={() => {}}
+          onClearFile={() => {
+            setUploadedFile(null);
+            setUploadStatus("idle");
+            setUploadProgress(0);
+            setIsFileReady(false);
+          }}
           onRemoveFile={async () => {
             const fileName = uploadedFile?.name;
             const timelineLabel = selectedTimelineLabel;
@@ -259,7 +258,10 @@ export default function CISOFacultyDataDump() {
               const skipped = data?.skipped_count ?? 0;
               const archiveId = data?.archive_id;
 
-              openSuccess(buildImportCompleteMessage(created, updated, skipped));
+              setCreatedCount(created);
+              setUpdatedCount(updated);
+              setSkippedCount(skipped);
+              setSuccessOpen(true);
 
               // Automatically download the archived CSV if archive ID is available
               if (archiveId) {

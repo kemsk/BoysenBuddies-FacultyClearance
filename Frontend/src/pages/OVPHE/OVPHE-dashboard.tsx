@@ -120,7 +120,7 @@ export default function OVPHEDashboard() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard px-[1in] pt-4 pb-4 w-full">
+      <main className="dashboard px-[1in] pt-4 pb-4 w-full space-y-6">
         <WelcomeAcademicCard
           name={displayName}
           topLeft={{ label: "Academic Year", value: timeline?.academicYear || "" }}

@@ -335,6 +335,7 @@ import { AdminSystemUsersCard, ApproverSystemUsersCard } from "../../stories/com
           <div className="mt-3">
             <ApproverSystemUsersCard 
               users={pagedUsers}
+              onAddApprover={onAddApprover}
               onAddAdmin={() => setAddAdminOpen(true)}
               currentUserEmail={adminEmail}
               page={safePage}

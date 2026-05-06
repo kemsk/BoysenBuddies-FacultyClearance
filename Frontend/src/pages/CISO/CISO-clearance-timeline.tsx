@@ -312,7 +312,7 @@ function TimelineCard(props: {
               disabled={isSubmitting}
               onClick={() => onArchive(item)}
             >
-              ARCHIVE
+              Place in Record
             </Button>
             <Button
               variant="back"

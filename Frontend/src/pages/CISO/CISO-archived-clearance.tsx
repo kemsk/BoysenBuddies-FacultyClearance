@@ -238,6 +238,7 @@ React.useEffect(() => {
               <div className="flex gap-3">
                 <Select>
                   <SelectTrigger variant="pill" className="w-max gap-2">
+                    <span>Sort by :</span>
                     <SelectValue>
                       {selectedStatus ? selectedStatus : <span className="text-muted">Status:</span>}
                     </SelectValue>
@@ -248,45 +249,41 @@ React.useEffect(() => {
                     <SelectItem value="incomplete">Approved</SelectItem>
                   </SelectContent>
                 </Select>
+                
 
-                <Select>
-                  <SelectTrigger variant="pill" className="w-max gap-2">
-                    <SelectValue>
-                      {selectedStatus ? selectedStatus : <span className="text-muted">Faculty Type:</span>}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
+            <Select onValueChange={(v) => console.log(v)}>
+                <SelectTrigger variant="pill" className="w-max">
+                    <SelectValue placeholder="Faculty Type" />
+                </SelectTrigger>
+                <SelectContent>
                     <SelectItem value="all">All</SelectItem>
                     <SelectItem value="completed">Part-time</SelectItem>
                     <SelectItem value="incomplete">Full-time</SelectItem>
-                  </SelectContent>
-                </Select>
+                </SelectContent>
+            </Select>
 
-                <Select >
-                  <SelectTrigger variant="pill" className="w-max gap-2">
-                    <SelectValue>
-                      {selectedStatus ? selectedStatus : <span className="text-muted">College:</span>}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="completed">Peding</SelectItem>
-                    <SelectItem value="incomplete">Approved</SelectItem>
-                  </SelectContent>
-                </Select>                
+            <Select onValueChange={(v) => console.log(v)}>
+                <SelectTrigger variant="pill" className="w-max">
+                    <SelectValue placeholder="College" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="SystemAdmin">All</SelectItem>
+                    <SelectItem value="Approver">System Admin</SelectItem>
+                    <SelectItem value="Approver">Analytics Admin</SelectItem>
+                </SelectContent>
+            </Select>
+        
 
-                <Select>
-                  <SelectTrigger variant="pill" className="w-max gap-2">
-                    <SelectValue>
-                      {selectedStatus ? selectedStatus : <span className="text-muted">Department:</span>}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="completed">Peding</SelectItem>
-                    <SelectItem value="incomplete">Approved</SelectItem>
-                  </SelectContent>
-                </Select>                
+            <Select onValueChange={(v) => console.log(v)}>
+                <SelectTrigger variant="pill" className="w-max">
+                    <SelectValue placeholder="Department" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="SystemAdmin">All</SelectItem>
+                    <SelectItem value="Approver">System Admin</SelectItem>
+                    <SelectItem value="Approver">Analytics Admin</SelectItem>
+                </SelectContent>
+            </Select>                   
               </div>
             </div>
 

@@ -110,7 +110,7 @@ export function AdminSystemUsersCard({
             <div className="w-full md:w-auto md:ml-auto flex justify-end">
               <Button type="button" variant="default" className="h-10" onClick={onAddAdmin}>
                 <div className="flex items-center gap-2">
-                  <img src="/WhitePlusIcon.png" alt="Add Approver" className="h-5 w-5 object-contain" />
+                  <img src="/WhitePlusIcon.png" alt="Add Admin" className="h-5 w-5 object-contain" />
                   <span className="ml-0">Add Admin</span>
                 </div>
               </Button>
