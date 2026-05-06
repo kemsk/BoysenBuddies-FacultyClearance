@@ -83,13 +83,6 @@ export default function CISOTools() {
           />
 
           <ActionNavCard
-            icon={<ShieldCheck  className="h-9 w-9" />}
-            title="Access Control"
-            description="Review system users access control & permissions"
-            to="/CISO-access-control"
-          />
-
-          <ActionNavCard
             icon={
                 <img
                   src="/PrimaryFolderIcon.png"
@@ -101,6 +94,26 @@ export default function CISOTools() {
             description="Access previously uploaded .csv files"
             to="/CISO-archived-faculty"
           />
+
+          <ActionNavCard
+            icon={<ShieldCheck  className="h-9 w-9" />}
+            title="Access Control"
+            description="Review system users access control & permissions"
+            to="/CISO-access-control"
+          />
+          
+          <ActionNavCard
+            icon={
+                <img
+                  src="/PrimaryBarChartIcon.png"
+                  alt="activity logs icon"
+                  className="h-9 w-9"
+                />
+            }
+            title="System Analytics"
+            description="Check the completion rate per college"
+            to="/CISO-system-analytics"
+          />          
 
           <ActionNavCard
             icon={<Eye className="h-9 w-9" />}
