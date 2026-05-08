@@ -11597,3 +11597,190 @@ def ciso_archived_faculty_download_api(request, archived_id: int):
         
     except Exception as e:
         return JsonResponse({"detail": "Error processing CSV file: " + str(e)}, status=500)
+
+
+@csrf_exempt
+@ciso_required
+def ciso_college_csv_upload_api(request):
+    """
+    API endpoint for uploading College data via CSV
+    CSV format: Name, Code
+    """
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+    
+    try:
+        if 'csv_file' not in request.FILES:
+            return JsonResponse({"detail": "No CSV file provided"}, status=400)
+        
+        csv_file = request.FILES['csv_file']
+        
+        if not csv_file.name.endswith(('.csv', '.xlsx', '.xls')):
+            return JsonResponse({"detail": "Invalid file format. Please upload CSV or Excel file"}, status=400)
+        
+        # Read CSV content
+        csv_content = csv_file.read().decode('utf-8-sig')  # Handle BOM
+        csv_lines = csv_content.splitlines()
+        csv_reader = csv.reader(csv_lines)
+        
+        # Check if first row is a header
+        first_row = next(csv_reader, None)
+        is_header = first_row and first_row[0].lower() in ['name', 'college name']
+        
+        created_count = 0
+        updated_count = 0
+        skipped_count = 0
+        errors = []
+        
+        # Start processing from the appropriate row
+        start_row = 2 if is_header else 1
+        for row_num, row in enumerate(csv_reader, start=start_row):
+            if not row or len(row) < 2:
+                skipped_count += 1
+                errors.append(f"Row {row_num}: Insufficient data")
+                continue
+            
+            name = row[0].strip() if row[0] else ""
+            code = row[1].strip() if row[1] else ""
+            
+            if not name:
+                skipped_count += 1
+                errors.append(f"Row {row_num}: Name is required")
+                continue
+            
+            # Check if college already exists by code or name
+            existing_college = None
+            if code:
+                existing_college = College.objects.filter(code=code).first()
+            if not existing_college:
+                existing_college = College.objects.filter(name=name).first()
+            
+            if existing_college:
+                # Update existing college
+                existing_college.name = name
+                if code:
+                    existing_college.code = code
+                existing_college.save()
+                updated_count += 1
+            else:
+                # Create new college
+                College.objects.create(
+                    name=name,
+                    code=code if code else None,
+                    is_active=True
+                )
+                created_count += 1
+        
+        return JsonResponse({
+            "message": "College CSV upload completed",
+            "created": created_count,
+            "updated": updated_count,
+            "skipped": skipped_count,
+            "errors": errors
+        }, status=200)
+        
+    except Exception as e:
+        return JsonResponse({"detail": "Error processing College CSV file: " + str(e)}, status=500)
+
+
+@csrf_exempt
+@ciso_required
+def ciso_department_csv_upload_api(request):
+    """
+    API endpoint for uploading Department data via CSV
+    CSV format: College_Code, Name, Code
+    """
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+    
+    try:
+        if 'csv_file' not in request.FILES:
+            return JsonResponse({"detail": "No CSV file provided"}, status=400)
+        
+        csv_file = request.FILES['csv_file']
+        
+        if not csv_file.name.endswith(('.csv', '.xlsx', '.xls')):
+            return JsonResponse({"detail": "Invalid file format. Please upload CSV or Excel file"}, status=400)
+        
+        # Read CSV content
+        csv_content = csv_file.read().decode('utf-8-sig')  # Handle BOM
+        csv_lines = csv_content.splitlines()
+        csv_reader = csv.reader(csv_lines)
+        
+        # Check if first row is a header
+        first_row = next(csv_reader, None)
+        is_header = first_row and first_row[0].lower() in ['college_code', 'college code']
+        
+        created_count = 0
+        updated_count = 0
+        skipped_count = 0
+        errors = []
+        
+        # Get all existing colleges for validation
+        existing_colleges = {college.code: college for college in College.objects.filter(is_active=True)}
+        
+        # Start processing from the appropriate row
+        start_row = 2 if is_header else 1
+        for row_num, row in enumerate(csv_reader, start=start_row):
+            if not row or len(row) < 3:
+                skipped_count += 1
+                errors.append(f"Row {row_num}: Insufficient data")
+                continue
+            
+            college_code = row[0].strip() if row[0] else ""
+            name = row[1].strip() if row[1] else ""
+            code = row[2].strip() if row[2] else ""
+            
+            if not name:
+                skipped_count += 1
+                errors.append(f"Row {row_num}: Department name is required")
+                continue
+            
+            if not college_code:
+                skipped_count += 1
+                errors.append(f"Row {row_num}: College code is required")
+                continue
+            
+            # Validate college exists
+            if college_code not in existing_colleges:
+                skipped_count += 1
+                errors.append(f"Row {row_num}: College code '{college_code}' does not exist")
+                continue
+            
+            college = existing_colleges[college_code]
+            
+            # Check if department already exists by code, name, or college+name combination
+            existing_department = None
+            if code:
+                existing_department = Department.objects.filter(code=code).first()
+            if not existing_department:
+                existing_department = Department.objects.filter(name=name, college=college).first()
+            
+            if existing_department:
+                # Update existing department
+                existing_department.name = name
+                existing_department.college = college
+                if code:
+                    existing_department.code = code
+                existing_department.save()
+                updated_count += 1
+            else:
+                # Create new department
+                Department.objects.create(
+                    college=college,
+                    name=name,
+                    code=code if code else None,
+                    is_active=True
+                )
+                created_count += 1
+        
+        return JsonResponse({
+            "message": "Department CSV upload completed",
+            "created": created_count,
+            "updated": updated_count,
+            "skipped": skipped_count,
+            "errors": errors
+        }, status=200)
+        
+    except Exception as e:
+        return JsonResponse({"detail": "Error processing Department CSV file: " + str(e)}, status=500)
