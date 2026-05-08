@@ -2313,8 +2313,8 @@ def ciso_faculty_dump_template_api(request):
         "middle_name",
         "last_name",
         "faculty_type",
-        "college",
-        "department",
+        "college_code",
+        "department_code",
     ]
 
     output = io.StringIO()
@@ -2330,8 +2330,8 @@ def ciso_faculty_dump_template_api(request):
             "middle_name": "A.",
             "last_name": "Faculty",
             "faculty_type": "Full-time",
-            "college": "College of Computer Studies",
-            "department": "Information Technology",
+            "college_code": "CCS",
+            "department_code": "IT",
         },
         {
             "email": "new.faculty14@xu.edu.ph",
@@ -2341,8 +2341,8 @@ def ciso_faculty_dump_template_api(request):
             "middle_name": "B.",
             "last_name": "New",
             "faculty_type": "Part-time",
-            "college": "College of Arts and Sciences",
-            "department": "Mathematics",
+            "college_code": "CAS",
+            "department_code": "MATH",
         },
     ]
 
@@ -2438,7 +2438,7 @@ def ciso_faculty_dump_import_api(request):
     def _clean(value: str | None):
         return (value or "").strip()
 
-    def _validate_faculty_data(email, university_id, employee_id, first_name, last_name, faculty_type, college_name, department_name, office_name):
+    def _validate_faculty_data(email, university_id, employee_id, first_name, last_name, faculty_type, college_code, department_code, office_name):
         """Validate faculty data - all fields required except middle_name"""
         missing_fields = []
         
@@ -2463,38 +2463,38 @@ def ciso_faculty_dump_import_api(request):
             missing_fields.append("faculty_type")
         
         # Check that at least one organizational assignment exists
-        if not (college_name or department_name or office_name):
+        if not (college_code or department_code or office_name):
             missing_fields.append("organization_assignment")
         
         return len(missing_fields) == 0, missing_fields
 
-    def _validate_college_department(college_name, department_name, existing_colleges, existing_departments, dept_to_college):
-        """Validate college and department against existing records with case-sensitive matching"""
+    def _validate_college_department(college_code, department_code, existing_colleges, existing_departments, dept_to_college):
+        """Validate college and department against existing records using codes"""
         invalid_fields = []
         
-        # Validate college if provided
-        if college_name and college_name not in existing_colleges:
-            invalid_fields.append("college")
+        # Validate college code if provided
+        if college_code and college_code not in existing_colleges:
+            invalid_fields.append("college_code")
         
-        # Validate department if provided
-        if department_name:
-            if department_name not in existing_departments:
-                invalid_fields.append("department")
+        # Validate department code if provided
+        if department_code:
+            if department_code not in existing_departments:
+                invalid_fields.append("department_code")
             else:
                 # Check if department belongs to the specified college
-                if college_name:
-                    expected_college = dept_to_college.get(department_name)
-                    if expected_college != college_name:
-                        invalid_fields.append("department")
+                if college_code:
+                    expected_college = dept_to_college.get(department_code)
+                    if expected_college != college_code:
+                        invalid_fields.append("department_code")
         
         return invalid_fields
 
-    # Get existing colleges and departments for case-sensitive validation
-    existing_colleges = {college.name: college for college in College.objects.filter(is_active=True)}
-    existing_departments = {dept.name: dept for dept in Department.objects.filter(is_active=True).select_related('college')}
+    # Get existing colleges and departments for code validation
+    existing_colleges = {college.code: college for college in College.objects.filter(is_active=True)}
+    existing_departments = {dept.code: dept for dept in Department.objects.filter(is_active=True).select_related('college')}
     
-    # Create mapping of departments to their college names for validation
-    dept_to_college = {dept.name: dept.college.name for dept in Department.objects.filter(is_active=True).select_related('college')}
+    # Create mapping of departments to their college codes for validation
+    dept_to_college = {dept.code: dept.college.code for dept in Department.objects.filter(is_active=True).select_related('college')}
 
     # Get or create Faculty role
     try:
@@ -2552,12 +2552,12 @@ def ciso_faculty_dump_import_api(request):
         last_name = _clean(row.get("last_name"))
         faculty_type = _clean(row.get("faculty_type"))
         office_name = _clean(row.get("office"))
-        college_name = _clean(row.get("college"))
-        department_name = _clean(row.get("department"))
+        college_code = _clean(row.get("college_code"))
+        department_code = _clean(row.get("department_code"))
 
         # Validate faculty data - skip incomplete records
         is_valid, missing_fields = _validate_faculty_data(
-            email, university_id, employee_id, first_name, last_name, faculty_type, college_name, department_name, office_name
+            email, university_id, employee_id, first_name, last_name, faculty_type, college_code, department_code, office_name
         )
         
         if not is_valid:
@@ -2575,13 +2575,13 @@ def ciso_faculty_dump_import_api(request):
             })
             continue
 
-        # Validate college and department against existing records (case-sensitive)
-        invalid_fields = _validate_college_department(college_name, department_name, existing_colleges, existing_departments, dept_to_college)
+        # Validate college and department against existing records using codes
+        invalid_fields = _validate_college_department(college_code, department_code, existing_colleges, existing_departments, dept_to_college)
         
         if invalid_fields:
             errors.append({
                 "row": idx, 
-                "message": f"Skipping faculty record due to invalid college/department: {', '.join(invalid_fields)}"
+                "message": f"Skipping faculty record due to invalid college/department codes: {', '.join(invalid_fields)}"
             })
             skipped_count += 1
             # Store row info for archived CSV with invalid fields
@@ -2633,22 +2633,15 @@ def ciso_faculty_dump_import_api(request):
                     faculty.last_name = last_name
                     faculty.save()
 
-                # Handle relationships
-                if college_name:
-                    college, _ = College.objects.get_or_create(
-                        name=college_name,
-                        defaults={'is_active': True}
-                    )
-
-                    faculty.college = college
-                if department_name and college_name:
-                    department, _ = Department.objects.get_or_create(
-                        name=department_name,
-                        college=college,
-                        defaults={'is_active': True}
-                    )
-
-                    faculty.department = department
+                # Handle relationships using codes
+                if college_code:
+                    college = existing_colleges.get(college_code)
+                    if college:
+                        faculty.college = college
+                if department_code and college_code:
+                    department = existing_departments.get(department_code)
+                    if department:
+                        faculty.department = department
                 if office_name:
                     office, _ = Office.objects.get_or_create(
                         name=office_name,
@@ -2687,6 +2680,25 @@ def ciso_faculty_dump_import_api(request):
                 'missing_fields': '',
                 'invalid_fields': f"Error: {str(e)}"
             })
+
+    # Check if all entries are complete - if so, don't save the results CSV
+    all_complete = all(
+        processed_row.get('validation_status') == 'COMPLETE' 
+        for processed_row in processed_rows
+    )
+    
+    if all_complete:
+        # All entries are complete, return success without creating archive
+        return JsonResponse(
+            {
+                "created_count": created_count,
+                "updated_count": updated_count,
+                "skipped_count": skipped_count,
+                "errors": errors,
+                "archive_id": None,  # No archive created since all entries are complete
+                "message": "All faculty entries were successfully processed. No results file created."
+            }
+        )
 
     # After processing rows, save the uploaded CSV to disk with validation info and create
     # a FacultyDumpArchive entry tied to the selected clearance timeline.
@@ -11492,31 +11504,31 @@ def ciso_archived_faculty_download_api(request, archived_id: int):
         output = io.StringIO()
         writer = csv.writer(output)
         
-        # Get existing colleges and departments for case-sensitive validation
-        existing_colleges = {college.name: college for college in College.objects.filter(is_active=True)}
-        existing_departments = {dept.name: dept for dept in Department.objects.filter(is_active=True).select_related('college')}
+        # Get existing colleges and departments for code validation
+        existing_colleges = {college.code: college for college in College.objects.filter(is_active=True)}
+        existing_departments = {dept.code: dept for dept in Department.objects.filter(is_active=True).select_related('college')}
         
-        # Create mapping of departments to their college names for validation
-        dept_to_college = {dept.name: dept.college.name for dept in Department.objects.filter(is_active=True).select_related('college')}
+        # Create mapping of departments to their college codes for validation
+        dept_to_college = {dept.code: dept.college.code for dept in Department.objects.filter(is_active=True).select_related('college')}
 
-        def _validate_college_department(college_name, department_name, existing_colleges, existing_departments, dept_to_college):
-            """Validate college and department against existing records with case-sensitive matching"""
+        def _validate_college_department(college_code, department_code, existing_colleges, existing_departments, dept_to_college):
+            """Validate college and department against existing records using codes"""
             invalid_fields = []
             
-            # Validate college if provided
-            if college_name and college_name not in existing_colleges:
-                invalid_fields.append("college")
+            # Validate college code if provided
+            if college_code and college_code not in existing_colleges:
+                invalid_fields.append("college_code")
             
-            # Validate department if provided
-            if department_name:
-                if department_name not in existing_departments:
-                    invalid_fields.append("department")
+            # Validate department code if provided
+            if department_code:
+                if department_code not in existing_departments:
+                    invalid_fields.append("department_code")
                 else:
                     # Check if department belongs to the specified college
-                    if college_name:
-                        expected_college = dept_to_college.get(department_name)
-                        if expected_college != college_name:
-                            invalid_fields.append("department")
+                    if college_code:
+                        expected_college = dept_to_college.get(department_code)
+                        if expected_college != college_code:
+                            invalid_fields.append("department_code")
             
             return invalid_fields
 
@@ -11536,9 +11548,15 @@ def ciso_archived_faculty_download_api(request, archived_id: int):
             first_name = _clean(row.get("first_name"))
             last_name = _clean(row.get("last_name"))
             faculty_type = _clean(row.get("faculty_type"))
-            college_name = _clean(row.get("college"))
-            department_name = _clean(row.get("department"))
+            college_code = _clean(row.get("college_code"))
+            department_code = _clean(row.get("department_code"))
             office_name = _clean(row.get("office"))
+            
+            # For backward compatibility, also check old field names
+            if not college_code:
+                college_code = _clean(row.get("college"))
+            if not department_code:
+                department_code = _clean(row.get("department"))
             
             # Check if this is a newly processed CSV with validation info
             has_validation_info = any(field in original_fieldnames for field in ["Validation Status", "Missing Fields", "Invalid Fields"])
@@ -11570,11 +11588,11 @@ def ciso_archived_faculty_download_api(request, archived_id: int):
                 if not faculty_type or not faculty_type.strip():
                     missing_fields.append("faculty_type")
                 
-                if not (college_name or department_name or office_name):
+                if not (college_code or department_code or office_name):
                     missing_fields.append("organization_assignment")
                 
                 # Validate college and department
-                invalid_fields = _validate_college_department(college_name, department_name, existing_colleges, existing_departments, dept_to_college)
+                invalid_fields = _validate_college_department(college_code, department_code, existing_colleges, existing_departments, dept_to_college)
                 
                 validation_status = "COMPLETE" if len(missing_fields) == 0 and len(invalid_fields) == 0 else "INCOMPLETE"
                 missing_fields_str = ", ".join(missing_fields) if missing_fields else ""
