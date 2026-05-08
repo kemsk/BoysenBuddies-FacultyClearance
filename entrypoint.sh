@@ -791,17 +791,17 @@ ON DUPLICATE KEY UPDATE
     department_id = VALUES(department_id);
 
 -- Seed Faculty (needed for real analytics)
-INSERT INTO FC_faculty (user_id, employee_id, first_name, last_name, college_id, department_id)
+INSERT INTO FC_faculty (user_id, first_name, last_name, college_id, department_id)
 SELECT * FROM (
-    SELECT @faculty_user_id AS user_id, 'EMP-SEED-1' AS employee_id, 'Faye' AS first_name, 'Faculty' AS last_name, @ccs_id AS college_id, @cs_id AS department_id
+    SELECT @faculty_user_id AS user_id, 'Faye' AS first_name, 'Faculty' AS last_name, @ccs_id AS college_id, @cs_id AS department_id
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_faculty f WHERE f.user_id = v.user_id
 );
 
-INSERT INTO FC_faculty (user_id, employee_id, first_name, last_name, college_id, department_id)
+INSERT INTO FC_faculty (user_id, first_name, last_name, college_id, department_id)
 SELECT * FROM (
-    SELECT @farrah_user_id AS user_id, 'EMP-201131134' AS employee_id, 'Farrah' AS first_name, 'Apag' AS last_name, @ccs_id AS college_id, @it_id AS department_id
+    SELECT @farrah_user_id AS user_id, 'Farrah' AS first_name, 'Apag' AS last_name, @ccs_id AS college_id, @it_id AS department_id
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_faculty f WHERE f.user_id = v.user_id

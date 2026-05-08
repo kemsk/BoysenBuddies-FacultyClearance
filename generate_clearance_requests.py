@@ -55,12 +55,11 @@ def get_or_create_user(email, university_id, first_name, middle_name, last_name)
     )
     return user
 
-def get_or_create_faculty(user, employee_id, first_name, middle_name, last_name, faculty_type, college, department, office):
+def get_or_create_faculty(user, first_name, middle_name, last_name, faculty_type, college, department, office):
     """Get or create a faculty"""
     faculty, created = Faculty.objects.get_or_create(
         user=user,
         defaults={
-            'employee_id': employee_id,
             'first_name': first_name,
             'middle_name': middle_name,
             'last_name': last_name,
@@ -130,9 +129,9 @@ def create_requirement(timeline, title, approver_step):
 def generate_request_id(faculty, requirement, index):
     """Generate unique request ID"""
     year = datetime.now().year
-    employee_id = faculty.employee_id.split('-')[-1] if '-' in faculty.employee_id else faculty.employee_id
+    university_id = faculty.user.university_id.split('-')[-1] if '-' in faculty.user.university_id else faculty.user.university_id
     college_code = 'IT' if faculty.college and 'Computer' in faculty.college.name else 'GEN'
-    return f"{year}-{employee_id}-{college_code}-{index:03d}"
+    return f"{year}-{university_id}-{college_code}-{index:03d}"
 
 def create_faculty_users_and_profiles():
     """Create all faculty users and faculty profiles from the CSV data"""
@@ -140,43 +139,43 @@ def create_faculty_users_and_profiles():
     
     # Faculty data from CSV lines 5-34
     faculty_data = [
-        ("maria.santos@xu.edu.ph", "2024-000015", "EMP-000015", "Maria", "L.", "Santos", "Full-time", "College of Computer Studies", "Computer Science"),
-        ("juan.cruz@xu.edu.ph", "2024-000016", "EMP-000016", "Juan", "P.", "Cruz", "Full-time", "College of Engineering", "Civil Engineering"),
-        ("elena.reyes@xu.edu.ph", "2024-000017", "EMP-000017", "Elena", "M.", "Reyes", "Part-time", "College of Arts and Sciences", "English"),
-        ("rodrigo.diaz@xu.edu.ph", "2024-000018", "EMP-000018", "Rodrigo", "", "Diaz", "Full-time", "School of Business and Management", "Accountancy"),
-        ("carmela.torres@xu.edu.ph", "2024-000019", "EMP-000019", "Carmela", "J.", "Torres", "Full-time", "College of Arts and Sciences", "Biology"),
-        ("antonio.de_la_rosa@xu.edu.ph", "2024-000020", "EMP-000020", "Antonio", "S.", "De la Rosa", "Part-time", "College of Computer Studies", "Information Technology"),
-        ("patricia.lim@xu.edu.ph", "2024-000021", "EMP-000021", "Patricia", "", "Lim", "Full-time", "College of Arts and Sciences", "Psychology"),
-        ("miguel.hernandez@xu.edu.ph", "2024-000022", "EMP-000022", "Miguel", "R.", "Hernandez", "Full-time", "College of Engineering", "Electrical Engineering"),
-        ("sophia.chan@xu.edu.ph", "2024-000023", "EMP-000023", "Sophia", "", "Chan", "Part-time", "School of Business and Management", "Business and Administration"),
-        ("daniel.garcia@xu.edu.ph", "2024-000024", "EMP-000024", "Daniel", "A.", "Garcia", "Full-time", "College of Arts and Sciences", "English"),
-        ("isabella.mendoza@xu.edu.ph", "2024-000025", "EMP-000025", "Isabella", "L.", "Mendoza", "Full-time", "College of Computer Studies", "Computer Science"),
-        ("carlos.paredes@xu.edu.ph", "2024-000026", "EMP-000026", "Carlos", "", "Paredes", "Part-time", "College of Arts and Sciences", "Biology"),
-        ("angelica.flores@xu.edu.ph", "2024-000027", "EMP-000027", "Angelica", "M.", "Flores", "Full-time", "College of Engineering", "Mechanical Engineering"),
-        ("jose.ramos@xu.edu.ph", "2024-000028", "EMP-000028", "Jose", "P.", "Ramos", "Full-time", "College of Arts and Sciences", "Chemistry"),
-        ("katherine.ong@xu.edu.ph", "2024-000029", "EMP-000029", "Katherine", "", "Ong", "Part-time", "School of Business and Management", "Accountancy"),
-        ("francisco.vargas@xu.edu.ph", "2024-000030", "EMP-000030", "Francisco", "S.", "Vargas", "Full-time", "College of Arts and Sciences", "Development Communications"),
-        ("lucia.santillan@xu.edu.ph", "2024-000031", "EMP-000031", "Lucia", "A.", "Santillan", "Full-time", "College of Computer Studies", "Information Technology"),
-        ("ricardo.morales@xu.edu.ph", "2024-000032", "EMP-000032", "Ricardo", "", "Morales", "Part-time", "College of Arts and Sciences", "Chemistry"),
-        ("monica.salazar@xu.edu.ph", "2024-000033", "EMP-000033", "Monica", "J.", "Salazar", "Full-time", "College of Engineering", "Chemical Engineering"),
-        ("eduardo.romero@xu.edu.ph", "2024-000034", "EMP-000034", "Eduardo", "L.", "Romero", "Full-time", "School of Business and Management", "Business and Administration"),
-        ("teresa.aguilar@xu.edu.ph", "2024-000035", "EMP-000035", "Teresa", "", "Aguilar", "Part-time", "College of Arts and Sciences", "Psychology"),
-        ("luis.fernandez@xu.edu.ph", "2024-000036", "EMP-000036", "Luis", "M.", "Fernandez", "Full-time", "College of Arts and Sciences", "International Studies"),
-        ("raquel.del_rosario@xu.edu.ph", "2024-000037", "EMP-000037", "Raquel", "A.", "Del Rosario", "Full-time", "College of Computer Studies", "Computer Science"),
-        ("benjamin.castillo@xu.edu.ph", "2024-000038", "EMP-000038", "Benjamin", "", "Castillo", "Part-time", "College of Arts and Sciences", "Physics"),
-        ("diana.pascual@xu.edu.ph", "2024-000039", "EMP-000039", "Diana", "L.", "Pascual", "Full-time", "College of Engineering", "Computer Engineering"),
-        ("alejandro.reyes@xu.edu.ph", "2024-000040", "EMP-000040", "Alejandro", "S.", "Reyes", "Full-time", "School of Business and Management", "Accountancy"),
-        ("constance.santos@xu.edu.ph", "2024-000041", "EMP-000041", "Constance", "", "Santos", "Part-time", "College of Arts and Sciences", "Philosophy"),
-        ("gabriel.mendoza@xu.edu.ph", "2024-000042", "EMP-000042", "Gabriel", "J.", "Mendoza", "Full-time", "College of Arts and Sciences", "General Education & Integrated Discipline Studies"),
-        ("vanessa.lim@xu.edu.ph", "2024-000043", "EMP-000043", "Vanessa", "A.", "Lim", "Full-time", "College of Computer Studies", "Information Technology"),
-        ("jorge.tan@xu.edu.ph", "2024-000044", "EMP-000044", "Jorge", "", "Tan", "Part-time", "College of Arts and Sciences", "Math")
+        ("maria.santos@xu.edu.ph", "2024-000015", "Maria", "L.", "Santos", "Full-time", "College of Computer Studies", "Computer Science"),
+        ("juan.cruz@xu.edu.ph", "2024-000016", "Juan", "P.", "Cruz", "Full-time", "College of Engineering", "Civil Engineering"),
+        ("elena.reyes@xu.edu.ph", "2024-000017", "Elena", "M.", "Reyes", "Part-time", "College of Arts and Sciences", "English"),
+        ("rodrigo.diaz@xu.edu.ph", "2024-000018", "Rodrigo", "", "Diaz", "Full-time", "School of Business and Management", "Accountancy"),
+        ("carmela.torres@xu.edu.ph", "2024-000019", "Carmela", "J.", "Torres", "Full-time", "College of Arts and Sciences", "Biology"),
+        ("antonio.de_la_rosa@xu.edu.ph", "2024-000020", "Antonio", "S.", "De la Rosa", "Part-time", "College of Computer Studies", "Information Technology"),
+        ("patricia.lim@xu.edu.ph", "2024-000021", "Patricia", "", "Lim", "Full-time", "College of Arts and Sciences", "Psychology"),
+        ("miguel.hernandez@xu.edu.ph", "2024-000022", "Miguel", "R.", "Hernandez", "Full-time", "College of Engineering", "Electrical Engineering"),
+        ("sophia.chan@xu.edu.ph", "2024-000023", "Sophia", "", "Chan", "Part-time", "School of Business and Management", "Business and Administration"),
+        ("daniel.garcia@xu.edu.ph", "2024-000024", "Daniel", "A.", "Garcia", "Full-time", "College of Arts and Sciences", "English"),
+        ("isabella.mendoza@xu.edu.ph", "2024-000025", "Isabella", "L.", "Mendoza", "Full-time", "College of Computer Studies", "Computer Science"),
+        ("carlos.paredes@xu.edu.ph", "2024-000026", "Carlos", "", "Paredes", "Part-time", "College of Arts and Sciences", "Biology"),
+        ("angelica.flores@xu.edu.ph", "2024-000027", "Angelica", "M.", "Flores", "Full-time", "College of Engineering", "Mechanical Engineering"),
+        ("jose.ramos@xu.edu.ph", "2024-000028", "Jose", "P.", "Ramos", "Full-time", "College of Arts and Sciences", "Chemistry"),
+        ("katherine.ong@xu.edu.ph", "2024-000029", "Katherine", "", "Ong", "Part-time", "School of Business and Management", "Accountancy"),
+        ("francisco.vargas@xu.edu.ph", "2024-000030", "Francisco", "S.", "Vargas", "Full-time", "College of Arts and Sciences", "Development Communications"),
+        ("lucia.santillan@xu.edu.ph", "2024-000031", "Lucia", "A.", "Santillan", "Full-time", "College of Computer Studies", "Information Technology"),
+        ("ricardo.morales@xu.edu.ph", "2024-000032", "Ricardo", "", "Morales", "Part-time", "College of Arts and Sciences", "Chemistry"),
+        ("monica.salazar@xu.edu.ph", "2024-000033", "Monica", "J.", "Salazar", "Full-time", "College of Engineering", "Chemical Engineering"),
+        ("eduardo.romero@xu.edu.ph", "2024-000034", "Eduardo", "L.", "Romero", "Full-time", "School of Business and Management", "Business and Administration"),
+        ("teresa.aguilar@xu.edu.ph", "2024-000035", "Teresa", "", "Aguilar", "Part-time", "College of Arts and Sciences", "Psychology"),
+        ("luis.fernandez@xu.edu.ph", "2024-000036", "Luis", "M.", "Fernandez", "Full-time", "College of Arts and Sciences", "International Studies"),
+        ("raquel.del_rosario@xu.edu.ph", "2024-000037", "Raquel", "A.", "Del Rosario", "Full-time", "College of Computer Studies", "Computer Science"),
+        ("benjamin.castillo@xu.edu.ph", "2024-000038", "Benjamin", "", "Castillo", "Part-time", "College of Arts and Sciences", "Physics"),
+        ("diana.pascual@xu.edu.ph", "2024-000039", "Diana", "L.", "Pascual", "Full-time", "College of Engineering", "Computer Engineering"),
+        ("alejandro.reyes@xu.edu.ph", "2024-000040", "Alejandro", "S.", "Reyes", "Full-time", "School of Business and Management", "Accountancy"),
+        ("constance.santos@xu.edu.ph", "2024-000041", "Constance", "", "Santos", "Part-time", "College of Arts and Sciences", "Philosophy"),
+        ("gabriel.mendoza@xu.edu.ph", "2024-000042", "Gabriel", "J.", "Mendoza", "Full-time", "College of Arts and Sciences", "General Education & Integrated Discipline Studies"),
+        ("vanessa.lim@xu.edu.ph", "2024-000043", "Vanessa", "A.", "Lim", "Full-time", "College of Computer Studies", "Information Technology"),
+        ("jorge.tan@xu.edu.ph", "2024-000044", "Jorge", "", "Tan", "Part-time", "College of Arts and Sciences", "Math")
     ]
     
     # Get Faculty role
     faculty_role = Role.objects.get(name='Faculty')
     
     faculty_list = []
-    for i, (email, university_id, employee_id, first_name, middle_name, last_name, faculty_type, college_name, dept_name) in enumerate(faculty_data):
+    for i, (email, university_id, first_name, middle_name, last_name, faculty_type, college_name, dept_name) in enumerate(faculty_data):
         print(f"Creating faculty {i+1}/30: {first_name} {last_name}")
         
         # Create or get college and department
@@ -196,7 +195,7 @@ def create_faculty_users_and_profiles():
         )
         
         # Create or get faculty profile
-        faculty = get_or_create_faculty(user, employee_id, first_name, middle_name, last_name, faculty_type, college, department, office)
+        faculty = get_or_create_faculty(user, first_name, middle_name, last_name, faculty_type, college, department, office)
         faculty_list.append(faculty)
     
     print(f"Created {len(faculty_list)} faculty users and profiles")

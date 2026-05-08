@@ -167,7 +167,7 @@ def _serialize_clearance_request_item(req: ClearanceRequest):
     return {
         "id": str(req.id),
         "requestId": req.request_id or str(req.id),
-        "employeeId": getattr(faculty, "employee_id", "") or "",
+        "employeeId": getattr(faculty.user, "university_id", "") if faculty.user else "",
         "name": (faculty_user.get_full_name() if faculty_user and hasattr(faculty_user, "get_full_name") else "") or " ".join(
             [
                 p for p in [
@@ -192,7 +192,7 @@ def _serialize_assistant_individual_request(req: ClearanceRequest):
     
     print(f"[DEBUG] Serializing request {req.request_id}: faculty={faculty}, user={faculty_user}")
     if faculty:
-        print(f"[DEBUG] Faculty employee_id: {getattr(faculty, 'employee_id', 'NULL')}")
+        print(f"[DEBUG] Faculty university_id: {getattr(getattr(faculty, 'user', None), 'university_id', 'NULL')}")
         print(f"[DEBUG] Faculty college: {getattr(getattr(faculty, 'college', None), 'name', 'NULL')}")
         print(f"[DEBUG] Faculty department: {getattr(getattr(faculty, 'department', None), 'name', 'NULL')}")
 
@@ -226,8 +226,8 @@ def _serialize_assistant_individual_request(req: ClearanceRequest):
         "item": {
             "id": str(req.id),
             "requestId": req.request_id or str(req.id),
-            "employeeId": getattr(faculty, "employee_id", "") or "",
-            "schoolId": getattr(faculty, "employee_id", "") or "",
+            "employeeId": getattr(faculty.user, "university_id", "") if faculty.user else "",
+            "schoolId": getattr(faculty.user, "university_id", "") if faculty.user else "",
             "universityId": getattr(faculty_user, "university_id", "") or "",
             "name": (faculty_user.get_full_name() if faculty_user and hasattr(faculty_user, "get_full_name") else "") or " ".join(
                 [
@@ -1832,11 +1832,12 @@ def clearance_requests_api(request):
     qs = (
         ClearanceRequest.objects.select_related(
             "faculty",
+            "faculty__user",
             "faculty__college",
             "faculty__department",
         )
 
-        .filter(clearance_timeline=active_timeline, requirement__in=filtered_requirements)
+        .filter(clearance_timeline=active_timeline, requirement_id__in=[req.id for req in filtered_requirements])
         .order_by("-id")
     )
 
@@ -1851,11 +1852,11 @@ def clearance_requests_api(request):
         college = getattr(getattr(faculty, "college", None), "name", "") or ""
         department = getattr(getattr(faculty, "department", None), "name", "") or ""
         faculty_type = getattr(faculty, "faculty_type", "") or ""
-        employee_id = getattr(faculty, "employee_id", "") or ""
+        university_id = getattr(faculty.user, "university_id", "") if faculty.user else ""
         items.append({
                 "id": str(r.id),
                 "requestId": r.request_id,
-                "employeeId": employee_id,
+                "employeeId": university_id,
                 "name": full_name,
                 "college": college,
                 "department": department,
@@ -2308,7 +2309,6 @@ def ciso_faculty_dump_template_api(request):
     headers = [
         "email",
         "university_id",
-        "employee_id",
         "first_name",
         "middle_name",
         "last_name",
@@ -2325,7 +2325,6 @@ def ciso_faculty_dump_template_api(request):
         {
             "email": "new.faculty13@xu.edu.ph",
             "university_id": "2024-000013",
-            "employee_id": "EMP-000013",
             "first_name": "New",
             "middle_name": "A.",
             "last_name": "Faculty",
@@ -2336,7 +2335,6 @@ def ciso_faculty_dump_template_api(request):
         {
             "email": "new.faculty14@xu.edu.ph",
             "university_id": "2024-000014",
-            "employee_id": "EMP-000014",
             "first_name": "Faculty",
             "middle_name": "B.",
             "last_name": "New",
@@ -2420,7 +2418,7 @@ def ciso_faculty_dump_import_api(request):
         return JsonResponse({"detail": "Unable to decode CSV; please upload a UTF-8 or Latin-1 encoded csv"}, status=400)
 
     reader = csv.DictReader(io.StringIO(text))
-    required_cols = {"email", "university_id", "employee_id"}
+    required_cols = {"email", "university_id"}
     header_cols = set((reader.fieldnames or []))
     missing_cols = sorted(required_cols - header_cols)
 
@@ -2438,7 +2436,7 @@ def ciso_faculty_dump_import_api(request):
     def _clean(value: str | None):
         return (value or "").strip()
 
-    def _validate_faculty_data(email, university_id, employee_id, first_name, last_name, faculty_type, college_code, department_code, office_name):
+    def _validate_faculty_data(email, university_id, first_name, last_name, faculty_type, college_code, department_code, office_name):
         """Validate faculty data - all fields required except middle_name"""
         missing_fields = []
         
@@ -2448,9 +2446,6 @@ def ciso_faculty_dump_import_api(request):
         
         if not university_id or not university_id.strip():
             missing_fields.append("university_id")
-        
-        if not employee_id or not employee_id.strip():
-            missing_fields.append("employee_id")
         
         # Name fields
         if not first_name or not first_name.strip():
@@ -2509,19 +2504,6 @@ def ciso_faculty_dump_import_api(request):
     for idx, row in enumerate(reader, start=2):
         email = _clean(row.get("email"))
         university_id = _clean(row.get("university_id"))
-        employee_id = _clean(row.get("employee_id"))
-
-        if not employee_id:
-            errors.append({"row": idx, "message": "employee_id is required"})
-            skipped_count += 1
-            # Store row info for archived CSV
-            processed_rows.append({
-                'row': row,
-                'validation_status': 'SKIPPED',
-                'missing_fields': 'employee_id',
-                'invalid_fields': ''
-            })
-            continue
 
         if not email:
             errors.append({"row": idx, "message": "email is required"})
@@ -2557,7 +2539,7 @@ def ciso_faculty_dump_import_api(request):
 
         # Validate faculty data - skip incomplete records
         is_valid, missing_fields = _validate_faculty_data(
-            email, university_id, employee_id, first_name, last_name, faculty_type, college_code, department_code, office_name
+            email, university_id, first_name, last_name, faculty_type, college_code, department_code, office_name
         )
         
         if not is_valid:
@@ -2617,7 +2599,6 @@ def ciso_faculty_dump_import_api(request):
                 faculty, faculty_created = Faculty.objects.get_or_create(
                     user=user,
                     defaults={
-                        'employee_id': employee_id,
                         'faculty_type': faculty_type,
                         'first_name': first_name,
                         'middle_name': middle_name,
@@ -2626,7 +2607,6 @@ def ciso_faculty_dump_import_api(request):
 
                 if not faculty_created:
                     # Update existing faculty
-                    faculty.employee_id = employee_id
                     faculty.faculty_type = faculty_type
                     faculty.first_name = first_name
                     faculty.middle_name = middle_name
@@ -3016,14 +2996,11 @@ def _timeline_dump_faculty_ids(timeline: ClearanceTimeline):
 
         for row in reader:
             email = (row.get("email") or "").strip().lower()
-            employee_id = (row.get("employee_id") or "").strip()
             university_id = (row.get("university_id") or "").strip()
 
             faculty = None
             if email:
                 faculty = Faculty.objects.select_related("user").filter(user__email__iexact=email).first()
-            if not faculty and employee_id:
-                faculty = Faculty.objects.filter(employee_id__iexact=employee_id).first()
             if not faculty and university_id:
                 faculty = Faculty.objects.select_related("user").filter(user__university_id__iexact=university_id).first()
 
@@ -3258,7 +3235,7 @@ def _archive_clearance_timeline_records(timeline: ClearanceTimeline):
                 "last_updated": archived_at,
                 "clearance_data": {
                     "clearance_status": clearance.status if clearance else clearance_status,
-                    "employeeId": faculty.employee_id or "",
+                    "employeeId": faculty.user.university_id if faculty.user else "",
                     "name": _archived_faculty_display_name(faculty),
                     "college": faculty.college.name if faculty.college else "",
                     "department": faculty.department.name if faculty.department else "",
@@ -3298,7 +3275,7 @@ def _archived_faculty_display_name(faculty: Faculty | None):
     faculty_parts = [part for part in faculty_parts if part]
     if faculty_parts:
         return " ".join(faculty_parts)
-    return getattr(user, "email", "") or getattr(faculty, "employee_id", "") or ""
+    return getattr(user, "email", "") or getattr(faculty.user, "university_id", "") if faculty.user else ""
 
 
 def _user_display_name(user: User | None):
@@ -3329,7 +3306,7 @@ def _serialize_archived_faculty_item(archived: ArchivedClearance):
     college_name = archived_data.get("college") or (faculty.college.name if faculty and faculty.college else "")
     department_name = archived_data.get("department") or (faculty.department.name if faculty and faculty.department else "")
     faculty_type = archived_data.get("facultyType") or getattr(faculty, "faculty_type", "") or ""
-    employee_id = archived_data.get("employeeId") or getattr(faculty, "employee_id", "") or ""
+    employee_id = archived_data.get("employeeId") or getattr(faculty.user, "university_id", "") if faculty.user else ""
     display_name = archived_data.get("name") or _archived_faculty_display_name(faculty) or getattr(user, "email", "") or employee_id
 
     # Calculate validation status and missing fields
@@ -5178,7 +5155,7 @@ def ovphe_export_clearance_results_api(request):
             (getattr(user, "last_name", "") or getattr(faculty, "last_name", "") or "").strip(),
         ]
 
-        faculty_name = " ".join([part for part in name_parts if part]).strip() or (getattr(user, "email", "") or faculty.employee_id)
+        faculty_name = " ".join([part for part in name_parts if part]).strip() or getattr(user, "email", "")
         export_status = "COMPLETED" if completion_info["is_completed"] else "INCOMPLETE"
         completion_date = ""
 
@@ -5647,7 +5624,7 @@ def ovphe_clearance_progress_api(request):
         faculty_qs = faculty_qs.filter(
             models.Q(user__first_name__icontains=search) |
             models.Q(user__last_name__icontains=search) |
-            models.Q(employee_id__icontains=search)
+            models.Q(user__university_id__icontains=search)
         )
 
     faculty_items = list(faculty_qs)
@@ -5685,7 +5662,7 @@ def ovphe_clearance_progress_api(request):
             (getattr(user, "middle_name", "") or getattr(faculty, "middle_name", "") or "").strip(),
             (getattr(user, "last_name", "") or getattr(faculty, "last_name", "") or "").strip(),
         ]
-        faculty_name = " ".join([part for part in name_parts if part]).strip() or (getattr(user, "email", "") or faculty.employee_id)
+        faculty_name = " ".join([part for part in name_parts if part]).strip() or getattr(user, "email", "")
 
         info = completion_lookup.get(
             faculty.id,
@@ -5711,7 +5688,7 @@ def ovphe_clearance_progress_api(request):
         rows.append({
             "name": faculty_name,
             "requestId": f"{year_val}-001",  # Generate appropriate request ID
-            "employeeId": getattr(user, "university_id", "") or faculty.employee_id or "",
+            "employeeId": getattr(user, "university_id", ""),
             "college": faculty.college.name if faculty.college else "",
             "department": faculty.department.name if faculty.department else "",
             "facultyType": faculty.faculty_type or "",
@@ -8368,7 +8345,7 @@ def approver_dashboard_api(request):
                 # Get all clearance requests (for total count)
                 all_clearance_requests = ClearanceRequest.objects.filter(
                     clearance_timeline=timeline,
-                    requirement__in=filtered_requirements
+                    requirement_id__in=[req.id for req in filtered_requirements]
                 ).select_related('faculty__user', 'requirement')
 
                 # Get only pending clearance requests (for pending count)
@@ -8978,7 +8955,7 @@ def approver_faculty_options_api(request):
         faculty_queryset = faculty_queryset.filter(
             Q(user__first_name__icontains=query) |
             Q(user__last_name__icontains=query) |
-            Q(employee_id__icontains=query)
+            Q(user__university_id__icontains=query)
         )
 
     options = []
@@ -8990,7 +8967,7 @@ def approver_faculty_options_api(request):
         options.append({
             "id": str(faculty.id),
             "name": name,
-            "subtitle": faculty.employee_id,
+            "subtitle": faculty.user.university_id,
             "email": faculty.user.email,
             "college": faculty.college.name if faculty.college else "",
             "department": faculty.department.name if faculty.department else "",
@@ -9202,7 +9179,7 @@ def approver_clearance_api(request):
         'requirement'
     ).filter(
         clearance_timeline=active_timeline,
-        requirement__in=filtered_requirements
+        requirement_id__in=[req.id for req in filtered_requirements]
     ).order_by('-submitted_date')
 
     items = []
@@ -9216,12 +9193,12 @@ def approver_clearance_api(request):
         college = getattr(getattr(faculty, "college", None), "name", "") or ""
         department = getattr(getattr(faculty, "department", None), "name", "") or ""
         faculty_type = getattr(faculty, "faculty_type", "") or ""
-        employee_id = getattr(faculty, "employee_id", "") or ""
+        university_id = getattr(faculty.user, "university_id", "") if faculty.user else ""
 
         items.append({
             "id": str(req.id),
             "requestId": req.request_id,
-            "employeeId": employee_id,
+            "employeeId": university_id,
             "name": full_name,
             "college": college,
             "department": department,
@@ -9496,19 +9473,19 @@ def approver_activity_logs_api(request):
                 if faculty:
                     college_name = getattr(getattr(faculty, "college", None), "name", "") or ""
                     department_name = getattr(getattr(faculty, "department", None), "name", "") or ""
-                    employee_id = getattr(faculty, "employee_id", "") or ""
+                    university_id = getattr(faculty.user, "university_id", "") if faculty.user else ""
                     print(f"[DEBUG] Activity log - Found faculty: {faculty}")
                 else:
                     print(f"[DEBUG] Activity log - Faculty not found")
                     college_name = ""
                     department_name = ""
-                    employee_id = ""
+                    university_id = ""
 
-                if employee_id and not any("Employee ID:" in str(detail) for detail in details):
+                if university_id and not any("Employee ID:" in str(detail) for detail in details):
 
-                    details.append(f"Employee ID: {employee_id}")
+                    details.append(f"Employee ID: {university_id}")
                 print(f"[DEBUG] Activity log - Fetched faculty data from database:")
-                print(f"[DEBUG] - Employee ID: {employee_id}")
+                print(f"[DEBUG] - Employee ID: {university_id}")
                 print(f"[DEBUG] - College: {college_name}")
                 print(f"[DEBUG] - Department: {department_name}")
 
@@ -9516,12 +9493,12 @@ def approver_activity_logs_api(request):
                 print(f"[DEBUG] Activity log - Clearance request {request_id} not found")
                 college_name = ""
                 department_name = ""
-                employee_id = ""
+                university_id = ""
         else:
             # For non-clearance events, use data from frontend
             college_name = data.get("college") or ""
             department_name = data.get("department") or ""
-            employee_id = data.get("university_id") or ""
+            university_id = data.get("university_id") or ""
 
         # Get office from frontend (approver's office)
         office_name = data.get("office")
@@ -9531,7 +9508,7 @@ def approver_activity_logs_api(request):
         print(f"[DEBUG] - college_name: {college_name}")
         print(f"[DEBUG] - department_name: {department_name}")
         print(f"[DEBUG] - office_name: {office_name}")
-        print(f"[DEBUG] - employee_id: {employee_id}")
+        print(f"[DEBUG] - university_id: {university_id}")
         print(f"[DEBUG] - details: {details}")
 
         # Look up actual objects if names are provided
@@ -9593,7 +9570,7 @@ def approver_activity_logs_api(request):
             college=college,
             office=office,
             supervisor=supervisor,
-            university_id=employee_id,
+            university_id=university_id,
         )
 
         return JsonResponse({
@@ -9647,7 +9624,7 @@ def approver_activity_logs_api(request):
 
         # Add faculty information for clearance-related events
         faculty_name = ""
-        faculty_employee_id = ""
+        faculty_university_id = ""
         faculty_request_id = ""
         approver_department = ""
         faculty_college = ""
@@ -9657,9 +9634,9 @@ def approver_activity_logs_api(request):
             # Extract from details array since log.faculty is None for bulk approvals
             details = log.details if log.details else []
             faculty_member = next((d.replace("Faculty Member: ", "").strip() for d in details if "Faculty Member:" in d), "")
-            employee_id = next((d.replace("Employee ID: ", "").strip() for d in details if "Employee ID:" in d), "")
+            university_id = next((d.replace("Employee ID: ", "").strip() for d in details if "Employee ID:" in d), "")
             faculty_name = faculty_member
-            faculty_employee_id = employee_id
+            faculty_employee_id = university_id
             faculty_request_id = log.request_id or ""
             approver_department = log.approver_department or ""
 
@@ -9667,9 +9644,9 @@ def approver_activity_logs_api(request):
             # Extract from details array for individual approvals
             details = log.details if log.details else []
             faculty_member = next((d.replace("Faculty Member: ", "").strip() for d in details if "Faculty Member:" in d), "")
-            employee_id = next((d.replace("Employee ID: ", "").strip() for d in details if "Employee ID:" in d), "")
+            university_id = next((d.replace("Employee ID: ", "").strip() for d in details if "Employee ID:" in d), "")
             faculty_name = faculty_member
-            faculty_employee_id = employee_id
+            faculty_employee_id = university_id
             faculty_request_id = log.request_id or ""
 
             # Use the college and department fields from the activity log (sent from frontend)
@@ -9679,7 +9656,7 @@ def approver_activity_logs_api(request):
 
         elif log.event_type in ["approved_clearance", "rejected_clearance"] and log.faculty:
             faculty_name = f"{log.faculty.user.first_name} {log.faculty.user.last_name}" if log.faculty.user else ""
-            faculty_employee_id = log.faculty.employee_id or ""
+            faculty_employee_id = log.faculty.user.university_id if log.faculty.user else ""
             faculty_request_id = log.request_id or ""
             approver_department = log.approver_department or ""
 
@@ -9768,7 +9745,7 @@ def approver_override_api(request):
             ],
             department=clearance_request.faculty.department.name if clearance_request.faculty.department else None,
             college=clearance_request.faculty.college.name if clearance_request.faculty.college else None,
-            university_id=clearance_request.faculty.employee_id,
+            university_id=clearance_request.faculty.user.university_id,
         )
 
         # Update the clearance request status using the enum values
@@ -10031,8 +10008,8 @@ def approver_archived_individual_api(request):
         },
         "item": {
             "id": str(archived.id),
-            "employeeId": getattr(faculty, "employee_id", "") or "",
-            "schoolId": getattr(faculty, "employee_id", "") or "",
+            "employeeId": getattr(faculty.user, "university_id", "") if faculty.user else "",
+            "schoolId": getattr(faculty.user, "university_id", "") if faculty.user else "",
             "name": _archived_faculty_display_name(faculty),
             "fullName": _archived_faculty_display_name(faculty),
             "schoolEmail": getattr(faculty_user, "email", "") or "",
@@ -10079,8 +10056,8 @@ def assistant_approver_archived_individual_api(request):
         },
         "item": {
             "id": str(archived.id),
-            "employeeId": getattr(faculty, "employee_id", "") or "",
-            "schoolId": getattr(faculty, "employee_id", "") or "",
+            "employeeId": getattr(faculty.user, "university_id", "") if faculty.user else "",
+            "schoolId": getattr(faculty.user, "university_id", "") if faculty.user else "",
             "name": _archived_faculty_display_name(faculty),
             "fullName": _archived_faculty_display_name(faculty),
             "schoolEmail": getattr(faculty_user, "email", "") or "",
@@ -10191,7 +10168,7 @@ def approver_individual_approval_api(request):
                 details=details,
                 department=clearance_request.faculty.department if clearance_request.faculty else None,
                 college=clearance_request.faculty.college if clearance_request.faculty else None,
-                university_id=clearance_request.faculty.employee_id if clearance_request.faculty else "",
+                university_id=clearance_request.faculty.user.university_id if clearance_request.faculty and clearance_request.faculty.user else "",
                 faculty=clearance_request.faculty,
                 requirement=clearance_request.requirement
             )
@@ -10474,7 +10451,7 @@ def assistant_approver_clearance_api(request):
                     department=clearance_request.faculty.department,
                     college=clearance_request.faculty.college,
                     office=getattr(user, 'office', None),
-                    university_id=clearance_request.faculty.employee_id,
+                    university_id=clearance_request.faculty.user.university_id,
                     request_id=clearance_request.request_id,
                     details={
                         "faculty_member": f"{clearance_request.faculty.user.first_name} {clearance_request.faculty.user.last_name}",
@@ -10676,7 +10653,7 @@ def assistant_approver_individual_approval_api(request):
         department=req.faculty.department,  # Use faculty member's department
         college=req.faculty.college,        # Use faculty member's college
         office=user_office,                 # Use session user's office
-        university_id=req.faculty.employee_id,  # Use faculty member's employee ID
+        university_id=req.faculty.user.university_id,  # Use faculty member's university ID
         request_id=req.request_id,           # Use request ID from the request
         details={
             "faculty_member": f"{req.faculty.user.first_name} {req.faculty.user.last_name}",
@@ -10885,8 +10862,8 @@ def assistant_approver_archived_individual_api(request):
         },
         "item": {
             "id": str(archived.id),
-            "employeeId": getattr(faculty, "employee_id", "") or "",
-            "schoolId": getattr(faculty, "employee_id", "") or "",
+            "employeeId": getattr(faculty.user, "university_id", "") if faculty.user else "",
+            "schoolId": getattr(faculty.user, "university_id", "") if faculty.user else "",
             "name": _archived_faculty_display_name(faculty),
             "fullName": _archived_faculty_display_name(faculty),
             "schoolEmail": getattr(faculty_user, "email", "") or "",
@@ -11347,7 +11324,7 @@ def ciso_archived_individual_api(request):
 
         "faculty": {
             "id": str(archived.id),
-            "employeeId": getattr(faculty, "employee_id", "") or "",
+            "employeeId": getattr(faculty.user, "university_id", "") if faculty.user else "",
             "name": _archived_faculty_display_name(faculty),
             "schoolEmail": getattr(faculty_user, "email", "") or "",
             "college": getattr(getattr(faculty, "college", None), "name", "") or "",

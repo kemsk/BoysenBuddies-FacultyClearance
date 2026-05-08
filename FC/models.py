@@ -109,7 +109,6 @@ class UserRole(models.Model):
 
 class Faculty(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="faculty_profile")
-    employee_id = models.CharField(max_length=50, unique=True)
     first_name = models.CharField(max_length=100, null=True, blank=True)
     middle_name = models.CharField(max_length=100, null=True, blank=True)
     last_name = models.CharField(max_length=100, null=True, blank=True)
@@ -119,7 +118,8 @@ class Faculty(models.Model):
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name="faculty")
 
     def __str__(self):
-        return self.employee_id
+        return self.user.university_id if self.user else str(self.id)
+
 
 class Approver(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="approver_profile")
@@ -167,7 +167,7 @@ class Clearance(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.faculty.employee_id} - {self.academic_year} {self.term}"
+        return f"{self.faculty.user.university_id if self.faculty.user else str(self.faculty.id)} - {self.academic_year} {self.term}"
 
 
 class ClearanceTimeline(models.Model):
@@ -464,7 +464,7 @@ class ArchivedClearance(models.Model):
     clearance_data = models.JSONField(default=dict)
 
     def __str__(self):
-        return f"{self.faculty.employee_id} - {self.academic_year} {self.semester}"
+        return f"{self.faculty.user.university_id if self.faculty.user else str(self.faculty.id)} - {self.academic_year} {self.semester}"
 
 
 class ApproverAssistant(models.Model):
