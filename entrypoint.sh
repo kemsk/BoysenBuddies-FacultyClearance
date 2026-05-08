@@ -807,25 +807,6 @@ WHERE NOT EXISTS (
     SELECT 1 FROM FC_faculty f WHERE f.user_id = v.user_id
 );
 
--- Get faculty ID for clearance seeding
-SET @faculty_id = (SELECT id FROM FC_faculty WHERE user_id = @faculty_user_id LIMIT 1);
-
-INSERT INTO FC_clearance (faculty_id, academic_year, term, status, submitted_date, completed_date)
-SELECT * FROM (
-    SELECT @faculty_id AS faculty_id, YEAR(NOW()) AS academic_year, '1ST' AS term, 'COMPLETED' AS status, NOW() AS submitted_date, NOW() AS completed_date
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_clearance c WHERE c.faculty_id = v.faculty_id AND c.academic_year = v.academic_year AND c.term = v.term AND c.status = v.status
-);
-
-INSERT INTO FC_clearance (faculty_id, academic_year, term, status, submitted_date, completed_date)
-SELECT * FROM (
-    SELECT @faculty_id AS faculty_id, YEAR(NOW()) AS academic_year, '1ST' AS term, 'PENDING' AS status, NOW() AS submitted_date, NULL AS completed_date
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_clearance c WHERE c.faculty_id = v.faculty_id AND c.academic_year = v.academic_year AND c.term = v.term AND c.status = v.status
-);
-
 -- Seed ClearanceTimeline FIRST
 INSERT INTO FC_clearancetimeline (name, academic_year_start, academic_year_end, term, clearance_start_date, clearance_end_date, created_by_id, is_active, created_at, updated_at)
 SELECT * FROM (
@@ -836,8 +817,6 @@ WHERE NOT EXISTS (
 );
 
 -- Get latest timeline ID for reference
-SET @latest_timeline_id = (SELECT id FROM FC_clearancetimeline ORDER BY id DESC LIMIT 1);
-SET @latest_clearance_id = (SELECT id FROM FC_clearance WHERE faculty_id = @faculty_id ORDER BY id DESC LIMIT 1);
 SET @latest_timeline_id = (SELECT id FROM FC_clearancetimeline ORDER BY id DESC LIMIT 1);
 
 -- Seed ApproverFlowConfig
@@ -920,6 +899,8 @@ DELETE FROM FC_approver WHERE user_id = (SELECT id FROM FC_user WHERE email = '2
 EOF
 
 echo "Database initialized."
+echo "Generating faculty clearance requests..."
+python generate_clearance_requests.py
 echo "Starting Gunicorn on port 8001..."
 # Force override any environment variables that might affect binding
 unset GUNICORN_CMD_ARGS
