@@ -182,7 +182,8 @@ def create_faculty_users_and_profiles():
         # Create or get college and department
         college = get_or_create_college(college_name)
         department = get_or_create_department(college, dept_name)
-        office = get_or_create_office(college_name)
+        # Don't create office from college - offices should be separate entities
+        office = None
         
         # Create or get user
         user = get_or_create_user(email, university_id, first_name, middle_name, last_name)

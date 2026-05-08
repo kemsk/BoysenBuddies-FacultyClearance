@@ -477,7 +477,7 @@ function EditCollegeDialog(props: {
               </div>
 
               <div>
-                <div className="text-xs font-semibold text-foreground">Abbreviation</div>
+                <div className="text-xs font-semibold text-foreground">Code</div>
                 <Input value={short} onChange={(e) => setShort(e.target.value)} className="mt-2 h-10" />
               </div>
             </div>
@@ -542,7 +542,7 @@ function EditDepartmentDialog(props: {
               </div>
 
               <div>
-                <div className="text-xs font-semibold text-foreground">Abbreviation</div>
+                <div className="text-xs font-semibold text-foreground">Code</div>
                 <Input value={short} onChange={(e) => setShort(e.target.value)} className="mt-2 h-10" />
               </div>
             </div>
@@ -607,7 +607,7 @@ function EditOfficeDialog(props: {
               </div>
 
               <div>
-                <div className="text-xs font-semibold text-foreground">Abbreviation</div>
+                <div className="text-xs font-semibold text-foreground">Code</div>
                 <Input value={short} onChange={(e) => setShort(e.target.value)} className="mt-2 h-10" />
               </div>
             </div>
@@ -671,7 +671,7 @@ function AddOfficeDialog(props: {
               </div>
 
               <div>
-                <div className="text-xs font-semibold text-foreground">Abbreviation</div>
+                <div className="text-xs font-semibold text-foreground">Code</div>
                 <Input value={short} onChange={(e) => setShort(e.target.value)} className="mt-2 h-10" />
               </div>
             </div>

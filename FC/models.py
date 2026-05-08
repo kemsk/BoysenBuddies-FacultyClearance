@@ -53,7 +53,7 @@ class User(models.Model):
 
 class Office(models.Model):
     name = models.CharField(max_length=150)
-    abbreviation = models.CharField(max_length=20, null=True, blank=True)
+    code = models.CharField(max_length=20, null=True, blank=True)
     is_active = models.BooleanField(default=True)
     display_order = models.PositiveIntegerField(default=0)
 
@@ -63,7 +63,7 @@ class Office(models.Model):
 
 class College(models.Model):
     name = models.CharField(max_length=150)
-    abbreviation = models.CharField(max_length=20, null=True, blank=True)
+    code = models.CharField(max_length=20, null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
@@ -73,7 +73,7 @@ class College(models.Model):
 class Department(models.Model):
     college = models.ForeignKey(College, on_delete=models.CASCADE, related_name="departments")
     name = models.CharField(max_length=150)
-    abbreviation = models.CharField(max_length=20, null=True, blank=True)
+    code = models.CharField(max_length=20, null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):

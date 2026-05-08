@@ -33,13 +33,13 @@ export type FacultyOption = {
 export type CollegeOption = {
   id: number;
   name: string;
-  abbreviation: string;
+  code: string;
 };
 
 export type DepartmentOption = {
   id: number;
   name: string;
-  abbreviation: string;
+  code: string;
   college: string;
 };
 

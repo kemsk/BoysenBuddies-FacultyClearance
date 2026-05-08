@@ -3901,14 +3901,14 @@ def ciso_org_structure_api(request):
     colleges = list(
         College.objects.filter(is_active=True)
         .order_by("name", "id")
-        .values("id", "name", "abbreviation")
+        .values("id", "name", "code")
     )
 
     departments = list(
         Department.objects.select_related("college")
         .filter(is_active=True, college__is_active=True)
         .order_by("college__name", "name", "id")
-        .values("id", "college_id", "name", "abbreviation")
+        .values("id", "college_id", "name", "code")
     )
 
     offices = list(
@@ -3922,7 +3922,7 @@ def ciso_org_structure_api(request):
             models.Q(name__icontains="Dean")
         )
         .order_by("display_order", "name", "id")
-        .values("id", "name", "abbreviation", "display_order")
+        .values("id", "name", "code", "display_order")
     )
 
     return JsonResponse(
@@ -3931,7 +3931,7 @@ def ciso_org_structure_api(request):
                 {
                     "id": str(c["id"]),
                     "name": c["name"],
-                    "short": c["abbreviation"] or "",
+                    "short": c["code"] or "",
                 }
                 for c in colleges
             ],
@@ -3940,7 +3940,7 @@ def ciso_org_structure_api(request):
                     "id": str(d["id"]),
                     "collegeId": str(d["college_id"]),
                     "name": d["name"],
-                    "short": d["abbreviation"] or "",
+                    "short": d["code"] or "",
                 }
                 for d in departments
             ],
@@ -3948,7 +3948,7 @@ def ciso_org_structure_api(request):
                 {
                     "id": str(o["id"]),
                     "name": o["name"],
-                    "short": o["abbreviation"] or "",
+                    "short": o["code"] or "",
                     "displayOrder": int(o.get("display_order") or 0),
                 }
                 for o in offices
@@ -3961,13 +3961,13 @@ def _build_org_structure_payload():
     colleges = list(
         College.objects.filter(is_active=True)
         .order_by("name", "id")
-        .values("id", "name", "abbreviation")
+        .values("id", "name", "code")
     )
     departments = list(
         Department.objects.select_related("college")
         .filter(is_active=True, college__is_active=True)
         .order_by("college__name", "name", "id")
-        .values("id", "college_id", "name", "abbreviation")
+        .values("id", "college_id", "name", "code")
     )
     offices = list(
         Office.objects.filter(is_active=True)
@@ -3980,7 +3980,7 @@ def _build_org_structure_payload():
             models.Q(name__icontains="Dean")
         )
         .order_by("display_order", "name", "id")
-        .values("id", "name", "abbreviation", "display_order")
+        .values("id", "name", "code", "display_order")
     )
 
     return {
@@ -3988,7 +3988,7 @@ def _build_org_structure_payload():
             {
                 "id": str(c["id"]),
                 "name": c["name"],
-                "short": c["abbreviation"] or "",
+                "short": c["code"] or "",
             }
             for c in colleges
         ],
@@ -3997,7 +3997,7 @@ def _build_org_structure_payload():
                 "id": str(d["id"]),
                 "collegeId": str(d["college_id"]),
                 "name": d["name"],
-                "short": d["abbreviation"] or "",
+                "short": d["code"] or "",
             }
             for d in departments
         ],
@@ -4005,7 +4005,7 @@ def _build_org_structure_payload():
             {
                 "id": str(o["id"]),
                 "name": o["name"],
-                "short": o["abbreviation"] or "",
+                "short": o["code"] or "",
                 "displayOrder": int(o.get("display_order") or 0),
             }
             for o in offices
@@ -4093,7 +4093,7 @@ def _resolve_office_for_flow_step(*, category: str, office_id):
 
     return (
         Office.objects.filter(is_active=True)
-        .filter(models.Q(name__iexact=cat) | models.Q(abbreviation__iexact=cat))
+        .filter(models.Q(name__iexact=cat) | models.Q(code__iexact=cat))
         .first()
     )
 
@@ -4111,17 +4111,17 @@ def _relink_flow_steps_for_office(*, office: Office, timeline_id=None):
     # First, try to link existing unassigned steps
     existing_steps = config.steps.filter(office__isnull=True).filter(
         models.Q(category__iexact=office.name)
-        | models.Q(category__iexact=(office.abbreviation or ""))
+        | models.Q(category__iexact=(office.code or ""))
     )
     
     if existing_steps.exists():
         existing_steps.update(office=office)
     else:
         # Create new approver flow step for this office if no existing step found
-        # Use the office name as the category, fallback to abbreviation if name is too generic
+        # Use the office name as the category, fallback to code if name is too generic
         category_name = office.name
-        if len(category_name) <= 3 and office.abbreviation:
-            category_name = office.abbreviation
+        if len(category_name) <= 3 and office.code:
+            category_name = office.code
         
         # Get the next order number
         max_order = config.steps.aggregate(models.Max('order'))['order__max'] or 0
@@ -4160,8 +4160,8 @@ def ciso_colleges_api(request):
 
         if existing_inactive:
             existing_inactive.is_active = True
-            existing_inactive.abbreviation = short or None
-            existing_inactive.save(update_fields=["is_active", "abbreviation"])
+            existing_inactive.code = short or None
+            existing_inactive.save(update_fields=["is_active", "code"])
 
             try:
                 ActivityLog.objects.create(
@@ -4177,7 +4177,7 @@ def ciso_colleges_api(request):
                 {
                     "id": str(existing_inactive.id),
                     "name": existing_inactive.name,
-                    "short": existing_inactive.abbreviation or "",
+                    "short": existing_inactive.code or "",
                     "isActive": bool(existing_inactive.is_active),
                     "reactivated": True,
                 },
@@ -4186,7 +4186,7 @@ def ciso_colleges_api(request):
 
         obj = College.objects.create(
             name=name,
-            abbreviation=short or None,
+            code=short or None,
             is_active=True,
         )
 
@@ -4204,7 +4204,7 @@ def ciso_colleges_api(request):
             {
                 "id": str(obj.id),
                 "name": obj.name,
-                "short": obj.abbreviation or "",
+                "short": obj.code or "",
                 "isActive": bool(obj.is_active),
             },
             status=201,
@@ -4280,7 +4280,7 @@ def ciso_college_detail_api(request, college_id: int):
         return JsonResponse({
             "id": str(obj.id),
             "name": obj.name,
-            "short": obj.abbreviation or "",
+            "short": obj.code or "",
             "isActive": bool(obj.is_active),
         })
 
@@ -4294,7 +4294,7 @@ def ciso_college_detail_api(request, college_id: int):
 
         if "short" in data:
             short = (data.get("short") or "").strip()
-            obj.abbreviation = short or None
+            obj.code = short or None
 
         if "isActive" in data:
             obj.is_active = bool(data.get("isActive"))
@@ -4302,7 +4302,7 @@ def ciso_college_detail_api(request, college_id: int):
         if not (obj.name or "").strip():
             return JsonResponse({"detail": "name is required"}, status=400)
 
-        obj.save(update_fields=["name", "abbreviation", "is_active"])
+        obj.save(update_fields=["name", "code", "is_active"])
 
         try:
             ActivityLog.objects.create(
@@ -4319,7 +4319,7 @@ def ciso_college_detail_api(request, college_id: int):
             {
                 "id": str(obj.id),
                 "name": obj.name,
-                "short": obj.abbreviation or "",
+                "short": obj.code or "",
                 "isActive": bool(obj.is_active),
             }
         )
@@ -4396,8 +4396,8 @@ def ciso_departments_api(request):
         
         if existing_inactive:
             existing_inactive.is_active = True
-            existing_inactive.abbreviation = short or None
-            existing_inactive.save(update_fields=["is_active", "abbreviation"])
+            existing_inactive.code = short or None
+            existing_inactive.save(update_fields=["is_active", "code"])
             
             try:
                 ActivityLog.objects.create(
@@ -4413,7 +4413,7 @@ def ciso_departments_api(request):
                     "id": str(existing_inactive.id),
                     "collegeId": str(existing_inactive.college_id),
                     "name": existing_inactive.name,
-                    "short": existing_inactive.abbreviation or "",
+                    "short": existing_inactive.code or "",
                     "isActive": bool(existing_inactive.is_active),
                     "reactivated": True,
                 },
@@ -4423,7 +4423,7 @@ def ciso_departments_api(request):
         obj = Department.objects.create(
             college=college,
             name=name,
-            abbreviation=short or None,
+            code=short or None,
             is_active=True,
         )
 
@@ -4441,7 +4441,7 @@ def ciso_departments_api(request):
                 "id": str(obj.id),
                 "collegeId": str(obj.college_id),
                 "name": obj.name,
-                "short": obj.abbreviation or "",
+                "short": obj.code or "",
                 "isActive": bool(obj.is_active),
             },
             status=201,
@@ -4466,7 +4466,7 @@ def ciso_department_detail_api(request, department_id: int):
                 "id": str(obj.id),
                 "collegeId": str(obj.college_id),
                 "name": obj.name,
-                "short": obj.abbreviation or "",
+                "short": obj.code or "",
                 "isActive": bool(obj.is_active),
             })
 
@@ -4480,7 +4480,7 @@ def ciso_department_detail_api(request, department_id: int):
 
         if "short" in data:
             short = (data.get("short") or "").strip()
-            obj.abbreviation = short or None
+            obj.code = short or None
 
         if "isActive" in data:
             obj.is_active = bool(data.get("isActive"))
@@ -4494,7 +4494,7 @@ def ciso_department_detail_api(request, department_id: int):
         if not (obj.name or "").strip():
             return JsonResponse({"detail": "name is required"}, status=400)
 
-        obj.save(update_fields=["name", "abbreviation", "is_active", "college"])
+        obj.save(update_fields=["name", "code", "is_active", "college"])
 
         try:
             ActivityLog.objects.create(
@@ -4510,7 +4510,7 @@ def ciso_department_detail_api(request, department_id: int):
                 "id": str(obj.id),
                 "collegeId": str(obj.college_id),
                 "name": obj.name,
-                "short": obj.abbreviation or "",
+                "short": obj.code or "",
                 "isActive": bool(obj.is_active),
             }
         )
@@ -4562,9 +4562,9 @@ def ciso_offices_api(request):
         existing_inactive = Office.objects.filter(name__iexact=name, is_active=False).first()
         if existing_inactive:
             existing_inactive.is_active = True
-            existing_inactive.abbreviation = short or None
+            existing_inactive.code = short or None
             existing_inactive.display_order = display_order
-            existing_inactive.save(update_fields=["is_active", "abbreviation", "display_order"])
+            existing_inactive.save(update_fields=["is_active", "code", "display_order"])
             _relink_flow_steps_for_office(office=existing_inactive)
 
             try:
@@ -4580,7 +4580,7 @@ def ciso_offices_api(request):
             return JsonResponse({
                     "id": str(existing_inactive.id),
                     "name": existing_inactive.name,
-                    "short": existing_inactive.abbreviation or "",
+                    "short": existing_inactive.code or "",
                     "displayOrder": int(existing_inactive.display_order),
                     "isActive": bool(existing_inactive.is_active),
                     "reactivated": True,
@@ -4590,7 +4590,7 @@ def ciso_offices_api(request):
 
         obj = Office.objects.create(
             name=name,
-            abbreviation=short or None,
+            code=short or None,
             is_active=True,
             display_order=display_order,
         )
@@ -4607,7 +4607,7 @@ def ciso_offices_api(request):
             {
                 "id": str(obj.id),
                 "name": obj.name,
-                "short": obj.abbreviation or "",
+                "short": obj.code or "",
                 "displayOrder": int(obj.display_order),
                 "isActive": bool(obj.is_active),
             },
@@ -4633,7 +4633,7 @@ def ciso_office_detail_api(request, office_id: int):
             {
                 "id": str(obj.id),
                 "name": obj.name,
-                "short": obj.abbreviation or "",
+                "short": obj.code or "",
                 "displayOrder": int(obj.display_order),
                 "isActive": bool(obj.is_active),
             }
@@ -4649,7 +4649,7 @@ def ciso_office_detail_api(request, office_id: int):
 
         if "short" in data:
             short = (data.get("short") or "").strip()
-            obj.abbreviation = short or None
+            obj.code = short or None
 
         if "displayOrder" in data:
             obj.display_order = _as_int(data.get("displayOrder"), obj.display_order)
@@ -4660,7 +4660,7 @@ def ciso_office_detail_api(request, office_id: int):
         if not (obj.name or "").strip():
             return JsonResponse({"detail": "name is required"}, status=400)
 
-        obj.save(update_fields=["name", "abbreviation", "display_order", "is_active"])
+        obj.save(update_fields=["name", "code", "display_order", "is_active"])
         _relink_flow_steps_for_office(office=obj)
         try:
             ActivityLog.objects.create(
@@ -4674,7 +4674,7 @@ def ciso_office_detail_api(request, office_id: int):
             {
                 "id": str(obj.id),
                 "name": obj.name,
-                "short": obj.abbreviation or "",
+                "short": obj.code or "",
                 "displayOrder": int(obj.display_order),
                 "isActive": bool(obj.is_active),
             }
@@ -7236,8 +7236,8 @@ def faculty_submit_requirement_api(request):
         dept_code = "GEN"  # Default generic code
         
         if faculty.department:
-            # Use department abbreviation if available, otherwise use name
-            dept_code = faculty.department.abbreviation if faculty.department.abbreviation else faculty.department.name[:3].upper()
+            # Use department code if available, otherwise use name
+            dept_code = faculty.department.code if faculty.department.code else faculty.department.name[:3].upper()
 
         # Get term from timeline
         term_code = "00"  # Default
@@ -9012,12 +9012,12 @@ def approver_college_department_options_api(request):
         colleges = [{
             "id": approver_profile.college.id,
             "name": approver_profile.college.name,
-            "abbreviation": approver_profile.college.abbreviation or ""
+            "code": approver_profile.college.code or ""
         }]
         departments = [{
                 "id": dept.id,
                 "name": dept.name,
-                "abbreviation": dept.abbreviation or "",
+                "code": dept.code or "",
                 "college": dept.college.name
             }
             for dept in approver_profile.college.departments.filter(is_active=True)
@@ -9028,13 +9028,13 @@ def approver_college_department_options_api(request):
         colleges = [{
             "id": approver_profile.department.college.id,
             "name": approver_profile.department.college.name,
-            "abbreviation": approver_profile.department.college.abbreviation or ""
+            "code": approver_profile.department.college.code or ""
         }]
 
         departments = [{
             "id": approver_profile.department.id,
             "name": approver_profile.department.name,
-            "abbreviation": approver_profile.department.abbreviation or "",
+            "code": approver_profile.department.code or "",
             "college": approver_profile.department.college.name
         }]
 
@@ -9044,7 +9044,7 @@ def approver_college_department_options_api(request):
         colleges = [{
                 "id": college.id,
                 "name": college.name,
-                "abbreviation": college.abbreviation or ""
+                "code": college.code or ""
             }
             for college in College.objects.filter(is_active=True).order_by('name')
         ]
@@ -9052,7 +9052,7 @@ def approver_college_department_options_api(request):
         departments = [{
                 "id": dept.id,
                 "name": dept.name,
-                "abbreviation": dept.abbreviation or "",
+                "code": dept.code or "",
                 "college": dept.college.name
             }
             for dept in Department.objects.filter(is_active=True).select_related('college').order_by('college__name', 'name')
@@ -10966,7 +10966,7 @@ def ciso_college_office_configuration_api(request):
             colleges_data.append({
                 'id': college.id,
                 'name': college.name,
-                'abbreviation': college.abbreviation or '',
+                'code': college.code or '',
                 'departments': departments
             })
 
@@ -10979,7 +10979,7 @@ def ciso_college_office_configuration_api(request):
             models.Q(name__iexact="Dean") |
             models.Q(name__icontains="Dean")
         ).order_by('name')
-        offices_data = [{'id': office.id, 'name': office.name, 'abbreviation': office.abbreviation or ''} for office in offices]
+        offices_data = [{'id': office.id, 'name': office.name, 'code': office.code or ''} for office in offices]
 
         # Get approver flow configuration
         timeline_id = request.GET.get('timeline_id')
