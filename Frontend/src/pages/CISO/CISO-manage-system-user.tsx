@@ -245,6 +245,32 @@ import { AdminSystemUsersCard, ApproverSystemUsersCard } from "../../stories/com
     setAddApproverOpen(true);
   }, []);
 
+  // Filter users for Admin and Approver roles
+  // Note: Backend already handles role deduplication, so we can filter by displayed role
+  const adminUsers = React.useMemo(() => {
+    return filteredUsers.filter(user => {
+      const role = user.userRole.toLowerCase();
+      return role === "ciso" || role === "analytics admin";
+    });
+  }, [filteredUsers]);
+
+  const approverUsers = React.useMemo(() => {
+    return filteredUsers.filter(user => {
+      const role = user.userRole.toLowerCase();
+      return role === "approver" || role === "assistant approver";
+    });
+  }, [filteredUsers]);
+
+  // Pagination for admin users
+  const adminPageCount = Math.max(1, Math.ceil(adminUsers.length / pageSize));
+  const adminSafePage = Math.min(adminPageCount, Math.max(1, page));
+  const adminPagedUsers = adminUsers.slice((adminSafePage - 1) * pageSize, adminSafePage * pageSize);
+
+  // Pagination for approver users
+  const approverPageCount = Math.max(1, Math.ceil(approverUsers.length / pageSize));
+  const approverSafePage = Math.min(approverPageCount, Math.max(1, page));
+  const approverPagedUsers = approverUsers.slice((approverSafePage - 1) * pageSize, approverSafePage * pageSize);
+
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
 
@@ -300,11 +326,11 @@ import { AdminSystemUsersCard, ApproverSystemUsersCard } from "../../stories/com
 
           <div className="mt-3">
             <AdminSystemUsersCard
-              users={pagedUsers}
+              users={adminPagedUsers}
               onAddAdmin={() => setAddAdminOpen(true)}
               currentUserEmail={adminEmail}
-              page={safePage}
-              pageCount={pageCount}
+              page={adminSafePage}
+              pageCount={adminPageCount}
               onPageChange={(p) => setPage(p)}
               onEditUser={(user) => {
                 if (user.email.trim().toLowerCase() === adminEmail.trim().toLowerCase()) {
@@ -334,12 +360,12 @@ import { AdminSystemUsersCard, ApproverSystemUsersCard } from "../../stories/com
 
           <div className="mt-3">
             <ApproverSystemUsersCard 
-              users={pagedUsers}
+              users={approverPagedUsers}
               onAddApprover={onAddApprover}
               onAddAdmin={() => setAddAdminOpen(true)}
               currentUserEmail={adminEmail}
-              page={safePage}
-              pageCount={pageCount}
+              page={approverSafePage}
+              pageCount={approverPageCount}
               onPageChange={(p) => setPage(p)}
               onEditUser={(user) => {
                 if (user.email.trim().toLowerCase() === adminEmail.trim().toLowerCase()) {

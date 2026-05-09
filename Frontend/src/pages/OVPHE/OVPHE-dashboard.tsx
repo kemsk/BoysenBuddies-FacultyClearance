@@ -102,7 +102,7 @@ export default function OVPHEDashboard() {
   const roleLabel = React.useMemo(() => {
     if (profile?.role) return profile.role;
     if (me?.role_value === 2) return "CISO";
-    if (me?.role_value === 3) return "OVPHE";
+    if (me?.role_value === 3) return "Analytics Admin";
     if (me?.role_value === 1) return "HRO";
     if (me?.role_value === 4) return "APPROVER";
     if (me?.role_value === 5) return "ASSISTANT_APPROVER";

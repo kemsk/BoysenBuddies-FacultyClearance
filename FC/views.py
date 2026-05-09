@@ -1116,7 +1116,7 @@ def ovphe_profile_api(request):
             "first_name": user.first_name,
             "middle_name": user.middle_name,
             "last_name": user.last_name,
-            "role": "OVPHE",
+            "role": "Analytics Admin",
         })
 
 
@@ -6262,21 +6262,29 @@ def ciso_system_users_api(request):
         role__name__in=admin_roles, 
         is_active=True
     ).select_related('user', 'role').order_by('user__id')
+    # First, collect all admin role users
+    admin_user_ids = set(admin_user_roles.values_list('user_id', flat=True))
+    
+    # Add admin users to items list
     for user_role in admin_user_roles:
         u = user_role.user
+        # Display "Analytics Admin" instead of "OVPHE" for better clarity
+        display_role = "Analytics Admin" if user_role.role.name == "OVPHE" else user_role.role.name
         items.append({
                 "id": str(u.id),
                 "name": _full_name(u),
                 "systemId": f"SYS-{u.id}",
-                "userRole": user_role.role.name,
+                "userRole": display_role,
                 "universityId": u.university_id or "",
                 "college": "N/A",
-                "department": user_role.role.name,
+                "department": display_role if display_role != "Analytics Admin" else "",
                 "email": u.email,
                 # A user is considered active if they have any active roles
                 "isActive": u.get_active_roles().exists(),
             })
 
+    # Add approver users, including those who also have admin roles
+    # This allows users with multiple roles to appear in both tables
     approvers = Approver.objects.select_related("user", "college", "department", "office").order_by("id")
     for ap in approvers:
         u = ap.user
@@ -6307,28 +6315,8 @@ def ciso_system_users_api(request):
                 "isActive": u.get_active_roles().exists(),
             })
 
-    def _role_rank(item: dict) -> int:
-        role = (item.get("userRole") or "").strip()
-        if role == "CISO" or role == "OVPHE":
-            return 3
-        if "admin" in role.lower():
-            return 2
-        if "assistant" in role.lower():
-            return 1
-        if "approver" in role.lower():
-            return 0
-        return 0
-
-    deduped: dict[str, dict] = {}
-    for it in items:
-        uid = str(it.get("id") or "")
-        if not uid:
-            continue
-        prev = deduped.get(uid)
-        if not prev or _role_rank(it) > _role_rank(prev):
-            deduped[uid] = it
-
-    items = list(deduped.values())
+    # Note: Removed deduplication to allow users with multiple roles to appear in both tables
+    # Users will be filtered by role on the frontend
 
     if request.method == "GET":
         return JsonResponse({"items": items})
@@ -6408,26 +6396,6 @@ def ciso_system_users_api(request):
                 role=role,
                 defaults={'is_active': True}
             )
-
-            if office_norm == "OVPHE":
-                ovphe_office = Office.objects.filter(name__iexact="Office of the Vice President for Higher Education", is_active=True).first()
-                if ovphe_office:
-                    Approver.objects.get_or_create(
-                        user=user,
-                        defaults={
-                            'approver_type': 'Office',
-                            'office': ovphe_office
-                        }
-                    )
-                    approver_role, created = Role.objects.get_or_create(
-                        name="Approver",
-                        defaults={'description': 'Approver role'}
-                    )
-                    UserRole.objects.get_or_create(
-                        user=user,
-                        role=approver_role,
-                        defaults={'is_active': True}
-                    )
 
         if approver_type:
             atype = approver_type.strip().lower()
