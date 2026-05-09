@@ -11477,8 +11477,14 @@ def ciso_archived_faculty_download_api(request, archived_id: int):
             
             return invalid_fields
 
-        # Write header with original columns + validation columns
-        new_fieldnames = list(original_fieldnames) + ["Validation Status", "Missing Fields", "Invalid Fields"]
+        # Check if this is a newly processed CSV with validation info
+        has_validation_info = any(field in original_fieldnames for field in ["Validation Status", "Missing Fields", "Invalid Fields"])
+        
+        # Write header - only add validation columns if they don't already exist
+        if has_validation_info:
+            new_fieldnames = list(original_fieldnames)
+        else:
+            new_fieldnames = list(original_fieldnames) + ["Validation Status", "Missing Fields", "Invalid Fields"]
         writer.writerow(new_fieldnames)
         
         def _clean(value: str | None):
@@ -11502,9 +11508,6 @@ def ciso_archived_faculty_download_api(request, archived_id: int):
                 college_code = _clean(row.get("college"))
             if not department_code:
                 department_code = _clean(row.get("department"))
-            
-            # Check if this is a newly processed CSV with validation info
-            has_validation_info = any(field in original_fieldnames for field in ["Validation Status", "Missing Fields", "Invalid Fields"])
             
             if has_validation_info:
                 # Use existing validation info from the CSV
@@ -11543,8 +11546,11 @@ def ciso_archived_faculty_download_api(request, archived_id: int):
                 missing_fields_str = ", ".join(missing_fields) if missing_fields else ""
                 invalid_fields_str = ", ".join(invalid_fields) if invalid_fields else ""
             
-            # Write row with validation columns
-            new_row = [row.get(field, "") for field in original_fieldnames] + [validation_status, missing_fields_str, invalid_fields_str]
+            # Write row - only add validation columns if they don't already exist
+            if has_validation_info:
+                new_row = [row.get(field, "") for field in original_fieldnames]
+            else:
+                new_row = [row.get(field, "") for field in original_fieldnames] + [validation_status, missing_fields_str, invalid_fields_str]
             writer.writerow(new_row)
         
         # Create response
