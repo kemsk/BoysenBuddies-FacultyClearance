@@ -11753,3 +11753,115 @@ def ciso_department_csv_upload_api(request):
         
     except Exception as e:
         return JsonResponse({"detail": "Error processing Department CSV file: " + str(e)}, status=500)
+
+
+# Access Control API endpoints
+@csrf_exempt
+def ciso_access_control_permissions_api(request):
+    """API endpoint for managing role permissions."""
+    admin, err = _require_ciso_admin_user(request)
+    if err:
+        return err
+
+    if request.method == "GET":
+        # Get all permissions for all roles
+        from .models import Role, RolePermission
+        
+        roles = Role.objects.all().order_by('name')
+        permissions_data = {}
+        
+        for role in roles:
+            permissions_data[role.name] = {}
+            role_perms = RolePermission.objects.filter(role=role)
+            for perm in role_perms:
+                permissions_data[role.name][perm.entity] = {
+                    "Create": perm.can_create,
+                    "Read": perm.can_read,
+                    "Update": perm.can_update,
+                    "Delete": perm.can_delete
+                }
+        
+        return JsonResponse({"permissions": permissions_data})
+    
+    elif request.method == "PUT":
+        # Update permissions
+        try:
+            data = json.loads(request.body)
+            permissions = data.get("permissions", {})
+            
+            from .models import Role, RolePermission
+            from django.db import transaction
+            
+            with transaction.atomic():
+                for role_name, entities in permissions.items():
+                    try:
+                        role = Role.objects.get(name=role_name)
+                    except Role.DoesNotExist:
+                        continue
+                    
+                    for entity_name, perms in entities.items():
+                        # Get or create permission
+                        role_perm, created = RolePermission.objects.get_or_create(
+                            role=role,
+                            entity=entity_name,
+                            defaults={
+                                'can_create': perms.get('Create', False),
+                                'can_read': perms.get('Read', False),
+                                'can_update': perms.get('Update', False),
+                                'can_delete': perms.get('Delete', False)
+                            }
+                        )
+                        
+                        if not created:
+                            role_perm.can_create = perms.get('Create', False)
+                            role_perm.can_read = perms.get('Read', False)
+                            role_perm.can_update = perms.get('Update', False)
+                            role_perm.can_delete = perms.get('Delete', False)
+                            role_perm.save()
+            
+            return JsonResponse({"message": "Permissions updated successfully"})
+            
+        except json.JSONDecodeError:
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
+        except Exception as e:
+            return JsonResponse({"detail": f"Error updating permissions: {str(e)}"}, status=500)
+    
+    else:
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+
+@csrf_exempt
+def ciso_access_control_entities_api(request):
+    """API endpoint for getting available entities per role."""
+    admin, err = _require_ciso_admin_user(request)
+    if err:
+        return err
+
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    # Define entities available for each role based on the screenshots
+    entities_config = {
+        "System Admin": [
+            "Announcement", "Guidelines", "System Analytics", "Clearance Timeline",
+            "College Department Office Configuration", "System Users", "Faculty Data Dump",
+            "Faculty Import History", "Clearance Requests Records", "Activity Logs", "Notifications"
+        ],
+        "Analytics Admin": [
+            "Announcement", "Guidelines", "System Analytics", "Clearance Requests Records",
+            "Activity Logs", "Notifications"
+        ],
+        "Approver": [
+            "Requirements List", "Announcements", "Clearance Requests", "Clearance Requests Records",
+            "Approver Assistant", "Activity Logs", "Notifications"
+        ],
+        "Approver Assistant": [
+            "Requirements List", "Announcements", "Clearance Requests", "Clearance Requests Records",
+            "Notifications"
+        ],
+        "Faculty Member": [
+            "Clearance Requests", "Clearance Requests Records", "Notifications"
+        ]
+    }
+
+    return JsonResponse({"entities": entities_config})

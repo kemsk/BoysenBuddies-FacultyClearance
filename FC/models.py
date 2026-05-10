@@ -598,3 +598,24 @@ class Notification(models.Model):
 
     def __str__(self):
         return self.title or str(self.pk)
+
+
+class RolePermission(models.Model):
+    """Store CRUD permissions for each role and entity combination."""
+    role = models.ForeignKey(Role, on_delete=models.CASCADE, related_name="permissions")
+    entity = models.CharField(max_length=100)
+    can_create = models.BooleanField(default=False)
+    can_read = models.BooleanField(default=False)
+    can_update = models.BooleanField(default=False)
+    can_delete = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['role', 'entity']
+        indexes = [
+            models.Index(fields=['role', 'entity']),
+        ]
+
+    def __str__(self):
+        return f"{self.role.name} - {self.entity}"

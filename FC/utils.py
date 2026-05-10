@@ -231,3 +231,61 @@ def get_dropdown_options_for_user(user):
                 options.append({'value': f'office_{user_role.office.id}', 'label': user_role.office.name})
     
     return options
+
+
+def check_user_permission(user, entity, privilege):
+    """
+    Check if a user has a specific privilege for an entity based on their role permissions.
+    
+    Args:
+        user: The User object
+        entity: The entity name (e.g., "Announcement", "Clearance Requests")
+        privilege: The privilege (one of: "Create", "Read", "Update", "Delete")
+    
+    Returns:
+        bool: True if user has permission, False otherwise
+    """
+    if not user.is_authenticated:
+        return False
+    
+    # Get user's active roles
+    user_roles = user.get_active_roles()
+    
+    # Check each role for the required permission
+    for user_role in user_roles:
+        role_name = user_role.role.name
+        role_permissions = user_role.role.permissions.filter(entity=entity).first()
+        
+        if role_permissions:
+            # Map privilege names to model fields
+            privilege_map = {
+                "Create": role_permissions.can_create,
+                "Read": role_permissions.can_read,
+                "Update": role_permissions.can_update,
+                "Delete": role_permissions.can_delete
+            }
+            
+            if privilege in privilege_map and privilege_map[privilege]:
+                return True
+    
+    return False
+
+
+def require_permission(entity, privilege):
+    """
+    Decorator to require a specific permission for an entity.
+    
+    Usage:
+        @require_permission("Announcement", "Create")
+        def create_announcement(request):
+            # View logic here
+            pass
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            if not check_user_permission(request.user, entity, privilege):
+                raise PermissionDenied
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator

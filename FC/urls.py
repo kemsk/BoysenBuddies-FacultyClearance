@@ -102,4 +102,7 @@ urlpatterns = [
     path('api/ovphe/clearance-progress', views.ovphe_clearance_progress_api, name='OVPHEClearanceProgress'),
     path('api/approver/assistant-approvers', views.approver_assistant_approvers_api, name='ApproverAssistantApprovers'),
     path('api/approver/assistant-approvers/<int:user_id>', views.approver_assistant_approver_detail_api, name='ApproverAssistantApproverDetail'),
+    # Access Control endpoints
+    path('api/ciso/access-control/permissions', views.ciso_access_control_permissions_api, name='CISOAccessControlPermissions'),
+    path('api/ciso/access-control/entities', views.ciso_access_control_entities_api, name='CISOAccessControlEntities'),
 ]
