@@ -383,7 +383,7 @@ export function FacultyDataDumpCard({
 
           />
         </div>
-        {currentFile && (uploadStatus === "success" || isFileReady) ? (
+        {(currentFile && (uploadStatus === "success" || isFileReady)) || (tableUsers && tableUsers.length > 0) ? (
           <FacultyTableCard
             className="mt-5"
             users={tableUsers ?? []}
