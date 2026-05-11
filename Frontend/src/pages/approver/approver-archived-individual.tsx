@@ -199,7 +199,7 @@ export default function ApproverArchivedIndividualApproval() {
                             </td>
                             <td className="px-4 py-4 align-top">
                               <div
-                                className="max-w-full break-words"
+                                className="max-w-full break-words [&_a]:text-blue-600 [&_a]:underline [&_a]:underline-offset-2 [&_a]:cursor-pointer [&_a]:break-all [&_a]:[overflow-wrap:anywhere]"
                                 dangerouslySetInnerHTML={{ __html: request.submissionNotes || "No submission notes provided." }}
                               />
                             </td>
@@ -275,7 +275,7 @@ export default function ApproverArchivedIndividualApproval() {
                     <div className="mt-6">
                       <div className="text-md font-bold text-foreground">Submission Notes</div>
                       <div
-                        className="mt-3 rounded-md border border-foreground p-3 text-sm text-black"
+                        className="mt-3 rounded-md border border-foreground p-3 text-sm text-black [&_a]:text-blue-600 [&_a]:underline [&_a]:underline-offset-2 [&_a]:cursor-pointer [&_a]:break-all [&_a]:[overflow-wrap:anywhere]"
                         dangerouslySetInnerHTML={{ __html: request.submissionNotes || "No submission notes provided." }}
                       />
                     </div>
