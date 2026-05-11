@@ -39,8 +39,10 @@ urlpatterns = [
     path('api/ciso/org-structure', views.ciso_org_structure_api, name='CISOOrgStructure'),
     path('api/ciso/colleges', views.ciso_colleges_api, name='CISOColleges'),
     path('api/ciso/colleges/<int:college_id>', views.ciso_college_detail_api, name='CISOCollegeDetail'),
+    path('api/ciso/colleges/csv-upload', views.ciso_college_csv_upload_api, name='CISOCollegeCSVUpload'),
     path('api/ciso/departments', views.ciso_departments_api, name='CISODepartments'),
     path('api/ciso/departments/<int:department_id>', views.ciso_department_detail_api, name='CISODepartmentDetail'),
+    path('api/ciso/departments/csv-upload', views.ciso_department_csv_upload_api, name='CISODepartmentCSVUpload'),
     path('api/ciso/offices', views.ciso_offices_api, name='CISOOffices'),
     path('api/ciso/offices/<int:office_id>', views.ciso_office_detail_api, name='CISOOfficeDetail'),
     path('api/ciso/approver-flow', views.ciso_approver_flow_api, name='CISOApproverFlow'),
@@ -100,4 +102,7 @@ urlpatterns = [
     path('api/ovphe/clearance-progress', views.ovphe_clearance_progress_api, name='OVPHEClearanceProgress'),
     path('api/approver/assistant-approvers', views.approver_assistant_approvers_api, name='ApproverAssistantApprovers'),
     path('api/approver/assistant-approvers/<int:user_id>', views.approver_assistant_approver_detail_api, name='ApproverAssistantApproverDetail'),
+    # Access Control endpoints
+    path('api/ciso/access-control/permissions', views.ciso_access_control_permissions_api, name='CISOAccessControlPermissions'),
+    path('api/ciso/access-control/entities', views.ciso_access_control_entities_api, name='CISOAccessControlEntities'),
 ]

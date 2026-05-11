@@ -53,7 +53,7 @@ class User(models.Model):
 
 class Office(models.Model):
     name = models.CharField(max_length=150)
-    abbreviation = models.CharField(max_length=20, null=True, blank=True)
+    code = models.CharField(max_length=20, null=True, blank=True)
     is_active = models.BooleanField(default=True)
     display_order = models.PositiveIntegerField(default=0)
 
@@ -63,7 +63,7 @@ class Office(models.Model):
 
 class College(models.Model):
     name = models.CharField(max_length=150)
-    abbreviation = models.CharField(max_length=20, null=True, blank=True)
+    code = models.CharField(max_length=20, null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
@@ -73,7 +73,7 @@ class College(models.Model):
 class Department(models.Model):
     college = models.ForeignKey(College, on_delete=models.CASCADE, related_name="departments")
     name = models.CharField(max_length=150)
-    abbreviation = models.CharField(max_length=20, null=True, blank=True)
+    code = models.CharField(max_length=20, null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
@@ -109,7 +109,6 @@ class UserRole(models.Model):
 
 class Faculty(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="faculty_profile")
-    employee_id = models.CharField(max_length=50, unique=True)
     first_name = models.CharField(max_length=100, null=True, blank=True)
     middle_name = models.CharField(max_length=100, null=True, blank=True)
     last_name = models.CharField(max_length=100, null=True, blank=True)
@@ -119,7 +118,8 @@ class Faculty(models.Model):
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name="faculty")
 
     def __str__(self):
-        return self.employee_id
+        return self.user.university_id if self.user else str(self.id)
+
 
 class Approver(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="approver_profile")
@@ -167,7 +167,7 @@ class Clearance(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.faculty.employee_id} - {self.academic_year} {self.term}"
+        return f"{self.faculty.user.university_id if self.faculty.user else str(self.faculty.id)} - {self.academic_year} {self.term}"
 
 
 class ClearanceTimeline(models.Model):
@@ -463,7 +463,7 @@ class ArchivedClearance(models.Model):
     clearance_data = models.JSONField(default=dict)
 
     def __str__(self):
-        return f"{self.faculty.employee_id} - {self.academic_year} {self.semester}"
+        return f"{self.faculty.user.university_id if self.faculty.user else str(self.faculty.id)} - {self.academic_year} {self.semester}"
 
 
 class ApproverAssistant(models.Model):
@@ -597,3 +597,24 @@ class Notification(models.Model):
 
     def __str__(self):
         return self.title or str(self.pk)
+
+
+class RolePermission(models.Model):
+    """Store CRUD permissions for each role and entity combination."""
+    role = models.ForeignKey(Role, on_delete=models.CASCADE, related_name="permissions")
+    entity = models.CharField(max_length=100)
+    can_create = models.BooleanField(default=False)
+    can_read = models.BooleanField(default=False)
+    can_update = models.BooleanField(default=False)
+    can_delete = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['role', 'entity']
+        indexes = [
+            models.Index(fields=['role', 'entity']),
+        ]
+
+    def __str__(self):
+        return f"{self.role.name} - {self.entity}"

@@ -15,8 +15,8 @@ ON DUPLICATE KEY UPDATE
 SET @farrah_user_id = (SELECT id FROM FC_user WHERE email = '201131134@my.xu.edu.ph' LIMIT 1);
 
 -- Get college and department IDs
-SET @ccs_id = (SELECT id FROM FC_college WHERE abbreviation = 'CCS' LIMIT 1);
-SET @it_id = (SELECT id FROM FC_department WHERE abbreviation = 'IT' AND college_id = @ccs_id LIMIT 1);
+SET @ccs_id = (SELECT id FROM FC_college WHERE code = 'CCS' LIMIT 1);
+SET @it_id = (SELECT id FROM FC_department WHERE code = 'IT' AND college_id = @ccs_id LIMIT 1);
 
 -- Restore user role as Approver
 INSERT INTO FC_userrole (user_id, role_id, college_id, department_id, is_active, created_at, updated_at)
@@ -46,11 +46,10 @@ ON DUPLICATE KEY UPDATE
     updated_at = VALUES(updated_at);
 
 -- Restore faculty profile
-INSERT INTO FC_faculty (user_id, employee_id, first_name, last_name, college_id, department_id, created_at, updated_at)
+INSERT INTO FC_faculty (user_id, first_name, last_name, college_id, department_id, created_at, updated_at)
 VALUES 
-(@farrah_user_id, 'EMP-201131134', 'Farrah', 'Apag', @ccs_id, @it_id, NOW(), NOW())
+(@farrah_user_id, 'Farrah', 'Apag', @ccs_id, @it_id, NOW(), NOW())
 ON DUPLICATE KEY UPDATE
-    employee_id = VALUES(employee_id),
     first_name = VALUES(first_name),
     last_name = VALUES(last_name),
     college_id = VALUES(college_id),

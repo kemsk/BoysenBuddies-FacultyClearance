@@ -14,6 +14,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { Button } from "../../stories/components/button";
 import * as React from "react";
+import type { SystemUser } from "../../stories/components/faculty-dump-cards";
 
 import {
   DataDumpSuccessModal,
@@ -35,6 +36,38 @@ export default function CISOFacultyDataDump() {
   const [createdCount, setCreatedCount] = React.useState(0);
   const [updatedCount, setUpdatedCount] = React.useState(0);
   const [skippedCount, setSkippedCount] = React.useState(0);
+  const [skippedRows, setSkippedRows] = React.useState<Array<{rowLabel: string; reason: string}>>([]);
+  const [previewData, setPreviewData] = React.useState<SystemUser[]>([]);
+  const [persistedFacultyData, setPersistedFacultyData] = React.useState<SystemUser[]>([]);
+  const [hasUploadedData, setHasUploadedData] = React.useState(false);
+
+  // Organization structure data
+  const [orgColleges, setOrgColleges] = React.useState<string[]>([]);
+  const [orgDepartments, setOrgDepartments] = React.useState<string[]>([]);
+  const [collegeDepartmentsMap, setCollegeDepartmentsMap] = React.useState<Record<string, string[]>>({});
+  const [collegeNameToCodeMap, setCollegeNameToCodeMap] = React.useState<Record<string, string>>({});
+  const [departmentNameToCodeMap, setDepartmentNameToCodeMap] = React.useState<Record<string, string>>({});
+
+  const handleEditUser = (user: SystemUser) => {
+    // Update the user in both preview and persisted data
+    setPreviewData(prev => prev.map(u => u.id === user.id ? user : u));
+    if (hasUploadedData) {
+      const updatedData = persistedFacultyData.map(u => u.id === user.id ? user : u);
+      setPersistedFacultyData(updatedData);
+      // Save to localStorage
+      localStorage.setItem(`facultyData_${selectedTimelineId}`, JSON.stringify(updatedData));
+    }
+  };
+
+  const handleRemoveUser = (user: SystemUser) => {
+    setPreviewData(prev => prev.filter(u => u.id !== user.id));
+    if (hasUploadedData) {
+      const updatedData = persistedFacultyData.filter(u => u.id !== user.id);
+      setPersistedFacultyData(updatedData);
+      // Save to localStorage
+      localStorage.setItem(`facultyData_${selectedTimelineId}`, JSON.stringify(updatedData));
+    }
+  };
 
   const [errorOpen, setErrorOpen] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<React.ReactNode>("");
@@ -48,6 +81,54 @@ export default function CISOFacultyDataDump() {
     const found = timelines.find((t) => t.id === selectedTimelineId);
     return found?.label || selectedTimelineId || "";
   }, [timelines, selectedTimelineId]);
+
+  // Load persisted faculty data from localStorage on component mount
+  React.useEffect(() => {
+    const savedData = localStorage.getItem(`facultyData_${selectedTimelineId}`);
+    const hasUploaded = localStorage.getItem(`hasUploaded_${selectedTimelineId}`);
+    
+    if (savedData) {
+      try {
+        setPersistedFacultyData(JSON.parse(savedData));
+        setHasUploadedData(hasUploaded === 'true');
+      } catch (error) {
+        console.error('Failed to load saved faculty data:', error);
+      }
+    }
+  }, [selectedTimelineId]);
+
+  // Save persisted faculty data to localStorage whenever it changes
+  React.useEffect(() => {
+    if (selectedTimelineId && hasUploadedData) {
+      localStorage.setItem(`facultyData_${selectedTimelineId}`, JSON.stringify(persistedFacultyData));
+      localStorage.setItem(`hasUploaded_${selectedTimelineId}`, 'true');
+    }
+  }, [persistedFacultyData, hasUploadedData, selectedTimelineId]);
+
+  // Reset faculty data when timeline changes
+  React.useEffect(() => {
+    setUploadedFile(null);
+    setUploadStatus("idle");
+    setUploadProgress(0);
+    setIsFileReady(false);
+    setPreviewData([]);
+    // Load data for new timeline or clear if none exists
+    const savedData = localStorage.getItem(`facultyData_${selectedTimelineId}`);
+    const hasUploaded = localStorage.getItem(`hasUploaded_${selectedTimelineId}`);
+    
+    if (savedData) {
+      try {
+        setPersistedFacultyData(JSON.parse(savedData));
+        setHasUploadedData(hasUploaded === 'true');
+      } catch (error) {
+        setPersistedFacultyData([]);
+        setHasUploadedData(false);
+      }
+    } else {
+      setPersistedFacultyData([]);
+      setHasUploadedData(false);
+    }
+  }, [selectedTimelineId]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -89,7 +170,153 @@ export default function CISOFacultyDataDump() {
     return () => {
       cancelled = true;
     };
-  }, [selectedTimelineId]);
+  }, []);
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function loadOrgStructure() {
+      try {
+        const res = await fetch("/admin/xu-faculty-clearance/api/ciso/org-structure");
+        if (!res.ok) throw new Error("Failed to load org structure");
+
+        const data = (await res.json()) as {
+          colleges?: Array<{ id?: string; name?: string; short?: string }>;
+          departments?: Array<{ id?: string; collegeId?: string; name?: string; short?: string }>;
+          offices?: Array<{ id?: string; name?: string; short?: string }>;
+        };
+
+        const colleges = (data.colleges || [])
+          .map((c) => (c?.name || "").trim())
+          .filter(Boolean);
+        const departments = (data.departments || [])
+          .map((d) => (d?.name || "").trim())
+          .filter(Boolean);
+
+        // Build college-departments map: college name -> array of department names
+        const collegeMap: Record<string, string[]> = {};
+        
+        // Build name-to-code maps
+        const collegeNameToCode: Record<string, string> = {};
+        const departmentNameToCode: Record<string, string> = {};
+        
+        // Initialize all colleges with empty arrays and build college name-to-code map
+        (data.colleges || []).forEach((c) => {
+          const collegeName = (c?.name || "").trim();
+          const collegeCode = (c?.short || c?.id || "").trim();
+          if (collegeName) {
+            collegeMap[collegeName] = [];
+            if (collegeCode) {
+              collegeNameToCode[collegeName] = collegeCode;
+            }
+          }
+        });
+        
+        // Map departments to their colleges using collegeId and build department name-to-code map
+        (data.departments || []).forEach((d) => {
+          const departmentName = (d?.name || "").trim();
+          const departmentCode = (d?.short || d?.id || "").trim();
+          const collegeId = d?.collegeId;
+          
+          if (departmentName && collegeId) {
+            // Find college by ID
+            const college = (data.colleges || []).find(c => c?.id === collegeId);
+            const collegeName = college?.name?.trim();
+            
+            if (collegeName && collegeMap[collegeName]) {
+              collegeMap[collegeName].push(departmentName);
+            }
+            
+            if (departmentCode) {
+              departmentNameToCode[departmentName] = departmentCode;
+            }
+          }
+        });
+
+        if (!cancelled) {
+          setOrgColleges(colleges);
+          setOrgDepartments(departments);
+          setCollegeDepartmentsMap(collegeMap);
+          setCollegeNameToCodeMap(collegeNameToCode);
+          setDepartmentNameToCodeMap(departmentNameToCode);
+        }
+      } catch {
+        if (!cancelled) {
+          setOrgColleges([]);
+          setOrgDepartments([]);
+          setCollegeDepartmentsMap({});
+          setCollegeNameToCodeMap({});
+          setDepartmentNameToCodeMap({});
+        }
+      }
+    }
+
+    loadOrgStructure();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const parseCSVFile = async (file: File): Promise<SystemUser[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const text = e.target?.result as string;
+          const lines = text.split('\n').filter(line => line.trim());
+          if (lines.length < 2) {
+            resolve([]);
+            return;
+          }
+          
+          const headers = lines[0].split(',').map(h => h.trim());
+          const facultyData: SystemUser[] = [];
+          
+          // Create a map of header to index for case-insensitive lookup
+          const headerMap: { [key: string]: number } = {};
+          headers.forEach((header, index) => {
+            headerMap[header.toLowerCase()] = index;
+          });
+          
+          for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.trim());
+            if (values.length >= headers.length) {
+              const getValue = (possibleHeaders: string[]) => {
+                for (const header of possibleHeaders) {
+                  const index = headerMap[header.toLowerCase()];
+                  if (index !== undefined && values[index]) {
+                    return values[index];
+                  }
+                }
+                return '';
+              };
+              
+              const faculty: SystemUser = {
+                id: `preview-${i}`,
+                name: `${getValue(['firstname', 'first_name'])} ${getValue(['lastname', 'last_name'])}`.trim(),
+                systemId: getValue(['universityid', 'university_id', 'id']),
+                userRole: 'Faculty',
+                universityId: getValue(['universityid', 'university_id', 'id']),
+                college: getValue(['college', 'college_code']),
+                department: getValue(['department', 'department_code']),
+                email: getValue(['email']),
+                firstname: getValue(['firstname', 'first_name']),
+                middlename: getValue(['middlename', 'middle_name']),
+                lastname: getValue(['lastname', 'last_name']),
+                facultytype: getValue(['facultytype', 'faculty_type']),
+              };
+              facultyData.push(faculty);
+            }
+          }
+          resolve(facultyData);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsText(file);
+    });
+  };
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -100,9 +327,7 @@ export default function CISOFacultyDataDump() {
         created={createdCount}
         updated={updatedCount}
         skipped={skippedCount}
-        skippedRows={[
-          { rowLabel: "Row 23", reason: "Missing details: employee_id, first_name, last_name" },
-        ]}
+        skippedRows={skippedRows}
       />
 
       <ErrorModal
@@ -153,15 +378,58 @@ export default function CISOFacultyDataDump() {
           uploadStatus={uploadStatus}
           uploadProgress={uploadProgress}
           isFileReady={isFileReady}
-          tableUsers={[]}
+          tableUsers={hasUploadedData ? persistedFacultyData : previewData}
           tablePage={1}
           tablePageCount={1}
           onTablePageChange={() => {}}
+          onAddFaculty={(faculty) => {
+            // Convert college and department names to codes
+            const collegeCode = collegeNameToCodeMap[faculty.college] || faculty.college;
+            const departmentCode = departmentNameToCodeMap[faculty.department] || faculty.department;
+            
+            const newFaculty: SystemUser = {
+              id: `manual-${Date.now()}`,
+              name: `${faculty.firstName} ${faculty.lastName}`.trim(),
+              systemId: faculty.universityId,
+              userRole: 'Faculty',
+              universityId: faculty.universityId,
+              college: collegeCode,
+              department: departmentCode,
+              email: faculty.email,
+              firstname: faculty.firstName,
+              middlename: faculty.middleName,
+              lastname: faculty.lastName,
+              facultytype: faculty.facultyType,
+            };
+            setPersistedFacultyData(prev => [...prev, newFaculty]);
+            if (!hasUploadedData) {
+              setPreviewData(prev => [...prev, newFaculty]);
+            }
+            // Save to localStorage immediately if data has been uploaded
+            if (hasUploadedData) {
+              setTimeout(() => {
+                localStorage.setItem(`facultyData_${selectedTimelineId}`, JSON.stringify([...persistedFacultyData, newFaculty]));
+              }, 0);
+            }
+          }}
+          onEditUser={handleEditUser}
+          onRemoveUser={handleRemoveUser}
+          colleges={orgColleges}
+          departments={orgDepartments}
+          collegeDepartmentsMap={collegeDepartmentsMap}
+          collegeNameToCodeMap={collegeNameToCodeMap}
+          departmentNameToCodeMap={departmentNameToCodeMap}
           onClearFile={() => {
             setUploadedFile(null);
             setUploadStatus("idle");
             setUploadProgress(0);
             setIsFileReady(false);
+            setPreviewData([]);
+            setPersistedFacultyData([]);
+            setHasUploadedData(false);
+            // Clear localStorage
+            localStorage.removeItem(`facultyData_${selectedTimelineId}`);
+            localStorage.removeItem(`hasUploaded_${selectedTimelineId}`);
           }}
           onRemoveFile={async () => {
             const fileName = uploadedFile?.name;
@@ -170,6 +438,12 @@ export default function CISOFacultyDataDump() {
             setUploadStatus("idle");
             setUploadProgress(0);
             setIsFileReady(false);
+            setPreviewData([]);
+            setPersistedFacultyData([]);
+            setHasUploadedData(false);
+            // Clear localStorage
+            localStorage.removeItem(`facultyData_${selectedTimelineId}`);
+            localStorage.removeItem(`hasUploaded_${selectedTimelineId}`);
             if (fileName && timelineLabel) {
               try {
                 await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
@@ -199,8 +473,38 @@ export default function CISOFacultyDataDump() {
             setUploadStatus("uploading");
             setUploadProgress(0);
             try {
+              // Create combined CSV data including all faculty from preview (manual + edited)
+              let fileToUpload = uploadedFile;
+              
+              if (previewData.length > 0) {
+                // Convert all faculty from preview data to CSV format
+                const previewCsvRows = previewData.map(faculty => {
+                  return [
+                    faculty.email || '',
+                    faculty.universityId || '',
+                    faculty.firstname || '',
+                    faculty.middlename || '',
+                    faculty.lastname || '',
+                    faculty.facultytype || '',
+                    faculty.college || '',
+                    faculty.department || ''
+                  ].join(',');
+                });
+                
+                // Create CSV with all preview data
+                const headers = 'email,university_id,first_name,middle_name,last_name,faculty_type,college_code,department_code';
+                const combinedCsv = [
+                  headers,
+                  ...previewCsvRows
+                ].join('\n');
+                
+                // Create new file with combined data (UTF-8 encoded)
+                const combinedBlob = new Blob([combinedCsv], { type: 'text/csv;charset=utf-8' });
+                fileToUpload = new File([combinedBlob], uploadedFile.name, { type: 'text/csv;charset=utf-8' });
+              }
+              
               const formData = new FormData();
-              formData.append("file", uploadedFile);
+              formData.append("file", fileToUpload);
               formData.append("clearance_timeline_id", selectedTimelineId);
 
               const res = await fetch("/admin/xu-faculty-clearance/api/ciso/faculty-dump/import", {
@@ -252,15 +556,30 @@ export default function CISOFacultyDataDump() {
               setUploadStatus("success");
               setUploadProgress(100);
               setIsFileReady(false);
+              // Move preview data to persisted data and clear preview
+              setPersistedFacultyData(previewData);
+              setPreviewData([]);
+              setHasUploadedData(true);
+              // Save to localStorage
+              localStorage.setItem(`facultyData_${selectedTimelineId}`, JSON.stringify(previewData));
+              localStorage.setItem(`hasUploaded_${selectedTimelineId}`, 'true');
 
               const created = data?.created_count ?? 0;
               const updated = data?.updated_count ?? 0;
               const skipped = data?.skipped_count ?? 0;
               const archiveId = data?.archive_id;
+              const errors = data?.errors ?? [];
+
+              // Format errors as skippedRows for the modal
+              const formattedSkippedRows = errors.map((error: any) => ({
+                rowLabel: `Row ${error.row}`,
+                reason: error.message
+              }));
 
               setCreatedCount(created);
               setUpdatedCount(updated);
               setSkippedCount(skipped);
+              setSkippedRows(formattedSkippedRows);
               setSuccessOpen(true);
 
               // Automatically download the archived CSV if archive ID is available
@@ -293,11 +612,19 @@ export default function CISOFacultyDataDump() {
               openError(SuccessErrorModalMessages.IMPORT_SELECT_SEMESTER);
               return;
             }
-            // Just store the file locally, don't upload yet
+            // Store the file and parse for preview
             setUploadedFile(file);
             setUploadStatus("idle");
             setUploadProgress(0);
             setIsFileReady(true);
+            
+            try {
+              const parsedData = await parseCSVFile(file);
+              setPreviewData(parsedData);
+            } catch (error) {
+              console.error('Failed to parse CSV:', error);
+              openError('Failed to parse CSV file. Please check the file format.');
+            }
           }}
           onDownloadTemplate={async () => {
             if (busy) return;

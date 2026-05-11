@@ -518,7 +518,7 @@ export function ApprovalHeader() {
                 <div className=" flex flex-col space-y-3">
                   <SheetClose asChild>
                     <Link
-                      to="/system-analytics"
+                      to="/OVPHE-system-analytics"
                       className="text-xl font-regular text-primary"
                     >
                       System Analytics
@@ -801,7 +801,7 @@ export function HROHeader() {
                   </SheetClose>
                   <SheetClose asChild>
                     <Link
-                      to="/system-analytics"
+                      to="/OVPHE-system-analytics"
                       className="text-xl font-regular text-primary"
                     >
                       System Analytics

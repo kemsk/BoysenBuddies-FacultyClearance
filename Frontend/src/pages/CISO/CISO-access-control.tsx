@@ -4,109 +4,160 @@ import "../../index.css";
 import { CISOHeader } from "../../stories/components/header";
 import { AccessControlCard } from "../../stories/components/access-control-card";
 import { CrudExplainer } from "../../stories/components/crud-explainer";
-
-import {
-  type AnnouncementItem,
-} from "../../stories/components/cards";
-
-
 import { Button } from "../../stories/components/button";
-
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
 import { RoleDefinitionCard } from "../../stories/components/role-definition-card";
 
-// Helper to POST notifications for multiple roles
-function postCISONotification(payload: {
-  title: string;
-  body: string;
-  details: string[];
-  status?: string | null;
-  is_read?: number | boolean;
-  user_roles?: string[];
-  user_ids?: number[];
-  created_by_id?: number | null;
-  approver_id?: number | null;
-  clearance_period_start_date?: string | null;
-  clearance_period_end_date?: string | null;
-}) {
-  fetch("/admin/xu-faculty-clearance/api/ciso/notifications", {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  })
-    .then(async (r) => {
-      if (r.ok) return;
-      const text = await r.text().catch(() => "");
-      console.error("CISO notification POST failed", r.status, text);
-    })
-    .catch((e) => {
-      console.error("CISO notification POST threw", e);
-    });
-}
+// Types for permissions
+type PermissionValue = {
+  Create: boolean;
+  Read: boolean;
+  Update: boolean;
+  Delete: boolean;
+};
 
-function GuidelinesToggle({
-  checked,
-  onChange,
-}: {
-  checked: boolean;
-  onChange: (next: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      className={
-        checked
-          ? "relative h-6 w-12 rounded-full bg-success"
-          : "relative h-6 w-12 rounded-full bg-muted-foreground/30"
-      }
-      onClick={() => onChange(!checked)}
-    >
-      <span
-        className={
-          checked
-            ? "absolute left-[26px] top-1 h-4 w-4 rounded-full bg-white"
-            : "absolute left-1 top-1 h-4 w-4 rounded-full bg-white"
-        }
-      />
-    </button>
-  );
-}
+type RolePermissions = {
+  [roleName: string]: {
+    [entity: string]: PermissionValue;
+  };
+};
+
 
 export default function CISOAccessControl() {
   const navigate = useNavigate();
 
-  type AnnouncementApiItem = AnnouncementItem & { id: number; email?: string };
+  // State for permissions data
+  const [permissions, setPermissions] = React.useState<RolePermissions>({});
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [hasChanges, setHasChanges] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
-  const [items, setItems] = React.useState<AnnouncementApiItem[]>([]);
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
-  const [confirm, setConfirm] = React.useState<
-    | { open: true; type: "enable" | "disable" | "delete"; index: number }
-    | { open: false }
-  >({ open: false });
+  // Define entities for each role (matching the backend configuration)
+  const entitiesConfig = {
+    "System Admin": [
+      "Announcement", "Guidelines", "System Analytics", "Clearance Timeline",
+      "College Department Office Configuration", "System Users", "Faculty Data Dump",
+      "Faculty Import History", "Clearance Requests Records", "Activity Logs", "Notifications"
+    ],
+    "Analytics Admin": [
+      "Announcement", "Guidelines", "System Analytics", "Clearance Requests Records",
+      "Activity Logs", "Notifications"
+    ],
+    "Approver": [
+      "Requirements List", "Announcements", "Clearance Requests", "Clearance Requests Records",
+      "Approver Assistant", "Activity Logs", "Notifications"
+    ],
+    "Approver Assistant": [
+      "Requirements List", "Announcements", "Clearance Requests", "Clearance Requests Records",
+      "Notifications"
+    ],
+    "Faculty Member": [
+      "Clearance Requests", "Clearance Requests Records", "Notifications"
+    ]
+  };
 
-  const refresh = React.useCallback(() => {
-    return fetch("/admin/xu-faculty-clearance/api/ciso/announcements")
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: { items: AnnouncementApiItem[] }) => {
-        const initial = (data.items ?? []).map((item) => ({
-          ...item,
-          enabled: item.enabled ?? true,
-        }));
-        setItems(initial);
+  // Load permissions from API
+  const loadPermissions = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch("/admin/xu-faculty-clearance/api/ciso/access-control/permissions", {
+        credentials: "include"
       });
+      
+      if (!response.ok) {
+        throw new Error("Failed to load permissions");
+      }
+      
+      const data = await response.json();
+      
+      // Initialize permissions with default values if they don't exist
+      const initializedPermissions: RolePermissions = {};
+      
+      Object.keys(entitiesConfig).forEach(roleName => {
+        initializedPermissions[roleName] = {};
+        entitiesConfig[roleName as keyof typeof entitiesConfig].forEach(entity => {
+          // Use existing permissions or default based on screenshots
+          const existingPerms = data.permissions?.[roleName]?.[entity];
+          if (existingPerms) {
+            initializedPermissions[roleName][entity] = existingPerms;
+          } else {
+            // Default permissions based on the screenshots
+            initializedPermissions[roleName][entity] = {
+              Create: true,
+              Read: true,
+              Update: false,  // Most roles don't have update permissions
+              Delete: true
+            };
+          }
+        });
+      });
+      
+      setPermissions(initializedPermissions);
+    } catch (err) {
+      console.error("Error loading permissions:", err);
+      setError(err instanceof Error ? err.message : "Failed to load permissions");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  // Save permissions to API
+  const savePermissions = React.useCallback(async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      
+      const response = await fetch("/admin/xu-faculty-clearance/api/ciso/access-control/permissions", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify({ permissions })
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to save permissions");
+      }
+      
+      setHasChanges(false);
+      // Show success message (you could add a toast notification here)
+      console.log("Permissions saved successfully");
+    } catch (err) {
+      console.error("Error saving permissions:", err);
+      setError(err instanceof Error ? err.message : "Failed to save permissions");
+    } finally {
+      setSaving(false);
+    }
+  }, [permissions]);
+
+  // Handle permission changes
+  const handlePermissionChange = React.useCallback((args: {
+    categoryId: string;
+    entity: string;
+    privilege: "Create" | "Read" | "Update" | "Delete";
+    value: boolean;
+  }) => {
+    setPermissions(prev => ({
+      ...prev,
+      [args.categoryId]: {
+        ...prev[args.categoryId],
+        [args.entity]: {
+          ...prev[args.categoryId]?.[args.entity],
+          [args.privilege]: args.value
+        }
+      }
+    }));
+    setHasChanges(true);
+  }, []);
+
+  // Load permissions on component mount
   React.useEffect(() => {
-    refresh()
-      .catch(() => {
-         setItems([]); // Show empty state when API fails
-    })
-  }, [refresh]);
+    loadPermissions();
+  }, [loadPermissions]);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -144,6 +195,13 @@ export default function CISOAccessControl() {
          </div>       
 
          <div className="mx-auto w-full pb-10">
+          {error && (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+              <div className="font-semibold">Error</div>
+              <div className="text-sm">{error}</div>
+            </div>
+          )}
+          
           <div className="mt-6">
             <div className="hidden items-center gap-6 lg:flex">
               <div className="text-primary text-md font-bold lg:flex-[0_0_35%]">Role Definition</div>
@@ -197,167 +255,34 @@ export default function CISOAccessControl() {
 
             <div className="flex min-w-0 flex-1 flex-col gap-5">
               <div className="text-primary text-md font-bold lg:hidden">Role Manager</div>
+              
+              {/* Save button */}
+              <div className="flex justify-end gap-2">
+                <Button 
+                  onClick={savePermissions}
+                  disabled={!hasChanges || saving || loading}
+                  variant={hasChanges ? "default" : "outline"}
+                >
+                  {saving ? "Saving..." : hasChanges ? "Save Changes" : "No Changes"}
+                </Button>
+              </div>
+
               <AccessControlCard
-                categories={[
-                {
-                  id: "System Admin",
-                  label: "System Admin",
-                  rows: [
-                    {
-                      entity: "Announcement",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "Guidelines",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "System Analytics",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "Clearance Timeline",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "College Department Office Configuration",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "System Users",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "Faculty Data Dump",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "Faculty Import History",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },              
-                    {
-                      entity: "Clearance Requests Records",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "Activity Logs",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "Notifications",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },                                                                 
-                  ],
-                },
-                {
-                  id: "Analytics Admin",
-                  label: "Analytics Admin",
-                  rows: [
-                    {
-                      entity: "Announcement",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "Guidelines",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "System Analytics",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "Clearance Requests Records",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "Activity Logs",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "Notifications",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },                                                                 
-                  ],
-                },  
-                {
-                  id: "Approver",
-                  label: "Approver",
-                  rows: [
-                    {
-                      entity: "Requirements List",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "Announcements",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "Clearance Requests",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "Clearance Requests Records",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "Approver Assistant",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },                 
-                    {
-                      entity: "Activity Logs",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "Notifications",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },                                                                 
-                  ],
-                },  
-                {
-                  id: "Approver Assistant",
-                  label: "Approver Assistant",
-                  rows: [
-                    {
-                      entity: "Requirements List",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "Announcements",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "Clearance Requests",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "Clearance Requests Records",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },        
-                    {
-                      entity: "Notifications",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },                                                                 
-                  ],
-                },    
-                {
-                  id: "Faculty Member",
-                  label: "Faculty Member",
-                  rows: [
-                    {
-                      entity: "Clearance Requests",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "Clearance Requests Records",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },
-                    {
-                      entity: "Notifications",
-                      values: { Create: "organization", Read: "organization", Delete: "none" },
-                    },                                                                 
-                  ],
-                },                                                      
-              ]}
+                roleTitle="Role Permissions"
+                categories={Object.keys(entitiesConfig).map(roleName => ({
+                  id: roleName,
+                  label: roleName,
+                  rows: entitiesConfig[roleName as keyof typeof entitiesConfig].map(entity => ({
+                    entity,
+                    values: permissions[roleName]?.[entity] || {
+                      Create: false,
+                      Read: false,
+                      Update: false,
+                      Delete: false
+                    }
+                  }))
+                }))}
+                onPermissionChange={handlePermissionChange}
               />
               <CrudExplainer />
             </div>

@@ -167,7 +167,7 @@ def _serialize_clearance_request_item(req: ClearanceRequest):
     return {
         "id": str(req.id),
         "requestId": req.request_id or str(req.id),
-        "employeeId": getattr(faculty, "employee_id", "") or "",
+        "employeeId": getattr(faculty.user, "university_id", "") if faculty.user else "",
         "name": (faculty_user.get_full_name() if faculty_user and hasattr(faculty_user, "get_full_name") else "") or " ".join(
             [
                 p for p in [
@@ -192,7 +192,7 @@ def _serialize_assistant_individual_request(req: ClearanceRequest):
     
     print(f"[DEBUG] Serializing request {req.request_id}: faculty={faculty}, user={faculty_user}")
     if faculty:
-        print(f"[DEBUG] Faculty employee_id: {getattr(faculty, 'employee_id', 'NULL')}")
+        print(f"[DEBUG] Faculty university_id: {getattr(getattr(faculty, 'user', None), 'university_id', 'NULL')}")
         print(f"[DEBUG] Faculty college: {getattr(getattr(faculty, 'college', None), 'name', 'NULL')}")
         print(f"[DEBUG] Faculty department: {getattr(getattr(faculty, 'department', None), 'name', 'NULL')}")
 
@@ -226,8 +226,8 @@ def _serialize_assistant_individual_request(req: ClearanceRequest):
         "item": {
             "id": str(req.id),
             "requestId": req.request_id or str(req.id),
-            "employeeId": getattr(faculty, "employee_id", "") or "",
-            "schoolId": getattr(faculty, "employee_id", "") or "",
+            "employeeId": getattr(faculty.user, "university_id", "") if faculty.user else "",
+            "schoolId": getattr(faculty.user, "university_id", "") if faculty.user else "",
             "universityId": getattr(faculty_user, "university_id", "") or "",
             "name": (faculty_user.get_full_name() if faculty_user and hasattr(faculty_user, "get_full_name") else "") or " ".join(
                 [
@@ -1116,7 +1116,7 @@ def ovphe_profile_api(request):
             "first_name": user.first_name,
             "middle_name": user.middle_name,
             "last_name": user.last_name,
-            "role": "OVPHE",
+            "role": "Analytics Admin",
         })
 
 
@@ -1832,11 +1832,12 @@ def clearance_requests_api(request):
     qs = (
         ClearanceRequest.objects.select_related(
             "faculty",
+            "faculty__user",
             "faculty__college",
             "faculty__department",
         )
 
-        .filter(clearance_timeline=active_timeline, requirement__in=filtered_requirements)
+        .filter(clearance_timeline=active_timeline, requirement_id__in=[req.id for req in filtered_requirements])
         .order_by("-id")
     )
 
@@ -1851,11 +1852,11 @@ def clearance_requests_api(request):
         college = getattr(getattr(faculty, "college", None), "name", "") or ""
         department = getattr(getattr(faculty, "department", None), "name", "") or ""
         faculty_type = getattr(faculty, "faculty_type", "") or ""
-        employee_id = getattr(faculty, "employee_id", "") or ""
+        university_id = getattr(faculty.user, "university_id", "") if faculty.user else ""
         items.append({
                 "id": str(r.id),
                 "requestId": r.request_id,
-                "employeeId": employee_id,
+                "employeeId": university_id,
                 "name": full_name,
                 "college": college,
                 "department": department,
@@ -2308,13 +2309,12 @@ def ciso_faculty_dump_template_api(request):
     headers = [
         "email",
         "university_id",
-        "employee_id",
         "first_name",
         "middle_name",
         "last_name",
         "faculty_type",
-        "college",
-        "department",
+        "college_code",
+        "department_code",
     ]
 
     output = io.StringIO()
@@ -2325,24 +2325,22 @@ def ciso_faculty_dump_template_api(request):
         {
             "email": "new.faculty13@xu.edu.ph",
             "university_id": "2024-000013",
-            "employee_id": "EMP-000013",
             "first_name": "New",
             "middle_name": "A.",
             "last_name": "Faculty",
             "faculty_type": "Full-time",
-            "college": "College of Computer Studies",
-            "department": "Information Technology",
+            "college_code": "CCS",
+            "department_code": "IT",
         },
         {
             "email": "new.faculty14@xu.edu.ph",
             "university_id": "2024-000014",
-            "employee_id": "EMP-000014",
             "first_name": "Faculty",
             "middle_name": "B.",
             "last_name": "New",
             "faculty_type": "Part-time",
-            "college": "College of Arts and Sciences",
-            "department": "Mathematics",
+            "college_code": "CAS",
+            "department_code": "MATH",
         },
     ]
 
@@ -2420,7 +2418,7 @@ def ciso_faculty_dump_import_api(request):
         return JsonResponse({"detail": "Unable to decode CSV; please upload a UTF-8 or Latin-1 encoded csv"}, status=400)
 
     reader = csv.DictReader(io.StringIO(text))
-    required_cols = {"email", "university_id", "employee_id"}
+    required_cols = {"email", "university_id"}
     header_cols = set((reader.fieldnames or []))
     missing_cols = sorted(required_cols - header_cols)
 
@@ -2438,7 +2436,7 @@ def ciso_faculty_dump_import_api(request):
     def _clean(value: str | None):
         return (value or "").strip()
 
-    def _validate_faculty_data(email, university_id, employee_id, first_name, last_name, faculty_type, college_name, department_name, office_name):
+    def _validate_faculty_data(email, university_id, first_name, last_name, faculty_type, college_code, department_code, office_name):
         """Validate faculty data - all fields required except middle_name"""
         missing_fields = []
         
@@ -2448,9 +2446,6 @@ def ciso_faculty_dump_import_api(request):
         
         if not university_id or not university_id.strip():
             missing_fields.append("university_id")
-        
-        if not employee_id or not employee_id.strip():
-            missing_fields.append("employee_id")
         
         # Name fields
         if not first_name or not first_name.strip():
@@ -2463,38 +2458,38 @@ def ciso_faculty_dump_import_api(request):
             missing_fields.append("faculty_type")
         
         # Check that at least one organizational assignment exists
-        if not (college_name or department_name or office_name):
+        if not (college_code or department_code or office_name):
             missing_fields.append("organization_assignment")
         
         return len(missing_fields) == 0, missing_fields
 
-    def _validate_college_department(college_name, department_name, existing_colleges, existing_departments, dept_to_college):
-        """Validate college and department against existing records with case-sensitive matching"""
+    def _validate_college_department(college_code, department_code, existing_colleges, existing_departments, dept_to_college):
+        """Validate college and department against existing records using codes"""
         invalid_fields = []
         
-        # Validate college if provided
-        if college_name and college_name not in existing_colleges:
-            invalid_fields.append("college")
+        # Validate college code if provided
+        if college_code and college_code not in existing_colleges:
+            invalid_fields.append("college_code")
         
-        # Validate department if provided
-        if department_name:
-            if department_name not in existing_departments:
-                invalid_fields.append("department")
+        # Validate department code if provided
+        if department_code:
+            if department_code not in existing_departments:
+                invalid_fields.append("department_code")
             else:
                 # Check if department belongs to the specified college
-                if college_name:
-                    expected_college = dept_to_college.get(department_name)
-                    if expected_college != college_name:
-                        invalid_fields.append("department")
+                if college_code:
+                    expected_college = dept_to_college.get(department_code)
+                    if expected_college != college_code:
+                        invalid_fields.append("department_code")
         
         return invalid_fields
 
-    # Get existing colleges and departments for case-sensitive validation
-    existing_colleges = {college.name: college for college in College.objects.filter(is_active=True)}
-    existing_departments = {dept.name: dept for dept in Department.objects.filter(is_active=True).select_related('college')}
+    # Get existing colleges and departments for code validation
+    existing_colleges = {college.code: college for college in College.objects.filter(is_active=True)}
+    existing_departments = {dept.code: dept for dept in Department.objects.filter(is_active=True).select_related('college')}
     
-    # Create mapping of departments to their college names for validation
-    dept_to_college = {dept.name: dept.college.name for dept in Department.objects.filter(is_active=True).select_related('college')}
+    # Create mapping of departments to their college codes for validation
+    dept_to_college = {dept.code: dept.college.code for dept in Department.objects.filter(is_active=True).select_related('college')}
 
     # Get or create Faculty role
     try:
@@ -2509,19 +2504,6 @@ def ciso_faculty_dump_import_api(request):
     for idx, row in enumerate(reader, start=2):
         email = _clean(row.get("email"))
         university_id = _clean(row.get("university_id"))
-        employee_id = _clean(row.get("employee_id"))
-
-        if not employee_id:
-            errors.append({"row": idx, "message": "employee_id is required"})
-            skipped_count += 1
-            # Store row info for archived CSV
-            processed_rows.append({
-                'row': row,
-                'validation_status': 'SKIPPED',
-                'missing_fields': 'employee_id',
-                'invalid_fields': ''
-            })
-            continue
 
         if not email:
             errors.append({"row": idx, "message": "email is required"})
@@ -2552,12 +2534,12 @@ def ciso_faculty_dump_import_api(request):
         last_name = _clean(row.get("last_name"))
         faculty_type = _clean(row.get("faculty_type"))
         office_name = _clean(row.get("office"))
-        college_name = _clean(row.get("college"))
-        department_name = _clean(row.get("department"))
+        college_code = _clean(row.get("college_code"))
+        department_code = _clean(row.get("department_code"))
 
         # Validate faculty data - skip incomplete records
         is_valid, missing_fields = _validate_faculty_data(
-            email, university_id, employee_id, first_name, last_name, faculty_type, college_name, department_name, office_name
+            email, university_id, first_name, last_name, faculty_type, college_code, department_code, office_name
         )
         
         if not is_valid:
@@ -2575,13 +2557,13 @@ def ciso_faculty_dump_import_api(request):
             })
             continue
 
-        # Validate college and department against existing records (case-sensitive)
-        invalid_fields = _validate_college_department(college_name, department_name, existing_colleges, existing_departments, dept_to_college)
+        # Validate college and department against existing records using codes
+        invalid_fields = _validate_college_department(college_code, department_code, existing_colleges, existing_departments, dept_to_college)
         
         if invalid_fields:
             errors.append({
                 "row": idx, 
-                "message": f"Skipping faculty record due to invalid college/department: {', '.join(invalid_fields)}"
+                "message": f"Skipping faculty record due to invalid college/department codes: {', '.join(invalid_fields)}"
             })
             skipped_count += 1
             # Store row info for archived CSV with invalid fields
@@ -2617,7 +2599,6 @@ def ciso_faculty_dump_import_api(request):
                 faculty, faculty_created = Faculty.objects.get_or_create(
                     user=user,
                     defaults={
-                        'employee_id': employee_id,
                         'faculty_type': faculty_type,
                         'first_name': first_name,
                         'middle_name': middle_name,
@@ -2626,29 +2607,21 @@ def ciso_faculty_dump_import_api(request):
 
                 if not faculty_created:
                     # Update existing faculty
-                    faculty.employee_id = employee_id
                     faculty.faculty_type = faculty_type
                     faculty.first_name = first_name
                     faculty.middle_name = middle_name
                     faculty.last_name = last_name
                     faculty.save()
 
-                # Handle relationships
-                if college_name:
-                    college, _ = College.objects.get_or_create(
-                        name=college_name,
-                        defaults={'is_active': True}
-                    )
-
-                    faculty.college = college
-                if department_name and college_name:
-                    department, _ = Department.objects.get_or_create(
-                        name=department_name,
-                        college=college,
-                        defaults={'is_active': True}
-                    )
-
-                    faculty.department = department
+                # Handle relationships using codes
+                if college_code:
+                    college = existing_colleges.get(college_code)
+                    if college:
+                        faculty.college = college
+                if department_code and college_code:
+                    department = existing_departments.get(department_code)
+                    if department:
+                        faculty.department = department
                 if office_name:
                     office, _ = Office.objects.get_or_create(
                         name=office_name,
@@ -2687,6 +2660,25 @@ def ciso_faculty_dump_import_api(request):
                 'missing_fields': '',
                 'invalid_fields': f"Error: {str(e)}"
             })
+
+    # Check if all entries are complete - if so, don't save the results CSV
+    all_complete = all(
+        processed_row.get('validation_status') == 'COMPLETE' 
+        for processed_row in processed_rows
+    )
+    
+    if all_complete:
+        # All entries are complete, return success without creating archive
+        return JsonResponse(
+            {
+                "created_count": created_count,
+                "updated_count": updated_count,
+                "skipped_count": skipped_count,
+                "errors": errors,
+                "archive_id": None,  # No archive created since all entries are complete
+                "message": "All faculty entries were successfully processed. No results file created."
+            }
+        )
 
     # After processing rows, save the uploaded CSV to disk with validation info and create
     # a FacultyDumpArchive entry tied to the selected clearance timeline.
@@ -3004,14 +2996,11 @@ def _timeline_dump_faculty_ids(timeline: ClearanceTimeline):
 
         for row in reader:
             email = (row.get("email") or "").strip().lower()
-            employee_id = (row.get("employee_id") or "").strip()
             university_id = (row.get("university_id") or "").strip()
 
             faculty = None
             if email:
                 faculty = Faculty.objects.select_related("user").filter(user__email__iexact=email).first()
-            if not faculty and employee_id:
-                faculty = Faculty.objects.filter(employee_id__iexact=employee_id).first()
             if not faculty and university_id:
                 faculty = Faculty.objects.select_related("user").filter(user__university_id__iexact=university_id).first()
 
@@ -3246,7 +3235,7 @@ def _archive_clearance_timeline_records(timeline: ClearanceTimeline):
                 "last_updated": archived_at,
                 "clearance_data": {
                     "clearance_status": clearance.status if clearance else clearance_status,
-                    "employeeId": faculty.employee_id or "",
+                    "employeeId": faculty.user.university_id if faculty.user else "",
                     "name": _archived_faculty_display_name(faculty),
                     "college": faculty.college.name if faculty.college else "",
                     "department": faculty.department.name if faculty.department else "",
@@ -3286,7 +3275,7 @@ def _archived_faculty_display_name(faculty: Faculty | None):
     faculty_parts = [part for part in faculty_parts if part]
     if faculty_parts:
         return " ".join(faculty_parts)
-    return getattr(user, "email", "") or getattr(faculty, "employee_id", "") or ""
+    return getattr(user, "email", "") or getattr(faculty.user, "university_id", "") if faculty.user else ""
 
 
 def _user_display_name(user: User | None):
@@ -3317,7 +3306,7 @@ def _serialize_archived_faculty_item(archived: ArchivedClearance):
     college_name = archived_data.get("college") or (faculty.college.name if faculty and faculty.college else "")
     department_name = archived_data.get("department") or (faculty.department.name if faculty and faculty.department else "")
     faculty_type = archived_data.get("facultyType") or getattr(faculty, "faculty_type", "") or ""
-    employee_id = archived_data.get("employeeId") or getattr(faculty, "employee_id", "") or ""
+    employee_id = archived_data.get("employeeId") or getattr(faculty.user, "university_id", "") if faculty.user else ""
     display_name = archived_data.get("name") or _archived_faculty_display_name(faculty) or getattr(user, "email", "") or employee_id
 
     # Calculate validation status and missing fields
@@ -3902,14 +3891,14 @@ def ciso_org_structure_api(request):
     colleges = list(
         College.objects.filter(is_active=True)
         .order_by("name", "id")
-        .values("id", "name", "abbreviation")
+        .values("id", "name", "code")
     )
 
     departments = list(
         Department.objects.select_related("college")
         .filter(is_active=True, college__is_active=True)
         .order_by("college__name", "name", "id")
-        .values("id", "college_id", "name", "abbreviation")
+        .values("id", "college_id", "name", "code")
     )
 
     offices = list(
@@ -3923,7 +3912,7 @@ def ciso_org_structure_api(request):
             models.Q(name__icontains="Dean")
         )
         .order_by("display_order", "name", "id")
-        .values("id", "name", "abbreviation", "display_order")
+        .values("id", "name", "code", "display_order")
     )
 
     return JsonResponse(
@@ -3932,7 +3921,7 @@ def ciso_org_structure_api(request):
                 {
                     "id": str(c["id"]),
                     "name": c["name"],
-                    "short": c["abbreviation"] or "",
+                    "short": c["code"] or "",
                 }
                 for c in colleges
             ],
@@ -3941,7 +3930,7 @@ def ciso_org_structure_api(request):
                     "id": str(d["id"]),
                     "collegeId": str(d["college_id"]),
                     "name": d["name"],
-                    "short": d["abbreviation"] or "",
+                    "short": d["code"] or "",
                 }
                 for d in departments
             ],
@@ -3949,7 +3938,7 @@ def ciso_org_structure_api(request):
                 {
                     "id": str(o["id"]),
                     "name": o["name"],
-                    "short": o["abbreviation"] or "",
+                    "short": o["code"] or "",
                     "displayOrder": int(o.get("display_order") or 0),
                 }
                 for o in offices
@@ -3962,13 +3951,13 @@ def _build_org_structure_payload():
     colleges = list(
         College.objects.filter(is_active=True)
         .order_by("name", "id")
-        .values("id", "name", "abbreviation")
+        .values("id", "name", "code")
     )
     departments = list(
         Department.objects.select_related("college")
         .filter(is_active=True, college__is_active=True)
         .order_by("college__name", "name", "id")
-        .values("id", "college_id", "name", "abbreviation")
+        .values("id", "college_id", "name", "code")
     )
     offices = list(
         Office.objects.filter(is_active=True)
@@ -3981,7 +3970,7 @@ def _build_org_structure_payload():
             models.Q(name__icontains="Dean")
         )
         .order_by("display_order", "name", "id")
-        .values("id", "name", "abbreviation", "display_order")
+        .values("id", "name", "code", "display_order")
     )
 
     return {
@@ -3989,7 +3978,7 @@ def _build_org_structure_payload():
             {
                 "id": str(c["id"]),
                 "name": c["name"],
-                "short": c["abbreviation"] or "",
+                "short": c["code"] or "",
             }
             for c in colleges
         ],
@@ -3998,7 +3987,7 @@ def _build_org_structure_payload():
                 "id": str(d["id"]),
                 "collegeId": str(d["college_id"]),
                 "name": d["name"],
-                "short": d["abbreviation"] or "",
+                "short": d["code"] or "",
             }
             for d in departments
         ],
@@ -4006,7 +3995,7 @@ def _build_org_structure_payload():
             {
                 "id": str(o["id"]),
                 "name": o["name"],
-                "short": o["abbreviation"] or "",
+                "short": o["code"] or "",
                 "displayOrder": int(o.get("display_order") or 0),
             }
             for o in offices
@@ -4094,7 +4083,7 @@ def _resolve_office_for_flow_step(*, category: str, office_id):
 
     return (
         Office.objects.filter(is_active=True)
-        .filter(models.Q(name__iexact=cat) | models.Q(abbreviation__iexact=cat))
+        .filter(models.Q(name__iexact=cat) | models.Q(code__iexact=cat))
         .first()
     )
 
@@ -4112,17 +4101,17 @@ def _relink_flow_steps_for_office(*, office: Office, timeline_id=None):
     # First, try to link existing unassigned steps
     existing_steps = config.steps.filter(office__isnull=True).filter(
         models.Q(category__iexact=office.name)
-        | models.Q(category__iexact=(office.abbreviation or ""))
+        | models.Q(category__iexact=(office.code or ""))
     )
     
     if existing_steps.exists():
         existing_steps.update(office=office)
     else:
         # Create new approver flow step for this office if no existing step found
-        # Use the office name as the category, fallback to abbreviation if name is too generic
+        # Use the office name as the category, fallback to code if name is too generic
         category_name = office.name
-        if len(category_name) <= 3 and office.abbreviation:
-            category_name = office.abbreviation
+        if len(category_name) <= 3 and office.code:
+            category_name = office.code
         
         # Get the next order number
         max_order = config.steps.aggregate(models.Max('order'))['order__max'] or 0
@@ -4161,8 +4150,8 @@ def ciso_colleges_api(request):
 
         if existing_inactive:
             existing_inactive.is_active = True
-            existing_inactive.abbreviation = short or None
-            existing_inactive.save(update_fields=["is_active", "abbreviation"])
+            existing_inactive.code = short or None
+            existing_inactive.save(update_fields=["is_active", "code"])
 
             try:
                 ActivityLog.objects.create(
@@ -4178,7 +4167,7 @@ def ciso_colleges_api(request):
                 {
                     "id": str(existing_inactive.id),
                     "name": existing_inactive.name,
-                    "short": existing_inactive.abbreviation or "",
+                    "short": existing_inactive.code or "",
                     "isActive": bool(existing_inactive.is_active),
                     "reactivated": True,
                 },
@@ -4187,7 +4176,7 @@ def ciso_colleges_api(request):
 
         obj = College.objects.create(
             name=name,
-            abbreviation=short or None,
+            code=short or None,
             is_active=True,
         )
 
@@ -4205,7 +4194,7 @@ def ciso_colleges_api(request):
             {
                 "id": str(obj.id),
                 "name": obj.name,
-                "short": obj.abbreviation or "",
+                "short": obj.code or "",
                 "isActive": bool(obj.is_active),
             },
             status=201,
@@ -4281,7 +4270,7 @@ def ciso_college_detail_api(request, college_id: int):
         return JsonResponse({
             "id": str(obj.id),
             "name": obj.name,
-            "short": obj.abbreviation or "",
+            "short": obj.code or "",
             "isActive": bool(obj.is_active),
         })
 
@@ -4295,7 +4284,7 @@ def ciso_college_detail_api(request, college_id: int):
 
         if "short" in data:
             short = (data.get("short") or "").strip()
-            obj.abbreviation = short or None
+            obj.code = short or None
 
         if "isActive" in data:
             obj.is_active = bool(data.get("isActive"))
@@ -4303,7 +4292,7 @@ def ciso_college_detail_api(request, college_id: int):
         if not (obj.name or "").strip():
             return JsonResponse({"detail": "name is required"}, status=400)
 
-        obj.save(update_fields=["name", "abbreviation", "is_active"])
+        obj.save(update_fields=["name", "code", "is_active"])
 
         try:
             ActivityLog.objects.create(
@@ -4320,7 +4309,7 @@ def ciso_college_detail_api(request, college_id: int):
             {
                 "id": str(obj.id),
                 "name": obj.name,
-                "short": obj.abbreviation or "",
+                "short": obj.code or "",
                 "isActive": bool(obj.is_active),
             }
         )
@@ -4397,8 +4386,8 @@ def ciso_departments_api(request):
         
         if existing_inactive:
             existing_inactive.is_active = True
-            existing_inactive.abbreviation = short or None
-            existing_inactive.save(update_fields=["is_active", "abbreviation"])
+            existing_inactive.code = short or None
+            existing_inactive.save(update_fields=["is_active", "code"])
             
             try:
                 ActivityLog.objects.create(
@@ -4414,7 +4403,7 @@ def ciso_departments_api(request):
                     "id": str(existing_inactive.id),
                     "collegeId": str(existing_inactive.college_id),
                     "name": existing_inactive.name,
-                    "short": existing_inactive.abbreviation or "",
+                    "short": existing_inactive.code or "",
                     "isActive": bool(existing_inactive.is_active),
                     "reactivated": True,
                 },
@@ -4424,7 +4413,7 @@ def ciso_departments_api(request):
         obj = Department.objects.create(
             college=college,
             name=name,
-            abbreviation=short or None,
+            code=short or None,
             is_active=True,
         )
 
@@ -4442,7 +4431,7 @@ def ciso_departments_api(request):
                 "id": str(obj.id),
                 "collegeId": str(obj.college_id),
                 "name": obj.name,
-                "short": obj.abbreviation or "",
+                "short": obj.code or "",
                 "isActive": bool(obj.is_active),
             },
             status=201,
@@ -4467,7 +4456,7 @@ def ciso_department_detail_api(request, department_id: int):
                 "id": str(obj.id),
                 "collegeId": str(obj.college_id),
                 "name": obj.name,
-                "short": obj.abbreviation or "",
+                "short": obj.code or "",
                 "isActive": bool(obj.is_active),
             })
 
@@ -4481,7 +4470,7 @@ def ciso_department_detail_api(request, department_id: int):
 
         if "short" in data:
             short = (data.get("short") or "").strip()
-            obj.abbreviation = short or None
+            obj.code = short or None
 
         if "isActive" in data:
             obj.is_active = bool(data.get("isActive"))
@@ -4495,7 +4484,7 @@ def ciso_department_detail_api(request, department_id: int):
         if not (obj.name or "").strip():
             return JsonResponse({"detail": "name is required"}, status=400)
 
-        obj.save(update_fields=["name", "abbreviation", "is_active", "college"])
+        obj.save(update_fields=["name", "code", "is_active", "college"])
 
         try:
             ActivityLog.objects.create(
@@ -4511,7 +4500,7 @@ def ciso_department_detail_api(request, department_id: int):
                 "id": str(obj.id),
                 "collegeId": str(obj.college_id),
                 "name": obj.name,
-                "short": obj.abbreviation or "",
+                "short": obj.code or "",
                 "isActive": bool(obj.is_active),
             }
         )
@@ -4563,9 +4552,9 @@ def ciso_offices_api(request):
         existing_inactive = Office.objects.filter(name__iexact=name, is_active=False).first()
         if existing_inactive:
             existing_inactive.is_active = True
-            existing_inactive.abbreviation = short or None
+            existing_inactive.code = short or None
             existing_inactive.display_order = display_order
-            existing_inactive.save(update_fields=["is_active", "abbreviation", "display_order"])
+            existing_inactive.save(update_fields=["is_active", "code", "display_order"])
             _relink_flow_steps_for_office(office=existing_inactive)
 
             try:
@@ -4581,7 +4570,7 @@ def ciso_offices_api(request):
             return JsonResponse({
                     "id": str(existing_inactive.id),
                     "name": existing_inactive.name,
-                    "short": existing_inactive.abbreviation or "",
+                    "short": existing_inactive.code or "",
                     "displayOrder": int(existing_inactive.display_order),
                     "isActive": bool(existing_inactive.is_active),
                     "reactivated": True,
@@ -4591,7 +4580,7 @@ def ciso_offices_api(request):
 
         obj = Office.objects.create(
             name=name,
-            abbreviation=short or None,
+            code=short or None,
             is_active=True,
             display_order=display_order,
         )
@@ -4608,7 +4597,7 @@ def ciso_offices_api(request):
             {
                 "id": str(obj.id),
                 "name": obj.name,
-                "short": obj.abbreviation or "",
+                "short": obj.code or "",
                 "displayOrder": int(obj.display_order),
                 "isActive": bool(obj.is_active),
             },
@@ -4634,7 +4623,7 @@ def ciso_office_detail_api(request, office_id: int):
             {
                 "id": str(obj.id),
                 "name": obj.name,
-                "short": obj.abbreviation or "",
+                "short": obj.code or "",
                 "displayOrder": int(obj.display_order),
                 "isActive": bool(obj.is_active),
             }
@@ -4650,7 +4639,7 @@ def ciso_office_detail_api(request, office_id: int):
 
         if "short" in data:
             short = (data.get("short") or "").strip()
-            obj.abbreviation = short or None
+            obj.code = short or None
 
         if "displayOrder" in data:
             obj.display_order = _as_int(data.get("displayOrder"), obj.display_order)
@@ -4661,7 +4650,7 @@ def ciso_office_detail_api(request, office_id: int):
         if not (obj.name or "").strip():
             return JsonResponse({"detail": "name is required"}, status=400)
 
-        obj.save(update_fields=["name", "abbreviation", "display_order", "is_active"])
+        obj.save(update_fields=["name", "code", "display_order", "is_active"])
         _relink_flow_steps_for_office(office=obj)
         try:
             ActivityLog.objects.create(
@@ -4675,7 +4664,7 @@ def ciso_office_detail_api(request, office_id: int):
             {
                 "id": str(obj.id),
                 "name": obj.name,
-                "short": obj.abbreviation or "",
+                "short": obj.code or "",
                 "displayOrder": int(obj.display_order),
                 "isActive": bool(obj.is_active),
             }
@@ -5167,7 +5156,7 @@ def ovphe_export_clearance_results_api(request):
             (getattr(user, "last_name", "") or getattr(faculty, "last_name", "") or "").strip(),
         ]
 
-        faculty_name = " ".join([part for part in name_parts if part]).strip() or (getattr(user, "email", "") or faculty.employee_id)
+        faculty_name = " ".join([part for part in name_parts if part]).strip() or getattr(user, "email", "")
         export_status = "COMPLETED" if completion_info["is_completed"] else "INCOMPLETE"
         completion_date = ""
 
@@ -5466,10 +5455,10 @@ def ovphe_system_analytics_api(request):
 
     # Calculate clearance deadline info
     clearance_deadline = None
-    if timeline and timeline.clearance_end_date:
-        current_date = timezone.now().date()
+    if timeline and timeline.clearance_end_date and timeline.clearance_start_date:
+        start_date = timeline.clearance_start_date.date()
         end_date = timeline.clearance_end_date.date()
-        days_remaining = (end_date - current_date).days
+        days_remaining = (end_date - start_date).days
 
         if 0 <= days_remaining <= 14:
             clearance_deadline = {
@@ -5636,7 +5625,7 @@ def ovphe_clearance_progress_api(request):
         faculty_qs = faculty_qs.filter(
             models.Q(user__first_name__icontains=search) |
             models.Q(user__last_name__icontains=search) |
-            models.Q(employee_id__icontains=search)
+            models.Q(user__university_id__icontains=search)
         )
 
     faculty_items = list(faculty_qs)
@@ -5674,7 +5663,7 @@ def ovphe_clearance_progress_api(request):
             (getattr(user, "middle_name", "") or getattr(faculty, "middle_name", "") or "").strip(),
             (getattr(user, "last_name", "") or getattr(faculty, "last_name", "") or "").strip(),
         ]
-        faculty_name = " ".join([part for part in name_parts if part]).strip() or (getattr(user, "email", "") or faculty.employee_id)
+        faculty_name = " ".join([part for part in name_parts if part]).strip() or getattr(user, "email", "")
 
         info = completion_lookup.get(
             faculty.id,
@@ -5700,7 +5689,7 @@ def ovphe_clearance_progress_api(request):
         rows.append({
             "name": faculty_name,
             "requestId": f"{year_val}-001",  # Generate appropriate request ID
-            "employeeId": getattr(user, "university_id", "") or faculty.employee_id or "",
+            "employeeId": getattr(user, "university_id", ""),
             "college": faculty.college.name if faculty.college else "",
             "department": faculty.department.name if faculty.department else "",
             "facultyType": faculty.faculty_type or "",
@@ -6274,21 +6263,29 @@ def ciso_system_users_api(request):
         role__name__in=admin_roles, 
         is_active=True
     ).select_related('user', 'role').order_by('user__id')
+    # First, collect all admin role users
+    admin_user_ids = set(admin_user_roles.values_list('user_id', flat=True))
+    
+    # Add admin users to items list
     for user_role in admin_user_roles:
         u = user_role.user
+        # Display "Analytics Admin" instead of "OVPHE" for better clarity
+        display_role = "Analytics Admin" if user_role.role.name == "OVPHE" else user_role.role.name
         items.append({
                 "id": str(u.id),
                 "name": _full_name(u),
                 "systemId": f"SYS-{u.id}",
-                "userRole": user_role.role.name,
+                "userRole": display_role,
                 "universityId": u.university_id or "",
                 "college": "N/A",
-                "department": user_role.role.name,
+                "department": display_role if display_role != "Analytics Admin" else "",
                 "email": u.email,
                 # A user is considered active if they have any active roles
                 "isActive": u.get_active_roles().exists(),
             })
 
+    # Add approver users, including those who also have admin roles
+    # This allows users with multiple roles to appear in both tables
     approvers = Approver.objects.select_related("user", "college", "department", "office").order_by("id")
     for ap in approvers:
         u = ap.user
@@ -6319,28 +6316,8 @@ def ciso_system_users_api(request):
                 "isActive": u.get_active_roles().exists(),
             })
 
-    def _role_rank(item: dict) -> int:
-        role = (item.get("userRole") or "").strip()
-        if role == "CISO" or role == "OVPHE":
-            return 3
-        if "admin" in role.lower():
-            return 2
-        if "assistant" in role.lower():
-            return 1
-        if "approver" in role.lower():
-            return 0
-        return 0
-
-    deduped: dict[str, dict] = {}
-    for it in items:
-        uid = str(it.get("id") or "")
-        if not uid:
-            continue
-        prev = deduped.get(uid)
-        if not prev or _role_rank(it) > _role_rank(prev):
-            deduped[uid] = it
-
-    items = list(deduped.values())
+    # Note: Removed deduplication to allow users with multiple roles to appear in both tables
+    # Users will be filtered by role on the frontend
 
     if request.method == "GET":
         return JsonResponse({"items": items})
@@ -6420,26 +6397,6 @@ def ciso_system_users_api(request):
                 role=role,
                 defaults={'is_active': True}
             )
-
-            if office_norm == "OVPHE":
-                ovphe_office = Office.objects.filter(name__iexact="Office of the Vice President for Higher Education", is_active=True).first()
-                if ovphe_office:
-                    Approver.objects.get_or_create(
-                        user=user,
-                        defaults={
-                            'approver_type': 'Office',
-                            'office': ovphe_office
-                        }
-                    )
-                    approver_role, created = Role.objects.get_or_create(
-                        name="Approver",
-                        defaults={'description': 'Approver role'}
-                    )
-                    UserRole.objects.get_or_create(
-                        user=user,
-                        role=approver_role,
-                        defaults={'is_active': True}
-                    )
 
         if approver_type:
             atype = approver_type.strip().lower()
@@ -7237,8 +7194,8 @@ def faculty_submit_requirement_api(request):
         dept_code = "GEN"  # Default generic code
         
         if faculty.department:
-            # Use department abbreviation if available, otherwise use name
-            dept_code = faculty.department.abbreviation if faculty.department.abbreviation else faculty.department.name[:3].upper()
+            # Use department code if available, otherwise use name
+            dept_code = faculty.department.code if faculty.department.code else faculty.department.name[:3].upper()
 
         # Get term from timeline
         term_code = "00"  # Default
@@ -8357,7 +8314,7 @@ def approver_dashboard_api(request):
                 # Get all clearance requests (for total count)
                 all_clearance_requests = ClearanceRequest.objects.filter(
                     clearance_timeline=timeline,
-                    requirement__in=filtered_requirements
+                    requirement_id__in=[req.id for req in filtered_requirements]
                 ).select_related('faculty__user', 'requirement')
 
                 # Get only pending clearance requests (for pending count)
@@ -8967,7 +8924,7 @@ def approver_faculty_options_api(request):
         faculty_queryset = faculty_queryset.filter(
             Q(user__first_name__icontains=query) |
             Q(user__last_name__icontains=query) |
-            Q(employee_id__icontains=query)
+            Q(user__university_id__icontains=query)
         )
 
     options = []
@@ -8979,7 +8936,7 @@ def approver_faculty_options_api(request):
         options.append({
             "id": str(faculty.id),
             "name": name,
-            "subtitle": faculty.employee_id,
+            "subtitle": faculty.user.university_id,
             "email": faculty.user.email,
             "college": faculty.college.name if faculty.college else "",
             "department": faculty.department.name if faculty.department else "",
@@ -9013,12 +8970,12 @@ def approver_college_department_options_api(request):
         colleges = [{
             "id": approver_profile.college.id,
             "name": approver_profile.college.name,
-            "abbreviation": approver_profile.college.abbreviation or ""
+            "code": approver_profile.college.code or ""
         }]
         departments = [{
                 "id": dept.id,
                 "name": dept.name,
-                "abbreviation": dept.abbreviation or "",
+                "code": dept.code or "",
                 "college": dept.college.name
             }
             for dept in approver_profile.college.departments.filter(is_active=True)
@@ -9029,13 +8986,13 @@ def approver_college_department_options_api(request):
         colleges = [{
             "id": approver_profile.department.college.id,
             "name": approver_profile.department.college.name,
-            "abbreviation": approver_profile.department.college.abbreviation or ""
+            "code": approver_profile.department.college.code or ""
         }]
 
         departments = [{
             "id": approver_profile.department.id,
             "name": approver_profile.department.name,
-            "abbreviation": approver_profile.department.abbreviation or "",
+            "code": approver_profile.department.code or "",
             "college": approver_profile.department.college.name
         }]
 
@@ -9045,7 +9002,7 @@ def approver_college_department_options_api(request):
         colleges = [{
                 "id": college.id,
                 "name": college.name,
-                "abbreviation": college.abbreviation or ""
+                "code": college.code or ""
             }
             for college in College.objects.filter(is_active=True).order_by('name')
         ]
@@ -9053,7 +9010,7 @@ def approver_college_department_options_api(request):
         departments = [{
                 "id": dept.id,
                 "name": dept.name,
-                "abbreviation": dept.abbreviation or "",
+                "code": dept.code or "",
                 "college": dept.college.name
             }
             for dept in Department.objects.filter(is_active=True).select_related('college').order_by('college__name', 'name')
@@ -9191,7 +9148,7 @@ def approver_clearance_api(request):
         'requirement'
     ).filter(
         clearance_timeline=active_timeline,
-        requirement__in=filtered_requirements
+        requirement_id__in=[req.id for req in filtered_requirements]
     ).order_by('-submitted_date')
 
     items = []
@@ -9205,12 +9162,12 @@ def approver_clearance_api(request):
         college = getattr(getattr(faculty, "college", None), "name", "") or ""
         department = getattr(getattr(faculty, "department", None), "name", "") or ""
         faculty_type = getattr(faculty, "faculty_type", "") or ""
-        employee_id = getattr(faculty, "employee_id", "") or ""
+        university_id = getattr(faculty.user, "university_id", "") if faculty.user else ""
 
         items.append({
             "id": str(req.id),
             "requestId": req.request_id,
-            "employeeId": employee_id,
+            "employeeId": university_id,
             "name": full_name,
             "college": college,
             "department": department,
@@ -9485,19 +9442,19 @@ def approver_activity_logs_api(request):
                 if faculty:
                     college_name = getattr(getattr(faculty, "college", None), "name", "") or ""
                     department_name = getattr(getattr(faculty, "department", None), "name", "") or ""
-                    employee_id = getattr(faculty, "employee_id", "") or ""
+                    university_id = getattr(faculty.user, "university_id", "") if faculty.user else ""
                     print(f"[DEBUG] Activity log - Found faculty: {faculty}")
                 else:
                     print(f"[DEBUG] Activity log - Faculty not found")
                     college_name = ""
                     department_name = ""
-                    employee_id = ""
+                    university_id = ""
 
-                if employee_id and not any("Employee ID:" in str(detail) for detail in details):
+                if university_id and not any("Employee ID:" in str(detail) for detail in details):
 
-                    details.append(f"Employee ID: {employee_id}")
+                    details.append(f"Employee ID: {university_id}")
                 print(f"[DEBUG] Activity log - Fetched faculty data from database:")
-                print(f"[DEBUG] - Employee ID: {employee_id}")
+                print(f"[DEBUG] - Employee ID: {university_id}")
                 print(f"[DEBUG] - College: {college_name}")
                 print(f"[DEBUG] - Department: {department_name}")
 
@@ -9505,12 +9462,12 @@ def approver_activity_logs_api(request):
                 print(f"[DEBUG] Activity log - Clearance request {request_id} not found")
                 college_name = ""
                 department_name = ""
-                employee_id = ""
+                university_id = ""
         else:
             # For non-clearance events, use data from frontend
             college_name = data.get("college") or ""
             department_name = data.get("department") or ""
-            employee_id = data.get("university_id") or ""
+            university_id = data.get("university_id") or ""
 
         # Get office from frontend (approver's office)
         office_name = data.get("office")
@@ -9520,7 +9477,7 @@ def approver_activity_logs_api(request):
         print(f"[DEBUG] - college_name: {college_name}")
         print(f"[DEBUG] - department_name: {department_name}")
         print(f"[DEBUG] - office_name: {office_name}")
-        print(f"[DEBUG] - employee_id: {employee_id}")
+        print(f"[DEBUG] - university_id: {university_id}")
         print(f"[DEBUG] - details: {details}")
 
         # Look up actual objects if names are provided
@@ -9582,7 +9539,7 @@ def approver_activity_logs_api(request):
             college=college,
             office=office,
             supervisor=supervisor,
-            university_id=employee_id,
+            university_id=university_id,
             faculty=faculty if 'faculty' in locals() else None,
         )
 
@@ -9637,7 +9594,7 @@ def approver_activity_logs_api(request):
 
         # Add faculty information for clearance-related events
         faculty_name = ""
-        faculty_employee_id = ""
+        faculty_university_id = ""
         faculty_request_id = ""
         approver_department = ""
         faculty_college = ""
@@ -9698,7 +9655,7 @@ def approver_activity_logs_api(request):
                 details = [f"Faculty Member: {faculty_member}"] + list(details)
             response_details = details
             faculty_name = faculty_member
-            faculty_employee_id = employee_id
+            faculty_employee_id = university_id
             faculty_request_id = log.request_id or ""
             approver_department = log.approver_department or ""
 
@@ -9706,9 +9663,9 @@ def approver_activity_logs_api(request):
             # Extract from details array for individual approvals
             details = log.details if log.details else []
             faculty_member = next((d.replace("Faculty Member: ", "").strip() for d in details if "Faculty Member:" in d), "")
-            employee_id = next((d.replace("Employee ID: ", "").strip() for d in details if "Employee ID:" in d), "")
+            university_id = next((d.replace("Employee ID: ", "").strip() for d in details if "Employee ID:" in d), "")
             faculty_name = faculty_member
-            faculty_employee_id = employee_id
+            faculty_employee_id = university_id
             faculty_request_id = log.request_id or ""
 
             # Use the college and department fields from the activity log (sent from frontend)
@@ -9718,7 +9675,7 @@ def approver_activity_logs_api(request):
 
         elif log.event_type in ["approved_clearance", "rejected_clearance"] and log.faculty:
             faculty_name = f"{log.faculty.user.first_name} {log.faculty.user.last_name}" if log.faculty.user else ""
-            faculty_employee_id = log.faculty.employee_id or ""
+            faculty_employee_id = log.faculty.user.university_id if log.faculty.user else ""
             faculty_request_id = log.request_id or ""
             approver_department = log.approver_department or ""
 
@@ -9821,7 +9778,7 @@ def approver_override_api(request):
             ],
             department=clearance_request.faculty.department.name if clearance_request.faculty.department else None,
             college=clearance_request.faculty.college.name if clearance_request.faculty.college else None,
-            university_id=clearance_request.faculty.employee_id,
+            university_id=clearance_request.faculty.user.university_id,
         )
 
         # Update the clearance request status using the enum values
@@ -10125,8 +10082,8 @@ def approver_archived_individual_api(request):
         },
         "item": {
             "id": str(archived.id),
-            "employeeId": getattr(faculty, "employee_id", "") or "",
-            "schoolId": getattr(faculty, "employee_id", "") or "",
+            "employeeId": getattr(faculty.user, "university_id", "") if faculty.user else "",
+            "schoolId": getattr(faculty.user, "university_id", "") if faculty.user else "",
             "name": _archived_faculty_display_name(faculty),
             "fullName": _archived_faculty_display_name(faculty),
             "schoolEmail": getattr(faculty_user, "email", "") or "",
@@ -10173,8 +10130,8 @@ def assistant_approver_archived_individual_api(request):
         },
         "item": {
             "id": str(archived.id),
-            "employeeId": getattr(faculty, "employee_id", "") or "",
-            "schoolId": getattr(faculty, "employee_id", "") or "",
+            "employeeId": getattr(faculty.user, "university_id", "") if faculty.user else "",
+            "schoolId": getattr(faculty.user, "university_id", "") if faculty.user else "",
             "name": _archived_faculty_display_name(faculty),
             "fullName": _archived_faculty_display_name(faculty),
             "schoolEmail": getattr(faculty_user, "email", "") or "",
@@ -10285,7 +10242,7 @@ def approver_individual_approval_api(request):
                 details=details,
                 department=clearance_request.faculty.department if clearance_request.faculty else None,
                 college=clearance_request.faculty.college if clearance_request.faculty else None,
-                university_id=clearance_request.faculty.employee_id if clearance_request.faculty else "",
+                university_id=clearance_request.faculty.user.university_id if clearance_request.faculty and clearance_request.faculty.user else "",
                 faculty=clearance_request.faculty,
                 requirement=clearance_request.requirement
             )
@@ -10568,7 +10525,7 @@ def assistant_approver_clearance_api(request):
                     department=clearance_request.faculty.department,
                     college=clearance_request.faculty.college,
                     office=getattr(user, 'office', None),
-                    university_id=clearance_request.faculty.employee_id,
+                    university_id=clearance_request.faculty.user.university_id,
                     request_id=clearance_request.request_id,
                     details={
                         "faculty_member": f"{clearance_request.faculty.user.first_name} {clearance_request.faculty.user.last_name}",
@@ -10770,7 +10727,7 @@ def assistant_approver_individual_approval_api(request):
         department=req.faculty.department,  # Use faculty member's department
         college=req.faculty.college,        # Use faculty member's college
         office=user_office,                 # Use session user's office
-        university_id=req.faculty.employee_id,  # Use faculty member's employee ID
+        university_id=req.faculty.user.university_id,  # Use faculty member's university ID
         request_id=req.request_id,           # Use request ID from the request
         details={
             "faculty_member": f"{req.faculty.user.first_name} {req.faculty.user.last_name}",
@@ -10979,8 +10936,8 @@ def assistant_approver_archived_individual_api(request):
         },
         "item": {
             "id": str(archived.id),
-            "employeeId": getattr(faculty, "employee_id", "") or "",
-            "schoolId": getattr(faculty, "employee_id", "") or "",
+            "employeeId": getattr(faculty.user, "university_id", "") if faculty.user else "",
+            "schoolId": getattr(faculty.user, "university_id", "") if faculty.user else "",
             "name": _archived_faculty_display_name(faculty),
             "fullName": _archived_faculty_display_name(faculty),
             "schoolEmail": getattr(faculty_user, "email", "") or "",
@@ -11072,7 +11029,7 @@ def ciso_college_office_configuration_api(request):
             colleges_data.append({
                 'id': college.id,
                 'name': college.name,
-                'abbreviation': college.abbreviation or '',
+                'code': college.code or '',
                 'departments': departments
             })
 
@@ -11085,7 +11042,7 @@ def ciso_college_office_configuration_api(request):
             models.Q(name__iexact="Dean") |
             models.Q(name__icontains="Dean")
         ).order_by('name')
-        offices_data = [{'id': office.id, 'name': office.name, 'abbreviation': office.abbreviation or ''} for office in offices]
+        offices_data = [{'id': office.id, 'name': office.name, 'code': office.code or ''} for office in offices]
 
         # Get approver flow configuration
         timeline_id = request.GET.get('timeline_id')
@@ -11441,7 +11398,7 @@ def ciso_archived_individual_api(request):
 
         "faculty": {
             "id": str(archived.id),
-            "employeeId": getattr(faculty, "employee_id", "") or "",
+            "employeeId": getattr(faculty.user, "university_id", "") if faculty.user else "",
             "name": _archived_faculty_display_name(faculty),
             "schoolEmail": getattr(faculty_user, "email", "") or "",
             "college": getattr(getattr(faculty, "college", None), "name", "") or "",
@@ -11598,36 +11555,42 @@ def ciso_archived_faculty_download_api(request, archived_id: int):
         output = io.StringIO()
         writer = csv.writer(output)
         
-        # Get existing colleges and departments for case-sensitive validation
-        existing_colleges = {college.name: college for college in College.objects.filter(is_active=True)}
-        existing_departments = {dept.name: dept for dept in Department.objects.filter(is_active=True).select_related('college')}
+        # Get existing colleges and departments for code validation
+        existing_colleges = {college.code: college for college in College.objects.filter(is_active=True)}
+        existing_departments = {dept.code: dept for dept in Department.objects.filter(is_active=True).select_related('college')}
         
-        # Create mapping of departments to their college names for validation
-        dept_to_college = {dept.name: dept.college.name for dept in Department.objects.filter(is_active=True).select_related('college')}
+        # Create mapping of departments to their college codes for validation
+        dept_to_college = {dept.code: dept.college.code for dept in Department.objects.filter(is_active=True).select_related('college')}
 
-        def _validate_college_department(college_name, department_name, existing_colleges, existing_departments, dept_to_college):
-            """Validate college and department against existing records with case-sensitive matching"""
+        def _validate_college_department(college_code, department_code, existing_colleges, existing_departments, dept_to_college):
+            """Validate college and department against existing records using codes"""
             invalid_fields = []
             
-            # Validate college if provided
-            if college_name and college_name not in existing_colleges:
-                invalid_fields.append("college")
+            # Validate college code if provided
+            if college_code and college_code not in existing_colleges:
+                invalid_fields.append("college_code")
             
-            # Validate department if provided
-            if department_name:
-                if department_name not in existing_departments:
-                    invalid_fields.append("department")
+            # Validate department code if provided
+            if department_code:
+                if department_code not in existing_departments:
+                    invalid_fields.append("department_code")
                 else:
                     # Check if department belongs to the specified college
-                    if college_name:
-                        expected_college = dept_to_college.get(department_name)
-                        if expected_college != college_name:
-                            invalid_fields.append("department")
+                    if college_code:
+                        expected_college = dept_to_college.get(department_code)
+                        if expected_college != college_code:
+                            invalid_fields.append("department_code")
             
             return invalid_fields
 
-        # Write header with original columns + validation columns
-        new_fieldnames = list(original_fieldnames) + ["Validation Status", "Missing Fields", "Invalid Fields"]
+        # Check if this is a newly processed CSV with validation info
+        has_validation_info = any(field in original_fieldnames for field in ["Validation Status", "Missing Fields", "Invalid Fields"])
+        
+        # Write header - only add validation columns if they don't already exist
+        if has_validation_info:
+            new_fieldnames = list(original_fieldnames)
+        else:
+            new_fieldnames = list(original_fieldnames) + ["Validation Status", "Missing Fields", "Invalid Fields"]
         writer.writerow(new_fieldnames)
         
         def _clean(value: str | None):
@@ -11642,12 +11605,15 @@ def ciso_archived_faculty_download_api(request, archived_id: int):
             first_name = _clean(row.get("first_name"))
             last_name = _clean(row.get("last_name"))
             faculty_type = _clean(row.get("faculty_type"))
-            college_name = _clean(row.get("college"))
-            department_name = _clean(row.get("department"))
+            college_code = _clean(row.get("college_code"))
+            department_code = _clean(row.get("department_code"))
             office_name = _clean(row.get("office"))
             
-            # Check if this is a newly processed CSV with validation info
-            has_validation_info = any(field in original_fieldnames for field in ["Validation Status", "Missing Fields", "Invalid Fields"])
+            # For backward compatibility, also check old field names
+            if not college_code:
+                college_code = _clean(row.get("college"))
+            if not department_code:
+                department_code = _clean(row.get("department"))
             
             if has_validation_info:
                 # Use existing validation info from the CSV
@@ -11676,18 +11642,21 @@ def ciso_archived_faculty_download_api(request, archived_id: int):
                 if not faculty_type or not faculty_type.strip():
                     missing_fields.append("faculty_type")
                 
-                if not (college_name or department_name or office_name):
+                if not (college_code or department_code or office_name):
                     missing_fields.append("organization_assignment")
                 
                 # Validate college and department
-                invalid_fields = _validate_college_department(college_name, department_name, existing_colleges, existing_departments, dept_to_college)
+                invalid_fields = _validate_college_department(college_code, department_code, existing_colleges, existing_departments, dept_to_college)
                 
                 validation_status = "COMPLETE" if len(missing_fields) == 0 and len(invalid_fields) == 0 else "INCOMPLETE"
                 missing_fields_str = ", ".join(missing_fields) if missing_fields else ""
                 invalid_fields_str = ", ".join(invalid_fields) if invalid_fields else ""
             
-            # Write row with validation columns
-            new_row = [row.get(field, "") for field in original_fieldnames] + [validation_status, missing_fields_str, invalid_fields_str]
+            # Write row - only add validation columns if they don't already exist
+            if has_validation_info:
+                new_row = [row.get(field, "") for field in original_fieldnames]
+            else:
+                new_row = [row.get(field, "") for field in original_fieldnames] + [validation_status, missing_fields_str, invalid_fields_str]
             writer.writerow(new_row)
         
         # Create response
@@ -11703,3 +11672,302 @@ def ciso_archived_faculty_download_api(request, archived_id: int):
         
     except Exception as e:
         return JsonResponse({"detail": "Error processing CSV file: " + str(e)}, status=500)
+
+
+@csrf_exempt
+@ciso_required
+def ciso_college_csv_upload_api(request):
+    """
+    API endpoint for uploading College data via CSV
+    CSV format: Name, Code
+    """
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+    
+    try:
+        if 'csv_file' not in request.FILES:
+            return JsonResponse({"detail": "No CSV file provided"}, status=400)
+        
+        csv_file = request.FILES['csv_file']
+        
+        if not csv_file.name.endswith(('.csv', '.xlsx', '.xls')):
+            return JsonResponse({"detail": "Invalid file format. Please upload CSV or Excel file"}, status=400)
+        
+        # Read CSV content
+        csv_content = csv_file.read().decode('utf-8-sig')  # Handle BOM
+        csv_lines = csv_content.splitlines()
+        csv_reader = csv.reader(csv_lines)
+        
+        # Check if first row is a header
+        first_row = next(csv_reader, None)
+        is_header = first_row and first_row[0].lower() in ['name', 'college name']
+        
+        created_count = 0
+        updated_count = 0
+        skipped_count = 0
+        errors = []
+        
+        # Start processing from the appropriate row
+        start_row = 2 if is_header else 1
+        for row_num, row in enumerate(csv_reader, start=start_row):
+            if not row or len(row) < 2:
+                skipped_count += 1
+                errors.append(f"Row {row_num}: Insufficient data")
+                continue
+            
+            name = row[0].strip() if row[0] else ""
+            code = row[1].strip() if row[1] else ""
+            
+            if not name:
+                skipped_count += 1
+                errors.append(f"Row {row_num}: Name is required")
+                continue
+            
+            # Check if college already exists by code or name
+            existing_college = None
+            if code:
+                existing_college = College.objects.filter(code=code).first()
+            if not existing_college:
+                existing_college = College.objects.filter(name=name).first()
+            
+            if existing_college:
+                # Update existing college
+                existing_college.name = name
+                if code:
+                    existing_college.code = code
+                existing_college.save()
+                updated_count += 1
+            else:
+                # Create new college
+                College.objects.create(
+                    name=name,
+                    code=code if code else None,
+                    is_active=True
+                )
+                created_count += 1
+        
+        return JsonResponse({
+            "message": "College CSV upload completed",
+            "created": created_count,
+            "updated": updated_count,
+            "skipped": skipped_count,
+            "errors": errors
+        }, status=200)
+        
+    except Exception as e:
+        return JsonResponse({"detail": "Error processing College CSV file: " + str(e)}, status=500)
+
+
+@csrf_exempt
+@ciso_required
+def ciso_department_csv_upload_api(request):
+    """
+    API endpoint for uploading Department data via CSV
+    CSV format: College_Code, Name, Code
+    """
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+    
+    try:
+        if 'csv_file' not in request.FILES:
+            return JsonResponse({"detail": "No CSV file provided"}, status=400)
+        
+        csv_file = request.FILES['csv_file']
+        
+        if not csv_file.name.endswith(('.csv', '.xlsx', '.xls')):
+            return JsonResponse({"detail": "Invalid file format. Please upload CSV or Excel file"}, status=400)
+        
+        # Read CSV content
+        csv_content = csv_file.read().decode('utf-8-sig')  # Handle BOM
+        csv_lines = csv_content.splitlines()
+        csv_reader = csv.reader(csv_lines)
+        
+        # Check if first row is a header
+        first_row = next(csv_reader, None)
+        is_header = first_row and first_row[0].lower() in ['college_code', 'college code']
+        
+        created_count = 0
+        updated_count = 0
+        skipped_count = 0
+        errors = []
+        
+        # Get all existing colleges for validation
+        existing_colleges = {college.code: college for college in College.objects.filter(is_active=True)}
+        
+        # Start processing from the appropriate row
+        start_row = 2 if is_header else 1
+        for row_num, row in enumerate(csv_reader, start=start_row):
+            if not row or len(row) < 3:
+                skipped_count += 1
+                errors.append(f"Row {row_num}: Insufficient data")
+                continue
+            
+            college_code = row[0].strip() if row[0] else ""
+            name = row[1].strip() if row[1] else ""
+            code = row[2].strip() if row[2] else ""
+            
+            if not name:
+                skipped_count += 1
+                errors.append(f"Row {row_num}: Department name is required")
+                continue
+            
+            if not college_code:
+                skipped_count += 1
+                errors.append(f"Row {row_num}: College code is required")
+                continue
+            
+            # Validate college exists
+            if college_code not in existing_colleges:
+                skipped_count += 1
+                errors.append(f"Row {row_num}: College code '{college_code}' does not exist")
+                continue
+            
+            college = existing_colleges[college_code]
+            
+            # Check if department already exists by code, name, or college+name combination
+            existing_department = None
+            if code:
+                existing_department = Department.objects.filter(code=code).first()
+            if not existing_department:
+                existing_department = Department.objects.filter(name=name, college=college).first()
+            
+            if existing_department:
+                # Update existing department
+                existing_department.name = name
+                existing_department.college = college
+                if code:
+                    existing_department.code = code
+                existing_department.save()
+                updated_count += 1
+            else:
+                # Create new department
+                Department.objects.create(
+                    college=college,
+                    name=name,
+                    code=code if code else None,
+                    is_active=True
+                )
+                created_count += 1
+        
+        return JsonResponse({
+            "message": "Department CSV upload completed",
+            "created": created_count,
+            "updated": updated_count,
+            "skipped": skipped_count,
+            "errors": errors
+        }, status=200)
+        
+    except Exception as e:
+        return JsonResponse({"detail": "Error processing Department CSV file: " + str(e)}, status=500)
+
+
+# Access Control API endpoints
+@csrf_exempt
+def ciso_access_control_permissions_api(request):
+    """API endpoint for managing role permissions."""
+    admin, err = _require_ciso_admin_user(request)
+    if err:
+        return err
+
+    if request.method == "GET":
+        # Get all permissions for all roles
+        from .models import Role, RolePermission
+        
+        roles = Role.objects.all().order_by('name')
+        permissions_data = {}
+        
+        for role in roles:
+            permissions_data[role.name] = {}
+            role_perms = RolePermission.objects.filter(role=role)
+            for perm in role_perms:
+                permissions_data[role.name][perm.entity] = {
+                    "Create": perm.can_create,
+                    "Read": perm.can_read,
+                    "Update": perm.can_update,
+                    "Delete": perm.can_delete
+                }
+        
+        return JsonResponse({"permissions": permissions_data})
+    
+    elif request.method == "PUT":
+        # Update permissions
+        try:
+            data = json.loads(request.body)
+            permissions = data.get("permissions", {})
+            
+            from .models import Role, RolePermission
+            from django.db import transaction
+            
+            with transaction.atomic():
+                for role_name, entities in permissions.items():
+                    try:
+                        role = Role.objects.get(name=role_name)
+                    except Role.DoesNotExist:
+                        continue
+                    
+                    for entity_name, perms in entities.items():
+                        # Get or create permission
+                        role_perm, created = RolePermission.objects.get_or_create(
+                            role=role,
+                            entity=entity_name,
+                            defaults={
+                                'can_create': perms.get('Create', False),
+                                'can_read': perms.get('Read', False),
+                                'can_update': perms.get('Update', False),
+                                'can_delete': perms.get('Delete', False)
+                            }
+                        )
+                        
+                        if not created:
+                            role_perm.can_create = perms.get('Create', False)
+                            role_perm.can_read = perms.get('Read', False)
+                            role_perm.can_update = perms.get('Update', False)
+                            role_perm.can_delete = perms.get('Delete', False)
+                            role_perm.save()
+            
+            return JsonResponse({"message": "Permissions updated successfully"})
+            
+        except json.JSONDecodeError:
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
+        except Exception as e:
+            return JsonResponse({"detail": f"Error updating permissions: {str(e)}"}, status=500)
+    
+    else:
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+
+@csrf_exempt
+def ciso_access_control_entities_api(request):
+    """API endpoint for getting available entities per role."""
+    admin, err = _require_ciso_admin_user(request)
+    if err:
+        return err
+
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    # Define entities available for each role based on the screenshots
+    entities_config = {
+        "System Admin": [
+            "Announcement", "Guidelines", "System Analytics", "Clearance Timeline",
+            "College Department Office Configuration", "System Users", "Faculty Data Dump",
+            "Faculty Import History", "Clearance Requests Records", "Activity Logs", "Notifications"
+        ],
+        "Analytics Admin": [
+            "Announcement", "Guidelines", "System Analytics", "Clearance Requests Records",
+            "Activity Logs", "Notifications"
+        ],
+        "Approver": [
+            "Requirements List", "Announcements", "Clearance Requests", "Clearance Requests Records",
+            "Approver Assistant", "Activity Logs", "Notifications"
+        ],
+        "Approver Assistant": [
+            "Requirements List", "Announcements", "Clearance Requests", "Clearance Requests Records",
+            "Notifications"
+        ],
+        "Faculty Member": [
+            "Clearance Requests", "Clearance Requests Records", "Notifications"
+        ]
+    }
+
+    return JsonResponse({"entities": entities_config})

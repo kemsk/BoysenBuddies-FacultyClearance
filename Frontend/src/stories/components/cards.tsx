@@ -3059,15 +3059,13 @@ export function ExpandableClearanceStepCard({
                         )}
                       </div>
                       <div
-
-                      className="mt-1 text-sm text-gray-900 whitespace-pre-line"
-                      dangerouslySetInnerHTML={{ __html: applyRichTextStyles(req.description) }}
-
-                    />
+                        className="mt-1 text-sm text-gray-900 whitespace-pre-line"
+                        dangerouslySetInnerHTML={{ __html: applyRichTextStyles(req.description) }}
+                      />
                       {hasSavedComment && !req.rejected ? (
                         <div
                           className="bg-white p-4 border border-black rounded-md mt-3"
-                          dangerouslySetInnerHTML={{ __html: savedComment }}
+                          dangerouslySetInnerHTML={{ __html: applyRichTextStyles(savedComment) }}
                         />
 
                       ) : null}

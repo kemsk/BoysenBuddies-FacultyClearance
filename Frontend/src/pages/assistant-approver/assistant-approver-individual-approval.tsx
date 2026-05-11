@@ -216,7 +216,7 @@ export default function AssitantApproverIndividualApproval() {
                   <div className="mt-6">
                     <div className="text-md font-bold text-foreground">Submission Notes</div>
                     <div
-                      className="mt-3 rounded-md border border-foreground p-3 text-sm text-black"
+                      className="mt-3 rounded-md border border-foreground p-3 text-sm text-black [&_a]:text-blue-600 [&_a]:underline [&_a]:underline-offset-2 [&_a]:cursor-pointer [&_a]:break-all [&_a]:[overflow-wrap:anywhere]"
                       dangerouslySetInnerHTML={{ __html: item.submissionNotes || "No submission notes provided." }}
                     />
                   </div>

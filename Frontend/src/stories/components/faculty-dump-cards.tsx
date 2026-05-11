@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check,Upload, X, } from "lucide-react";
+import { Check,Upload, X, Edit, Trash2 } from "lucide-react";
 
 import { cn } from "../../components/lib/utils";
 import { Button } from "./button";
@@ -48,6 +48,23 @@ export interface FacultyDataDumpCardProps {
   tablePage?: number;
   tablePageCount?: number;
   onTablePageChange?: (page: number) => void;
+  onAddFaculty?: (faculty: {
+    email: string;
+    firstName: string;
+    middleName: string;
+    lastName: string;
+    facultyType: string;
+    college: string;
+    department: string;
+    universityId: string;
+  }) => void;
+  onEditUser?: (user: SystemUser) => void;
+  onRemoveUser?: (user: SystemUser) => void;
+  colleges?: string[];
+  departments?: string[];
+  collegeDepartmentsMap?: Record<string, string[]>;
+  collegeNameToCodeMap?: Record<string, string>;
+  departmentNameToCodeMap?: Record<string, string>;
 }
 
 export function FacultyDataDumpCard({
@@ -79,6 +96,14 @@ export function FacultyDataDumpCard({
   tablePage,
   tablePageCount,
   onTablePageChange,
+  onAddFaculty,
+  onEditUser,
+  onRemoveUser,
+  colleges = [],
+  departments = [],
+  collegeDepartmentsMap = {},
+  collegeNameToCodeMap = {},
+  departmentNameToCodeMap = {},
 }: FacultyDataDumpCardProps) {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const [internalSemesterId, setInternalSemesterId] = React.useState("");
@@ -358,13 +383,21 @@ export function FacultyDataDumpCard({
 
           />
         </div>
-        {currentFile && (uploadStatus === "success" || isFileReady) ? (
+        {(currentFile && (uploadStatus === "success" || isFileReady)) || (tableUsers && tableUsers.length > 0) ? (
           <FacultyTableCard
             className="mt-5"
             users={tableUsers ?? []}
             page={tablePage}
             pageCount={tablePageCount}
             onPageChange={onTablePageChange}
+            onAddFaculty={onAddFaculty}
+            onEditUser={onEditUser}
+            onRemoveUser={onRemoveUser}
+            colleges={colleges}
+            departments={departments}
+            collegeDepartmentsMap={collegeDepartmentsMap}
+            collegeNameToCodeMap={collegeNameToCodeMap}
+            departmentNameToCodeMap={departmentNameToCodeMap}
           />
         ) : null}
         <div className="mt-5 rounded-md bg-primary/10 p-4">
@@ -445,6 +478,21 @@ export type FacultyTableCardProps = {
   page?: number;
   pageCount?: number;
   onPageChange?: (page: number) => void;
+  onAddFaculty?: (faculty: {
+    email: string;
+    firstName: string;
+    middleName: string;
+    lastName: string;
+    facultyType: string;
+    college: string;
+    department: string;
+    universityId: string;
+  }) => void;
+  colleges?: string[];
+  departments?: string[];
+  collegeDepartmentsMap?: Record<string, string[]>;
+  collegeNameToCodeMap?: Record<string, string>;
+  departmentNameToCodeMap?: Record<string, string>;
 
 };
 
@@ -459,14 +507,59 @@ export function FacultyTableCard({
   page,
   pageCount,
   onPageChange,
+  onAddFaculty,
+  colleges = [],
+  departments = [],
+  collegeDepartmentsMap = {},
+  collegeNameToCodeMap = {},
+  departmentNameToCodeMap = {},
 }: FacultyTableCardProps) {
 
   const [addFacultyOpen, setAddFacultyOpen] = React.useState(false);
+  const [editFacultyOpen, setEditFacultyOpen] = React.useState(false);
+  const [editingUser, setEditingUser] = React.useState<SystemUser | null>(null);
 
   return (
     <Card className={cn("overflow-hidden border-muted-foreground/20 shadow-sm", className)}>
       <CardContent className="p-0">
-        <AddFacultyDialog open={addFacultyOpen} onOpenChange={setAddFacultyOpen} />
+        <AddFacultyDialog 
+          open={addFacultyOpen} 
+          onOpenChange={setAddFacultyOpen} 
+          onAddFaculty={onAddFaculty}
+          colleges={colleges}
+          collegeDepartmentsMap={collegeDepartmentsMap}
+        />
+        <EditFacultyDialog 
+          open={editFacultyOpen} 
+          onOpenChange={setEditFacultyOpen} 
+          onEditFaculty={(user, updatedFaculty) => {
+            // Convert college and department names to codes
+            const collegeCode = updatedFaculty.college;
+            const departmentCode = updatedFaculty.department;
+            
+            // Create updated user object
+            const updatedUser: SystemUser = {
+              ...user,
+              email: updatedFaculty.email,
+              universityId: updatedFaculty.universityId,
+              firstname: updatedFaculty.firstName,
+              middlename: updatedFaculty.middleName,
+              lastname: updatedFaculty.lastName,
+              facultytype: updatedFaculty.facultyType,
+              college: collegeCode,
+              department: departmentCode,
+              name: `${updatedFaculty.firstName} ${updatedFaculty.lastName}`.trim(),
+            };
+            
+            // Call the original onEditUser if provided
+            onEditUser?.(updatedUser);
+          }}
+          user={editingUser}
+          colleges={colleges}
+          collegeDepartmentsMap={collegeDepartmentsMap}
+          collegeNameToCodeMap={collegeNameToCodeMap}
+          departmentNameToCodeMap={departmentNameToCodeMap}
+        />
         <div className="flex">
           <Divider orientation="vertical" className="h-auto self-stretch" />
           <div className="min-w-0 flex-1">
@@ -567,21 +660,26 @@ export function FacultyTableCard({
                             <div className="flex items-center justify-center gap-2">
                               <Button
                                 type="button"
-                                variant="action"
-                                className="h-7 rounded-md px-3 text-xs font-bold"
-                                onClick={() => onEditUser?.(user)}
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                onClick={() => {
+                                  setEditingUser(user);
+                                  setEditFacultyOpen(true);
+                                }}
                                 disabled={user.email === currentUserEmail}
                               >
-                                EDIT
+                                <Edit className="h-4 w-4" />
                               </Button>
                               <Button
                                 type="button"
-                                variant="destructive"
-                                className="h-7 rounded-md px-3 text-xs font-bold"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
                                 onClick={() => onRemoveUser?.(user)}
                                 disabled={user.email === currentUserEmail}
                               >
-                                REMOVE
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
                           </td>
@@ -629,21 +727,26 @@ export function FacultyTableCard({
                         <div className="flex items-center gap-2">
                           <Button
                             type="button"
-                            variant="action"
-                            className="h-7 rounded-md px-3 text-xs font-bold"
-                            onClick={() => onEditUser?.(user)}
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            onClick={() => {
+                              setEditingUser(user);
+                              setEditFacultyOpen(true);
+                            }}
                             disabled={user.email === currentUserEmail}
                           >
-                            EDIT
+                            <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             type="button"
-                            variant="destructive"
-                            className="h-7 rounded-md px-3 text-xs font-bold"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
                             onClick={() => onRemoveUser?.(user)}
                             disabled={user.email === currentUserEmail}
                           >
-                            REMOVE
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
@@ -693,9 +796,11 @@ export type AddFacultyDialogProps = {
     department: string;
     universityId: string;
   }) => void;
+  colleges?: string[];
+  collegeDepartmentsMap?: Record<string, string[]>;
 };
 
-export function AddFacultyDialog({ open, onOpenChange, onAddFaculty }: AddFacultyDialogProps) {
+export function AddFacultyDialog({ open, onOpenChange, onAddFaculty, colleges = [], collegeDepartmentsMap = {} }: AddFacultyDialogProps) {
   const [email, setEmail] = React.useState("");
   const [firstName, setFirstName] = React.useState("");
   const [middleName, setMiddleName] = React.useState("");
@@ -705,9 +810,17 @@ export function AddFacultyDialog({ open, onOpenChange, onAddFaculty }: AddFacult
   const [department, setDepartment] = React.useState("");
   const [universityId, setUniversityId] = React.useState("");
 
+  // Filter departments based on selected college and exclude "Dean" departments
+  const availableDepartments = React.useMemo(() => {
+    if (!college) return [];
+    const departments = collegeDepartmentsMap[college] || [];
+    return departments.filter(dept => !dept.toLowerCase().includes('dean'));
+  }, [college, collegeDepartmentsMap]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !firstName || !lastName || !facultyType || !college || !department || !universityId) return;
+    if (!email || !firstName || !lastName || !facultyType || !college || !universityId) return;
+    
     onAddFaculty?.({
       email,
       firstName,
@@ -715,7 +828,7 @@ export function AddFacultyDialog({ open, onOpenChange, onAddFaculty }: AddFacult
       lastName,
       facultyType,
       college,
-      department,
+      department, // Department is optional - can be empty string
       universityId,
     });
     // Reset form
@@ -825,23 +938,34 @@ export function AddFacultyDialog({ open, onOpenChange, onAddFaculty }: AddFacult
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="college">College</Label>
-              <Select value={college} onValueChange={setCollege}>
+              <Select value={college} onValueChange={(value) => {
+                setCollege(value);
+                setDepartment(""); // Reset department when college changes
+              }}>
                 <SelectTrigger className="h-8">
                   <SelectValue placeholder="Select college" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="College of Arts and Sciences">College of Arts and Sciences</SelectItem>
+                  {colleges.map((college) => (
+                    <SelectItem key={college} value={college}>
+                      {college}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="department">Department</Label>
-              <Select value={department} onValueChange={setDepartment}>
+              <Select value={department} onValueChange={setDepartment} disabled={!college}>
                 <SelectTrigger className="h-8">
-                  <SelectValue placeholder="Select department" />
+                  <SelectValue placeholder={college ? "Select department" : "Select college first"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Computer Science">Computer Science</SelectItem>
+                  {availableDepartments.map((dept) => (
+                    <SelectItem key={dept} value={dept}>
+                      {dept}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -852,6 +976,233 @@ export function AddFacultyDialog({ open, onOpenChange, onAddFaculty }: AddFacult
                 Cancel
               </Button>
               <Button variant="default" className="w-full">Create</Button>
+            </DialogFooter>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export type EditFacultyDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onEditFaculty?: (user: SystemUser, updatedFaculty: {
+    email: string;
+    firstName: string;
+    middleName: string;
+    lastName: string;
+    facultyType: string;
+    college: string;
+    department: string;
+    universityId: string;
+  }) => void;
+  user: SystemUser | null;
+  colleges?: string[];
+  collegeDepartmentsMap?: Record<string, string[]>;
+  collegeNameToCodeMap?: Record<string, string>;
+  departmentNameToCodeMap?: Record<string, string>;
+};
+
+export function EditFacultyDialog({ open, onOpenChange, onEditFaculty, user, colleges = [], collegeDepartmentsMap = {}, collegeNameToCodeMap = {}, departmentNameToCodeMap = {} }: EditFacultyDialogProps) {
+  const [email, setEmail] = React.useState("");
+  const [firstName, setFirstName] = React.useState("");
+  const [middleName, setMiddleName] = React.useState("");
+  const [lastName, setLastName] = React.useState("");
+  const [facultyType, setFacultyType] = React.useState("");
+  const [college, setCollege] = React.useState("");
+  const [department, setDepartment] = React.useState("");
+  const [universityId, setUniversityId] = React.useState("");
+
+  // Create code-to-name maps
+  const collegeCodeToNameMap = React.useMemo(() => {
+    const map: Record<string, string> = {};
+    Object.entries(collegeNameToCodeMap).forEach(([name, code]) => {
+      map[code] = name;
+    });
+    return map;
+  }, [collegeNameToCodeMap]);
+
+  const departmentCodeToNameMap = React.useMemo(() => {
+    const map: Record<string, string> = {};
+    Object.entries(departmentNameToCodeMap).forEach(([name, code]) => {
+      map[code] = name;
+    });
+    return map;
+  }, [departmentNameToCodeMap]);
+
+  // Initialize form when user changes
+  React.useEffect(() => {
+    if (user) {
+      setEmail(user.email || "");
+      setFirstName(user.firstname || user.FirstName || "");
+      setMiddleName(user.middlename || user.MiddleName || "");
+      setLastName(user.lastname || user.LastName || "");
+      setFacultyType(user.facultytype || user.FacultyType || "");
+      // Convert codes back to names for the dropdowns
+      const collegeName = collegeCodeToNameMap[user.college] || user.college;
+      const departmentName = departmentCodeToNameMap[user.department] || user.department;
+      setCollege(collegeName);
+      setDepartment(departmentName);
+      setUniversityId(user.universityId || "");
+    }
+  }, [user, collegeCodeToNameMap, departmentCodeToNameMap]);
+
+  // Filter departments based on selected college and exclude "Dean" departments
+  const availableDepartments = React.useMemo(() => {
+    if (!college) return [];
+    const departments = collegeDepartmentsMap[college] || [];
+    return departments.filter(dept => !dept.toLowerCase().includes('dean'));
+  }, [college, collegeDepartmentsMap]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !email || !firstName || !lastName || !facultyType || !college || !universityId) return;
+    
+    // Convert college and department names back to codes
+    const collegeCode = collegeNameToCodeMap[college] || college;
+    const departmentCode = department ? (departmentNameToCodeMap[department] || department) : '';
+    
+    onEditFaculty?.(user, {
+      email,
+      firstName,
+      middleName,
+      lastName,
+      facultyType,
+      college: collegeCode,
+      department: departmentCode, // Department is optional - can be empty string
+      universityId,
+    });
+    onOpenChange(false);
+  };
+
+  const handleCancel = () => {
+    onOpenChange(false);
+  };
+
+  if (!user) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-fit min-w-[320px] max-w-screen-lg">
+        <div className="text-center font-bold pb-5">
+          Edit Faculty Member
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Row 1: First Name | Middle Name | Last Name */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="firstName">First Name</Label>
+              <Input
+                id="firstName"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="h-8"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="middleName">Middle Name</Label>
+              <Input
+                id="middleName"
+                value={middleName}
+                onChange={(e) => setMiddleName(e.target.value)}
+                className="h-8"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lastName">Last Name</Label>
+              <Input
+                id="lastName"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                className="h-8"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Row 2: University ID | Email (@XU.EDU.PH) | Faculty Type */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="universityId">University ID</Label>
+              <Input
+                id="universityId"
+                value={universityId}
+                onChange={(e) => setUniversityId(e.target.value)}
+                className="h-8"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email (@XU.EDU.PH)</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-8 text-sm"
+                placeholder="username@xu.edu.ph"
+                required
+              />
+              <p className="text-[9px] text-muted-foreground">Only @xu.edu.ph email addresses are allowed.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="facultyType">Faculty Type</Label>
+              <Select value={facultyType} onValueChange={setFacultyType}>
+                <SelectTrigger className="h-8">
+                  <SelectValue placeholder="Select faculty type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Part-time">Part-time Faculty</SelectItem>
+                  <SelectItem value="Full-time">Full-time Faculty</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Row 3: College | Department (max width) */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="college">College</Label>
+              <Select value={college} onValueChange={(value) => {
+                setCollege(value);
+                setDepartment(""); // Reset department when college changes
+              }}>
+                <SelectTrigger className="h-8">
+                  <SelectValue placeholder="Select college" />
+                </SelectTrigger>
+                <SelectContent>
+                  {colleges.map((college) => (
+                    <SelectItem key={college} value={college}>
+                      {college}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="department">Department</Label>
+              <Select value={department} onValueChange={setDepartment} disabled={!college}>
+                <SelectTrigger className="h-8">
+                  <SelectValue placeholder={college ? "Select department" : "Select college first"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableDepartments.map((dept) => (
+                    <SelectItem key={dept} value={dept}>
+                      {dept}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="pt-5">
+            <DialogFooter>
+              <Button type="button" variant="cancel" onClick={handleCancel} className="w-full">
+                Cancel
+              </Button>
+              <Button variant="default" className="w-full">Update</Button>
             </DialogFooter>
           </div>
         </form>

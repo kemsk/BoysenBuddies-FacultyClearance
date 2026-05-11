@@ -477,7 +477,7 @@ function EditCollegeDialog(props: {
               </div>
 
               <div>
-                <div className="text-xs font-semibold text-foreground">Abbreviation</div>
+                <div className="text-xs font-semibold text-foreground">Code</div>
                 <Input value={short} onChange={(e) => setShort(e.target.value)} className="mt-2 h-10" />
               </div>
             </div>
@@ -542,7 +542,7 @@ function EditDepartmentDialog(props: {
               </div>
 
               <div>
-                <div className="text-xs font-semibold text-foreground">Abbreviation</div>
+                <div className="text-xs font-semibold text-foreground">Code</div>
                 <Input value={short} onChange={(e) => setShort(e.target.value)} className="mt-2 h-10" />
               </div>
             </div>
@@ -607,7 +607,7 @@ function EditOfficeDialog(props: {
               </div>
 
               <div>
-                <div className="text-xs font-semibold text-foreground">Abbreviation</div>
+                <div className="text-xs font-semibold text-foreground">Code</div>
                 <Input value={short} onChange={(e) => setShort(e.target.value)} className="mt-2 h-10" />
               </div>
             </div>
@@ -671,7 +671,7 @@ function AddOfficeDialog(props: {
               </div>
 
               <div>
-                <div className="text-xs font-semibold text-foreground">Abbreviation</div>
+                <div className="text-xs font-semibold text-foreground">Code</div>
                 <Input value={short} onChange={(e) => setShort(e.target.value)} className="mt-2 h-10" />
               </div>
             </div>
@@ -1666,6 +1666,45 @@ export default function CISOCollegeOfficeConfiguration() {
           onCreate={({ college, file }) => {
             (async () => {
               if (file) {
+                // Handle CSV upload
+                const formData = new FormData();
+                formData.append('csv_file', file);
+                
+                try {
+                  const response = await fetch(
+                    "/admin/xu-faculty-clearance/api/ciso/colleges/csv-upload",
+                    {
+                      method: "POST",
+                      credentials: "include",
+                      body: formData,
+                    }
+                  );
+                  
+                  if (response.ok) {
+                    const result = await response.json();
+                    // Refresh colleges list after successful upload
+                    const orgResponse = await fetch(
+                      "/admin/xu-faculty-clearance/api/ciso/org-structure",
+                      { credentials: "include" }
+                    );
+                    if (orgResponse.ok) {
+                      const orgData = await orgResponse.json();
+                      setColleges(orgData.colleges ?? []);
+                    }
+                    
+                    // Log the activity
+                    postCISOActivityLog({
+                      event_type: "imported_colleges_csv",
+                      details: [
+                        `Created: ${result.created}`,
+                        `Updated: ${result.updated}`,
+                        `Skipped: ${result.skipped}`,
+                      ],
+                    });
+                  }
+                } catch (error) {
+                  console.error("Error uploading college CSV:", error);
+                }
                 return;
               }
 
@@ -1782,6 +1821,47 @@ export default function CISOCollegeOfficeConfiguration() {
           onCollegeIdChange={setSelectedCollegeId}
           onCreate={({ collegeId, departments: deptDrafts, file }) => {
             if (file) {
+              // Handle CSV upload
+              const formData = new FormData();
+              formData.append('csv_file', file);
+              
+              try {
+                fetch(
+                  "/admin/xu-faculty-clearance/api/ciso/departments/csv-upload",
+                  {
+                    method: "POST",
+                    credentials: "include",
+                    body: formData,
+                  }
+                ).then(async (response) => {
+                  if (response.ok) {
+                    const result = await response.json();
+                    // Refresh departments list after successful upload
+                    const orgResponse = await fetch(
+                      "/admin/xu-faculty-clearance/api/ciso/org-structure",
+                      { credentials: "include" }
+                    );
+                    if (orgResponse.ok) {
+                      const orgData = await orgResponse.json();
+                      setDepartments(orgData.departments ?? []);
+                    }
+                    
+                    // Log the activity
+                    postCISOActivityLog({
+                      event_type: "imported_departments_csv",
+                      details: [
+                        `Created: ${result.created}`,
+                        `Updated: ${result.updated}`,
+                        `Skipped: ${result.skipped}`,
+                      ],
+                    });
+                  }
+                }).catch((error) => {
+                  console.error("Error uploading department CSV:", error);
+                });
+              } catch (error) {
+                console.error("Error uploading department CSV:", error);
+              }
               return;
             }
 
