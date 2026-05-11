@@ -5454,10 +5454,10 @@ def ovphe_system_analytics_api(request):
 
     # Calculate clearance deadline info
     clearance_deadline = None
-    if timeline and timeline.clearance_end_date:
-        current_date = timezone.now().date()
+    if timeline and timeline.clearance_end_date and timeline.clearance_start_date:
+        start_date = timeline.clearance_start_date.date()
         end_date = timeline.clearance_end_date.date()
-        days_remaining = (end_date - current_date).days
+        days_remaining = (end_date - start_date).days
 
         if 0 <= days_remaining <= 14:
             clearance_deadline = {
