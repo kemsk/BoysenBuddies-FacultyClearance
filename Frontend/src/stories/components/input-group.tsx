@@ -239,7 +239,7 @@ function InputGroupWithAddon({
   };
 
   return (
-   <div className="border border-black rounded-md">
+   <div className="rounded-md border border-[hsl(var(--gray-border))]">
     <div className="flex items-center justify-end mt-3">
       <Button 
         variant="icon" 
@@ -281,7 +281,7 @@ function InputGroupWithAddon({
       </Button>
     </div>
 
-    <Divider className="bg-black my-2 w-full h-0.5" />
+    <Divider className="my-2 h-0.5 w-full bg-[hsl(var(--gray-border))]" />
     <div className="min-h-40">
       <div
         ref={editorRef}

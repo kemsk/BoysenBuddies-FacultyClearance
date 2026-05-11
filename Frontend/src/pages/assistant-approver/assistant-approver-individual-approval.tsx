@@ -1,7 +1,7 @@
 import * as React from "react";
 import "../../index.css"; 
 import { AssistantApproverHeader } from "../../stories/components/header";
-import { RequestCard } from "../../stories/components/cards";
+import { RequestCard } from "../../stories/components/request-cards";
 
 import { Button } from "../../stories/components/button";
 import { useNavigate } from "react-router-dom";

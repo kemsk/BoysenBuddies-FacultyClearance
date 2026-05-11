@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   ClearanceRequestsCard,
   type ClearanceRequestItem,
-} from "../../stories/components/cards";
+} from "../../stories/components/request-cards";
 
 import {
   Select,

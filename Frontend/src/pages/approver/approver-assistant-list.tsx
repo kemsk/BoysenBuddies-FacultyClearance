@@ -44,7 +44,7 @@ export default function ApproverAssistantList() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<StudentAssistantItem[]>([]);
-  const [mode, setMode] = useState<"assistants" | "admins">("assistants");
+  const [mode, setMode] = useState<"assistants" | "approvers">("assistants");
 
   const [successOpen, setSuccessOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<React.ReactNode>("");

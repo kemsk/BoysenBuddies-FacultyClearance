@@ -454,7 +454,7 @@ export default function CISOClearanceTimeline() {
 
             void postCISONotification({
               title: "Clearance Timeline Closed",
-              body: `The timeline for ${schoolYear} ${semester} is now inactive and has been archived.`,
+              body: `The timeline for ${schoolYear} ${semester} is now inactive and has been filed.`,
               details: [`School Year = "${schoolYear}" Semester = "${semester}"`],
               status: null,
               is_read: 0,
@@ -640,7 +640,7 @@ export default function CISOClearanceTimeline() {
 
           void postCISONotification({
             title: "Clearance Timeline Closed",
-            body: `The timeline for ${schoolYear} ${semester} is now inactive and has been archived.`,
+            body: `The timeline for ${schoolYear} ${semester} is now inactive and has been filed.`,
             details: [`School Year = "${schoolYear}" Semester = "${semester}"`],
             status: null,
             is_read: 0,

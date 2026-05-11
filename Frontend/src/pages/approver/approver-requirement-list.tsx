@@ -6,7 +6,7 @@ import {
   RequirementEditCard,
   AgreementCard,
   TrueAgreementCard,
-} from "../../stories/components/cards";
+} from "../../stories/components/requirements-list-card";
 
 import { AddRequirementDialog } from "../../stories/components/add-requirement-dialog";
 
@@ -37,6 +37,8 @@ type Requirement = {
   targetDepartments: number[];
   targetOffices: number[];
   targetFaculty: number[];
+  facultyType?: string;
+  faculty_type?: string;
 };
 
 export default function RequirementList() {
@@ -538,6 +540,7 @@ export default function RequirementList() {
                       description={requirement.description}
                       submissionDeadline=""
                       Recipients={requirement.recipients}
+                      FacultyType={String((requirement as Requirement).facultyType ?? (requirement as Requirement).faculty_type ?? "")}
                       LastUpdated={requirement.lastUpdated}
                       CreatedBy={requirement.createdBy}
                       ClearanceTimeline={requirement.clearanceTimeline}
@@ -561,6 +564,11 @@ export default function RequirementList() {
                     description={isPendingUpdate ? pendingChange.data.description : requirement.description}
                     submissionDeadline=""
                     Recipients={isPendingUpdate ? pendingChange.data.recipients : requirement.recipients}
+                    FacultyType={String(
+                      (isPendingUpdate ? pendingChange.data.facultyType : (requirement as Requirement).facultyType) ??
+                      (isPendingUpdate ? pendingChange.data.faculty_type : (requirement as Requirement).faculty_type) ??
+                      ""
+                    )}
                     LastUpdated={isPendingUpdate ? pendingChange.data.lastUpdated : requirement.lastUpdated}
                     CreatedBy={isPendingUpdate ? pendingChange.data.createdBy : requirement.createdBy}
                     ClearanceTimeline={isPendingUpdate ? pendingChange.data.clearanceTimeline : requirement.clearanceTimeline}

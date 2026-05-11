@@ -52,6 +52,7 @@ export type AddRequirementPayload = {
   targetDepartments?: number[];
   targetOffices?: number[];
   targetFaculty?: string[];
+  facultyType?: string;
   physicalSubmission: boolean;
 };
 
@@ -91,6 +92,8 @@ export function AddRequirementDialog({
   const [description, setDescription] = React.useState("");
   const [physicalSubmission, setPhysicalSubmission] = React.useState(false);
 
+  const [facultyType, setFacultyType] = React.useState<string>("all");
+
   // Recipient selection states
   const [recipientScope, setRecipientScope] = React.useState<string>("individual");
   const [facultyOpen, setFacultyOpen] = React.useState(false);
@@ -114,6 +117,7 @@ export function AddRequirementDialog({
     setFacultyIds(initialValues?.facultyIds ?? []);
     setSelectedColleges(initialValues?.targetColleges ?? []);
     setSelectedDepartments(initialValues?.targetDepartments ?? []);
+    setFacultyType(initialValues?.facultyType ?? "all");
     setFacultyQuery("");
 
     // Load approver profile and options
@@ -456,6 +460,21 @@ const getFilteredDepartments = () => {
                 </Button>
               </div>
 
+              {(recipientScope === "college" || recipientScope === "department") && (
+                <div className="space-y-1.5">
+                  <Select value={facultyType} onValueChange={setFacultyType}>
+                    <SelectTrigger className="h-9 w-full rounded-md border border-[hsl(var(--gray-border))] bg-white-background px-3 text-sm text-[hsl(var(--text-black))] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                      <SelectValue placeholder="Specify Faculty Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All faculty</SelectItem>
+                      <SelectItem value="Part-time">Part-time</SelectItem>
+                      <SelectItem value="Full-time">Full-time</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} size="sm" placeholder="Title"/>
               </div>
@@ -507,6 +526,7 @@ const getFilteredDepartments = () => {
                     targetDepartments: selectedDepartments,
                     targetOffices: [],
                     targetFaculty: facultyIds,
+                    facultyType,
                     physicalSubmission,
                   });
                   setOpen(false);
@@ -676,7 +696,7 @@ const getFilteredDepartments = () => {
                       />
                     </div>
 
-                    <div className="mt-4 space-y-3">
+                    <div className="mt-4 max-h-80 space-y-3 overflow-y-auto overflow-x-hidden">
                       {filteredFaculty.map((f) => {
                         const selected = facultyIds.includes(f.id);
                         return (

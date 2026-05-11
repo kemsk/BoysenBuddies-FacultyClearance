@@ -4,9 +4,12 @@ import "../../index.css";
 import { AssistantApproverHeader } from "../../stories/components/header";
 
 import {
-  type AnnouncementItem,
   ClearanceRequestsCard,
   type ClearanceRequestItem,
+} from "../../stories/components/request-cards";
+
+import {
+  type AnnouncementItem,
 } from "../../stories/components/cards";
 
 import { Button } from "../../stories/components/button";

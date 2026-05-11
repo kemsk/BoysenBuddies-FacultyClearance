@@ -37,6 +37,8 @@ function mapEventNameToVariant(eventName: string): ActivityLogVariant {
   const eventMapping: Record<string, ActivityLogVariant> = {
     approved_clearance: "approved_clearance",
     rejected_clearance: "rejected_clearance",
+    overridden_approved_clearance: "override_approved_clearance",
+    overridden_rejected_clearance: "override_rejected_clearance",
     individual_approved_clearance: "individual_approved_clearance",
     individual_rejected_clearance: "individual_rejected_clearance",
     assistant_approved_clearance: "assistant_approved_clearance",
@@ -128,10 +130,27 @@ export default function ApproverActivityLogs() {
           const evt = String((it as any).event_type ?? "").trim();
           const raw = evt || String((it as any).variant ?? "").trim() || String((it as any).title ?? "").trim();
           const variant = mapEventNameToVariant(raw);
+
+          const normalizeKey = (v: string) => v.toLowerCase().replace(/_+/g, "_").trim();
+          const currentTitle = String((it as any).title ?? "").trim();
+          const currentDescription = String((it as any).description ?? "").trim();
+
+          const shouldNormalizeTitle =
+            !currentTitle ||
+            (evt && normalizeKey(currentTitle) === normalizeKey(evt)) ||
+            /^[a-z0-9_]+$/i.test(currentTitle);
+
+          const shouldNormalizeDescription =
+            !currentDescription ||
+            (evt && normalizeKey(currentDescription) === normalizeKey(evt)) ||
+            /^[a-z0-9_]+$/i.test(currentDescription);
+
           return {
             ...it,
             event_type: evt || (it as any).event_type,
             variant,
+            title: shouldNormalizeTitle ? evt : (it as any).title,
+            description: shouldNormalizeDescription ? evt : (it as any).description,
           };
         });
 

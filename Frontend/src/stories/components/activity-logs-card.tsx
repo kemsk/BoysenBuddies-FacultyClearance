@@ -19,6 +19,10 @@ import { cn } from "../../components/lib/utils";
 export type ActivityLogVariant =
   | "approved_clearance"
   | "rejected_clearance"
+  | "override_approved_clearance"
+  | "override_rejected_clearance"
+  | "overridden_approved_clearance"
+  | "overridden_rejected_clearance"
   | "individual_approved_clearance"
   | "individual_rejected_clearance"
   | "assistant_approved_clearance"
@@ -147,6 +151,8 @@ function getArchivedGuidelineIcon() {
 
 function getActivityIcon(variant: ActivityLogVariant) {
   if (variant === "approved_clearance" ||
+    variant === "override_approved_clearance" ||
+    variant === "overridden_approved_clearance" ||
     variant === "individual_approved_clearance" ||
     variant === "assistant_approved_clearance" ||
     variant === "assistant_individual_approved_clearance" ) {
@@ -164,6 +170,8 @@ function getActivityIcon(variant: ActivityLogVariant) {
 
   if (
     variant === "rejected_clearance" ||
+    variant === "override_rejected_clearance" ||
+    variant === "overridden_rejected_clearance" ||
     variant === "set_guideline_status_inactive" ||
     variant === "set_announcement_status_inactive" ||
     variant === "disabled_announcement" ||
@@ -319,9 +327,17 @@ function formatActivityLogText(item: ActivityLogItem): {
   description: string;
 } {
   const actorFirstName =
-    item.actorFirstName?.trim() || String((item as any).firstName ?? "").trim();
+    item.actorFirstName?.trim() ||
+    String((item as any).actorFirstName ?? "").trim() ||
+    String((item as any).actor_first_name ?? "").trim() ||
+    String((item as any).firstName ?? "").trim() ||
+    String((item as any).first_name ?? "").trim();
   const actorLastName =
-    item.actorLastName?.trim() || String((item as any).lastName ?? "").trim();
+    item.actorLastName?.trim() ||
+    String((item as any).actorLastName ?? "").trim() ||
+    String((item as any).actor_last_name ?? "").trim() ||
+    String((item as any).lastName ?? "").trim() ||
+    String((item as any).last_name ?? "").trim();
 
   const actorName = [actorFirstName, actorLastName]
     .filter(Boolean)
@@ -406,6 +422,22 @@ function formatActivityLogText(item: ActivityLogItem): {
     return { title, description };
   }
 
+  if (item.variant === "override_approved_clearance") {
+    return formatActivityLogText({ ...item, variant: "approved_clearance" } as any);
+  }
+
+  if (item.variant === "override_rejected_clearance") {
+    return formatActivityLogText({ ...item, variant: "rejected_clearance" } as any);
+  }
+
+  if (item.variant === "overridden_approved_clearance") {
+    return formatActivityLogText({ ...item, variant: "approved_clearance" } as any);
+  }
+
+  if (item.variant === "overridden_rejected_clearance") {
+    return formatActivityLogText({ ...item, variant: "rejected_clearance" } as any);
+  }
+
   if (item.variant === "created_guideline") {
     const title = "Created Guideline";
     const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
@@ -476,10 +508,10 @@ function formatActivityLogText(item: ActivityLogItem): {
   }
 
   if (item.variant === "archived_guideline") {
-    const title = "Archived Guideline";
+    const title = "Filed Timeline";
     const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
     const titleTail = resolvedGuidelineTitle ? `: ${resolvedGuidelineTitle}.` : ".";
-    const description = `User ${fullName} archived guideline${titleTail}`;
+    const description = `User ${fullName} filed timeline${titleTail}`;
     return { title, description };
   }
 
@@ -584,13 +616,13 @@ function formatActivityLogText(item: ActivityLogItem): {
   }
 
   if (item.variant === "archived_timeline") {
-    const title = "Archived Timeline";
+    const title = "Filed Timeline";
     const details = (item as any).details || [];
     const schoolYear = details.find((d: string) => d.includes("S.Y.")) || "";
     const semester = details.find((d: string) => d.includes("Semester:"))?.replace("Semester:", "").trim() || "";
     const timelineLabel = [schoolYear, semester].filter(Boolean).join(" ").trim();
     const labelTail = timelineLabel ? ` ${timelineLabel}` : "";
-    const description = `User ${userName} archived timeline,${labelTail}.`;
+    const description = `User ${userName} filed timeline,${labelTail}.`;
     return { title, description };
   }
 
@@ -982,8 +1014,17 @@ function formatActivityLogText(item: ActivityLogItem): {
         .replace("Remarks:", "")
         .trim() ||
       "";
+    const reasonRaw =
+      details
+        .find((d: string) => String(d || "").includes("Reason:"))
+        ?.toString()
+        .replace("Reason:", "")
+        .trim() ||
+      "";
     const remarks =
-      String(remarksRaw).trim().toLowerCase() === "bulk approval" ? "" : remarksRaw;
+      String((remarksRaw || reasonRaw) ?? "").trim().toLowerCase() === "bulk approval"
+        ? ""
+        : String((remarksRaw || reasonRaw) ?? "").trim();
     
     const actorLabel = fullName;
     const deptOfficeTail = String(approverScopeLabel || "").trim()
@@ -1051,10 +1092,19 @@ function formatActivityLogText(item: ActivityLogItem): {
 
     const rawDetails = (item as any).details;
     const detailsObj = rawDetails && typeof rawDetails === "object" && !Array.isArray(rawDetails) ? rawDetails : null;
+    const detailsArr = Array.isArray(rawDetails) ? rawDetails : null;
+    const facultyMemberFromDetailsArr = detailsArr
+      ?.map((d) => String(d ?? "").trim())
+      .find((d) => d.toLowerCase().startsWith("faculty member:"))
+      ?.split(":")
+      .slice(1)
+      .join(":")
+      .trim();
 
     const facultyMember =
       String((item as any).facultyName || "").trim() ||
-      String(detailsObj?.faculty_member || "").trim();
+      String(detailsObj?.faculty_member || "").trim() ||
+      String(facultyMemberFromDetailsArr || "").trim();
 
     const employeeId =
       String((item as any).universityId || (item as any).university_id || (item as any).facultyEmployeeId || "").trim();
@@ -1236,7 +1286,14 @@ function formatActivityLogText(item: ActivityLogItem): {
     const title = "Rejected Clearance";
     const fullName = [actorFirstName, actorLastName].filter(Boolean).join(" ").trim() || userName;
     const details = (item as any).details || [];
-    const facultyMember = details.find((d: string) => d.includes("Faculty Member:"))?.replace("Faculty Member: ", "") || "";
+    const facultyMember =
+      String((item as any).facultyName || "").trim() ||
+      details
+        .find((d: string) => String(d || "").includes("Faculty Member:"))
+        ?.toString()
+        .replace("Faculty Member:", "")
+        .trim() ||
+      "";
     const universityId = (item as any).facultyEmployeeId || "";
     const requestId = (item as any).facultyRequestId || "";
     const approverScopeLabel = getApproverScopeLabel(item as any);
@@ -1247,8 +1304,17 @@ function formatActivityLogText(item: ActivityLogItem): {
         .replace("Remarks:", "")
         .trim() ||
       "";
+    const reasonRaw =
+      details
+        .find((d: string) => String(d || "").includes("Reason:"))
+        ?.toString()
+        .replace("Reason:", "")
+        .trim() ||
+      "";
     const remarks =
-      String(remarksRaw).trim().toLowerCase() === "bulk approval" ? "" : remarksRaw;
+      String((remarksRaw || reasonRaw) ?? "").trim().toLowerCase() === "bulk approval"
+        ? ""
+        : String((remarksRaw || reasonRaw) ?? "").trim();
     
     const deptOfficeTail = String(approverScopeLabel || "").trim()
       ? ` of ${String(approverScopeLabel).trim()}`
@@ -1481,7 +1547,11 @@ export function ActivityLogsCard({ items, className }: ActivityLogsCardProps): R
                           (evt && item.description === evt) ||
                           /\[[^\]]+\]/.test(item.description) ||
                           ((item.variant === "approved_clearance" ||
+                            item.variant === "override_approved_clearance" ||
+                            item.variant === "overridden_approved_clearance" ||
                             item.variant === "rejected_clearance" ||
+                            item.variant === "override_rejected_clearance" ||
+                            item.variant === "overridden_rejected_clearance" ||
                             item.variant === "individual_approved_clearance" ||
                             item.variant === "individual_rejected_clearance" ||
                             item.variant === "assistant_approved_clearance" ||

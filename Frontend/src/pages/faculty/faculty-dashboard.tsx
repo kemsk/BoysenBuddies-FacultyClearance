@@ -8,7 +8,11 @@ import {
   ClearanceProgressCard,
   ApprovedCard,
   ExpandableClearanceStepCard,
+  SystemGuidlinesCard,
+  type SystemGuidlinesItem,
 } from "../../stories/components/cards";
+
+
 
 export default function Facultydashboard() {
   const [expandedStepIndex, setExpandedStepIndex] = React.useState<number | null>(1);
@@ -98,6 +102,26 @@ export default function Facultydashboard() {
       .catch(() => setTimeline(null));
   }, []);
 
+  const [items, setItems] = React.useState<SystemGuidlinesItem[]>([]);
+
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/ovphe/system-guidelines", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { items: SystemGuidlinesItem[] }) => setItems(data.items))
+      .catch(() => setItems([]));
+  }, []);
+
+  const dashboardGuidelines = React.useMemo(() => {
+    return items.filter((g) => g.enabled ?? true);
+  }, [items]);
+
+  const dashboardGuidelinesNoEmail = React.useMemo(() => {
+    return dashboardGuidelines.map((g) => ({
+      ...g,
+      email: "",
+    }));
+  }, [dashboardGuidelines]);
+
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -108,7 +132,7 @@ export default function Facultydashboard() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard px-[1in] pt-4 pb-4 w-full">
+      <main className="dashboard px-[1in] pt-4 pb-4 w-full space-y-6">
         <WelcomeAcademicCard
           name={displayName}
           topLeft={{ label: "Academic Year", value: timeline?.academicYear || "" }}
@@ -168,6 +192,10 @@ export default function Facultydashboard() {
           </div>
         ) : null}
 
+          <SystemGuidlinesCard
+            items={dashboardGuidelinesNoEmail}
+            cardName="System Guidelines"
+          />
       </main>
 
     </div>

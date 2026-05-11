@@ -364,7 +364,8 @@ export const ConfirmAlert = React.forwardRef<
         placeholder="example@xu.edu.ph"
         value={overrideReason}
         onChange={(e) => setOverrideReason(e.target.value)}
-        className="border border-gray-300 rounded-md p-2 !text-black placeholder:text-gray-400"
+        className="!text-black placeholder:text-gray-400"
+        containerClassName="border border-gray-300 rounded-md"
       />
       
       <div className="flex flex-row gap-3 justify-end mt-6">

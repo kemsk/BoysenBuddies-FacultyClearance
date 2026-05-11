@@ -171,6 +171,24 @@ async function exportToPDF(elementId: string, filename: string) {
   }
 }
 
+function normalizeTermCode(term: string) {
+  const t = (term ?? "").trim();
+  if (!t) return "";
+
+  const upper = t.toUpperCase();
+  if (upper === "FIRST" || upper === "SECOND" || upper === "INTERSESSION") {
+    return upper;
+  }
+
+  const map: Record<string, string> = {
+    "First Semester": "FIRST",
+    "Second Semester": "SECOND",
+    Intersession: "INTERSESSION",
+  };
+
+  return map[t] ?? "";
+}
+
 export default function CISOSystemAnalytics() {
   const navigate = useNavigate();
 
@@ -179,7 +197,7 @@ export default function CISOSystemAnalytics() {
   const [analyticsData, setAnalyticsData] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
 
-  const [selectedTerm, setSelectedTerm] = React.useState("Term");
+  const [selectedTerm, setSelectedTerm] = React.useState("ALL");
   const [selectedClearance, setSelectedClearance] = React.useState("All Clearances");
   const [selectedCollege, setSelectedCollege] = React.useState("College");
   const [timelineReady, setTimelineReady] = React.useState(false);
@@ -190,6 +208,13 @@ export default function CISOSystemAnalytics() {
   const [timelineTermsByYear, setTimelineTermsByYear] = React.useState<Record<string, string[]>>({});
   const [colleges, setColleges] = React.useState<{ id: string; name: string }[]>([]);
 
+  const availableTerms = React.useMemo(() => {
+    if (!selectedClearance || selectedClearance === "All Clearances") {
+      return ["FIRST", "SECOND", "INTERSESSION"];
+    }
+    return timelineTermsByYear[selectedClearance] ?? [];
+  }, [selectedClearance, timelineTermsByYear]);
+
   const buildAnalyticsParams = React.useCallback(() => {
     const params = new URLSearchParams();
 
@@ -198,13 +223,8 @@ export default function CISOSystemAnalytics() {
       if (m) params.set("academic_year", m[1]);
     }
 
-    if (selectedTerm && selectedTerm !== "Term") {
-      const map: Record<string, string> = {
-        "First Semester": "FIRST",
-        "Second Semester": "SECOND",
-        Intersession: "INTERSESSION",
-      };
-      if (map[selectedTerm]) params.set("term", map[selectedTerm]);
+    if (selectedTerm && selectedTerm !== "ALL") {
+      params.set("term", selectedTerm);
     }
 
     if (selectedCollege && selectedCollege !== "College") {
@@ -251,10 +271,14 @@ export default function CISOSystemAnalytics() {
             optionMap.set(value, next);
 
             if (term) {
+              const termCode = normalizeTermCode(term);
+              if (!termCode) {
+                return;
+              }
               if (!termsByYear.has(value)) {
                 termsByYear.set(value, new Set<string>());
               }
-              termsByYear.get(value)?.add(term);
+              termsByYear.get(value)?.add(termCode);
             }
           });
 
@@ -287,7 +311,7 @@ export default function CISOSystemAnalytics() {
       return;
     }
 
-    if (selectedTerm === "Term" || !availableTerms.includes(selectedTerm)) {
+    if (selectedTerm === "ALL" || !availableTerms.includes(selectedTerm)) {
       setSelectedTerm(availableTerms[0]);
     }
   }, [selectedClearance, selectedTerm, timelineTermsByYear]);
@@ -304,7 +328,8 @@ export default function CISOSystemAnalytics() {
           setSelectedClearance(`S.Y. ${normalizedAcademicYear}`);
         }
         if (semester) {
-          setSelectedTerm(semester);
+          const termCode = normalizeTermCode(semester);
+          setSelectedTerm(termCode || "ALL");
         }
       })
       .catch(() => {})
@@ -424,7 +449,7 @@ export default function CISOSystemAnalytics() {
           </Button>
         </div>
 
-        <div className="mt-2 space-y-3">
+        <div className="mt-4 space-y-3">
           <div className="flex flex-wrap items-left gap-3 overflow-x-auto mt-4">
 
             <Select value={selectedClearance} onValueChange={setSelectedClearance}>
@@ -446,10 +471,16 @@ export default function CISOSystemAnalytics() {
                 <SelectValue placeholder="Term" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Term">Term</SelectItem>
-                <SelectItem value="First Semester">First Semester</SelectItem>
-                <SelectItem value="Second Semester">Second Semester</SelectItem>
-                <SelectItem value="Intersession">Intersession</SelectItem>
+                <SelectItem value="ALL">Term</SelectItem>
+                {availableTerms.includes("FIRST") ? (
+                  <SelectItem value="FIRST">First Semester</SelectItem>
+                ) : null}
+                {availableTerms.includes("SECOND") ? (
+                  <SelectItem value="SECOND">Second Semester</SelectItem>
+                ) : null}
+                {availableTerms.includes("INTERSESSION") ? (
+                  <SelectItem value="INTERSESSION">Intersession</SelectItem>
+                ) : null}
               </SelectContent>
             </Select>
 
@@ -473,11 +504,11 @@ export default function CISOSystemAnalytics() {
                   }
                   
                   // Map selectedTerm to semester format
-                  if (selectedTerm && selectedTerm !== "Term") {
+                  if (selectedTerm && selectedTerm !== "ALL") {
                     const termMap: Record<string, string> = {
-                      "First Semester": "1stSemester",
-                      "Second Semester": "2ndSemester", 
-                      "Intersession": "Intersession"
+                      FIRST: "1stSemester",
+                      SECOND: "2ndSemester",
+                      INTERSESSION: "Intersession",
                     };
                     semester = termMap[selectedTerm] || selectedTerm;
                   }
@@ -502,11 +533,11 @@ export default function CISOSystemAnalytics() {
                     details: [
                       `User: ${localStorage.getItem('firstName') || 'Unknown'} ${localStorage.getItem('lastName') || ''}`,
                       selectedCollege !== "College" ? `College: ${selectedCollege}` : "",
-                      selectedClearance !== "All Clearances" && selectedTerm !== "Term" 
+                      selectedClearance !== "All Clearances" && selectedTerm !== "ALL" 
                         ? `Details: (${selectedClearance} ${selectedTerm})`
                         : selectedClearance !== "All Clearances" 
                           ? `Details: (${selectedClearance})`
-                          : selectedTerm !== "Term"
+                          : selectedTerm !== "ALL"
                             ? `Details: (${selectedTerm})`
                             : "",
                       `Format: PDF`
@@ -523,7 +554,7 @@ export default function CISOSystemAnalytics() {
           </div>
         </div>  
 
-          {analyticsData?.clearanceDeadline?.showBanner && (
+          {analyticsData?.clearanceDeadline?.showBanner ? (
           <div className="min-w-0 flex-1 my-4">
             <Badge
               variant="warning"
@@ -564,6 +595,46 @@ export default function CISOSystemAnalytics() {
 
               <div className="shrink-0 rounded-full border border-yellow-300 bg-yellow-200 px-3 py-1 text-xs font-semibold text-yellow-800">
                 Deadline: {analyticsData?.clearanceDeadline?.deadlineDate}
+              </div>
+            </Badge>
+          </div>
+        ) : (
+          <div className="min-w-0 flex-1 my-4">
+            <Badge
+              variant="destructive"
+              className="w-full flex flex-wrap items-center justify-between gap-3 rounded-md px-4 py-3 text-sm font-medium"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="shrink-0"
+                >
+                  <path
+                    d="M12 9V13"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M12 17H12.01"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M10.29 3.86L1.82 18.14C1.063 19.42 1.976 21 3.53 21H20.47C22.024 21 22.937 19.42 22.18 18.14L13.71 3.86C12.933 2.54 11.067 2.54 10.29 3.86Z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <div className="min-w-0">
+                  This Timeline is Inactive
+                </div>
               </div>
             </Badge>
           </div>

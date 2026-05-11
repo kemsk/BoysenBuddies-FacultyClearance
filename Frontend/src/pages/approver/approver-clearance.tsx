@@ -2,7 +2,7 @@ import * as React from "react";
 import "../../index.css";
 import { DynamicApproverHeader } from "../../stories/components/header";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { ClearanceRequestsCard, type ClearanceRequestItem } from "../../stories/components/cards";
+import { ClearanceRequestsCard, type ClearanceRequestItem } from "../../stories/components/request-cards";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../stories/components/select";
 import { SearchInputGroup } from "../../stories/components/input-group";
 import { Input } from "../../stories/components/input";
@@ -126,6 +126,7 @@ function ConfirmSystemUserDialog({
                   onChange={(e) => setConfirmEmail(e.target.value)}
                   size="sm"
                   placeholder="example@xu.edu.ph"
+                  className="focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none"
                 />
               </div>
             </AlertDialogHeader>
@@ -136,6 +137,10 @@ function ConfirmSystemUserDialog({
                   className="h-11 w-full rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
                   onClick={(e) => {
                     e.preventDefault();
+                    if (!confirmEmail.trim()) {
+                      onError?.("Please enter your XU Email to confirm.");
+                      return;
+                    }
                     if (confirmEmail.trim().toLowerCase() === adminEmail.trim().toLowerCase()) {
                       onConfirm?.(requestId);
                       onOpenChange?.(false);

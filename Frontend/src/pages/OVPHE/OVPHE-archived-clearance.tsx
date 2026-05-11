@@ -508,7 +508,7 @@ React.useEffect(() => {
             ))}
             {filteredTimelines.length === 0 && !loading && (
               <div className="text-center py-8 text-gray-500">
-                No archived timelines found.
+                No filed timelines found.
               </div>
             )}
             {loading && (

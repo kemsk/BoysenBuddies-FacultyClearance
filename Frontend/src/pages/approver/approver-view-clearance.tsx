@@ -6,7 +6,7 @@ import { DynamicApproverHeader } from "../../stories/components/header";
 import {
   ClearanceRequestsCard,
   type ClearanceRequestItem,
-} from "../../stories/components/cards";
+} from "../../stories/components/request-cards";
 
 import { Button } from "../../stories/components/button";
 import { Badge } from "../../stories/components/badge";
@@ -366,7 +366,6 @@ export default function ApproverViewClearance() {
                         <tr className="border-b border-muted-foreground/20">
                           <th className="w-12 px-4 py-3 font-semibold" />
                           <th className="px-4 py-3 font-semibold">Name</th>
-                          <th className="px-4 py-3 font-semibold">Request ID</th>
                           <th className="px-4 py-3 font-semibold">Employee ID</th>
                           <th className="px-4 py-3 font-semibold">College</th>
                           <th className="px-4 py-3 font-semibold">Department</th>
@@ -400,7 +399,6 @@ export default function ApproverViewClearance() {
                                 {item.name}
                               </Link>
                             </td>
-                            <td className="px-4 py-4 align-top">{item.requestId}</td>
                             <td className="px-4 py-4 align-top">{item.employeeId}</td>
                             <td className="px-4 py-4 align-top">
                               <div className="max-w-[220px] whitespace-pre-wrap">{item.college}</div>

@@ -1692,9 +1692,9 @@ def _announcement_detail_api(request, role: str, announcement_id: int):
                 Notification.objects.create(
                     user_id=session_user.id if session_user else None,
                     user_role=role,
-                    title="Content Archived",
+                    title="Content Filed",
                     status=None,
-                    body=f'"{announcement_title}" has been moved to archives by {user_name}.',
+                    body=f'"{announcement_title}" has been filed by {user_name}.',
                     details=[f'Announcement = "{announcement_title}"'],
                     is_read=False,
                 )
@@ -3435,6 +3435,7 @@ def _approver_archived_requests_for_archived_clearance(user, archived: ArchivedC
             "id": req.request_id or str(req.id),
             "requestId": req.request_id or "",
             "requirementName": req.requirement.title if req.requirement else "",
+            "requirementDescription": (req.requirement.description or "") if req.requirement else "",
             "submissionNotes": req.submission_notes or "",
             "submissionLink": req.submission_link or "",
             "status": _to_request_status(req.status),
@@ -9441,10 +9442,10 @@ def approver_activity_logs_api(request):
 
         # For clearance-related events, fetch faculty data directly from database
         print(f"[DEBUG] Activity log - Checking condition: event_type={event_type}, request_id={request_id}")
-        print(f"[DEBUG] Activity log - Event type in list: {event_type in ['approved_clearance', 'rejected_clearance', 'assistant_approved_clearance', 'assistant_rejected_clearance', 'individual_approved_clearance', 'individual_rejected_clearance']}")
+        print(f"[DEBUG] Activity log - Event type in list: {event_type in ['approved_clearance', 'rejected_clearance', 'assistant_approved_clearance', 'assistant_rejected_clearance', 'individual_approved_clearance', 'individual_rejected_clearance', 'overridden_approved_clearance', 'overridden_rejected_clearance']}")
         print(f"[DEBUG] Activity log - Request ID exists: {bool(request_id)}")
 
-        if event_type in ["approved_clearance", "rejected_clearance", "assistant_approved_clearance", "assistant_rejected_clearance", "individual_approved_clearance", "individual_rejected_clearance"] and (request_id or details):
+        if event_type in ["approved_clearance", "rejected_clearance", "assistant_approved_clearance", "assistant_rejected_clearance", "individual_approved_clearance", "individual_rejected_clearance", "overridden_approved_clearance", "overridden_rejected_clearance"] and (request_id or details):
             try:
                 # Try to look up by request_id first (for bulk approvals)
                 if request_id:
@@ -9582,6 +9583,7 @@ def approver_activity_logs_api(request):
             office=office,
             supervisor=supervisor,
             university_id=employee_id,
+            faculty=faculty if 'faculty' in locals() else None,
         )
 
         return JsonResponse({
@@ -9640,12 +9642,61 @@ def approver_activity_logs_api(request):
         approver_department = ""
         faculty_college = ""
         faculty_department = ""
+        response_details = log.details if log.details else []
 
-        if log.event_type in ["approved_clearance", "rejected_clearance"]:
+        if log.event_type in ["approved_clearance", "rejected_clearance", "overridden_approved_clearance", "overridden_rejected_clearance"]:
             # Extract from details array since log.faculty is None for bulk approvals
             details = log.details if log.details else []
             faculty_member = next((d.replace("Faculty Member: ", "").strip() for d in details if "Faculty Member:" in d), "")
+            if str(faculty_member or "").strip() in {"()", "( )"}:
+                faculty_member = ""
+
+            if not faculty_member and log.faculty:
+                try:
+                    faculty_user_obj = getattr(log.faculty, "user", None)
+                    if faculty_user_obj:
+                        faculty_member = faculty_user_obj.get_full_name() or faculty_user_obj.email or ""
+                    if not faculty_member:
+                        faculty_member = f"{getattr(log.faculty, 'first_name', '')} {getattr(log.faculty, 'last_name', '')}".strip()
+                except Exception:
+                    faculty_member = faculty_member or ""
+
+            if not faculty_member and str(log.university_id or "").strip():
+                try:
+                    faculty_obj = (
+                        Faculty.objects.select_related("user")
+                        .filter(employee_id=str(log.university_id).strip())
+                        .first()
+                    )
+                    if faculty_obj:
+                        faculty_user_obj = getattr(faculty_obj, "user", None)
+                        if faculty_user_obj:
+                            faculty_member = faculty_user_obj.get_full_name() or faculty_user_obj.email or ""
+                        if not faculty_member:
+                            faculty_member = f"{getattr(faculty_obj, 'first_name', '')} {getattr(faculty_obj, 'last_name', '')}".strip()
+                except Exception:
+                    faculty_member = faculty_member or ""
+
+            if not faculty_member and log.request_id:
+                try:
+                    cr = ClearanceRequest.objects.select_related(
+                        "faculty",
+                        "faculty__user",
+                    ).filter(request_id=log.request_id).first()
+                    if cr and cr.faculty:
+                        faculty_user_obj = getattr(cr.faculty, "user", None)
+                        if faculty_user_obj:
+                            faculty_member = faculty_user_obj.get_full_name() or faculty_user_obj.email or ""
+                        if not faculty_member:
+                            faculty_member = f"{getattr(cr.faculty, 'first_name', '')} {getattr(cr.faculty, 'last_name', '')}".strip()
+                except Exception:
+                    faculty_member = faculty_member or ""
             employee_id = next((d.replace("Employee ID: ", "").strip() for d in details if "Employee ID:" in d), "")
+            if not employee_id:
+                employee_id = log.university_id or ""
+            if faculty_member and not any("Faculty Member:" in str(d) for d in details):
+                details = [f"Faculty Member: {faculty_member}"] + list(details)
+            response_details = details
             faculty_name = faculty_member
             faculty_employee_id = employee_id
             faculty_request_id = log.request_id or ""
@@ -9693,7 +9744,7 @@ def approver_activity_logs_api(request):
             "actorId": str(log.user.id if log.user else ""),
             "supervisorId": str(log.supervisor.id if log.supervisor else ""),
             "userRole": str(log.user_role if log.user_role else ""),
-            "details": log.details if log.details else [],
+            "details": response_details,
             "universityId": log.university_id or "",
             "facultyName": faculty_name,
             "facultyEmployeeId": faculty_employee_id,
@@ -9742,14 +9793,28 @@ def approver_override_api(request):
         # Log the override activity
         # Note: User profile is not needed for override logging
 
+        faculty_display_name = ""
+        try:
+            faculty_obj = clearance_request.faculty
+            faculty_user_obj = getattr(faculty_obj, "user", None)
+            if faculty_user_obj:
+                faculty_display_name = faculty_user_obj.get_full_name() or faculty_user_obj.email or ""
+            if not faculty_display_name:
+                faculty_display_name = f"{faculty_obj.first_name} {faculty_obj.last_name}".strip()
+        except Exception:
+            faculty_display_name = ""
+
         # Create activity log for override
         ActivityLog.objects.create(
             event_type=f"overridden_{status}_clearance",
             user=user,
+            faculty=clearance_request.faculty,
             user_role="Approver",
             request_id=request_id,
             details=[
                 f"Override Reason: {reason}",
+                f"Faculty Member: {faculty_display_name}".strip(),
+                f"Employee ID: {clearance_request.faculty.employee_id}",
                 f"Previous Status: {clearance_request.status}",
                 f"New Status: {status}",
                 f"Requirement: {clearance_request.requirement.title if clearance_request.requirement else 'N/A'}",
@@ -9793,6 +9858,46 @@ def approver_override_api(request):
             remarks_text = str(reason or "")
             approver_name = user.get_full_name() or user.email
             action = "approve" if status == "approved" else "reject"
+
+            clearance_period_start_date = None
+            clearance_period_end_date = None
+            try:
+                timeline = getattr(clearance_request, "clearance_timeline", None)
+                start_dt = getattr(timeline, "clearance_start_date", None)
+                end_dt = getattr(timeline, "clearance_end_date", None)
+                clearance_period_start_date = start_dt.date() if start_dt else None
+                clearance_period_end_date = end_dt.date() if end_dt else None
+            except Exception:
+                clearance_period_start_date = None
+                clearance_period_end_date = None
+
+            if faculty_user:
+                Notification.objects.create(
+                    user=faculty_user,
+                    created_by=user,
+                    approver=user,
+                    user_role="Faculty",
+                    title=
+                        "Submission Approved (Override)"
+                        if action == "approve"
+                        else "Submission Rejected (Override)",
+                    status=
+                        Notification.Status.APPROVED
+                        if action == "approve"
+                        else Notification.Status.REJECTED,
+                    body=(
+                        f"Your submission has been OVERRIDDEN to {action.upper()}.\n\n"
+                        f"Submission of {requirement_title}\n"
+                        f"Remarks: {remarks_text}"
+                    ),
+                    details=[
+                        f"Requirement = \"{requirement_title}\"",
+                        f"Remarks = {remarks_text}",
+                    ],
+                    is_read=False,
+                    clearance_period_start_date=clearance_period_start_date,
+                    clearance_period_end_date=clearance_period_end_date,
+                )
 
             if faculty_email:
                 print(f"DEBUG: Sending override email to {faculty_email} for request {clearance_request.request_id}")
@@ -9936,6 +10041,7 @@ def approver_view_clearance_api(request):
     return JsonResponse({"items": items})
 
 
+@csrf_exempt
 def approver_archived_individual_api(request):
     if request.method not in {"GET", "POST"}:
         return JsonResponse({"detail": "Method not allowed"}, status=405)

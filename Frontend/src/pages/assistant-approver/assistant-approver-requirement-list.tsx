@@ -1,9 +1,10 @@
 import * as React from "react";
 import "../../index.css"; 
 import { AssistantApproverHeader } from "../../stories/components/header";
-
 import {
-  RequirementListCard,
+ RequirementListCard,
+} from "../../stories/components/requirements-list-card";
+import {
   type RequirementListItem,
 } from "../../stories/components/cards";
 
@@ -76,6 +77,7 @@ export default function AssistantApproverRequirementList() {
               key={`${item.title}-${index}`}
               title={item.title}
               Recipients={(item as RequirementListItem & { recipients?: string }).recipients ?? "Same Department Faculty"}
+              FacultyType={(item as RequirementListItem & { facultyType?: string }).facultyType}
               description={item.description}
               physicalSubmission={item.physicalSubmission}
               LastUpdated={item.lastUpdated}

@@ -333,14 +333,13 @@ class ApproverFlowStep(models.Model):
     class Meta:
         ordering = ["order", "id"]
 
-    def __str__(self):
-        return f"{self.category} ({self.order})"
-
 
 class ActivityLog(models.Model):
     class EventType(models.TextChoices):
         APPROVED_CLEARANCE = "approved_clearance", "approved_clearance"
         REJECTED_CLEARANCE = "rejected_clearance", "rejected_clearance"
+        OVERRIDDEN_APPROVED_CLEARANCE = "overridden_approved_clearance", "overridden_approved_clearance"
+        OVERRIDDEN_REJECTED_CLEARANCE = "overridden_rejected_clearance", "overridden_rejected_clearance"
         INDIVIDUAL_APPROVED_CLEARANCE = "individual_approved_clearance", "individual_approved_clearance"
         INDIVIDUAL_REJECTED_CLEARANCE = "individual_rejected_clearance", "individual_rejected_clearance"
         ASSISTANT_APPROVED_CLEARANCE = "assistant_approved_clearance", "assistant_approved_clearance"

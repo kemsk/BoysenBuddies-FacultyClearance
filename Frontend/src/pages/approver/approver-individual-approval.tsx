@@ -4,7 +4,7 @@ import "../../index.css";
 
 import { DynamicApproverHeader } from "../../stories/components/header";
 
-import { RequestCard } from "../../stories/components/cards";
+import { RequestCard } from "../../stories/components/request-cards";
 
 import { Button } from "../../stories/components/button";
 
@@ -276,7 +276,7 @@ export default function ApproverIndividualApproval() {
 
     if (!request || status === "pending") {
 
-      setError("Please select Approved or Rejected");
+      openError("Please select Approved or Rejected");
 
       return;
 
@@ -367,19 +367,14 @@ export default function ApproverIndividualApproval() {
         credentials: "include",
 
         headers: {
-
           "Content-Type": "application/json",
-
           "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]')?.getAttribute('value') || '',
-
         },
 
         body: JSON.stringify({
 
           request_id: request.item.requestId,
-
           action: status === "approved" ? "approve" : "reject",
-
           remarks: remarks,
 
         }),
@@ -509,262 +504,248 @@ export default function ApproverIndividualApproval() {
 
 
       openError(
-
         status === "rejected"
-
           ? SuccessErrorModalMessages.REQUEST_REJECT_FAILED
-
           : SuccessErrorModalMessages.REQUEST_APPROVE_FAILED,
-
       );
 
 
-
       setError(err instanceof Error ? err.message : "Failed to save");
-
     } finally {
-
       setSaving(false);
-
     }
-
   };
-
-
 
   const handleCancel = () => {
-
     navigate("/approver-clearance");
-
   };
 
-
-
   const handleOverride = async () => {
-
     if (!request || !overrideReason.trim()) {
-
       setError("Override reason is required");
-
       return;
-
     }
 
-
-
     setSaving(true);
-
     setError(null);
-
-
 
     try {
 
       const response = await fetch("/admin/xu-faculty-clearance/api/approver/override", {
-
         method: "POST",
-
         credentials: "include",
-
         headers: {
-
           "Content-Type": "application/json",
-
           "X-CSRFToken": getCookie("csrftoken") || "",
-
         },
 
         body: JSON.stringify({
-
           request_id: request.item.requestId,
-
           status: overrideStatus,
-
           reason: overrideReason,
-
         }),
-
       });
-
-
 
       if (!response.ok) {
-
         const errorData = await response.json().catch(() => ({}));
-
         throw new Error(errorData.detail || errorData.message || `Failed to override: ${response.statusText}`);
-
       }
-
-
 
       const result = await response.json();
-
       console.log("Override successful:", result);
 
+      // Create activity log entries in the background for override actions
+      void (async () => {
+        try {
+          const requestItem = request.item;
+          const facultyDepartment = requestItem.department || null;
+          const facultyCollege = requestItem.college || null;
+          const facultyEmployeeId =
+            (requestItem as any).employeeId ||
+            (requestItem as any).employee_id ||
+            (requestItem as any).universityId ||
+            (requestItem as any).university_id ||
+            "N/A";
+          const requestIdValue =
+            (requestItem as any).requestId ||
+            (requestItem as any).request_id ||
+            requestId;
+          const facultyNameValue =
+            (requestItem as any).name ||
+            `${String((requestItem as any).firstName || (requestItem as any).first_name || "").trim()} ${String((requestItem as any).lastName || (requestItem as any).last_name || "").trim()}`
+              .trim() ||
+            "";
+          const userOffice = userProfile?.roles_payload?.[0]?.office || null;
 
+          const isAssistantApprover = window.location.pathname.includes("/assistant-approver");
+          const userRole = isAssistantApprover ? "Assistant" : "Approver";
+
+          const eventType =
+            overrideStatus === "rejected"
+              ? "overridden_rejected_clearance"
+              : "overridden_approved_clearance";
+
+          const details: string[] = [
+            `Faculty Member: ${facultyNameValue}`,
+            `Employee ID: ${facultyEmployeeId}`,
+            `Override Status: ${overrideStatus}`,
+            `Reason: ${overrideReason}`,
+          ];
+
+          if (isAssistantApprover && userProfile) {
+            const assistantName = `${userProfile.first_name || ""} ${userProfile.last_name || ""}`.trim();
+            details.push(`Assistant: ${assistantName || userProfile.email || ""}`.trim());
+          }
+
+          const logResponse = await fetch("/admin/xu-faculty-clearance/api/approver/activity-logs", {
+            method: "POST",
+            credentials: "include",
+            keepalive: true,
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken") || "",
+            },
+            body: JSON.stringify({
+              event_type: eventType,
+              details,
+              department: facultyDepartment,
+              college: facultyCollege,
+              office: userOffice,
+              university_id: facultyEmployeeId,
+              request_id: requestIdValue,
+              user_role: userRole,
+            }),
+          });
+
+          if (!logResponse.ok) {
+            console.warn(
+              "[activity-log] Override activity log POST failed:",
+              logResponse.status,
+              await logResponse.text(),
+            );
+          }
+        } catch (e) {
+          console.warn("[activity-log] Override activity log POST error:", e);
+        }
+      })();
 
       // Reset override state
-
       setShowOverrideAlert(false);
-
       setShowConfirmAlert(false);
-
       setOverrideReason("");
-
       setOverrideStatus('approved');
 
-
-
       // Refresh the request data
-
       const updatedResponse = await fetch(`/admin/xu-faculty-clearance/api/approver/individual-approval?request_id=${requestId}`, {
-
         credentials: "include",
-
       });
-
       
-
       if (updatedResponse.ok) {
-
         const updatedData = await updatedResponse.json();
-
         setRequest(updatedData);
-
         setStatus(updatedData.item.status.toLowerCase() as "approved" | "rejected" | "pending");
-
         setRemarks(updatedData.item.remarks || "");
-
       }
 
-
-
     } catch (err) {
-
       console.error("Error overriding:", err);
-
       setError(err instanceof Error ? err.message : "Failed to override request");
-
     } finally {
-
       setSaving(false);
-
     }
-
   };
 
 
-
   if (loading) {
-
     return (
-
       <div className="min-h-screen bg-primary-foreground text-primary-foreground">
-
         <div className="header mb-3">
-
           <DynamicApproverHeader />
-
         </div>
 
         <main className="dashboard p-4">
-
           <div className="flex items-center justify-center h-64">
-
             <div className="text-lg">Loading...</div>
-
           </div>
-
         </main>
-
       </div>
-
     );
-
   }
 
-
-
-  if (error || !request) {
-
+  if (error) {
     return (
-
       <div className="min-h-screen bg-primary-foreground text-primary-foreground">
-
         <div className="header mb-3">
-
           <DynamicApproverHeader />
-
         </div>
 
-        <main className="dashboard p-4">
-
+        <main className="dashboard p-[2%]">
           <div className="flex items-center justify-center h-64">
 
-            <div className="text-red-500">Error: {error || "Request not found"}</div>
-
+            <ErrorModal
+              open={true}
+              onOpenChange={() => {
+                navigate("/approver-clearance");
+              }}
+              message={error || "Request not found"}
+              onContinue={() => {
+                navigate("/approver-clearance");
+              }}
+            />
           </div>
-
         </main>
-
       </div>
-
     );
-
   }
 
+  if (!request) {
+    return (
+      <div className="min-h-screen bg-primary-foreground text-primary-foreground">
+        <div className="header mb-3">
+          <DynamicApproverHeader />
+        </div>
 
+        <main className="dashboard p-[2%]">
+          <div className="flex items-center justify-center h-64">
+            <ErrorModal
+              open={true}
+              onOpenChange={() => {
+                navigate("/approver-clearance");
+              }}
+              message={"Request not found"}
+              onContinue={() => {
+                navigate("/approver-clearance");
+              }}
+            />
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   const { item } = request;
 
-
-
   // Extract approver email from the loaded profile (used for override confirmation)
-
   const approverEmail = (userProfile?.user?.email || userProfile?.email || "").toLowerCase().trim();
 
-
-
   return (
-
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
-
       <SuccessModal
-
         open={successOpen}
-
         onOpenChange={setSuccessOpen}
-
         message={successMessage}
-
         onContinue={successContinue}
-
       />
-
-
 
       <ErrorModal
-
         open={errorOpen}
-
         onOpenChange={setErrorOpen}
-
         message={errorMessage}
-
       />
 
-      
-
-      {/* HEADER */}
-
       <div className="header mb-3">
-
         <DynamicApproverHeader />
-
       </div>
-
-
 
       {/* DASHBOARD CONTENT */}
       <main className="dashboard px-[1in] pt-4 pb-4 w-full">
@@ -777,398 +758,190 @@ export default function ApproverIndividualApproval() {
           </Button>
         </div>
 
-
-
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
-
           <div>
-
             <RequestCard
-
               requestId={item.requestId}
-
               employeeId={item.employeeId}
-
               SchoolID={item.schoolId}
-
               FullName={item.name}
-
               name={`Request No. ${item.requestId}`}
-
               college={item.college}
-
               department={item.department}
-
               facultyType={item.facultyType}
-
               SchoolEmail={item.schoolEmail}
-
               status={status}
-
               onApprove={() => console.log("Approved")}
-
               onReject={() => console.log("Rejected")}
-
               onViewDetails={() => console.log("View details")}
-
             />
-
           </div>
 
-
-
           <div className="rounded-xl border border-muted-foreground/20 bg-card shadow">
-
             <div className="p-6">
-
-              <div className="text-xl text-center text-black font-bold mt-1">
-
-                {item.requirementTitle}
-
-              </div>
-
-
+              <div className="text-xl text-center text-black font-bold mt-1">{item.requirementTitle}</div>
 
               <div className="mt-6">
-
                 <div className="text-md font-bold text-foreground">Submission Notes</div>
-
                 <div
-
                   className="mt-3 rounded-md border border-foreground p-3 text-sm text-black"
-
                   dangerouslySetInnerHTML={{ __html: item.submissionNotes || "No notes provided" }}
-
                 />
-
               </div>
-
-
 
               {item.submissionLink ? (
-
                 <div className="mt-4">
-
                   <div className="text-md font-bold text-foreground">Submission Link</div>
-
                   <a
-
                     href={item.submissionLink}
-
                     target="_blank"
-
                     rel="noopener noreferrer"
-
                     className="mt-2 block break-all text-sm text-primary underline"
-
                   >
-
                     {item.submissionLink}
-
                   </a>
-
                 </div>
-
               ) : null}
-
             </div>
 
-
-
             <div className="border-t" />
-
-
-
             <div className="p-6">
-
               <div className="text-md font-bold text-foreground mb-4">Status</div>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="status"
+                      value="approved"
+                      checked={status === "approved"}
+                      onChange={(e) => setStatus(e.target.value as "approved")}
+                      disabled={isDisabled}
+                      className="mr-2"
+                    />
+                    <span className="text-black">Approved</span>
+                  </label>
 
-  
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="status"
+                      value="rejected"
+                      checked={status === "rejected"}
+                      onChange={(e) => setStatus(e.target.value as "rejected")}
+                      disabled={isDisabled}
+                      className="mr-2"
+                    />
+                    <span className="text-black">Rejected</span>
+                  </label>
+                </div>
 
-                <div className="flex justify-between items-center">
+                <Button
+                  variant="default"
+                  className="flex items-center gap-2"
+                  disabled={status === "pending"}
+                  onClick={() => setShowOverrideAlert(true)}
+                >
+                  <Lock className="w-4 h-4" />
+                  Override Status
+                </Button>
+              </div>
 
-                  {/* Radio buttons on the left */}
-
-                  <div className="flex items-center gap-4">
-
-                    <label className="flex items-center">
-
-                      <input
-
-                        type="radio"
-
-                        name="status"
-
-                        value="approved"
-
-                        checked={status === "approved"}
-
-                        onChange={(e) => setStatus(e.target.value as "approved")}
-
-                        disabled={isDisabled}
-
-                        className="mr-2"
-
-                      />
-
-                      <span className="text-black">Approved</span>
-
-                    </label>
-
-                    <label className="flex items-center">
-
-                      <input
-
-                        type="radio"
-
-                        name="status"
-
-                        value="rejected"
-
-                        checked={status === "rejected"}
-
-                        onChange={(e) => setStatus(e.target.value as "rejected")}
-
-                        disabled={isDisabled}
-
-                        className="mr-2"
-
-                      />
-
-                      <span className="text-black">Rejected</span>
-
-                    </label>
-
+              {showOverrideAlert && !showConfirmAlert && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                    <OverrideAlert
+                      open={showOverrideAlert}
+                      status={overrideStatus}
+                      requestId={item.requestId}
+                      onStatusChange={setOverrideStatus}
+                      onDelete={() => {
+                        console.log("Override confirmed:", overrideStatus);
+                        setShowOverrideAlert(false);
+                      }}
+                      onCancel={() => setShowOverrideAlert(false)}
+                      onConfirm={(reason: string) => {
+                        setOverrideReason(reason);
+                        setShowConfirmAlert(true);
+                      }}
+                    />
                   </div>
-
-
-
-                  {/* Button on the right */}
-
-                  <Button
-
-                    variant="default"
-
-                    className="flex items-center gap-2"
-
-                    disabled={status === "pending"}
-
-                    onClick={() => setShowOverrideAlert(true)}
-
-                  >
-
-                    <Lock className="w-4 h-4" />
-
-                    Override Status
-
-                  </Button>
-
-              </div>
-
-
-
-            {showOverrideAlert && !showConfirmAlert && (
-
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-
-                <div className="bg-white rounded-lg p-6 max-w-md w-full">
-
-                  <OverrideAlert
-
-                    open={showOverrideAlert}
-
-                    status={overrideStatus}
-
-                    requestId={item.requestId}
-
-                    onStatusChange={setOverrideStatus}
-
-                    onDelete={() => {
-
-                      console.log("Override confirmed:", overrideStatus);
-
-                      setShowOverrideAlert(false);
-
-                    }}
-
-                    onCancel={() => setShowOverrideAlert(false)}
-
-                    onConfirm={(reason: string) => {
-
-                      setOverrideReason(reason);
-
-                      setShowConfirmAlert(true);
-
-                    }}
-
-                  />
-
                 </div>
+              )}
 
-              </div>
+              {showConfirmAlert && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                    <ConfirmAlert
+                      open={showConfirmAlert}
+                      reason={overrideReason}
+                      onDelete={(emailInput?: string) => {
+                        const entered = (emailInput || "").toLowerCase().trim();
 
-            )}
+                        if (!approverEmail || entered !== approverEmail) {
+                          setError("Please enter your XU email to confirm the override");
+                          return;
+                        }
 
-
-
-            {/* Add ConfirmAlert as separate dialog */}
-
-            {showConfirmAlert && (
-
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-
-                <div className="bg-white rounded-lg p-6 max-w-md w-full">
-
-                  <ConfirmAlert
-
-                    open={showConfirmAlert}
-
-                    reason={overrideReason}
-
-                    onDelete={(emailInput?: string) => {
-
-                      const entered = (emailInput || "").toLowerCase().trim();
-
-
-
-                      // Require that the entered email matches the logged-in approver's email
-
-                      if (!approverEmail || entered !== approverEmail) {
-
-                        setError("Please enter your XU email to confirm the override");
-
-                        return;
-
-                      }
-
-
-
-                      console.log("Confirmed override with email:", entered);
-
-                      setShowConfirmAlert(false);
-
-                      handleOverride();
-
-                    }}
-
-                    onCancel={() => setShowConfirmAlert(false)}
-
-                  />
-
+                        console.log("Confirmed override with email:", entered);
+                        setShowConfirmAlert(false);
+                        handleOverride();
+                      }}
+                      onCancel={() => setShowConfirmAlert(false)}
+                    />
+                  </div>
                 </div>
-
-              </div>
-
-            )}
-
-
+              )}
 
               {isProcessed ? (
-
                 <div className="mt-3 text-sm text-amber-600 bg-amber-50 p-2 rounded">
-
                   This request has been processed and cannot be modified.
-
                 </div>
-
               ) : null}
 
-
-
               <div className="mt-6">
-
                 <div className="text-md font-bold text-foreground">
-
                   Remarks
-
                   {status === "rejected" ? <span className="text-red-500 ml-1">*</span> : null}
-
                 </div>
 
                 <Textarea
-
                   value={remarks}
-
                   onChange={(e) => setRemarks(e.target.value)}
-
                   className="mt-2 min-h-[140px] text-black border-foreground placeholder:text-gray-400"
-
                   disabled={isDisabled}
-
                 />
 
                 {isProcessed ? (
-
-                  <div className="mt-2 text-sm text-black">
-
-                    Remarks cannot be modified for processed requests.
-
-                  </div>
-
+                  <div className="mt-2 text-sm text-black">Remarks cannot be modified for processed requests.</div>
                 ) : null}
-
               </div>
-
-
 
               {error ? (
-
-                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
-
-                  {error}
-
-                </div>
-
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">{error}</div>
               ) : null}
 
-
-
               <div className="mt-6 flex items-center gap-3">
-
                 <Button
-
                   variant="back"
-
                   className="h-10 rounded-md px-4 text-sm font-bold flex-1"
-
                   onClick={handleCancel}
-
                 >
-
                   Cancel
-
                 </Button>
 
                 <Button
-
                   onClick={handleSave}
-
                   disabled={saving || isDisabled}
-
                   className="h-10 rounded-md px-4 text-sm font-bold flex-1"
-
                 >
-
                   {saving ? "Saving..." : "Save"}
-
                 </Button>
-
               </div>
-
             </div>
-
           </div>
-
         </div>
-
-        
-
       </main>
-
-
-
     </div>
-
   );
-
 }

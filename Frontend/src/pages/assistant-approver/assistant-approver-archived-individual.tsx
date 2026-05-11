@@ -1,16 +1,19 @@
 import * as React from "react";
 import "../../index.css"; 
 import { AssistantApproverHeader } from "../../stories/components/header";
-import { RequestCard } from "../../stories/components/cards";
+import { RequestCard } from "../../stories/components/request-cards";
 import { Button } from "../../stories/components/button";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
 import { ErrorModal } from "../../stories/components/success-and-error-modals";
+import { useState } from "react";
 
 type ArchivedAssistantRequest = {
   id: string;
   requestId: string;
-  requirementTitle: string;
+  requirementTitle?: string;
+  requirementDescription?: string;  
+  requirementName?: string;
   submissionNotes: string;
   submissionLink: string;
   status: "pending" | "approved" | "rejected";
@@ -19,6 +22,16 @@ type ArchivedAssistantRequest = {
   approvedBy: string;
   remarks: string;
 };
+
+
+function cleanClipboardHtml(raw: string) {
+  if (!raw) return "";
+  return raw
+    .replace(/<!--\s*StartFragment\s*-->/gi, "")
+    .replace(/<!--\s*EndFragment\s*-->/gi, "")
+    .replace(/<div\s+data-google-query-id=[^>]*>.*?<\/div>/gis, "")
+    .trim();
+}
 
 type ArchivedAssistantItem = {
   id: string;
@@ -44,6 +57,16 @@ export default function AssistantApproverArchivedIndividualApproval() {
   const [timelineName, setTimelineName] = React.useState("Archived Clearance");
   const [item, setItem] = React.useState<ArchivedAssistantItem | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [overrideRequestId, setOverrideRequestId] = React.useState<string>("");
+  const [showOverrideAlert, setShowOverrideAlert] = useState(false);
+  const [showConfirmAlert, setShowConfirmAlert] = useState(false);
+  const [overrideReason, setOverrideReason] = useState('');
+  const [overrideStatus, setOverrideStatus] = useState<'approved' | 'rejected'>('approved');
+  const [userProfile, setUserProfile] = React.useState<any>(null);
+  const [saving, setSaving] = React.useState(false);
+  const [successOpen, setSuccessOpen] = React.useState(false);
+  const [successMessage, setSuccessMessage] = React.useState<React.ReactNode>("");
+  const [successContinue, setSuccessContinue] = React.useState<(() => void) | undefined>(undefined);
   const [error, setError] = React.useState("");
   const [remarksByRequest, setRemarksByRequest] = React.useState<Record<string, string>>({});
   const [submittingRequestId, setSubmittingRequestId] = React.useState<string>("");

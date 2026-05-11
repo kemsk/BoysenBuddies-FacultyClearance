@@ -331,8 +331,8 @@ React.useEffect(() => {
                               // POST Inactive notification only when deactivating
                               if (!nextEnabled) {
                                 postCISONotification({
-                                    title: "Content Archived",
-                                    body: `"${title}" has been moved to archives by [User Name].`,
+                                    title: "Content Filed",
+                                    body: `"${title}" has been filed by [User Name].`,
                                     details: [`Guidelines title = "${title}"`],
                                     status: null,
                                     is_read: 0,

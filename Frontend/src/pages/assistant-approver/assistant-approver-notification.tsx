@@ -23,6 +23,57 @@ export default function AssistantApproverNotification() {
   const [items, setItems] = React.useState<NotificationItemWithRole[]>([]);
   const [selectedRole, setSelectedRole] = React.useState<string>("all");
 
+  const [sessionRoleOptions, setSessionRoleOptions] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    const loadSessionRoles = async () => {
+      try {
+        const r = await fetch("/admin/xu-faculty-clearance/api/me", { credentials: "include" });
+        if (!r.ok) {
+          setSessionRoleOptions([]);
+          return;
+        }
+        const data = (await r.json()) as {
+          roles?: number[];
+          roles_payload?: { role_name?: string }[];
+        };
+
+        const roleKeys = new Set<string>();
+        const roleNames = (data.roles_payload ?? [])
+          .map((x) => String(x.role_name || "").trim())
+          .filter(Boolean);
+
+        roleNames.forEach((name) => {
+          const lower = name.toLowerCase();
+          if (lower === "approver") roleKeys.add("Approver");
+          if (lower === "faculty") roleKeys.add("Faculty");
+          if (lower === "ciso") roleKeys.add("CISO");
+          if (lower === "ovphe") roleKeys.add("OVPHE");
+          if (lower === "student assistant" || lower === "assistant" || lower === "assistant_approver") roleKeys.add("Assistant");
+        });
+
+        (data.roles ?? []).forEach((v) => {
+          if (v === 1) roleKeys.add("CISO");
+          if (v === 2) roleKeys.add("OVPHE");
+          if (v === 3) roleKeys.add("Approver");
+          if (v === 4) roleKeys.add("Assistant");
+          if (v === 5) roleKeys.add("Faculty");
+        });
+
+        setSessionRoleOptions(Array.from(roleKeys.values()));
+      } catch {
+        setSessionRoleOptions([]);
+      }
+    };
+
+    void loadSessionRoles();
+  }, []);
+
+  React.useEffect(() => {
+    if (selectedRole !== "all" && sessionRoleOptions.length && !sessionRoleOptions.includes(selectedRole)) {
+      setSelectedRole("all");
+    }
+  }, [selectedRole, sessionRoleOptions]);
   const markAllAsRead = React.useCallback(async () => {
     try {
       const r = await fetch("/admin/xu-faculty-clearance/api/assistant-approver/notifications", {
@@ -119,11 +170,21 @@ export default function AssistantApproverNotification() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="Approver">Approver</SelectItem>
-                <SelectItem value="Faculty">Faculty</SelectItem>
-                <SelectItem value="CISO">CISO</SelectItem>
-                <SelectItem value="Assistant">Assistant</SelectItem>
-                <SelectItem value="OVPHE">OVPHE</SelectItem>
+                {sessionRoleOptions.includes("Approver") ? (
+                  <SelectItem value="Approver">Approver</SelectItem>
+                ) : null}
+                {sessionRoleOptions.includes("Faculty") ? (
+                  <SelectItem value="Faculty">Faculty</SelectItem>
+                ) : null}
+                {sessionRoleOptions.includes("CISO") ? (
+                  <SelectItem value="CISO">System Admin</SelectItem>
+                ) : null}
+                {sessionRoleOptions.includes("Assistant") ? (
+                  <SelectItem value="Assistant">Assistant</SelectItem>
+                ) : null}
+                {sessionRoleOptions.includes("OVPHE") ? (
+                  <SelectItem value="OVPHE">Analytics Admin</SelectItem>
+                ) : null}
               </SelectContent>
             </Select>
           </div>
