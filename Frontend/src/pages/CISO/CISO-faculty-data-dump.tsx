@@ -36,6 +36,7 @@ export default function CISOFacultyDataDump() {
   const [createdCount, setCreatedCount] = React.useState(0);
   const [updatedCount, setUpdatedCount] = React.useState(0);
   const [skippedCount, setSkippedCount] = React.useState(0);
+  const [skippedRows, setSkippedRows] = React.useState<Array<{rowLabel: string; reason: string}>>([]);
   const [previewData, setPreviewData] = React.useState<SystemUser[]>([]);
   const [persistedFacultyData, setPersistedFacultyData] = React.useState<SystemUser[]>([]);
   const [hasUploadedData, setHasUploadedData] = React.useState(false);
@@ -326,9 +327,7 @@ export default function CISOFacultyDataDump() {
         created={createdCount}
         updated={updatedCount}
         skipped={skippedCount}
-        skippedRows={[
-          { rowLabel: "Row 23", reason: "Missing details: employee_id, first_name, last_name" },
-        ]}
+        skippedRows={skippedRows}
       />
 
       <ErrorModal
@@ -569,10 +568,18 @@ export default function CISOFacultyDataDump() {
               const updated = data?.updated_count ?? 0;
               const skipped = data?.skipped_count ?? 0;
               const archiveId = data?.archive_id;
+              const errors = data?.errors ?? [];
+
+              // Format errors as skippedRows for the modal
+              const formattedSkippedRows = errors.map((error: any) => ({
+                rowLabel: `Row ${error.row}`,
+                reason: error.message
+              }));
 
               setCreatedCount(created);
               setUpdatedCount(updated);
               setSkippedCount(skipped);
+              setSkippedRows(formattedSkippedRows);
               setSuccessOpen(true);
 
               // Automatically download the archived CSV if archive ID is available
