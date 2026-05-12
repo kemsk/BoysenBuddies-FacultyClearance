@@ -210,7 +210,7 @@ React.useEffect(() => {
             <BreadcrumbList>
               <BreadcrumbItem>
                 <BreadcrumbLink asChild>
-                  <Link to="/OVPHE-archived-clearance" onClick={() => setSelectedTimeline(null)}>View Clearance Records</Link>
+                  <Link to="/analytics-admin-archived-clearance" onClick={() => setSelectedTimeline(null)}>View Clearance Records</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
@@ -397,7 +397,7 @@ React.useEffect(() => {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/OVPHE-tools">Tools</Link>
+                <Link to="/analytics-admin-tools">Tools</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -408,7 +408,7 @@ React.useEffect(() => {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" size="back" onClick={() => navigate("/OVPHE-tools")}> 
+          <Button variant="back" size="back" onClick={() => navigate("/analytics-admin-tools")}> 
             <div className="flex items-center gap-2">
               <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
             </div>

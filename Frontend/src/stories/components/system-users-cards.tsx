@@ -69,6 +69,39 @@ export function AdminSystemUsersCard({
   pageCount,
   onPageChange,
 }: SystemUsersCardProps) {
+  const [sortBy, setSortBy] = React.useState("name");
+  const [roleFilter, setRoleFilter] = React.useState("SystemAdmin");
+
+  const sortedUsers = React.useMemo(() => {
+    const filtered = users.filter(user => {
+      // Debug: log user roles to see what we're working with
+      console.log('User role:', user.userRole, 'Filter:', roleFilter);
+      
+      if (roleFilter === "SystemAdmin") return true;
+      if (roleFilter === "OVPHE") return user.userRole === "OVPHE";
+      if (roleFilter === "CISO") return user.userRole === "CISO";
+      // For any other role filter, only show matching roles
+      return user.userRole === roleFilter;
+    });
+    
+    const sorted = [...filtered];
+    switch (sortBy) {
+      case "name":
+        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+      case "email":
+        return sorted.sort((a, b) => a.email.localeCompare(b.email));
+      case "UniversityID":
+        return sorted.sort((a, b) => a.universityId.localeCompare(b.universityId));
+      case "Office":
+        return sorted.sort((a, b) => {
+          const officeA = a.college === "None" ? a.department : a.college;
+          const officeB = b.college === "None" ? b.department : b.college;
+          return officeA.localeCompare(officeB);
+        });
+      default:
+        return sorted;
+    }
+  }, [users, sortBy, roleFilter]);
 
   return (
     <Card className={cn("overflow-hidden border-muted-foreground/20 shadow-sm", className)}>
@@ -84,7 +117,7 @@ export function AdminSystemUsersCard({
               />
             </div>
 
-            <Select defaultValue="name">
+            <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger variant="pill" className="w-max gap-2">
                 <span>Sort by:</span>
                 <SelectValue />
@@ -97,14 +130,14 @@ export function AdminSystemUsersCard({
               </SelectContent>
             </Select>
 
-            <Select onValueChange={(v) => console.log(v)}>
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
                 <SelectTrigger variant="pill" className="w-max">
                     <SelectValue placeholder="User Role" />
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="SystemAdmin">All</SelectItem>
-                    <SelectItem value="Approver">System Admin</SelectItem>
-                    <SelectItem value="Approver">Analytics Admin</SelectItem>
+                    <SelectItem value="CISO">System Admin</SelectItem>
+                    <SelectItem value="OVPHE">Analytics Admin</SelectItem>
                 </SelectContent>
             </Select>
             <div className="w-full md:w-auto md:ml-auto flex justify-end">
@@ -125,13 +158,12 @@ export function AdminSystemUsersCard({
                       <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Name</th>
                       <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">University ID</th>
                       <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">XU Email</th>
-                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Office</th>
                       <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">User Role</th>
                       <th className="px-3 py-2 text-center text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map((user, idx) => {
+                    {sortedUsers.map((user, idx) => {
                       const office = user.college === "None" ? user.department : user.college;
                       return (
                         <tr
@@ -141,7 +173,6 @@ export function AdminSystemUsersCard({
                           <td className="px-4 py-3 text-left text-sm font-semibold text-gray-900">{user.name}</td>
                           <td className="px-4 py-3 text-left text-sm text-muted-foreground">{user.universityId}</td>
                           <td className="px-4 py-3 text-left text-sm text-muted-foreground">{user.email}</td>
-                          <td className="px-4 py-3 text-left text-sm text-muted-foreground">{office}</td>
                           <td className="px-4 py-3 text-left text-sm text-muted-foreground">{user.userRole}</td>
                           <td className="px-4 py-3 text-center">
                             <div className="flex items-center justify-center gap-2">
@@ -200,7 +231,7 @@ export function AdminSystemUsersCard({
             </div>
 
             <div className="md:hidden">
-              {users.map((user, idx) => (
+              {sortedUsers.map((user, idx) => (
                 <React.Fragment key={user.id}>
                   <div className="flex items-start gap-4 px-4 py-5">
                     <div className="min-w-0 flex-1">
@@ -270,6 +301,39 @@ export function ApproverSystemUsersCard({
   pageCount,
   onPageChange,
 }: SystemUsersCardProps) {
+  const [sortBy, setSortBy] = React.useState("name");
+  const [roleFilter, setRoleFilter] = React.useState("SystemAdmin");
+
+  const sortedUsers = React.useMemo(() => {
+    const filtered = users.filter(user => {
+      // Debug: log user roles to see what we're working with
+      console.log('User role:', user.userRole, 'Filter:', roleFilter);
+      
+      if (roleFilter === "SystemAdmin") return true;
+      if (roleFilter === "OVPHE") return user.userRole === "OVPHE";
+      if (roleFilter === "CISO") return user.userRole === "CISO";
+      // For any other role filter, only show matching roles
+      return user.userRole === roleFilter;
+    });
+    
+    const sorted = [...filtered];
+    switch (sortBy) {
+      case "name":
+        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+      case "email":
+        return sorted.sort((a, b) => a.email.localeCompare(b.email));
+      case "UniversityID":
+        return sorted.sort((a, b) => a.universityId.localeCompare(b.universityId));
+      case "Office":
+        return sorted.sort((a, b) => {
+          const officeA = a.college === "None" ? a.department : a.college;
+          const officeB = b.college === "None" ? b.department : b.college;
+          return officeA.localeCompare(officeB);
+        });
+      default:
+        return sorted;
+    }
+  }, [users, sortBy, roleFilter]);
 
   return (
     <Card className={cn("overflow-hidden border-muted-foreground/20 shadow-sm", className)}>
@@ -285,7 +349,7 @@ export function ApproverSystemUsersCard({
               />
             </div>
 
-            <Select defaultValue="name">
+            <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger variant="pill" className="w-max gap-2">
                 <span>Sort by:</span>
                 <SelectValue />
@@ -298,14 +362,14 @@ export function ApproverSystemUsersCard({
               </SelectContent>
             </Select>
 
-            <Select onValueChange={(v) => console.log(v)}>
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
                 <SelectTrigger variant="pill" className="w-max">
-                    <SelectValue placeholder="College" />
+                    <SelectValue placeholder="User Role" />
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="SystemAdmin">All</SelectItem>
-                    <SelectItem value="Approver">System Admin</SelectItem>
-                    <SelectItem value="Approver">Analytics Admin</SelectItem>
+                    <SelectItem value="CISO">System Admin</SelectItem>
+                    <SelectItem value="OVPHE">Analytics Admin</SelectItem>
                 </SelectContent>
             </Select>
             <Select onValueChange={(v) => console.log(v)}>
@@ -343,7 +407,7 @@ export function ApproverSystemUsersCard({
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map((user, idx) => {
+                    {sortedUsers.map((user, idx) => {
                       const office = user.college === "None" ? user.department : user.college;
                       return (
                         <tr
@@ -413,7 +477,7 @@ export function ApproverSystemUsersCard({
             </div>
 
             <div className="md:hidden">
-              {users.map((user, idx) => (
+              {sortedUsers.map((user, idx) => (
                 <React.Fragment key={user.id}>
                   <div className="flex items-start gap-4 px-4 py-5">
                     <div className="min-w-0 flex-1">

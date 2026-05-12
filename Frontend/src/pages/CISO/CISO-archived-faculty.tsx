@@ -100,7 +100,7 @@ export default function CISOArchivedFaculty() {
 
   const handleViewDetails = (archivedId: string) => {
     // Navigate to detailed view or open modal
-    navigate(`/CISO-archived-faculty/${archivedId}`);
+    navigate(`/system-admin-archived-faculty/${archivedId}`);
   };
 
   // Filter data based on search query and selected year
@@ -138,7 +138,7 @@ export default function CISOArchivedFaculty() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/CISO-tools">Tools</Link>
+                <Link to="/system-admin-tools">Tools</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -149,7 +149,7 @@ export default function CISOArchivedFaculty() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" size="back" onClick={() => navigate("/CISO-archived-clearance")}> 
+          <Button variant="back" size="back" onClick={() => navigate("/system-admin-archived-clearance")}> 
             <div className="flex items-center gap-2">
               <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
             </div>

@@ -5,7 +5,7 @@ import { RequestCard } from "../../stories/components/request-cards";
 import { Button } from "../../stories/components/button";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
-import { ErrorModal } from "../../stories/components/success-and-error-modals";
+import { ErrorModal, SuccessModal } from "../../stories/components/success-and-error-modals";
 import { Badge } from "../../stories/components/badge";
 
 type ArchivedAssistantRequest = {
@@ -125,14 +125,19 @@ export default function AssistantApproverArchivedIndividualApproval() {
     return cookieValue;
   }
 
-  const handleArchivedAction = React.useCallback(async (requestId: string, action: "approve" | "reject") => {
-    const remarks = String(remarksByRequest[requestId] || "").trim();
+  const handleArchivedAction = React.useCallback(async (rowKey: string, requestId: string, action: "approve" | "reject") => {
+    if (!requestId) {
+      openError("Missing request ID.");
+      return;
+    }
+
+    const remarks = String(remarksByRequest[rowKey] || "").trim();
     if (!remarks) {
       openError("Remarks is required.");
       return;
     }
 
-    setSubmittingRequestId(requestId);
+    setSubmittingRequestId(rowKey);
     try {
       const response = await fetch(`/admin/xu-faculty-clearance/api/assistant-approver/archived-individual?timelineId=${encodeURIComponent(timelineId)}&archivedId=${encodeURIComponent(archivedId)}`, {
         method: "POST",
@@ -153,7 +158,11 @@ export default function AssistantApproverArchivedIndividualApproval() {
         throw new Error((data && data.detail) || "Failed to update archived request.");
       }
 
-      await loadArchivedDetail();
+      setSuccessMessage(`Request ${action === "approve" ? "approved" : "rejected"} successfully.`);
+      setSuccessContinue(() => async () => {
+        await loadArchivedDetail();
+      });
+      setSuccessOpen(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to update archived request.";
       openError(message);
@@ -166,6 +175,7 @@ export default function AssistantApproverArchivedIndividualApproval() {
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
 
       <ErrorModal open={errorOpen} onOpenChange={setErrorOpen} message={errorMessage} />
+      <SuccessModal open={successOpen} onOpenChange={setSuccessOpen} message={successMessage} onContinue={successContinue} />
 
       <div className="header mb-3">
         <AssistantApproverHeader />
@@ -238,6 +248,7 @@ export default function AssistantApproverArchivedIndividualApproval() {
                         <tbody>
                           {item.requests.map((request) => {
                             const rowKey = request.requestId || request.id;
+                            const requestId = request.requestId || "";
                             return (
                             <tr key={rowKey} className="border-b border-muted-foreground/20 last:border-b-0">
                               <td className="px-4 py-4 align-top font-semibold">
@@ -340,8 +351,8 @@ export default function AssistantApproverArchivedIndividualApproval() {
                                       <Button
                                         type="button"
                                         className="h-8 rounded-md bg-[hsl(var(--success))] px-3 text-xs font-semibold text-white hover:bg-[hsl(var(--success))]/90"
-                                        onClick={() => void handleArchivedAction(rowKey, "approve")}
-                                        disabled={submittingRequestId === rowKey}
+                                        onClick={() => void handleArchivedAction(rowKey, requestId, "approve")}
+                                        disabled={!requestId || submittingRequestId === rowKey}
                                       >
                                         {submittingRequestId === rowKey ? "Processing..." : "Approve"}
                                       </Button>
@@ -349,8 +360,8 @@ export default function AssistantApproverArchivedIndividualApproval() {
                                         type="button"
                                         variant="destructive"
                                         className="h-8 rounded-md px-3 text-xs font-semibold"
-                                        onClick={() => void handleArchivedAction(rowKey, "reject")}
-                                        disabled={submittingRequestId === rowKey}
+                                        onClick={() => void handleArchivedAction(rowKey, requestId, "reject")}
+                                        disabled={!requestId || submittingRequestId === rowKey}
                                       >
                                         {submittingRequestId === rowKey ? "Processing..." : "Reject"}
                                       </Button>
@@ -372,6 +383,7 @@ export default function AssistantApproverArchivedIndividualApproval() {
                 <div className="space-y-4 md:hidden">
                   {item.requests.map((request) => {
                     const rowKey = request.requestId || request.id;
+                    const requestId = request.requestId || "";
                     return (
                     <div key={rowKey} className="rounded-xl border border-muted-foreground/20 bg-card p-6 shadow">
                       <div className="text-xl text-center text-black font-bold mt-1">
@@ -463,8 +475,8 @@ export default function AssistantApproverArchivedIndividualApproval() {
                             <Button
                               type="button"
                               className="h-10 rounded-md px-5"
-                              onClick={() => void handleArchivedAction(rowKey, "approve")}
-                              disabled={submittingRequestId === rowKey}
+                              onClick={() => void handleArchivedAction(rowKey, requestId, "approve")}
+                              disabled={!requestId || submittingRequestId === rowKey}
                             >
                               {submittingRequestId === rowKey ? "Processing..." : "Approve"}
                             </Button>
@@ -472,8 +484,8 @@ export default function AssistantApproverArchivedIndividualApproval() {
                               type="button"
                               variant="cancel"
                               className="h-10 rounded-md px-5"
-                              onClick={() => void handleArchivedAction(rowKey, "reject")}
-                              disabled={submittingRequestId === rowKey}
+                              onClick={() => void handleArchivedAction(rowKey, requestId, "reject")}
+                              disabled={!requestId || submittingRequestId === rowKey}
                             >
                               {submittingRequestId === rowKey ? "Processing..." : "Reject"}
                             </Button>

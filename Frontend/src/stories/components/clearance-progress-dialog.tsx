@@ -31,6 +31,8 @@ export function ClearanceProgressDialog({ open, onOpenChange, rows }: ClearanceP
   const [sort, setSort] = React.useState("college");
   const [statusFilter, setStatusFilter] = React.useState<"complete" | "incomplete">("incomplete");
   const [facultyTypeFilter, setFacultyTypeFilter] = React.useState<"" | "all" | "part_time" | "full_time">("");
+  const [collegeFilter, setCollegeFilter] = React.useState("");
+  const [departmentFilter, setDepartmentFilter] = React.useState("");
 
   React.useEffect(() => {
     if (!open) return;
@@ -38,6 +40,8 @@ export function ClearanceProgressDialog({ open, onOpenChange, rows }: ClearanceP
     setSort("college");
     setStatusFilter("incomplete");
     setFacultyTypeFilter("");
+    setCollegeFilter("");
+    setDepartmentFilter("");
   }, [open]);
 
   const filteredRows = React.useMemo(() => {
@@ -164,7 +168,7 @@ export function ClearanceProgressDialog({ open, onOpenChange, rows }: ClearanceP
           <div className="px-6 pb-4 pt-6">
             <div className="pr-10 text-center text-lg font-bold text-foreground sm:text-left">Clearance Progress</div>
 
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="mt-4 flex flex-col gap-3">
               <div className="relative w-full sm:min-w-[260px] sm:flex-1">
                 <Input
                   value={query}
@@ -178,13 +182,13 @@ export function ClearanceProgressDialog({ open, onOpenChange, rows }: ClearanceP
                 </div>
               </div>
 
-              <div className="flex w-full flex-col gap-2 sm:w-full sm:flex-row sm:flex-wrap sm:items-center sm:justify-end md:w-auto md:flex-nowrap">
-                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center md:flex-nowrap">
-                  <div className="w-fit sm:w-auto sm:min-w-[190px]">
+              <div className="flex w-full flex-col gap-3">
+                <div className="flex flex-wrap gap-2 sm:justify-start">
+                  <div className="w-full sm:w-auto sm:min-w-[190px]">
                     <Select value={sort} onValueChange={setSort}>
                       <SelectTrigger
                         variant="primaryoutline"
-                        className="w-fit sm:w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
                       >
                         <div className="min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
                           Sort by: {sortLabel[sort] ?? "College"}
@@ -196,16 +200,15 @@ export function ClearanceProgressDialog({ open, onOpenChange, rows }: ClearanceP
                         <SelectItem value="employee_id">Employee ID</SelectItem>
                         <SelectItem value="college">College</SelectItem>
                         <SelectItem value="department">Department</SelectItem>
-                        <SelectItem value="faculty_type">Faculty Type</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  <div className="w-fit sm:w-auto sm:min-w-[190px]">
+                  <div className="w-full sm:w-auto sm:min-w-[190px]">
                     <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
                       <SelectTrigger
                         variant="primaryoutline"
-                        className="w-fit sm:w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
                       >
                         <div className="min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
                           Status: {statusLabel[statusFilter]}
@@ -218,14 +221,14 @@ export function ClearanceProgressDialog({ open, onOpenChange, rows }: ClearanceP
                     </Select>
                   </div>
 
-                  <div className="w-fit sm:w-auto sm:min-w-[190px]">
+                  <div className="w-full sm:w-auto sm:min-w-[190px]">
                     <Select
                       value={facultyTypeFilter}
                       onValueChange={(v) => setFacultyTypeFilter(v as typeof facultyTypeFilter)}
                     >
                       <SelectTrigger
                         variant="primaryoutline"
-                        className="w-fit sm:w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
                       >
                         <SelectValue placeholder="Faculty Type" />
                       </SelectTrigger>
@@ -235,17 +238,63 @@ export function ClearanceProgressDialog({ open, onOpenChange, rows }: ClearanceP
                         <SelectItem value="full_time">Full-time </SelectItem>                        
                       </SelectContent>
                     </Select>
-                  </div>                  
-                </div>
+                  </div>
 
-                <Button
-                  type="button"
-                  className="h-8 w-full whitespace-nowrap rounded-md px-4 text-sm sm:basis-full md:basis-auto md:w-auto"
-                  onClick={exportToExcel}
-                >
-                  <Upload className="h-4 w-4" />
-                  Export to Excel
-                </Button>
+                  <div className="w-full sm:w-auto sm:min-w-[190px]">
+                    <Select
+                      value={collegeFilter}
+                      onValueChange={setCollegeFilter}
+                    >
+                      <SelectTrigger
+                        variant="primaryoutline"
+                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                      >
+                        <SelectValue placeholder="College" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Colleges</SelectItem>
+                        <SelectItem value="college_of_arts_and_sciences">College of Arts and Sciences</SelectItem>
+                        <SelectItem value="college_of_business_and_accountancy">College of Business and Accountancy</SelectItem>
+                        <SelectItem value="college_of_computer_studies">College of Computer Studies</SelectItem>
+                        <SelectItem value="college_of_engineering">College of Engineering</SelectItem>
+                        <SelectItem value="college_of_nursing">College of Nursing</SelectItem>
+                        <SelectItem value="college_of_education">College of Education</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="w-full sm:w-auto sm:min-w-[190px]">
+                    <Select
+                      value={departmentFilter}
+                      onValueChange={setDepartmentFilter}
+                    >
+                      <SelectTrigger
+                        variant="primaryoutline"
+                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                      >
+                        <SelectValue placeholder="Department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Departments</SelectItem>
+                        <SelectItem value="computer_science">Computer Science</SelectItem>
+                        <SelectItem value="information_technology">Information Technology</SelectItem>
+                        <SelectItem value="civil_engineering">Civil Engineering</SelectItem>
+                        <SelectItem value="mechanical_engineering">Mechanical Engineering</SelectItem>
+                        <SelectItem value="accountancy">Accountancy</SelectItem>
+                        <SelectItem value="business_administration">Business Administration</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button
+                    type="button"
+                    className="h-8 w-full sm:w-auto whitespace-nowrap rounded-md px-4 text-sm"
+                    onClick={exportToExcel}
+                  >
+                    <Upload className="h-4 w-4" />
+                    Export to Excel
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

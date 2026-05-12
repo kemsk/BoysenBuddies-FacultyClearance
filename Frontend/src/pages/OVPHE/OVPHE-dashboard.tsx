@@ -131,7 +131,7 @@ export default function OVPHEDashboard() {
 
           <SystemGuidlinesCard
             items={dashboardGuidelinesNoEmail}
-            headerActionHref="/OVPHE-system-guideline"
+            headerActionHref="/analytics-admin-system-guideline"
             headerActionImgSrc="/_WhiteArrowIcon.png"
             headerActionImgAlt="Open Requirements"
             cardName="System Guidelines"
@@ -141,7 +141,7 @@ export default function OVPHEDashboard() {
 
           <AnnouncementsCard 
           items={dashboardAnnouncements} 
-          headerActionHref="/OVPHE-announcements"
+          headerActionHref="/analytics-admin-announcements"
           headerActionImgSrc="/BlackChevronIcon.png"
           headerActionImgAlt="Open Announcements"
           

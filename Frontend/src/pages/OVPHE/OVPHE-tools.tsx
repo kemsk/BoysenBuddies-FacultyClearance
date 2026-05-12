@@ -26,7 +26,7 @@ export default function OVPHETools() {
             }
             title="System Analytics"
             description="Check the completion rate per college"
-            to="/OVPHE-system-analytics"
+            to="/analytics-admin-system-analytics"
           />
 
 
@@ -34,7 +34,7 @@ export default function OVPHETools() {
             icon={<Eye className="h-9 w-9" />}
             title="Check Activity Logs"
             description="Check the previous actions"
-            to="/OVPHE-activity-logs"
+            to="/analytics-admin-activity-logs"
           />
         </div>
       </main>

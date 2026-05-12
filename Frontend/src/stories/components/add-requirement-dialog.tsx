@@ -2,6 +2,7 @@ import * as React from "react";
 import { Check, Search, X } from "lucide-react";
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";
+import { ErrorModal } from "./success-and-error-modals";
 
 import {
   Dialog,
@@ -91,6 +92,8 @@ export function AddRequirementDialog({
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [physicalSubmission, setPhysicalSubmission] = React.useState(false);
+  const [errorOpen, setErrorOpen] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState("");
 
   const [facultyType, setFacultyType] = React.useState<string>("all");
 
@@ -345,9 +348,10 @@ const getFilteredDepartments = () => {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="w-[420px] max-w-[calc(100vw-3rem)] max-h-[calc(100vh-3rem)] overflow-y-auto overflow-x-hidden rounded-xl p-0">
+    <>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>{trigger}</DialogTrigger>
+        <DialogContent className="w-[420px] max-w-[calc(100vw-3rem)] max-h-[calc(100vh-3rem)] overflow-y-auto overflow-x-hidden rounded-xl p-0">
         <div className="rounded-xl bg-background">
           <div className="px-6 pb-4 pt-6">
             <div className="text-center text-base font-bold text-foreground">{dialogTitle}</div>
@@ -516,20 +520,26 @@ const getFilteredDepartments = () => {
               <Button
                 type="button"
                 className="h-11 w-full rounded-md"
-                onClick={() => {
-                  onSave?.({
-                    title,
-                    description,
-                    facultyIds,
-                    recipientScope,
-                    targetColleges: selectedColleges,
-                    targetDepartments: selectedDepartments,
-                    targetOffices: [],
-                    targetFaculty: facultyIds,
-                    facultyType,
-                    physicalSubmission,
-                  });
-                  setOpen(false);
+                onClick={async () => {
+                  try {
+                    await onSave?.({
+                      title,
+                      description,
+                      facultyIds,
+                      recipientScope,
+                      targetColleges: selectedColleges,
+                      targetDepartments: selectedDepartments,
+                      targetOffices: [],
+                      targetFaculty: facultyIds,
+                      facultyType,
+                      physicalSubmission,
+                    });
+                    setOpen(false);
+                  } catch (error: any) {
+                    console.error("Add requirement failed:", error);
+                    setErrorMessage(error?.message || "Failed to add requirement. Please try again.");
+                    setErrorOpen(true);
+                  }
                 }}
               >
                 {saveLabel}
@@ -792,5 +802,12 @@ const getFilteredDepartments = () => {
         </Dialog>
       </DialogContent>
     </Dialog>
+
+    <ErrorModal
+      open={errorOpen}
+      onOpenChange={setErrorOpen}
+      message={errorMessage}
+    />
+    </>
   );
 }

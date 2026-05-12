@@ -168,7 +168,7 @@ export function ClearanceRequestsCard({
 
             const facultyDepartment = requestItem.department || null;
             const facultyCollege = requestItem.college || null;
-            const facultyEmployeeId = requestItem.employeeId || "N/A";
+            const facultyEmployeeId = requestItem.employeeId || "No Employee ID";
             const userOffice = userProfile?.roles_payload?.[0]?.office || null;
             const eventType = "approved_clearance";
 
@@ -427,7 +427,7 @@ export function ClearanceRequestsCard({
 
             const facultyDepartment = requestItem.department || null;
             const facultyCollege = requestItem.college || null;
-            const facultyEmployeeId = requestItem.employeeId || "N/A";
+            const facultyEmployeeId = requestItem.employeeId || "No Employee ID";
             const userOffice = userProfile?.roles_payload?.[0]?.office || null;
             const eventType = "rejected_clearance";
 

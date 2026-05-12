@@ -158,7 +158,7 @@ export default function ApproverArchivedIndividualApproval() {
 
       const requestItem = item?.requests?.find((req) => req.requestId === requestId);
       const requirementTitle = requestItem?.requirementTitle || requestItem?.requirementName || "";
-      const facultyEmployeeId = item?.employeeId || "N/A";
+      const facultyEmployeeId = item?.employeeId || "No Employee ID";
       const requestItemName = item?.fullName || item?.name || "";
 
       const eventType = action === "approve" ? "approved_clearance" : "rejected_clearance";
@@ -335,7 +335,7 @@ export default function ApproverArchivedIndividualApproval() {
         try {
           const facultyDepartment = item.department || null;
           const facultyCollege = item.college || null;
-          const facultyEmployeeId = item.employeeId || "N/A";
+          const facultyEmployeeId = item.employeeId || "None";
           const requestIdValue = overrideRequestId;
           const facultyNameValue = item.name || item.fullName || "";
           const userOffice = userProfile?.roles_payload?.[0]?.office || null;

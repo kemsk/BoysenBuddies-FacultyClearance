@@ -564,7 +564,7 @@ export default function ApproverIndividualApproval() {
             (requestItem as any).employee_id ||
             (requestItem as any).universityId ||
             (requestItem as any).university_id ||
-            "N/A";
+            "None";
           const requestIdValue =
             (requestItem as any).requestId ||
             (requestItem as any).request_id ||

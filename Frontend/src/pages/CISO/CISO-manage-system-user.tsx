@@ -300,7 +300,7 @@ import { AdminSystemUsersCard, ApproverSystemUsersCard } from "../../stories/com
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/CISO-tools">Tools</Link>
+                <Link to="/system-admin-tools">Tools</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -311,7 +311,7 @@ import { AdminSystemUsersCard, ApproverSystemUsersCard } from "../../stories/com
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" size="back" onClick={() => navigate("/CISO-tools")}> 
+          <Button variant="back" size="back" onClick={() => navigate("/system-admin-tools")}> 
             <div className="flex items-center gap-2">
               <ArrowLeft className="h-4 w-4" />Back
             </div>
@@ -458,10 +458,10 @@ import { AdminSystemUsersCard, ApproverSystemUsersCard } from "../../stories/com
                   ...splitName(activeUser.name),
                   universityId: activeUser.universityId,
                   email: activeUser.email,
-                  approverType: activeUser.college === "N/A" ? "Office" : "College",
-                  college: activeUser.college === "N/A" ? "" : activeUser.college,
-                  department: activeUser.college === "N/A" ? "" : activeUser.department,
-                  office: activeUser.college === "N/A" ? activeUser.department : "",
+                  approverType: activeUser.college === "None" ? "Office" : "College",
+                  college: activeUser.college === "No college" ? "" : activeUser.college,
+                  department: activeUser.college === "No Department" ? "" : activeUser.department,
+                  office: activeUser.college === "No Office" ? activeUser.department : "",
                   isActive: Boolean(activeUser.isActive),
                 }
               : undefined

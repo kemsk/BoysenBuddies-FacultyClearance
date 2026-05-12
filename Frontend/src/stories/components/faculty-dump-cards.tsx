@@ -627,13 +627,13 @@ export function FacultyTableCard({
                   <thead>
                     <tr className="bg-muted/30">
                       <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Email</th>
-                      <th className="px-3 py-2 text-center text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">University ID</th>
-                      <th className="px-3 py-2 text-center text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">First Name</th>
-                      <th className="px-3 py-2 text-center text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Middle Name</th>
-                      <th className="px-3 py-2 text-center text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Last Name</th>
-                      <th className="px-3 py-2 text-center text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Faculty Type</th>
-                      <th className="px-3 py-2 text-center text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">College</th>
-                      <th className="px-3 py-2 text-center text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Department</th>
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">University ID</th>
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">First Name</th>
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Middle Name</th>
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Last Name</th>
+                      <th className="px-3 py-2 text-left text-sm uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Faculty Type</th>
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">College</th>
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Department</th>
                       <th className="px-3 py-2 text-center text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Actions</th>
                     </tr>
                   </thead>
@@ -649,13 +649,13 @@ export function FacultyTableCard({
                           className={cn("border-t border-[hsl(var(--gray-border))]", idx === 0 ? "border-t-0" : "")}
                         >
                           <td className="px-4 py-3 text-left text-sm font-semibold text-gray-900">{user.email}</td>
-                          <td className="px-4 py-3 text-center text-sm text-muted-foreground">{user.universityId}</td>
-                          <td className="px-4 py-3 text-center text-sm text-muted-foreground">{firstName}</td>
-                          <td className="px-4 py-3 text-center text-sm text-muted-foreground">{middleName}</td>
-                          <td className="px-4 py-3 text-center text-sm text-muted-foreground">{lastName}</td>
-                          <td className="px-4 py-3 text-left text-sm font-semibold text-gray-900">{facultyType}</td>
-                          <td className="px-4 py-3 text-center text-sm text-muted-foreground">{user.college}</td>
-                          <td className="px-4 py-3 text-center text-sm text-muted-foreground">{user.department}</td>
+                          <td className="px-4 py-3 text-left text-sm text-muted-foreground">{user.universityId}</td>
+                          <td className="px-4 py-3 text-left text-sm text-muted-foreground">{firstName}</td>
+                          <td className="px-4 py-3 text-left text-sm text-muted-foreground">{middleName}</td>
+                          <td className="px-4 py-3 text-left text-sm text-muted-foreground">{lastName}</td>
+                          <td className="px-4 py-3 text-left text-sm text-muted-foreground">{facultyType}</td>
+                          <td className="px-4 py-3 text-left text-sm text-muted-foreground">{user.college}</td>
+                          <td className="px-4 py-3 text-left text-sm text-muted-foreground">{user.department}</td>
                           <td className="px-4 py-3 text-center">
                             <div className="flex items-center justify-center gap-2">
                               <Button

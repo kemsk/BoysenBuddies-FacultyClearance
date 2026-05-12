@@ -50,7 +50,7 @@ export function AddDepartmentUserDialog({
     "School of Medicine (SOM)",
     "School of Medicine",
   ],
-  departments = ["Computer Science", "Information Technology", "Psychology", "N/A"],
+  departments = ["Computer Science", "Information Technology", "Psychology", "No Department"],
 }: AddDepartmentUserDialogProps) {
   const [open, setOpen] = React.useState(false);
 

@@ -126,18 +126,6 @@ WHERE u.email = '201131134@my.xu.edu.ph' AND r.name = 'Faculty'
 ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
 
-INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
-SELECT 
-    u.id AS user_id, 
-    r.id AS role_id,
-    u.id AS assigned_by_id,
-    NOW() AS assigned_date,
-    1 AS is_active
-FROM FC_user u
-CROSS JOIN FC_role r
-WHERE u.email = '201131134@my.xu.edu.ph' AND r.name = 'Student Assistant'
-ON DUPLICATE KEY UPDATE
-    is_active = VALUES(is_active);
 
 INSERT INTO FC_userrole (user_id, role_id, assigned_by_id, assigned_date, is_active)
 SELECT 
@@ -784,11 +772,6 @@ ON DUPLICATE KEY UPDATE
     department_id = VALUES(department_id);
 
 
-INSERT INTO FC_studentassistant (user_id, college_id, department_id)
-VALUES (@farrah_user_id, @ccs_id, @it_id)
-ON DUPLICATE KEY UPDATE
-    college_id = VALUES(college_id),
-    department_id = VALUES(department_id);
 
 -- Seed Faculty (needed for real analytics)
 INSERT INTO FC_faculty (user_id, first_name, last_name, college_id, department_id)

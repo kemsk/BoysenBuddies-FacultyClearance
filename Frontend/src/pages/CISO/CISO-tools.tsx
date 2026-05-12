@@ -26,7 +26,7 @@ export default function CISOTools() {
             }
             title="Set Clearance Timeline"
             description="Set system’s Clearance Timeline"
-            to="/CISO-clearance-timeline"
+            to="/system-admin-clearance-timeline"
           />
 
           <ActionNavCard
@@ -39,7 +39,7 @@ export default function CISOTools() {
             }
             title="College & Office Configuration"
             description="Configure Colleges & Offices"
-            to="/CISO-college-office-configuration"
+            to="/System-admin-college-office-configuration"
           />
 
           <ActionNavCard
@@ -52,7 +52,7 @@ export default function CISOTools() {
             }
             title="Faculty Data Dump"
             description="Check current system user dump"
-            to="/CISO-faculty-data-dump"
+            to="/System-admin-faculty-data-dump"
           />
 
 
@@ -66,7 +66,7 @@ export default function CISOTools() {
             }
             title="Manage System Users"
             description="View and set the system approvers"
-            to="/CISO-manage-system-user"
+            to="/System-admin-manage-system-user"
           />
 
           <ActionNavCard
@@ -79,14 +79,14 @@ export default function CISOTools() {
             }
             title="View Faculty Import History"
             description="Access previously uploaded .csv files"
-            to="/CISO-archived-faculty"
+            to="/system-admin-archived-faculty"
           />
 
           <ActionNavCard
             icon={<ShieldCheck  className="h-9 w-9" />}
             title="Access Control"
             description="Review system users access control & permissions"
-            to="/CISO-access-control"
+            to="/system-admin-access-control"
           />
           
           <ActionNavCard
@@ -99,14 +99,14 @@ export default function CISOTools() {
             }
             title="System Analytics"
             description="Check the completion rate per college"
-            to="/CISO-system-analytics"
+            to="/system-admin-system-analytics"
           />          
 
           <ActionNavCard
             icon={<Eye className="h-9 w-9" />}
             title="Check Activity Logs"
             description="Check the previous actions"
-            to="/CISO-activity-logs"
+            to="/aystem-admin-activity-logs"
           />
         </div>
       </main>

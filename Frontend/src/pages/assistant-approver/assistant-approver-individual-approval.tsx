@@ -231,7 +231,7 @@ export default function AssitantApproverIndividualApproval() {
                   ) : null}
 
                   <div className="mt-4 grid gap-2 text-sm text-black">
-                    <div><span className="font-bold">Submitted On:</span> {item.submittedDate || "N/A"}</div>
+                    <div><span className="font-bold">Submitted On:</span> {item.submittedDate || "No Submission Date"}</div>
                     {item.approvedBy ? <div><span className="font-bold">Processed By:</span> {item.approvedBy}</div> : null}
                     {item.approvedDate ? <div><span className="font-bold">Processed On:</span> {item.approvedDate}</div> : null}
                   </div>

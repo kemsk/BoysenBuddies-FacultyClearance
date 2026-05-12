@@ -130,8 +130,8 @@ function ProtectedRoute({ children, allowedRoles }: { children: ReactElement; al
     // Redirect to user's appropriate dashboard based on their role
     const getDashboardForRole = (role: number) => {
       switch (role) {
-        case 1: return "/CISO-dashboard";
-        case 2: return "/OVPHE-dashboard";
+        case 1: return "/system-admin-dashboard";
+        case 2: return "/analytics-admin-dashboard";
         case 3: return "/approver-dashboard";
         case 4: return "/assistant-approver-dashboard";
         case 5: return "/faculty-dashboard";
@@ -220,8 +220,8 @@ function ProtectedRouteForSystemAnalytics({ children }: { children: ReactElement
     // Redirect to user's appropriate dashboard based on their role
     const getDashboardForRole = (role: number) => {
       switch (role) {
-        case 1: return "/CISO-dashboard";
-        case 2: return "/OVPHE-dashboard";
+        case 1: return "/system-admin-dashboard";
+        case 2: return "/analytics-admin-dashboard";
         case 3: return "/approver-dashboard";
         case 4: return "/assistant-approver-dashboard";
         case 5: return "/faculty-dashboard";
@@ -636,7 +636,7 @@ function App() {
 
         {
           <Route
-            path="/OVPHE-dashboard"
+            path="/analytics-admin-dashboard"
             element={
               <ProtectedRoute allowedRoles={[2]}>
                 <OVPHEDashboard />
@@ -646,7 +646,7 @@ function App() {
         }
         {
           <Route
-            path="/OVPHE-tools"
+            path="/analytics-admin-tools"
             element={
               <ProtectedRoute allowedRoles={[2]}>
                 <OVPHETools />
@@ -656,7 +656,7 @@ function App() {
         }
         {
           <Route
-            path="/OVPHE-system-analytics"
+            path="/analytics-admin-system-analytics"
             element={
               <ProtectedRouteForSystemAnalytics>
                 <OVPHESystemAnalytics />
@@ -666,7 +666,7 @@ function App() {
         }
         {
           <Route
-            path="/OVPHE-system-guideline"
+            path="/analytics-admin-system-guideline"
             element={
               <ProtectedRoute allowedRoles={[2]}>
                 <OVPHESystemGuideline />
@@ -676,7 +676,7 @@ function App() {
         }
         {
           <Route
-            path="/OVPHE-announcements"
+            path="/analytics-admin-announcements"
             element={
               <ProtectedRoute allowedRoles={[2]}>
                 <OVPHEAnnouncements />
@@ -686,7 +686,7 @@ function App() {
         }
         {
           <Route
-            path="/OVPHE-notification"
+            path="/analytics-admin-notification"
             element={
               <ProtectedRoute allowedRoles={[2]}>
                 <OVPHENotification />
@@ -696,7 +696,7 @@ function App() {
         }
         {
           <Route
-            path="/OVPHE-activity-logs"
+            path="/analytics-admin-activity-logs"
             element={
               <ProtectedRoute allowedRoles={[2]}>
                 <OVPHEActivityLogs />
@@ -706,7 +706,7 @@ function App() {
         }
         {
           <Route
-            path="/OVPHE-archived-clearance"
+            path="/analytics-admin-archived-clearance"
             element={
               <ProtectedRoute allowedRoles={[2]}>
                 <OVPHEArchiveClearance />
@@ -716,7 +716,7 @@ function App() {
         }
         {
           <Route
-            path="/OVPHE-view-clearance"
+            path="/analytics-admin-view-clearance"
             element={
               <ProtectedRoute allowedRoles={[2]}>
                 <OVPHEViewClearance />
@@ -727,7 +727,7 @@ function App() {
 
         {
           <Route
-            path="/CISO-dashboard"
+            path="/system-admin-dashboard"
             element={
               <ProtectedRoute allowedRoles={[1]}>
                 <CISODashboard />
@@ -738,7 +738,7 @@ function App() {
 
         {
           <Route
-            path="/CISO-access-control"
+            path="/system-admin-access-control"
             element={
               <ProtectedRoute allowedRoles={[1]}>
                 <CISOAccessControl />
@@ -748,7 +748,7 @@ function App() {
         }
         {
           <Route
-            path="/CISO-system-analytics"
+            path="/system-admin-system-analytics"
             element={
               <ProtectedRoute allowedRoles={[1]}>
                 <CISOSystemAnalytics />
@@ -758,7 +758,7 @@ function App() {
         }
         {
           <Route
-            path="/CISO-tools"
+            path="/system-admin-tools"
             element={
               <ProtectedRoute allowedRoles={[1]}>
                 <CISOTools />
@@ -768,7 +768,7 @@ function App() {
         }
         {
           <Route
-            path="/CISO-system-guideline"
+            path="/system-admin-system-guideline"
             element={
               <ProtectedRoute allowedRoles={[1]}>
                 <CISOSystemGuideline />
@@ -778,7 +778,7 @@ function App() {
         }
         {
           <Route
-            path="/CISO-announcement"
+            path="/system-admin-announcement"
             element={
               <ProtectedRoute allowedRoles={[1]}>
                 <CISOAnnouncements />
@@ -788,7 +788,7 @@ function App() {
         }
         {
           <Route
-            path="/CISO-faculty-data-dump"
+            path="/System-admin-faculty-data-dump"
             element={
               <ProtectedRoute allowedRoles={[1]}>
                 <CISOFacultyDataDump />
@@ -798,7 +798,7 @@ function App() {
         }
         {
           <Route
-            path="/CISO-manage-system-user"
+            path="/System-admin-manage-system-user"
             element={
               <ProtectedRoute allowedRoles={[1]}>
                 <CISOManageSystemUser />
@@ -808,7 +808,7 @@ function App() {
         }
         {
           <Route
-            path="/CISO-notification"
+            path="/System-admin-notification"
             element={
               <ProtectedRoute allowedRoles={[1]}>
                 <CISONotification />
@@ -818,7 +818,7 @@ function App() {
         }
         {
           <Route
-            path="/CISO-activity-logs"
+            path="/System-admin-activity-logs"
             element={
               <ProtectedRoute allowedRoles={[1]}>
                 <CISOActivityLogs />
@@ -828,7 +828,7 @@ function App() {
         }
         {
           <Route
-            path="/CISO-college-office-configuration"
+            path="/System-admin-college-office-configuration"
             element={
               <ProtectedRoute allowedRoles={[1]}>
                 <CISOCollegeOfficeConfiguration />
@@ -838,7 +838,7 @@ function App() {
         }
         {
           <Route
-            path="/CISO-clearance-timeline"
+            path="/system-admin-clearance-timeline"
             element={
               <ProtectedRoute allowedRoles={[1]}>
                 <CISOClearanceTimeline />
@@ -848,7 +848,7 @@ function App() {
         }
         {
           <Route
-            path="/CISO-archived-clearance"
+            path="/system-admin-archived-clearance"
             element={
               <ProtectedRoute allowedRoles={[1]}>
                 <CISOArchivedClearance />
@@ -858,7 +858,7 @@ function App() {
         }
         {
           <Route
-            path="/CISO-view-clearance"
+            path="/system-admin-view-clearance"
             element={
               <ProtectedRoute allowedRoles={[1]}>
                 <CISOViewClearance />
@@ -868,7 +868,7 @@ function App() {
         }
         {
           <Route
-            path="/CISO-archived-faculty"
+            path="/system-admin-archived-faculty"
             element={
               <ProtectedRoute allowedRoles={[1]}>
                 <CISOArchivedFaculty />

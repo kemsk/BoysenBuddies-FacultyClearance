@@ -664,17 +664,11 @@ class AuthService {
   getDashboardUrl(roleValue: number): string {
 
     const dashboardPaths = {
-
-      1: '/CISO-dashboard',
-
-      2: '/OVPHE-dashboard',
-
+      1: '/system-admin-dashboard',
+      2: '/analytics-admin-dashboard',
       3: '/approver-dashboard',
-
       4: '/assistant-approver-dashboard',
-
       5: '/faculty-dashboard'
-
     };
 
     return dashboardPaths[roleValue as keyof typeof dashboardPaths] || '/faculty-dashboard';

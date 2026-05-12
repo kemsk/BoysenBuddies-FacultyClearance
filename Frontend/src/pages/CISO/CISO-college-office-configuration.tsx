@@ -33,6 +33,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../stories/components/alert-dialog";
+import { ErrorModal, SuccessModal } from "../../stories/components/success-and-error-modals";
 
 import {
   Select,
@@ -749,6 +750,12 @@ export default function CISOCollegeOfficeConfiguration() {
 
   const [queuedActivityLogs, setQueuedActivityLogs] = React.useState<QueuedActivityLog[]>([]);
 
+  const [errorOpen, setErrorOpen] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState<React.ReactNode>("");
+  const [successOpen, setSuccessOpen] = React.useState(false);
+  const [successMessage, setSuccessMessage] = React.useState<React.ReactNode>("");
+  const [successContinue, setSuccessContinue] = React.useState<(() => void) | null>(null);
+
   const queueCISOActivityLog = React.useCallback(
     (payload: { event_type: string; details?: string[] }) => {
       setQueuedActivityLogs((prev) => [...prev, { role: "CISO", payload }]);
@@ -921,11 +928,17 @@ export default function CISOCollegeOfficeConfiguration() {
         throw new Error(`Failed to save configuration: ${errorText}`);
       }
       
-      // Show success message
-      alert('Configuration saved successfully!');
+      // Show success modal
+      setSuccessMessage('Configuration saved successfully!');
+      setSuccessContinue(() => () => {
+        setSuccessOpen(false);
+        setSuccessMessage('');
+      });
+      setSuccessOpen(true);
     } catch (error) {
       console.error('Error saving configuration:', error);
-      alert('Failed to save configuration. Please try again.');
+      setErrorMessage('Failed to save configuration. Please try again.');
+      setErrorOpen(true);
     } finally {
       setIsSaving(false);
     }
@@ -948,7 +961,7 @@ export default function CISOCollegeOfficeConfiguration() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/CISO-tools">Tools</Link>
+                <Link to="/system-admin-tools">Tools</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -959,7 +972,7 @@ export default function CISOCollegeOfficeConfiguration() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" size="back" onClick={() => navigate("/CISO-tools")}> 
+          <Button variant="back" size="back" onClick={() => navigate("/system-admin-tools")}> 
               <div className="flex items-center gap-2">
                 <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
               </div>
@@ -1742,6 +1755,14 @@ export default function CISOCollegeOfficeConfiguration() {
 
               setColleges((prev) => [...prev, created]);
               setSelectedCollegeId(created.id);
+              
+              // Show success modal
+              setSuccessMessage(`College "${created.name}" created successfully!`);
+              setSuccessContinue(() => () => {
+                setSuccessOpen(false);
+                setSuccessMessage('');
+              });
+              setSuccessOpen(true);
             })().catch(() => {
               // ignore; can be handled by UI later
             });
@@ -1760,7 +1781,14 @@ export default function CISOCollegeOfficeConfiguration() {
             });
             
             if (isDuplicate) {
-              alert(`Duplicate approver category detected!\n\nCategory: "${payload.category}"\n\nAn approver with category "${payload.category}" already exists. Each category can only be used once.`);
+              setErrorMessage(
+                <div>
+                  <p>Duplicate approver category detected!</p>
+                  <p className="mt-2">Category: <strong>"{payload.category}"</strong></p>
+                  <p className="mt-2">An approver with category "{payload.category}" already exists. Each category can only be used once.</p>
+                </div>
+              );
+              setErrorOpen(true);
               return;
             }
             
@@ -1784,7 +1812,8 @@ export default function CISOCollegeOfficeConfiguration() {
 
               if (!response.ok) {
                 const errorText = await response.text();
-                alert(`Failed to create approver flow step. Status: ${response.status}. Error: ${errorText}`);
+                setErrorMessage(`Failed to create approver flow step. Status: ${response.status}. Error: ${errorText}`);
+                setErrorOpen(true);
                 return;
               }
 
@@ -1805,10 +1834,16 @@ export default function CISOCollegeOfficeConfiguration() {
               // Refetch approver flow data to update UI
               await refetchApproverFlow();
 
-              alert('Approver flow step created successfully!');
+              setSuccessMessage('Approver flow step created successfully!');
+              setSuccessContinue(() => () => {
+                setSuccessOpen(false);
+                setSuccessMessage('');
+              });
+              setSuccessOpen(true);
             } catch (error) {
               console.error('Error creating approver flow step:', error);
-              alert('Failed to create approver flow step. Please try again.');
+              setErrorMessage('Failed to create approver flow step. Please try again.');
+              setErrorOpen(true);
             }
           }}
         />
@@ -1914,6 +1949,15 @@ export default function CISOCollegeOfficeConfiguration() {
               }
 
               setDepartments((prev) => [...prev, ...createdDepts]);
+              
+              // Show success modal
+              const deptNames = createdDepts.map(d => d.name).join(", ");
+              setSuccessMessage(`${createdDepts.length} department(s) created successfully: ${deptNames}`);
+              setSuccessContinue(() => () => {
+                setSuccessOpen(false);
+                setSuccessMessage('');
+              });
+              setSuccessOpen(true);
             })().catch(() => {
               // ignore; can be handled by UI later
             });
@@ -1953,297 +1997,17 @@ export default function CISOCollegeOfficeConfiguration() {
                 details: created?.name ? [`Office: ${created.name}`] : [],
               });
               setOffices((prev) => [...prev, created]);
+              
+              // Show success modal
+              setSuccessMessage(`Office "${created.name}" created successfully!`);
+              setSuccessContinue(() => () => {
+                setSuccessOpen(false);
+                setSuccessMessage('');
+              });
+              setSuccessOpen(true);
             })().catch(() => {
               // ignore; can be handled by UI later
             });
-          }}
-        />
-
-        <EditCollegeDialog
-          open={editCollegeOpen}
-          onOpenChange={(open) => {
-            setEditCollegeOpen(open);
-            if (!open) setEditingCollegeId(null);
-          }}
-          initialValues={
-            editingCollege
-              ? {
-                  name: editingCollege.name,
-                  short: editingCollege.short,
-                }
-              : undefined
-          }
-          onSave={(payload) => {
-            if (!editingCollegeId) return;
-            (async () => {
-              const previousName = colleges.find((c) => c.id === editingCollegeId)?.name ?? "";
-              await apiJson<CollegeItem>(
-                `/admin/xu-faculty-clearance/api/ciso/colleges/${editingCollegeId}`,
-                {
-                  method: "PATCH",
-                  body: JSON.stringify({ name: payload.name, short: payload.short }),
-                }
-              );
-
-              try {
-                await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
-                  method: "POST",
-                  credentials: "include",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    event_type: "edited_college",
-                    details: [
-                      previousName ? `Previous: ${previousName}` : "",
-                      payload.name ? `Updated: ${payload.name}` : "",
-                    ].filter(Boolean),
-                    user_role: "CISO",
-                  }),
-                });
-              } catch {
-                // ignore
-              }
-
-              postCISOActivityLog({
-                event_type: "edited_college",
-                details: [
-                  previousName ? `Previous: ${previousName}` : "",
-                  payload.name ? `Updated: ${payload.name}` : "",
-                ].filter(Boolean),
-              });
-
-              // Refetch approver flow data to update UI (in case college name affects approver flow display)
-              await refetchApproverFlow();
-            })();
-          }}
-        />
-
-        <EditDepartmentDialog
-          open={editDepartmentOpen}
-          onOpenChange={(open) => {
-            setEditDepartmentOpen(open);
-            if (!open) setEditingDepartmentId(null);
-          }}
-          initialValues={
-            editingDepartment
-              ? {
-                  name: editingDepartment.name,
-                  short: editingDepartment.short,
-                }
-              : undefined
-          }
-          onSave={(payload) => {
-            if (!editingDepartmentId) return;
-            (async () => {
-              const prevDept = departments.find((d) => d.id === editingDepartmentId);
-              const prevDeptName = prevDept?.name ?? "";
-              const prevCollegeName = colleges.find((c) => c.id === prevDept?.collegeId)?.name ?? "";
-              await apiJson<DepartmentItem>(
-                `/admin/xu-faculty-clearance/api/ciso/departments/${editingDepartmentId}`,
-                {
-                  method: "PATCH",
-                  body: JSON.stringify({ name: payload.name, short: payload.short }),
-                }
-              );
-
-              try {
-                await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
-                  method: "POST",
-                  credentials: "include",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    event_type: "edited_department",
-                    details: [
-                      prevDeptName ? `Previous: ${prevDeptName}` : "",
-                      prevCollegeName ? `College: ${prevCollegeName}` : "",
-                      payload.name ? `Updated: ${payload.name}` : "",
-                    ].filter(Boolean),
-                    user_role: "CISO",
-                  }),
-                });
-              } catch {
-                // ignore
-              }
-
-              postCISOActivityLog({
-                event_type: "edited_department",
-                details: [
-                  prevDeptName ? `Previous: ${prevDeptName}` : "",
-                  prevCollegeName ? `College: ${prevCollegeName}` : "",
-                  payload.name ? `Updated: ${payload.name}` : "",
-                ].filter(Boolean),
-              });
-            })();
-          }}
-        />
-
-        <EditOfficeDialog
-          open={editOfficeOpen}
-          onOpenChange={(open) => {
-            setEditOfficeOpen(open);
-            if (!open) setEditingOfficeId(null);
-          }}
-          initialValues={
-            editingOffice
-              ? {
-                  name: editingOffice.name,
-                  short: editingOffice.short,
-                }
-              : undefined
-          }
-          onSave={(payload) => {
-            if (!editingOfficeId) return;
-            (async () => {
-              const prevOfficeName = offices.find((o) => o.id === editingOfficeId)?.name ?? "";
-              await apiJson<OfficeItem>(
-                `/admin/xu-faculty-clearance/api/ciso/offices/${editingOfficeId}`,
-                {
-                  method: "PATCH",
-                  body: JSON.stringify({ name: payload.name, short: payload.short }),
-                }
-              );
-
-              try {
-                await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
-                  method: "POST",
-                  credentials: "include",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    event_type: "edited_office",
-                    details: [
-                      prevOfficeName ? `Previous: ${prevOfficeName}` : "",
-                      payload.name ? `Updated: ${payload.name}` : "",
-                    ].filter(Boolean),
-                    user_role: "CISO",
-                  }),
-                });
-              } catch {
-                // ignore
-              }
-
-              postCISOActivityLog({
-                event_type: "edited_office",
-                details: [
-                  prevOfficeName ? `Previous: ${prevOfficeName}` : "",
-                  payload.name ? `Updated: ${payload.name}` : "",
-                ].filter(Boolean),
-              });
-
-              // Refetch approver flow data to update UI (in case office name affects approver flow display)
-              await refetchApproverFlow();
-            })();
-          }}
-        />
-
-        <EditApproverDialog
-          open={editApproverOpen}
-          onOpenChange={(open) => {
-            setEditApproverOpen(open);
-            if (!open) setEditingApproverId(null);
-          }}
-          colleges={colleges}
-          categories={approverCategories}
-          initialValues={
-            editingApprover
-              ? {
-                  category: editingApprover.category,
-                  collegeIds: editingApprover.collegeIds,
-                }
-              : undefined
-          }
-          onSave={(payload) => {
-            if (!editingApproverId) return;
-            (async () => {
-              // Enhanced duplicate prevention for approver flow edit - strict category check
-              const isDuplicate = approverFlow.some(existing => {
-                // Skip checking the current item being edited
-                if (existing.id === editingApproverId) return false;
-                return existing.category === payload.category;
-              });
-              
-              if (isDuplicate) {
-                alert(`Duplicate approver category detected!\n\nCategory: "${payload.category}"\n\nAn approver with category "${payload.category}" already exists. Each category can only be used once.`);
-                return;
-              }
-
-              const prevApprover = approverFlow.find((a) => a.id === editingApproverId);
-              const prevCategory = prevApprover?.category ?? "";
-              const editedCollegeNames = payload.collegeIds
-                .map((id) => colleges.find((c) => c.id === id)?.name)
-                .filter(Boolean);
-              const apiUrl = selectedTimelineId 
-                ? `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps/${editingApproverId}?timeline_id=${selectedTimelineId}`
-                : `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps/${editingApproverId}`;
-              
-              const updated = await apiJson<ApproverFlowItem>(
-                apiUrl,
-                {
-                  method: "PATCH",
-                  body: JSON.stringify({ category: payload.category, collegeIds: payload.collegeIds }),
-                }
-              );
-
-              // Refetch approver flow data to update UI
-              await refetchApproverFlow();
-
-              try {
-                await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
-                  method: "POST",
-                  credentials: "include",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    event_type: "edited_approver",
-                    details: [
-                      prevCategory ? `Previous: ${prevCategory}` : "",
-                      payload.category ? `Updated: ${payload.category}` : "",
-                      editedCollegeNames.length ? `Colleges: ${editedCollegeNames.join(", ")}` : "",
-                    ].filter(Boolean),
-                    user_role: "CISO",
-                  }),
-                });
-              } catch {
-                // ignore
-              }
-            })();
-          }}
-        />
-
-        <EditApproverFlowDialog
-          open={editApproverFlowOpen}
-          onOpenChange={setEditApproverFlowOpen}
-          items={approverFlow}
-          onSave={(next) => {
-            (async () => {
-              await apiJson<{ ok: boolean }>(
-                "/admin/xu-faculty-clearance/api/ciso/approver-flow/order",
-                {
-                  method: "PUT",
-                  body: JSON.stringify({ stepIds: next.map((s) => s.id) }),
-                }
-              );
-
-              // Refetch approver flow data to update UI
-              await refetchApproverFlow();
-
-              try {
-                const details = next.map((step, idx) => {
-                  const orderNum = idx + 1;
-                  const categoryName = step.category || "Unknown";
-                  return `${orderNum} ${categoryName}`;
-                });
-                await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
-                  method: "POST",
-                  credentials: "include",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    event_type: "edited_approver_flow",
-                    details,
-                    user_role: "CISO",
-                  }),
-                });
-              } catch {
-                // ignore
-              }
-            })();
           }}
         />
 
@@ -2256,23 +2020,23 @@ export default function CISOCollegeOfficeConfiguration() {
           <AlertDialogContent className="w-[420px] max-w-[calc(100vw-3rem)] rounded-xl bg-background p-0">
             <div className="rounded-xl bg-background">
               <AlertDialogHeader className="px-6 pb-4 pt-6 text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full text-destructive">
-                  <span className="text-2xl font-bold">!</span>
-                </div>
+              <div className="mx-auto flex h-10 w-10 items-center justify-center ">
+                <img src="/RedAlertIcon.png" />
+              </div>
 
-                <AlertDialogTitle className="mt-4 text-base font-semibold text-foreground">
+                <AlertDialogTitle className="mt-4 text-center text-base font-semibold text-foreground">
                   You are about to <span className="text-destructive">DELETE</span>
                 </AlertDialogTitle>
-                <div className="mt-1 text-base font-semibold text-foreground">
+                <div className="mt-1 text-center font-semibold text-foreground">
                   “{confirmDelete.open ? confirmDelete.label : ""}”
                 </div>
 
-                <div className="mt-4 text-sm font-semibold text-foreground">Do you wish to continue?</div>
+                <div className="mt-4 text-center text-sm font-semibold text-foreground">Do you wish to continue?</div>
               </AlertDialogHeader>
 
               <AlertDialogFooter className="mt-2 flex flex-col gap-2 px-6 pb-6 sm:flex-col sm:space-x-0">
                 <AlertDialogAction
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  className="h-11 w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={() => {
                     if (!confirmDelete.open) return;
 
@@ -2307,6 +2071,14 @@ export default function CISOCollegeOfficeConfiguration() {
                             // ignore individual step deletion errors
                           }
                         }
+                        
+                        // Show success modal
+                        setSuccessMessage(`College "${confirmDelete.label}" deleted successfully!`);
+                        setSuccessContinue(() => () => {
+                          setSuccessOpen(false);
+                          setSuccessMessage('');
+                        });
+                        setSuccessOpen(true);
                       })();
                     }
 
@@ -2338,6 +2110,14 @@ export default function CISOCollegeOfficeConfiguration() {
                           `/admin/xu-faculty-clearance/api/ciso/departments/${confirmDelete.id}`,
                           { method: "DELETE" }
                         );
+                        
+                        // Show success modal
+                        setSuccessMessage(`Department "${confirmDelete.label}" deleted successfully!`);
+                        setSuccessContinue(() => () => {
+                          setSuccessOpen(false);
+                          setSuccessMessage('');
+                        });
+                        setSuccessOpen(true);
                       })();
                     }
 
@@ -2386,6 +2166,13 @@ export default function CISOCollegeOfficeConfiguration() {
                             details: confirmDelete.label ? [`Office: ${confirmDelete.label}`] : [],
                           });
                           
+                          // Show success modal
+                          setSuccessMessage(`Office "${confirmDelete.label}" deleted successfully!`);
+                          setSuccessContinue(() => () => {
+                            setSuccessOpen(false);
+                            setSuccessMessage('');
+                          });
+                          setSuccessOpen(true);
                         } catch (error) {
                           // ignore office deletion errors
                         }
@@ -2435,6 +2222,13 @@ export default function CISOCollegeOfficeConfiguration() {
                             // ignore
                           }
                           
+                          // Show success modal
+                          setSuccessMessage(`Approver "${step?.category}" deleted successfully!`);
+                          setSuccessContinue(() => () => {
+                            setSuccessOpen(false);
+                            setSuccessMessage('');
+                          });
+                          setSuccessOpen(true);
                         } catch (error) {
                           // ignore approver step deletion errors
                         }
@@ -2448,7 +2242,7 @@ export default function CISOCollegeOfficeConfiguration() {
                 </AlertDialogAction>
 
                 <AlertDialogCancel
-                  className="h-11 w-full "
+                  className="h-11 w-full"
                   onClick={() => setConfirmDelete({ open: false })}
                 >
                   Cancel
@@ -2458,6 +2252,9 @@ export default function CISOCollegeOfficeConfiguration() {
           </AlertDialogContent>
         </AlertDialog>
       </main>
+
+      <ErrorModal open={errorOpen} onOpenChange={setErrorOpen} message={errorMessage} />
+      <SuccessModal open={successOpen} onOpenChange={setSuccessOpen} message={successMessage} onContinue={successContinue || undefined} />
 
     </div>
   );

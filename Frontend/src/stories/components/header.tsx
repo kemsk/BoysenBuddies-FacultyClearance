@@ -518,7 +518,7 @@ export function ApprovalHeader() {
                 <div className=" flex flex-col space-y-3">
                   <SheetClose asChild>
                     <Link
-                      to="/OVPHE-system-analytics"
+                      to="/analytics-admin-system-analytics"
                       className="text-xl font-regular text-primary"
                     >
                       System Analytics
@@ -801,7 +801,7 @@ export function HROHeader() {
                   </SheetClose>
                   <SheetClose asChild>
                     <Link
-                      to="/OVPHE-system-analytics"
+                      to="/analytics-admin-system-analytics"
                       className="text-xl font-regular text-primary"
                     >
                       System Analytics
@@ -1008,7 +1008,7 @@ export function CISOHeader() {
             <div>
               <SheetClose asChild>
                 <Link
-                  to="/CISO-dashboard"
+                  to="/system-admin-dashboard"
                   className="flex items-center gap-3  font-semibold text-primary text-xl"
                 >
                   <img
@@ -1028,7 +1028,7 @@ export function CISOHeader() {
                 <div className="flex flex-col space-y-3">
                   <SheetClose asChild>
                     <Link
-                      to="/CISO-system-guideline"
+                      to="/system-admin-system-guideline"
                       className="text-xl font-regular text-primary"
                     >
                       System Guidelines
@@ -1036,7 +1036,7 @@ export function CISOHeader() {
                   </SheetClose>
                   <SheetClose asChild>
                     <Link
-                      to="/CISO-announcement"
+                      to="/system-admin-announcement"
                       className="text-xl font-regular text-primary"
                     >
                       Announcements
@@ -1050,7 +1050,7 @@ export function CISOHeader() {
            <div className="mt-2">
               <SheetClose asChild>
                 <Link
-                  to="/CISO-tools"
+                  to="/system-admin-tools"
                   className="flex items-center gap-3 text-xl font-semibold text-primary"
                 >
                   <img
@@ -1069,7 +1069,7 @@ export function CISOHeader() {
                 <div className=" flex flex-col space-y-3">
                   <SheetClose asChild>
                     <Link
-                      to="/CISO-clearance-timeline"
+                      to="/system-admin-clearance-timeline"
                       className="text-xl font-regular text-primary"
                     >
                       Set Clearance Timeline
@@ -1078,7 +1078,7 @@ export function CISOHeader() {
 
                   <SheetClose asChild>
                     <Link
-                      to="/CISO-college-office-configuration"
+                      to="/system-admin-college-office-configuration"
                       className="text-xl font-regular text-primary"
                     >
                       College & Office Configuration
@@ -1087,7 +1087,7 @@ export function CISOHeader() {
 
                   <SheetClose asChild>
                     <Link
-                      to="/CISO-faculty-data-dump"
+                      to="/system-admin-faculty-data-dump"
                       className="text-xl font-regular text-primary"
                     >
                       Faculty Data Dump
@@ -1096,7 +1096,7 @@ export function CISOHeader() {
 
                   <SheetClose asChild>
                     <Link
-                      to="/CISO-manage-system-user"
+                      to="/system-admin-manage-system-user"
                       className="text-xl font-regular text-primary"
                     >
                       Manage System Users
@@ -1106,7 +1106,7 @@ export function CISOHeader() {
 
                   <SheetClose asChild>
                     <Link
-                      to="/CISO-archived-faculty"
+                      to="/system-admin-archived-faculty"
                       className="text-xl font-regular text-primary"
                     >
                       View Faculty Import History
@@ -1115,7 +1115,7 @@ export function CISOHeader() {
                   
                   <SheetClose asChild>
                     <Link
-                      to="/CISO-access-control"
+                      to="/system-admin-access-control"
                       className="text-xl font-regular text-primary"
                     >
                       Access Control
@@ -1123,7 +1123,7 @@ export function CISOHeader() {
                   </SheetClose>
                   <SheetClose asChild>
                     <Link
-                      to="/CISO-system-analytics"
+                      to="/system-admin-system-analytics"
                       className="text-xl font-regular text-primary"
                     >
                       System Analytics
@@ -1131,7 +1131,7 @@ export function CISOHeader() {
                   </SheetClose>
                   <SheetClose asChild>
                     <Link
-                      to="/CISO-activity-logs"
+                      to="/system-admin-activity-logs"
                       className="text-xl font-regular text-primary"
                     >
                       Check Activity Logs
@@ -1145,7 +1145,7 @@ export function CISOHeader() {
             <div className="mt-2">
             <SheetClose asChild>
               <Link
-                to="/CISO-notification"
+                to="/System-admin-notification"
                 className="flex items-center gap-3 text-xl font-semibold text-primary"
               >
                 <img
@@ -1321,7 +1321,7 @@ export function OVPHEHeader() {
             <div>
               <SheetClose asChild>
                 <Link
-                  to="/OVPHE-dashboard"
+                  to="/analytics-admin-dashboard"
                   className="flex items-center gap-3  font-semibold text-primary text-xl"
                 >
                   <img
@@ -1341,7 +1341,7 @@ export function OVPHEHeader() {
                 <div className="flex flex-col space-y-3">
                   <SheetClose asChild>
                     <Link
-                      to="/OVPHE-system-guideline"
+                      to="/analytics-admin-system-guideline"
                       className="text-xl font-regular text-primary"
                     >
                       System Guidelines
@@ -1349,7 +1349,7 @@ export function OVPHEHeader() {
                   </SheetClose>
                   <SheetClose asChild>
                     <Link
-                      to="/OVPHE-announcements"
+                      to="/analytics-admin-announcements"
                       className="text-xl font-regular text-primary"
                     >
                       Announcements
@@ -1363,7 +1363,7 @@ export function OVPHEHeader() {
            <div className="mt-2">
               <SheetClose asChild>
                 <Link
-                  to="/OVPHE-tools"
+                  to="/analytics-admin-tools"
                   className="flex items-center gap-3 text-xl font-semibold text-primary"
                 >
                   <img
@@ -1383,7 +1383,7 @@ export function OVPHEHeader() {
 
                   <SheetClose asChild>
                     <Link
-                      to="/OVPHE-system-analytics"
+                      to="/analytics-admin-system-analytics"
                       className="text-xl font-regular text-primary"
                     >
                       System Analytics
@@ -1393,7 +1393,7 @@ export function OVPHEHeader() {
 
                   <SheetClose asChild>
                     <Link
-                      to="/OVPHE-activity-logs"
+                      to="/analytics-admin-activity-logs"
                       className="text-xl font-regular text-primary"
                     >
                       Check Activity Logs
@@ -1406,7 +1406,7 @@ export function OVPHEHeader() {
             <div className="mt-2">
             <SheetClose asChild>
               <Link
-                to="/OVPHE-notification"
+                to="/analytics-admin-notification"
                 className="flex items-center gap-3 text-xl font-semibold text-primary"
               >
                 <img

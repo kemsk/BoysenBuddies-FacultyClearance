@@ -145,7 +145,7 @@ React.useEffect(() => {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/OVPHE-dashboard">Dashboard</Link>
+                <Link to="/analytics-admin-dashboard">Dashboard</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -156,7 +156,7 @@ React.useEffect(() => {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" size="back" onClick={() => navigate("/OVPHE-dashboard")}> 
+          <Button variant="back" size="back" onClick={() => navigate("/analytics-admin-dashboard")}> 
             <div className="flex items-center gap-2">
               <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
             </div>

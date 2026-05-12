@@ -113,9 +113,7 @@ export function AccessControlCard({
 
   return (
     <div className={cn("w-full", className)}>
-      <CardTitle className="text-base font-semibold text-foreground">{roleTitle}</CardTitle>
-
-      <div className="mt-3 flex flex-wrap items-end gap-0 border-b border-[hsl(var(--gray-border))]">
+      <div className="flex flex-wrap items-end gap-0 border-b border-[hsl(var(--gray-border))]">
         {categories.map((cat) => {
           const isActive = cat.id === activeCategoryId;
           return (

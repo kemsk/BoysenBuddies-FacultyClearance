@@ -598,8 +598,8 @@ export default function ApproverAssistantList() {
                     details: [
                       `Assistant: ${payload.firstName} ${payload.lastName}`,
                       `Email: ${payload.email}`,
-                      `Department: ${payload.department || "N/A"}`,
-                      `College: ${payload.college || "N/A"}`
+                      `Department: ${payload.department || "None"}`,
+                      `College: ${payload.college || "None"}`
                     ],
                     department: payload.department || null,
                     office: payload.office || null,
@@ -719,8 +719,8 @@ export default function ApproverAssistantList() {
                     details: [
                       `Assistant: ${payload.firstName} ${payload.lastName}`,
                       `Email: ${payload.email}`,
-                      `Department: ${isOffice ? "N/A" : selected}`,
-                      `College: ${payload.college || "N/A"}`,
+                      `Department: ${isOffice ? "None" : selected}`,
+                      `College: ${payload.college || "None"}`,
                       `Type: ${assistantType}`
                     ],
                     department: isOffice ? null : selected,
@@ -784,9 +784,9 @@ export default function ApproverAssistantList() {
                   universityId: payload.universityId,
                   email: activeAssistant.email,
                   isActive: payload.isActive,
-                  college: payload.college === "N/A" ? "" : payload.college,
-                  department: payload.department === "N/A" ? "" : payload.department,
-                  office: payload.office === "N/A" ? "" : payload.office,
+                  college: payload.college === "None" ? "" : payload.college,
+                  department: payload.department === "None" ? "" : payload.department,
+                  office: payload.office === "None" ? "" : payload.office,
                   assistantType: activeAssistant.assistantType,
                 }),
               });
@@ -808,8 +808,8 @@ export default function ApproverAssistantList() {
                     details: [
                       `Assistant: ${payload.firstName} ${payload.lastName}`,
                       `Email: ${activeAssistant.email}`,
-                      `Department: ${payload.department || "N/A"}`,
-                      `College: ${payload.college || "N/A"}`
+                      `Department: ${payload.department || "None"}`,
+                      `College: ${payload.college || "None"}`
                     ],
                     department: payload.department || null,
                     office: payload.office || null,
@@ -894,8 +894,8 @@ export default function ApproverAssistantList() {
                     details: [
                       `Assistant: ${activeAssistant.name}`,
                       `Email: ${activeAssistant.email}`,
-                      `Department: ${activeAssistant.department || "N/A"}`,
-                      `College: ${activeAssistant.college || "N/A"}`
+                      `Department: ${activeAssistant.department || "None"}`,
+                      `College: ${activeAssistant.college || "None"}`
                     ],
                     department: activeAssistant.department || null,
                     office: activeAssistant.office || null,

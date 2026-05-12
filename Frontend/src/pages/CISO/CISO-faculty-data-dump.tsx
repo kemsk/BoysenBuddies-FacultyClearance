@@ -350,7 +350,7 @@ export default function CISOFacultyDataDump() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/CISO-tools">Tools</Link>
+                <Link to="/system-admin-tools">Tools</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -361,7 +361,7 @@ export default function CISOFacultyDataDump() {
         </Breadcrumb>
 
         <div className="mb-3 mt-2 flex items-center justify-end">
-          <Button variant="back" size="back" onClick={() => navigate("/CISO-tools")}> 
+          <Button variant="back" size="back" onClick={() => navigate("/system-admin-tools")}> 
               <div className="flex items-center gap-2">
                 <img src="BlackArrowIcon.png" alt="back" className="h-4 w-4" />Back
               </div>

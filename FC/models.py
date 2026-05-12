@@ -224,6 +224,20 @@ class Requirement(models.Model):
         ]
     )
 
+    # Faculty type filter for college/department scopes
+    faculty_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('all', 'All Faculty'),
+            ('Full-time', 'Full-time'),
+            ('Part-time', 'Part-time'),
+        ],
+        default='all',
+        null=True,
+        blank=True,
+        help_text="Filter by faculty type when scope is college or department"
+    )
+
     # Target recipients (based on scope)
     target_colleges = models.ManyToManyField(College, blank=True)
     target_departments = models.ManyToManyField(Department, blank=True)
