@@ -26,6 +26,9 @@ export default function AssistantApproverClearance() {
   const [requests, setRequests] = React.useState<ClearanceRequestItem[]>([]);
   const [page, setPage] = React.useState(1);
   const itemsPerPage = 20;
+  const [sortBy, setSortBy] = React.useState("name");
+  const [statusFilter, setStatusFilter] = React.useState("all");
+  const [facultyTypeFilter, setFacultyTypeFilter] = React.useState("all");
 
   React.useEffect(() => {
     fetch("/admin/xu-faculty-clearance/api/assistant-approver/clearance", {
@@ -41,15 +44,60 @@ export default function AssistantApproverClearance() {
 
   const filteredRequests = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return requests;
-    return requests.filter((r) => {
-      const hay = [r.requestId, r.employeeId, r.name, r.college, r.department, r.facultyType]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
+    let filtered = requests;
+    
+    // Filter by status
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((r) => {
+        if (statusFilter === "pending") return r.status === "pending";
+        if (statusFilter === "approved") return r.status === "approved";
+        if (statusFilter === "rejected") return r.status === "rejected";
+        return true;
+      });
+    }
+    
+    // Filter by faculty type
+    if (facultyTypeFilter !== "all") {
+      filtered = filtered.filter((r) => {
+        if (facultyTypeFilter === "Part-time") return r.facultyType === "Part-time";
+        if (facultyTypeFilter === "Full-time") return r.facultyType === "Full-time";
+        return true;
+      });
+    }
+    
+    // Filter by search query
+    if (q) {
+      filtered = filtered.filter((r) => {
+        const hay = [r.requestId, r.employeeId, r.name, r.college, r.department, r.facultyType]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return hay.includes(q);
+      });
+    }
+    
+    // Sort by selected field
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "name":
+          return (a.name || "").localeCompare(b.name || "");
+        case "requestId":
+          return (a.requestId || "").localeCompare(b.requestId || "");
+        case "employeeId":
+          return (a.employeeId || "").localeCompare(b.employeeId || "");
+        case "college":
+          return (a.college || "").localeCompare(b.college || "");
+        case "department":
+          return (a.department || "").localeCompare(b.department || "");
+        case "facultyType":
+          return (a.facultyType || "").localeCompare(b.facultyType || "");
+        default:
+          return 0;
+      }
     });
-  }, [query, requests]);
+    
+    return filtered;
+  }, [query, requests, sortBy, statusFilter, facultyTypeFilter]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
@@ -78,31 +126,30 @@ export default function AssistantApproverClearance() {
         <h1 className="text-2xl text-left text-primary font-bold">Clearance Requests</h1>
 
        <div className="mt-5 space-y-5">
-          <div className="w-full max-w-[520px]">
+          <div className="w-full mt-5">
             <SearchInputGroup
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               containerClassName="h-10"
+              placeholder="Search by name, ID, or email..."
             />
           </div>
 
-          <div className="flex flex-wrap items-left gap-3 overflow-x-auto ">
-            <Select defaultValue="name">
+          <div className="flex flex-wrap items-left gap-3 overflow-x-auto">
+            <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger variant="pill" className="w-max gap-2">
                 <span>Sort by :</span>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="name">Name</SelectItem>
-                <SelectItem value="date">Date</SelectItem>
                 <SelectItem value="employeeId">Employee ID</SelectItem>
                 <SelectItem value="college">College</SelectItem>
                 <SelectItem value="department">Department</SelectItem>
-                <SelectItem value="facultyType">Faculty Type</SelectItem>
               </SelectContent>
             </Select>
 
-            <Select defaultValue="pending">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger variant="pill" className="w-max gap-2">
                 <span>Status :</span>
                 <SelectValue />
@@ -114,12 +161,12 @@ export default function AssistantApproverClearance() {
                 <SelectItem value="rejected">Rejected</SelectItem>
               </SelectContent>
             </Select>
-           <Select onValueChange={(v) => console.log(v)}>
+            <Select onValueChange={(v) => console.log(v)}>
                 <SelectTrigger variant="pill" className="w-max">
                     <SelectValue placeholder="College" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="all">All College</SelectItem>
                     <SelectItem value="CISO">System Admin</SelectItem>
                     <SelectItem value="OVPHE">Analytics Admin</SelectItem>
                 </SelectContent>
@@ -129,11 +176,23 @@ export default function AssistantApproverClearance() {
                     <SelectValue placeholder="Department" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="all">All Department</SelectItem>
                     <SelectItem value="Approver">System Admin</SelectItem>
                     <SelectItem value="Approver">Analytics Admin</SelectItem>
                 </SelectContent>
             </Select>               
+
+            <Select value={facultyTypeFilter} onValueChange={setFacultyTypeFilter}>
+                <SelectTrigger variant="pill" className="w-max">
+                    <SelectValue placeholder="Approver type" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Faculty</SelectItem>
+                    <SelectItem value="Part-time">Part-time</SelectItem>
+                    <SelectItem value="Full-time">Full-time</SelectItem>
+                </SelectContent>
+            </Select>    
+
           </div>
         </div>
 

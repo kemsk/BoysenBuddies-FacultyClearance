@@ -178,6 +178,7 @@ export default function ApproverClearance() {
   const [approverEmail, setApproverEmail] = React.useState("");
   const [sortBy, setSortBy] = React.useState("name");
   const [statusFilter, setStatusFilter] = React.useState("all");
+  const [facultyTypeFilter, setFacultyTypeFilter] = React.useState("all");
 
   const [successOpen, setSuccessOpen] = React.useState(false);
   const [successMessage, setSuccessMessage] = React.useState<React.ReactNode>("");
@@ -353,6 +354,15 @@ export default function ApproverClearance() {
       });
     }
     
+    // Filter by faculty type
+    if (facultyTypeFilter !== "all") {
+      filtered = filtered.filter((r) => {
+        if (facultyTypeFilter === "Part-time") return r.facultyType === "Part-time";
+        if (facultyTypeFilter === "Full-time") return r.facultyType === "Full-time";
+        return true;
+      });
+    }
+    
     // Filter by search query
     if (q) {
       filtered = filtered.filter((r) => {
@@ -386,7 +396,7 @@ export default function ApproverClearance() {
     });
     
     return filtered;
-  }, [query, requests, sortBy, statusFilter]);
+  }, [query, requests, sortBy, statusFilter, facultyTypeFilter]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
@@ -445,13 +455,15 @@ export default function ApproverClearance() {
         <h1 className="text-2xl text-left text-primary font-bold">Clearance Requests</h1>
 
        <div className="mt-5 space-y-5">
-          <div className="max-w-[520px]">
+          <div className="w-full mt-5">
             <SearchInputGroup
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               containerClassName="h-10"
+              placeholder="Search by name, ID, or email..."
             />
           </div>
+
 
           <div className="flex flex-wrap items-left gap-3 overflow-x-auto">
             <Select value={sortBy} onValueChange={setSortBy}>
@@ -486,7 +498,7 @@ export default function ApproverClearance() {
                     <SelectValue placeholder="College" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="all">All College</SelectItem>
                     <SelectItem value="CISO">System Admin</SelectItem>
                     <SelectItem value="OVPHE">Analytics Admin</SelectItem>
                 </SelectContent>
@@ -496,11 +508,23 @@ export default function ApproverClearance() {
                     <SelectValue placeholder="Department" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="all">All Department</SelectItem>
                     <SelectItem value="Approver">System Admin</SelectItem>
                     <SelectItem value="Approver">Analytics Admin</SelectItem>
                 </SelectContent>
-            </Select>                 
+            </Select>               
+
+            <Select value={facultyTypeFilter} onValueChange={setFacultyTypeFilter}>
+                <SelectTrigger variant="pill" className="w-max">
+                    <SelectValue placeholder="Approver type" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Faculty</SelectItem>
+                    <SelectItem value="Part-time">Part-time</SelectItem>
+                    <SelectItem value="Full-time">Full-time</SelectItem>
+                </SelectContent>
+            </Select>    
+
           </div>
         </div>
 

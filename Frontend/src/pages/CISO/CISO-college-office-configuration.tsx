@@ -896,11 +896,6 @@ export default function CISOCollegeOfficeConfiguration() {
     [offices, editingOfficeId]
   );
 
-  const editingApprover = React.useMemo(
-    () => (editingApproverId ? approverFlow.find((a) => a.id === editingApproverId) : undefined),
-    [approverFlow, editingApproverId]
-  );
-
   const handleSaveConfiguration = React.useCallback(async () => {
     if (!selectedTimelineId) return;
     

@@ -588,6 +588,7 @@ export function ClearanceRequestsCard({
                     <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[12%] min-w-[100px]">Employee ID</th>
                     <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[15%] min-w-[120px]">College</th>
                     <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[15%] min-w-[120px]">Department</th>
+                    <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[12%] min-w-[100px]">Faculty Type</th>
                     <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[15%] min-w-[120px]">Requirement</th>
                     <th className="px-2 py-3 pr-6 text-center text-sm font-bold text-primary w-[8%] min-w-[80px]">Status</th>
                   </tr>
@@ -624,6 +625,7 @@ export function ClearanceRequestsCard({
                       <td className="px-2 py-4 align-top text-left text-sm text-gray-900 break-all">{item.employeeId}</td>
                       <td className="px-2 py-4 align-top text-left text-sm text-gray-900 break-words">{item.college}</td>
                       <td className="px-2 py-4 align-top text-left text-sm text-gray-900 break-words">{item.department}</td>
+                      <td className="px-2 py-4 align-top text-left text-sm text-gray-900 break-words">{item.facultyType}</td>
                       <td className="px-2 py-4 align-top text-left text-sm text-gray-900 break-words">{item.requirementTitle || ""}</td>
                       <td className="px-2 py-4 pr-6 align-top text-center ">
                         <Badge

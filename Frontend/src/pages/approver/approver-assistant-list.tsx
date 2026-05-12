@@ -45,6 +45,7 @@ export default function ApproverAssistantList() {
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<StudentAssistantItem[]>([]);
   const [mode, setMode] = useState<"assistants" | "approvers">("assistants");
+  const [sortBy, setSortBy] = useState("name");
 
   const [successOpen, setSuccessOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<React.ReactNode>("");
@@ -369,29 +370,50 @@ export default function ApproverAssistantList() {
   }, [visibleOffices, approverLevel, myOffices, approverRoles]);
 
   // Derived list based on current mode and search query
-  const filteredItems = items
-    .filter((item) => {
-      const assistantType = item.assistantType || "student_assistant";
-      if (mode === "assistants") {
-        return assistantType === "student_assistant";
-      }
-      // Admins mode: anything that is not a plain student assistant
-      return assistantType !== "student_assistant";
-    })
-    .filter((item) => {
-      const q = query.trim().toLowerCase();
-      if (!q) return true;
-      const haystack = [
-        item.name,
-        item.email,
-        item.college,
-        item.department,
-        item.id,
-      ]
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(q);
-    });
+  const filteredItems = React.useMemo(() => {
+    const filtered = items
+      .filter((item) => {
+        const assistantType = item.assistantType || "student_assistant";
+        if (mode === "assistants") {
+          return assistantType === "student_assistant";
+        }
+        // Admins mode: anything that is not a plain student assistant
+        return assistantType !== "student_assistant";
+      })
+      .filter((item) => {
+        const q = query.trim().toLowerCase();
+        if (!q) return true;
+        const haystack = [
+          item.name,
+          item.email,
+          item.college,
+          item.department,
+          item.id,
+        ]
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(q);
+      });
+
+    // Sort the filtered items
+    const sorted = [...filtered];
+    switch (sortBy) {
+      case "name":
+        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+      case "college":
+        return sorted.sort((a, b) => a.college.localeCompare(b.college));
+      case "department":
+        return sorted.sort((a, b) => a.department.localeCompare(b.department));
+      case "email":
+        return sorted.sort((a, b) => a.email.localeCompare(b.email));
+      case "SystemID":
+        return sorted.sort((a, b) => a.id.localeCompare(b.id));
+      case "UniversityID":
+        return sorted.sort((a, b) => (a.universityId || "").localeCompare(b.universityId || ""));
+      default:
+        return sorted;
+    }
+  }, [items, mode, query, sortBy]);
 
   function splitName(name: string) {
     const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
@@ -454,8 +476,9 @@ export default function ApproverAssistantList() {
           </Button>
         </div>
        
-       <div className="mt-5 space-y-5">
-          <div className="w-full max-w-[520px]">
+
+        <div className="mt-5 space-y-5">
+          <div className="w-full mt-5">
             <SearchInputGroup
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -467,7 +490,7 @@ export default function ApproverAssistantList() {
 
         <div className="flex flex-wrap items-left gap-3 overflow-x-auto mt-4">
 
-            <Select defaultValue="name">
+            <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger variant="pill" className="w-max gap-2">
                 <span>Sort by :</span>
                 <SelectValue />
@@ -477,8 +500,6 @@ export default function ApproverAssistantList() {
                 <SelectItem value="college">College</SelectItem>
                 <SelectItem value="department">Department</SelectItem>
                 <SelectItem value="email">Email</SelectItem>
-                <SelectItem value="SystemID">System ID</SelectItem>
-                <SelectItem value="UniversityID">University ID</SelectItem>
               </SelectContent>
             </Select>
           </div>
