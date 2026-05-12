@@ -38,6 +38,7 @@ export default function ApproverAchivedClearance() {
   const [query, setQuery] = useState("");
   const [selectedYear, setSelectedYear] = useState("all");
   const [selectedTerm, setSelectedTerm] = useState("all");
+  const [sortBy, setSortBy] = React.useState("name");
 
   type AnnouncementApiItem = AnnouncementItem & { id: number; email?: string };
 
@@ -91,7 +92,7 @@ export default function ApproverAchivedClearance() {
 
   const filteredTimelines = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    return timelines.filter((timeline) => {
+    let filtered = timelines.filter((timeline) => {
       const matchesQuery =
         !normalizedQuery ||
         timeline.name.toLowerCase().includes(normalizedQuery) ||
@@ -100,7 +101,26 @@ export default function ApproverAchivedClearance() {
       const matchesTerm = selectedTerm === "all" || timeline.semester === selectedTerm;
       return matchesQuery && matchesYear && matchesTerm;
     });
-  }, [query, selectedTerm, selectedYear, timelines]);
+    
+    // Sort by selected field
+    const sorted = [...filtered];
+    switch (sortBy) {
+      case "name":
+        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+      case "employeeId":
+        return sorted.sort((a, b) => a.name.localeCompare(b.name)); // Fallback to name for timelines
+      case "college":
+        return sorted.sort((a, b) => a.name.localeCompare(b.name)); // Fallback to name for timelines
+      case "department":
+        return sorted.sort((a, b) => a.name.localeCompare(b.name)); // Fallback to name for timelines
+      case "academicYear":
+        return sorted.sort((a, b) => a.academicYear.localeCompare(b.academicYear));
+      case "archivedDate":
+        return sorted.sort((a, b) => a.archivedDate.localeCompare(b.archivedDate));
+      default:
+        return sorted;
+    }
+  }, [query, selectedTerm, selectedYear, timelines, sortBy]);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -173,15 +193,7 @@ export default function ApproverAchivedClearance() {
                 ))}
               </SelectContent>
             </Select>
-
-            <Select>
-              <SelectTrigger variant="pill" className="w-full sm:w-[150px] gap-2 rounded-full border-0 bg-[#7c83d6] text-white shadow-none hover:bg-[#6f76cb]">
-                <SelectValue placeholder="Term" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Status</SelectItem>
-              </SelectContent>
-            </Select>
+                  
           </div>
 
           <div className="space-y-4">

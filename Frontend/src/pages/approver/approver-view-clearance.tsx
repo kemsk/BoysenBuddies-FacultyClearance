@@ -29,6 +29,10 @@ import { useState } from "react";
 export default function ApproverViewClearance() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const [sortBy, setSortBy] = React.useState("name");
+  const [statusFilter, setStatusFilter] = React.useState("all");
+  const [facultyTypeFilter, setFacultyTypeFilter] = React.useState("all");
+  
   const timelineId = React.useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get("timelineId") || "";
@@ -94,15 +98,56 @@ export default function ApproverViewClearance() {
 
   const filteredRequests = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return requests;
-    return requests.filter((r) => {
-      const hay = [r.requestId, r.employeeId, r.name, r.college, r.department, r.facultyType]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
+    let filtered = requests;
+    
+    // Filter by status
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((r) => {
+        if (statusFilter === "pending") return r.status === "pending";
+        if (statusFilter === "approved") return r.status === "approved";
+        if (statusFilter === "rejected") return r.status === "rejected";
+        return true;
+      });
+    }
+    
+    // Filter by faculty type
+    if (facultyTypeFilter !== "all") {
+      filtered = filtered.filter((r) => {
+        if (facultyTypeFilter === "Part-time") return r.facultyType === "Part-time";
+        if (facultyTypeFilter === "Full-time") return r.facultyType === "Full-time";
+        return true;
+      });
+    }
+    
+    // Filter by search query
+    if (q) {
+      filtered = filtered.filter((r) => {
+        const hay = [r.requestId, r.employeeId, r.name, r.college, r.department, r.facultyType]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return hay.includes(q);
+      });
+    }
+    
+    // Sort by selected field
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "name":
+          return (a.name || "").localeCompare(b.name || "");
+        case "employeeId":
+          return (a.employeeId || "").localeCompare(b.employeeId || "");
+        case "college":
+          return (a.college || "").localeCompare(b.college || "");
+        case "department":
+          return (a.department || "").localeCompare(b.department || "");
+        default:
+          return 0;
+      }
     });
-  }, [query, requests]);
+    
+    return filtered;
+  }, [query, requests, sortBy, statusFilter, facultyTypeFilter]);
 
   React.useEffect(() => {
     setSelectedIds(new Set());
@@ -271,31 +316,63 @@ export default function ApproverViewClearance() {
         <div className="mt-3 space-y-4">
           <div className="w-full flex flex-col sm:flex-row gap-3 justify-start mt-5" style={{ marginLeft: '0', paddingLeft: '0' }}>
               <div className="flex flex-wrap gap-3">
-                <Select>
-                <SelectTrigger variant="pill" className="w-max gap-2">
-                  <label>Sort by:</label>
-                  <SelectValue/> 
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="name">Name</SelectItem>
-                  <SelectItem value="requestId">Request ID</SelectItem>
-                  <SelectItem value="universityId">University ID</SelectItem>
-                  <SelectItem value="college">College</SelectItem>
-                  <SelectItem value="facultyType">Faculty Type</SelectItem>
-                </SelectContent>
-              </Select>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger variant="pill" className="w-max gap-2">
+                <span>Sort by :</span>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">Name</SelectItem>
+                <SelectItem value="employeeId">Employee ID</SelectItem>
+                <SelectItem value="college">College</SelectItem>
+                <SelectItem value="department">Department</SelectItem>
+              </SelectContent>
+            </Select>
             
-              <Select>
-                <SelectTrigger variant="pill" className="w-max gap-2">
-                  <label>Status:</label>
-                  <SelectValue/> 
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger variant="pill" className="w-max gap-2">
+                <span>Status :</span>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+
+
+            <Select onValueChange={(v) => console.log(v)}>
+                <SelectTrigger variant="pill" className="w-max">
+                    <SelectValue placeholder="College" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="incomplete">Incomplete</SelectItem>
-                  <SelectItem value="complete">Complete</SelectItem>
+                    <SelectItem value="all">All College</SelectItem>
+                    <SelectItem value="CISO">System Admin</SelectItem>
+                    <SelectItem value="OVPHE">Analytics Admin</SelectItem>
                 </SelectContent>
-              </Select>
+            </Select>
+            <Select onValueChange={(v) => console.log(v)}>
+                <SelectTrigger variant="pill" className="w-max">
+                    <SelectValue placeholder="Department" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Department</SelectItem>
+                    <SelectItem value="Approver">System Admin</SelectItem>
+                    <SelectItem value="Approver">Analytics Admin</SelectItem>
+                </SelectContent>
+            </Select>      
+            <Select value={facultyTypeFilter} onValueChange={setFacultyTypeFilter}>
+                <SelectTrigger variant="pill" className="w-max">
+                    <SelectValue placeholder="Approver type" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Faculty</SelectItem>
+                    <SelectItem value="Part-time">Part-time</SelectItem>
+                    <SelectItem value="Full-time">Full-time</SelectItem>
+                </SelectContent>
+            </Select>      
               </div>
           </div>
 
@@ -369,6 +446,7 @@ export default function ApproverViewClearance() {
                           <th className="px-4 py-3 font-semibold">Employee ID</th>
                           <th className="px-4 py-3 font-semibold">College</th>
                           <th className="px-4 py-3 font-semibold">Department</th>
+                          <th className="px-4 py-3 font-semibold">Faculty Type</th>
                           <th className="px-4 py-3 font-semibold">Requirement</th>
                           <th className="px-4 py-3 font-semibold">Status</th>
                         </tr>
@@ -405,6 +483,9 @@ export default function ApproverViewClearance() {
                             </td>
                             <td className="px-4 py-4 align-top">
                               <div className="max-w-[220px] whitespace-pre-wrap">{item.department}</div>
+                            </td>
+                            <td className="px-4 py-4 align-top">
+                              <div className="max-w-[220px] whitespace-pre-wrap">{item.facultyType}</div>
                             </td>
                             <td className="px-4 py-4 align-top">
                               <div className="max-w-[220px] whitespace-pre-wrap">{item.requirementTitle || "-"}</div>

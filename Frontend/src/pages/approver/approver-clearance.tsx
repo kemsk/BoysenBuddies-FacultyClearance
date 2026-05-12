@@ -473,11 +473,9 @@ export default function ApproverClearance() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="name">Name</SelectItem>
-                <SelectItem value="date">Date</SelectItem>
                 <SelectItem value="employeeId">Employee ID</SelectItem>
                 <SelectItem value="college">College</SelectItem>
                 <SelectItem value="department">Department</SelectItem>
-                <SelectItem value="facultyType">Faculty Type</SelectItem>
               </SelectContent>
             </Select>
 

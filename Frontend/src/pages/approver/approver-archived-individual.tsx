@@ -6,6 +6,7 @@ import { Button } from "../../stories/components/button";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
 import { Badge } from "../../stories/components/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../stories/components/select";
 import { Lock} from 'lucide-react';
 import { ConfirmAlert, OverrideAlert } from "../../stories/components/alert";
 import { useState } from "react";
@@ -59,6 +60,8 @@ export default function ApproverArchivedIndividualApproval() {
   const [timelineName, setTimelineName] = React.useState("Archived Clearance");
   const [item, setItem] = React.useState<ArchivedApproverItem | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [sortBy, setSortBy] = React.useState("requirementTitle");
+  const [statusFilter, setStatusFilter] = React.useState("all");
   const [submittingRequestId, setSubmittingRequestId] = React.useState<string | null>(null);
   const [remarksByRequest, setRemarksByRequest] = React.useState<Record<string, string>>({});
   const [overrideRequestId, setOverrideRequestId] = React.useState<string>("");
@@ -411,6 +414,35 @@ export default function ApproverArchivedIndividualApproval() {
     }
   };
 
+  const filteredRequests = React.useMemo(() => {
+    if (!item) return [];
+    
+    let filtered = item.requests;
+    
+    // Filter by status
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((r) => {
+        if (statusFilter === "pending") return r.status === "pending";
+        if (statusFilter === "approved") return r.status === "approved";
+        if (statusFilter === "rejected") return r.status === "rejected";
+        return true;
+      });
+    }
+    
+    // Sort by selected field
+    const sorted = [...filtered];
+    switch (sortBy) {
+      case "requirementTitle":
+        return sorted.sort((a, b) => (a.requirementTitle || a.requirementName || "").localeCompare(b.requirementTitle || b.requirementName || ""));
+      case "status":
+        return sorted.sort((a, b) => a.status.localeCompare(b.status));
+      case "submittedDate":
+        return sorted.sort((a, b) => a.submittedDate.localeCompare(b.submittedDate));
+      default:
+        return sorted;
+    }
+  }, [item, sortBy, statusFilter]);
+
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
 
@@ -470,6 +502,35 @@ export default function ApproverArchivedIndividualApproval() {
               </div>
 
               <div className="space-y-5">
+                <div className="w-full flex flex-col sm:flex-row gap-3 justify-start mt-5">
+                  <div className="flex flex-wrap gap-3">
+                    <Select value={sortBy} onValueChange={setSortBy}>
+                      <SelectTrigger variant="pill" className="w-max gap-2">
+                        <span>Sort by :</span>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="requirementTitle">Requirement Title</SelectItem>
+                        <SelectItem value="status">Status</SelectItem>
+                        <SelectItem value="submittedDate">Submitted Date</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger variant="pill" className="w-max gap-2">
+                        <span>Status :</span>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
                 <div className="hidden md:block">
                   <div className="overflow-hidden rounded-xl border border-muted-foreground/20 bg-card shadow">
                     <div className="overflow-x-auto">
@@ -485,7 +546,7 @@ export default function ApproverArchivedIndividualApproval() {
                         </tr>
                       </thead>
                       <tbody>
-                        {item.requests.map((request) => (
+                        {filteredRequests.map((request) => (
                           <tr key={request.id} className="border-b border-muted-foreground/20 last:border-b-0">
                             <td className="px-4 py-4 align-top font-semibold">
                               {request.requirementTitle || request.requirementName}
@@ -633,7 +694,7 @@ export default function ApproverArchivedIndividualApproval() {
                 </div>
 
                 <div className="space-y-4 md:hidden">
-                  {item.requests.map((request) => (
+                  {filteredRequests.map((request) => (
                     <div key={request.id} className="rounded-xl border border-muted-foreground/20 bg-card p-6 shadow">
                       <div className="text-xl text-center text-black font-bold mt-1">{request.requirementTitle || request.requirementName || request.requestId}</div>
 
