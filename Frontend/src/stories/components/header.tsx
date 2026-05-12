@@ -1103,14 +1103,6 @@ export function CISOHeader() {
                     </Link>
                   </SheetClose>
 
-                  <SheetClose asChild>
-                    <Link
-                      to="/CISO-archived-clearance"
-                      className="text-xl font-regular text-primary"
-                    >
-                      View Clearance Records
-                    </Link>
-                  </SheetClose>
 
                   <SheetClose asChild>
                     <Link
@@ -1398,14 +1390,6 @@ export function OVPHEHeader() {
                     </Link>
                   </SheetClose>
 
-                  <SheetClose asChild>
-                    <Link
-                      to="/OVPHE-archived-clearance"
-                      className="text-xl font-regular text-primary"
-                    >
-                      View Clearance Records
-                    </Link>
-                  </SheetClose>
 
                   <SheetClose asChild>
                     <Link

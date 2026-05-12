@@ -123,26 +123,26 @@ export function AdminSystemUsersCard({
                   <thead>
                     <tr className="bg-muted/30">
                       <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Name</th>
-                      <th className="px-3 py-2 text-center text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">University ID</th>
-                      <th className="px-3 py-2 text-center text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">XU Email</th>
-                      <th className="px-3 py-2 text-center text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Office</th>
-                      <th className="px-3 py-2 text-center text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">User Role</th>
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">University ID</th>
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">XU Email</th>
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Office</th>
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">User Role</th>
                       <th className="px-3 py-2 text-center text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {users.map((user, idx) => {
-                      const office = user.college === "N/A" ? user.department : user.college;
+                      const office = user.college === "None" ? user.department : user.college;
                       return (
                         <tr
                           key={user.id}
                           className={cn("border-t border-[hsl(var(--gray-border))]", idx === 0 ? "border-t-0" : "")}
                         >
                           <td className="px-4 py-3 text-left text-sm font-semibold text-gray-900">{user.name}</td>
-                          <td className="px-4 py-3 text-center text-sm text-muted-foreground">{user.universityId}</td>
-                          <td className="px-4 py-3 text-center text-sm text-muted-foreground">{user.email}</td>
-                          <td className="px-4 py-3 text-center text-sm text-muted-foreground">{office}</td>
-                          <td className="px-4 py-3 text-center text-sm text-muted-foreground">{user.userRole}</td>
+                          <td className="px-4 py-3 text-left text-sm text-muted-foreground">{user.universityId}</td>
+                          <td className="px-4 py-3 text-left text-sm text-muted-foreground">{user.email}</td>
+                          <td className="px-4 py-3 text-left text-sm text-muted-foreground">{office}</td>
+                          <td className="px-4 py-3 text-left text-sm text-muted-foreground">{user.userRole}</td>
                           <td className="px-4 py-3 text-center">
                             <div className="flex items-center justify-center gap-2">
                               <Button
@@ -334,28 +334,28 @@ export function ApproverSystemUsersCard({
                   <thead>
                     <tr className="bg-muted/30">
                       <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Name</th>
-                      <th className="px-3 py-2 text-center text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">University ID</th>
-                      <th className="px-3 py-2 text-center text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">XU Email</th>
-                      <th className="px-3 py-2 text-center text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">College</th>
-                      <th className="px-3 py-2 text-center text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Department</th>                      
-                      <th className="px-3 py-2 text-center text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Office</th>
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">University ID</th>
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">XU Email</th>
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">College</th>
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Department</th>                      
+                      <th className="px-3 py-2 text-left text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Office</th>
                       <th className="px-3 py-2 text-center text-sm font-semibold uppercase text-muted-foreground border-b border-[hsl(var(--gray-border))]">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {users.map((user, idx) => {
-                      const office = user.college === "N/A" ? user.department : user.college;
+                      const office = user.college === "None" ? user.department : user.college;
                       return (
                         <tr
                           key={user.id}
                           className={cn("border-t border-[hsl(var(--gray-border))]", idx === 0 ? "border-t-0" : "")}
                         >
                           <td className="px-4 py-3 text-left text-sm font-semibold text-gray-900">{user.name}</td>
-                          <td className="px-4 py-3  text-center text-sm text-muted-foreground">{user.universityId}</td>
-                          <td className="px-4 py-3 text-center text-center text-sm text-muted-foreground">{user.email}</td>
-                          <td className="px-4 py-3 text-center text-sm text-muted-foreground">{user.college}</td>
-                          <td className="px-4 py-3 text-center text-sm text-muted-foreground">{user.department}</td>            
-                          <td className="px-4 py-3 text-center text-sm text-muted-foreground">{office}</td>
+                          <td className="px-4 py-3  text-left text-sm text-muted-foreground">{user.universityId}</td>
+                          <td className="px-4 py-3 text-left text-sm text-muted-foreground">{user.email}</td>
+                          <td className="px-4 py-3 text-left text-sm text-muted-foreground">{user.college}</td>
+                          <td className="px-4 py-3 text-left text-sm text-muted-foreground">{user.department}</td>            
+                          <td className="px-4 py-3 text-left text-sm text-muted-foreground">{office}</td>
                           <td className="px-4 py-3 text-center">
                             <div className="flex items-center justify-center gap-2">
                               <Button

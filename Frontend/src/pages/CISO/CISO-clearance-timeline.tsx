@@ -583,7 +583,7 @@ export default function CISOClearanceTimeline() {
               `Semester: ${selected.term}`,
             ],
           });
-          openCreateResult("success", "Timeline Archived", `${selected.term} was archived successfully.`);
+          openCreateResult("success", "Timeline Filed", `${selected.term} was archived successfully.`);
         })
         .catch((error) => {
           const message = error instanceof Error ? error.message : "Timeline archive failed.";

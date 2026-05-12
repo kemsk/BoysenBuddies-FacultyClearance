@@ -301,6 +301,9 @@ export default function ApproverArchivedIndividualApproval() {
       return;
     }
 
+    // Close dialogs immediately when saving starts
+    setShowOverrideAlert(false);
+    setShowConfirmAlert(false);
     setSaving(true);
     setError(null);
 
@@ -390,8 +393,6 @@ export default function ApproverArchivedIndividualApproval() {
       })();
 
       // Reset override state
-      setShowOverrideAlert(false);
-      setShowConfirmAlert(false);
       setOverrideReason("");
       setOverrideStatus('approved');
       setOverrideRequestId("");
@@ -475,11 +476,11 @@ export default function ApproverArchivedIndividualApproval() {
                       <table className="w-full min-w-[800px] border-collapse text-left text-sm text-black">
                       <thead className="bg-white">
                         <tr className="border-b border-muted-foreground/20">
-                          <th className="px-4 py-3 align-top text-center font-semibold w-[15%] min-w-[120px]">Requirement Title</th>
-                          <th className="px-4 py-3 align-top text-center font-semibold w-[18%] min-w-[140px]">Description</th>                          
-                          <th className="px-4 py-3 align-top text-center font-semibold w-[15%] min-w-[120px]">Submission Notes</th>
+                          <th className="px-4 py-3 align-top text-left font-semibold w-[15%] min-w-[120px]">Requirement Title</th>
+                          <th className="px-4 py-3 align-top text-left font-semibold w-[18%] min-w-[140px]">Description</th>                          
+                          <th className="px-4 py-3 align-top text-left font-semibold w-[15%] min-w-[120px]">Submission Notes</th>
                           <th className="px-4 py-3 align-top text-center font-semibold w-[6%] min-w-[60px]">Status</th>
-                          <th className="px-4 py-3 align-top text-center font-semibold w-[20%] min-w-[160px]">Review Details</th>
+                          <th className="px-4 py-3 align-top text-left font-semibold w-[20%] min-w-[160px]">Review Details</th>
                           <th className="px-4 py-3 align-top text-center font-semibold w-[5%] min-w-[80px]">Actions</th>
                         </tr>
                       </thead>

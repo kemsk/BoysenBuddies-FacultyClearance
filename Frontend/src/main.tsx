@@ -4,7 +4,9 @@ import './index.css'
 import App from './App.tsx'
 
 // Register service worker for PWA
-if ('serviceWorker' in navigator) {
+const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+if ('serviceWorker' in navigator && !isLocalhost) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {

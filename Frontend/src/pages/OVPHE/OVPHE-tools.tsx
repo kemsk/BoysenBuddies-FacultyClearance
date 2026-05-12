@@ -29,18 +29,6 @@ export default function OVPHETools() {
             to="/OVPHE-system-analytics"
           />
 
-          <ActionNavCard
-            icon={
-                <img
-                  src="/PrimaryArchiveIcon.png"
-                  alt="activity logs icon"
-                  className="h-9 w-9"
-                />
-            }
-            title="View Clearance Records"
-            description="Check clearance requests from the previous terms"
-            to="/OVPHE-archived-clearance"
-          />
 
           <ActionNavCard
             icon={<Eye className="h-9 w-9" />}

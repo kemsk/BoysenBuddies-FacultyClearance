@@ -3371,70 +3371,45 @@ def _assistant_scoped_archived_clearances(user, timeline: ClearanceTimeline):
 
 def _assistant_archived_requests_for_archived_clearance(archived: ArchivedClearance):
     archived_data = archived.clearance_data or {}
-    return [
-        {
-            "id": item.get("requestId") or str(index),
-            "requestId": item.get("requestId") or "",
-            "requirementName": item.get("title") or "",
-            "submissionNotes": item.get("submissionNotes") or "",
-            "submissionLink": item.get("submissionLink") or "",
-            "status": _to_request_status(item.get("status")),
-            "submittedDate": item.get("submittedDate") or "",
-            "approvedDate": item.get("approvedDate") or "",
-            "approvedBy": item.get("approvedBy") or "",
-            "remarks": item.get("remarks") or "",
-        }
-        for index, item in enumerate(archived_data.get("requests") or [], start=1)
-    ]
+    raw_steps = archived_data.get("requests") or []
 
+    # The archived data stores both:
+    # - approver steps (office names) with nested "requests"
+    # - standalone requirements (also represented as dicts)
+    # We flatten them into per-requirement rows for the assistant UI.
+    flattened_requests: list[dict] = []
+    for step in raw_steps:
+        if isinstance(step, dict) and isinstance(step.get("requests"), list):
+            for req in step.get("requests") or []:
+                if isinstance(req, dict):
+                    flattened_requests.append(req)
+        elif isinstance(step, dict):
+            flattened_requests.append(step)
 
-def _approver_archived_requests_for_archived_clearance(user, archived: ArchivedClearance):
-    timeline = archived.clearance_timeline
-    if not timeline:
-        return []
+    serialized = []
+    for index, req in enumerate(flattened_requests, start=1):
+        request_id = (req.get("requestId") or "").strip()
+        title = (req.get("title") or req.get("requirementTitle") or req.get("requirementName") or "").strip()
+        description = (req.get("description") or req.get("requirementDescription") or "").strip()
 
-    request_rows = list(
-        ClearanceRequest.objects.filter(
-            clearance_timeline=timeline,
-            faculty=archived.faculty,
+        serialized.append(
+            {
+                "id": request_id or str(index),
+                "requestId": request_id,
+                "requirementTitle": title,
+                "requirementName": title,
+                "requirementDescription": description,
+                "submissionNotes": req.get("submissionNotes") or "",
+                "submissionLink": req.get("submissionLink") or "",
+                "status": _to_request_status(req.get("status")),
+                "submittedDate": req.get("submittedDate") or "",
+                "approvedDate": req.get("approvedDate") or "",
+                "approvedBy": req.get("approvedBy") or "",
+                "remarks": req.get("remarks") or "",
+            }
+        )
 
-        ).select_related(
-            "requirement",
-            "requirement__approver_flow_step",
-            "requirement__approver_flow_step__office",
-            "approved_by",
-            "faculty",
-            "faculty__college",
-            "faculty__department",
-            "faculty__office",
-
-        ).prefetch_related(
-            "requirement__target_colleges",
-            "requirement__target_departments",
-            "requirement__target_offices",
-        ).order_by("id")
-    )
-
-    visible_requests = [req for req in request_rows if _can_approver_access_request(user, req)]
-    if not visible_requests:
-        return []
-
-    return [
-        {
-            "id": req.request_id or str(req.id),
-            "requestId": req.request_id or "",
-            "requirementName": req.requirement.title if req.requirement else "",
-            "requirementDescription": (req.requirement.description or "") if req.requirement else "",
-            "submissionNotes": req.submission_notes or "",
-            "submissionLink": req.submission_link or "",
-            "status": _to_request_status(req.status),
-            "submittedDate": req.submitted_date.isoformat() if req.submitted_date else "",
-            "approvedDate": req.approved_date.isoformat() if req.approved_date else "",
-            "approvedBy": _user_display_name(req.approved_by) if req.approved_by else "",
-            "remarks": req.remarks or "",
-        }
-        for req in visible_requests
-    ]
+    return serialized
 
 
 def _approver_scoped_archived_clearances(user, timeline: ClearanceTimeline):
@@ -9561,9 +9536,7 @@ def approver_activity_logs_api(request):
     page = int(request.GET.get("page") or 1)
     page_size = int(request.GET.get("pageSize") or 40)
 
-    # Get all activity logs (filtering will be done on frontend)
     qs = ActivityLog.objects.select_related("user", "faculty", "requirement")
-
     if q:
         qs = qs.filter(
             models.Q(event_type__icontains=q)
@@ -9583,26 +9556,25 @@ def approver_activity_logs_api(request):
     for log in logs:
         dt = timezone.localtime(log.created_at)
         title = str(log.event_type)
-
         if log.approver_department:
             title = f"{title} - {log.approver_department}"
 
-        description = ""
+        description = f"Request: {log.request_id}" if log.request_id else ""
 
-        if log.request_id:
-            description = f"Request: {log.request_id}"
-
-        # Add faculty information for clearance-related events
         faculty_name = ""
-        faculty_university_id = ""
         faculty_request_id = ""
         approver_department = ""
         faculty_college = ""
         faculty_department = ""
         response_details = log.details if log.details else []
+        faculty_employee_id = ""
 
-        if log.event_type in ["approved_clearance", "rejected_clearance", "overridden_approved_clearance", "overridden_rejected_clearance"]:
-            # Extract from details array since log.faculty is None for bulk approvals
+        if log.event_type in [
+            "approved_clearance",
+            "rejected_clearance",
+            "overridden_approved_clearance",
+            "overridden_rejected_clearance",
+        ]:
             details = log.details if log.details else []
             faculty_member = next((d.replace("Faculty Member: ", "").strip() for d in details if "Faculty Member:" in d), "")
             if str(faculty_member or "").strip() in {"()", "( )"}:
@@ -9622,7 +9594,7 @@ def approver_activity_logs_api(request):
                 try:
                     faculty_obj = (
                         Faculty.objects.select_related("user")
-                        .filter(employee_id=str(log.university_id).strip())
+                        .filter(user__university_id=str(log.university_id).strip())
                         .first()
                     )
                     if faculty_obj:
@@ -9636,10 +9608,11 @@ def approver_activity_logs_api(request):
 
             if not faculty_member and log.request_id:
                 try:
-                    cr = ClearanceRequest.objects.select_related(
-                        "faculty",
-                        "faculty__user",
-                    ).filter(request_id=log.request_id).first()
+                    cr = (
+                        ClearanceRequest.objects.select_related("faculty", "faculty__user")
+                        .filter(request_id=log.request_id)
+                        .first()
+                    )
                     if cr and cr.faculty:
                         faculty_user_obj = getattr(cr.faculty, "user", None)
                         if faculty_user_obj:
@@ -9648,6 +9621,7 @@ def approver_activity_logs_api(request):
                             faculty_member = f"{getattr(cr.faculty, 'first_name', '')} {getattr(cr.faculty, 'last_name', '')}".strip()
                 except Exception:
                     faculty_member = faculty_member or ""
+
             employee_id = next((d.replace("Employee ID: ", "").strip() for d in details if "Employee ID:" in d), "")
             if not employee_id:
                 employee_id = log.university_id or ""
@@ -9655,27 +9629,28 @@ def approver_activity_logs_api(request):
                 details = [f"Faculty Member: {faculty_member}"] + list(details)
             response_details = details
             faculty_name = faculty_member
-            faculty_employee_id = university_id
+            faculty_employee_id = employee_id
             faculty_request_id = log.request_id or ""
             approver_department = log.approver_department or ""
 
         elif log.event_type in ["individual_approved_clearance", "individual_rejected_clearance"]:
-            # Extract from details array for individual approvals
             details = log.details if log.details else []
             faculty_member = next((d.replace("Faculty Member: ", "").strip() for d in details if "Faculty Member:" in d), "")
-            university_id = next((d.replace("Employee ID: ", "").strip() for d in details if "Employee ID:" in d), "")
+            employee_id = next((d.replace("Employee ID: ", "").strip() for d in details if "Employee ID:" in d), "")
             faculty_name = faculty_member
-            faculty_employee_id = university_id
+            faculty_employee_id = employee_id
             faculty_request_id = log.request_id or ""
-
-            # Use the college and department fields from the activity log (sent from frontend)
             faculty_college = log.college or ""
             faculty_department = log.department or ""
             approver_department = log.approver_department or ""
 
         elif log.event_type in ["approved_clearance", "rejected_clearance"] and log.faculty:
-            faculty_name = f"{log.faculty.user.first_name} {log.faculty.user.last_name}" if log.faculty.user else ""
-            faculty_employee_id = log.faculty.user.university_id if log.faculty.user else ""
+            faculty_user_obj = getattr(log.faculty, "user", None)
+            if faculty_user_obj:
+                faculty_name = faculty_user_obj.get_full_name() or faculty_user_obj.email or ""
+                faculty_employee_id = getattr(faculty_user_obj, "university_id", "") or ""
+            if not faculty_name:
+                faculty_name = f"{getattr(log.faculty, 'first_name', '')} {getattr(log.faculty, 'last_name', '')}".strip()
             faculty_request_id = log.request_id or ""
             approver_department = log.approver_department or ""
 
@@ -9685,37 +9660,38 @@ def approver_activity_logs_api(request):
         approver_office_name = str(getattr(log, "office", "") or "").strip()
         approver_college_name = str(getattr(log, "college", "") or "").strip()
         approver_dept_name = str(getattr(log, "department", "") or "").strip()
-
         if not approver_department:
             approver_department = approver_office_name or approver_dept_name or approver_college_name or ""
 
-        items.append({
-            "id": str(log.id),
-            "dateLabel": dt.strftime("%m/%d/%Y"),
-            "timeLabel": _format_time_label(dt),
-            "variant": log.event_type,
-            "title": title,
-            "description": description,
-            "firstName": (log.user.first_name if log.user else ""),
-            "lastName": (log.user.last_name if log.user else ""),
-            "actorId": str(log.user.id if log.user else ""),
-            "supervisorId": str(log.supervisor.id if log.supervisor else ""),
-            "userRole": str(log.user_role if log.user_role else ""),
-            "details": response_details,
-            "universityId": log.university_id or "",
-            "facultyName": faculty_name,
-            "facultyEmployeeId": faculty_employee_id,
-            "facultyRequestId": faculty_request_id,
-            "facultyCollege": faculty_college,
-            "facultyDepartment": faculty_department,
-            "approverDepartment": approver_department,
-            "approverOffice": approver_office_name,
-            "approverCollege": approver_college_name,
-            "approverDept": approver_dept_name,
-            "request_id": log.request_id or "",
-        })
-    return JsonResponse({"items": items, "total": total})
+        items.append(
+            {
+                "id": str(log.id),
+                "dateLabel": dt.strftime("%m/%d/%Y"),
+                "timeLabel": _format_time_label(dt),
+                "variant": log.event_type,
+                "title": title,
+                "description": description,
+                "firstName": (log.user.first_name if log.user else ""),
+                "lastName": (log.user.last_name if log.user else ""),
+                "actorId": str(log.user.id if log.user else ""),
+                "supervisorId": str(log.supervisor.id if log.supervisor else ""),
+                "userRole": str(log.user_role if log.user_role else ""),
+                "details": response_details,
+                "universityId": log.university_id or "",
+                "facultyName": faculty_name,
+                "facultyEmployeeId": faculty_employee_id,
+                "facultyRequestId": faculty_request_id,
+                "facultyCollege": faculty_college,
+                "facultyDepartment": faculty_department,
+                "approverDepartment": approver_department,
+                "approverOffice": approver_office_name,
+                "approverCollege": approver_college_name,
+                "approverDept": approver_dept_name,
+                "request_id": log.request_id or "",
+            }
+        )
 
+    return JsonResponse({"items": items, "total": total})
 
 @csrf_exempt
 @approver_required
@@ -9771,7 +9747,7 @@ def approver_override_api(request):
             details=[
                 f"Override Reason: {reason}",
                 f"Faculty Member: {faculty_display_name}".strip(),
-                f"Employee ID: {clearance_request.faculty.employee_id}",
+                f"Employee ID: {getattr(getattr(clearance_request.faculty, 'user', None), 'university_id', '')}",
                 f"Previous Status: {clearance_request.status}",
                 f"New Status: {status}",
                 f"Requirement: {clearance_request.requirement.title if clearance_request.requirement else 'N/A'}",

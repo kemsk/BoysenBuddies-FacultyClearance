@@ -77,7 +77,7 @@ export default function AssistantApproverClearance() {
         
         <h1 className="text-2xl text-left text-primary font-bold">Clearance Requests</h1>
 
-        <div className="mt-4 space-y-5">
+       <div className="mt-5 space-y-5">
           <div className="w-full max-w-[520px]">
             <SearchInputGroup
               value={query}

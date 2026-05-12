@@ -72,19 +72,6 @@ export default function CISOTools() {
           <ActionNavCard
             icon={
                 <img
-                  src="/PrimaryArchiveIcon.png"
-                  alt="activity logs icon"
-                  className="h-9 w-9"
-                />
-            }
-            title="View Clearance Records"
-            description="Check clearance requests from the previous terms"
-            to="/CISO-archived-clearance"
-          />
-
-          <ActionNavCard
-            icon={
-                <img
                   src="/PrimaryFolderIcon.png"
                   alt="activity logs icon"
                   className="h-9 w-9"

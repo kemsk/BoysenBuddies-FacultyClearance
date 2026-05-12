@@ -55,11 +55,11 @@ export default function LoginInput() {
   };
 
   return (
-    <div className="login-container bg-primary text-primary-foreground min-h-screen flex justify-center items-center p-4">
+    <div className="login-container bg-[#283971] text-primary-foreground min-h-screen flex justify-center items-center p-4">
       <PWAInstallPrompt />
 
       {/* LOGIN PANEL */}
-      <div className="w-full bg-primary p-8 flex flex-col items-center px-0">
+      <div className="w-full bg-[#283971] p-8 flex flex-col items-center px-0">
 
       {/* Login Header */}
         <div className="w-full max-w-screen-sm px-3 flex flex-col items-center gap-8">

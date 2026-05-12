@@ -444,8 +444,8 @@ export default function ApproverClearance() {
       <main className="dashboard px-[1in] pt-4 pb-4 w-full">
         <h1 className="text-2xl text-left text-primary font-bold">Clearance Requests</h1>
 
-        <div className="mt-4 space-y-5">
-          <div className="w-full">
+       <div className="mt-5 space-y-5">
+          <div className="w-full max-w-[520px]">
             <SearchInputGroup
               value={query}
               onChange={(e) => setQuery(e.target.value)}
