@@ -481,6 +481,26 @@ export default function ApproverClearance() {
                 <SelectItem value="rejected">Rejected</SelectItem>
               </SelectContent>
             </Select>
+            <Select onValueChange={(v) => console.log(v)}>
+                <SelectTrigger variant="pill" className="w-max">
+                    <SelectValue placeholder="College" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="CISO">System Admin</SelectItem>
+                    <SelectItem value="OVPHE">Analytics Admin</SelectItem>
+                </SelectContent>
+            </Select>
+            <Select onValueChange={(v) => console.log(v)}>
+                <SelectTrigger variant="pill" className="w-max">
+                    <SelectValue placeholder="Department" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="Approver">System Admin</SelectItem>
+                    <SelectItem value="Approver">Analytics Admin</SelectItem>
+                </SelectContent>
+            </Select>                 
           </div>
         </div>
 

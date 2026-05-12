@@ -362,7 +362,7 @@ export function ApproverSystemUsersCard({
               </SelectContent>
             </Select>
 
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <Select onValueChange={(v) => console.log(v)}>
                 <SelectTrigger variant="pill" className="w-max">
                     <SelectValue placeholder="College" />
                 </SelectTrigger>
