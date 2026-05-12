@@ -207,6 +207,7 @@ export default function RequirementList() {
       targetDepartments: payload.targetDepartments || [],
       targetOffices: payload.targetOffices || [],
       targetFaculty: payload.targetFaculty || [],
+      facultyType: payload.facultyType,
     };
 
     // Store in local storage as pending change
@@ -235,6 +236,7 @@ export default function RequirementList() {
         targetDepartments: payload.targetDepartments || editingRequirement.targetDepartments,
         targetOffices: payload.targetOffices || editingRequirement.targetOffices,
         targetFaculty: payload.facultyIds || editingRequirement.targetFaculty,
+        facultyType: payload.facultyType || editingRequirement.facultyType,
       },
       timestamp: new Date().toISOString()
     };

@@ -8611,10 +8611,18 @@ def _serialize_approver_requirement(requirement):
         recipients = ['All Faculty']
 
     elif requirement.recipient_scope == 'college':
-        recipients = [college.name for college in requirement.target_colleges.all()]
+        college_names = [college.name for college in requirement.target_colleges.all()]
+        if requirement.faculty_type and requirement.faculty_type != 'all':
+            recipients = [f"{name}, {requirement.faculty_type}" for name in college_names]
+        else:
+            recipients = college_names
 
     elif requirement.recipient_scope == 'department':
-        recipients = [department.name for department in requirement.target_departments.all()]
+        department_names = [department.name for department in requirement.target_departments.all()]
+        if requirement.faculty_type and requirement.faculty_type != 'all':
+            recipients = [f"{name}, {requirement.faculty_type}" for name in department_names]
+        else:
+            recipients = department_names
 
     elif requirement.recipient_scope == 'office':
         recipients = [office.name for office in requirement.target_offices.all()]
@@ -8629,6 +8637,7 @@ def _serialize_approver_requirement(requirement):
         "description": requirement.description or "",
         "physicalSubmission": bool(requirement.required_physical),
         "recipients": ", ".join(recipients) if recipients else "",
+        "facultyType": requirement.faculty_type or "",
         "lastUpdated": timezone.localtime(requirement.last_updated).strftime("%B %d, %Y, %I:%M %p") if requirement.last_updated else "",
         "createdBy": f"{requirement.created_by.first_name} {requirement.created_by.last_name}" if requirement.created_by else "",
         "clearanceTimeline": requirement.clearance_timeline.name if requirement.clearance_timeline else "",
@@ -8741,6 +8750,7 @@ def _create_approver_requirement(user, request):
     description = data.get("description", "").strip()
     physical_submission = data.get("physicalSubmission", False)
     recipient_scope = data.get("recipientScope", "individual")
+    faculty_type = data.get("facultyType", "all")
     target_colleges = data.get("targetColleges", [])
     target_departments = data.get("targetDepartments", [])
     target_offices = data.get("targetOffices", [])
@@ -8762,6 +8772,7 @@ def _create_approver_requirement(user, request):
                 created_by=user,
                 clearance_timeline=timeline,
                 recipient_scope=recipient_scope,
+                faculty_type=faculty_type,
                 approver_flow_step=approver_flow_step
             )
 
@@ -8837,6 +8848,7 @@ def _update_approver_requirement(user, requirement, request):
     description = data.get("description", "").strip()
     physical_submission = data.get("physicalSubmission", False)
     recipient_scope = data.get("recipientScope", requirement.recipient_scope)
+    faculty_type = data.get("facultyType", requirement.faculty_type or "all")
     target_colleges = data.get("targetColleges", [])
     target_departments = data.get("targetDepartments", [])
     target_offices = data.get("targetOffices", [])
@@ -8851,6 +8863,7 @@ def _update_approver_requirement(user, requirement, request):
             requirement.description = description
             requirement.required_physical = physical_submission
             requirement.recipient_scope = recipient_scope
+            requirement.faculty_type = faculty_type
             requirement.save()
 
             # Clear existing targets and set new ones
@@ -9066,9 +9079,21 @@ def _requirement_applies_to_faculty(requirement, faculty):
     if requirement.recipient_scope == 'all':
         return True
     elif requirement.recipient_scope == 'college':
-        return faculty.college and faculty.college in requirement.target_colleges.all()
+        # Check if faculty is in the target college
+        if not (faculty.college and faculty.college in requirement.target_colleges.all()):
+            return False
+        # Check faculty type filter
+        if requirement.faculty_type and requirement.faculty_type != 'all':
+            return faculty.faculty_type == requirement.faculty_type
+        return True
     elif requirement.recipient_scope == 'department':
-        return faculty.department and faculty.department in requirement.target_departments.all()
+        # Check if faculty is in the target department
+        if not (faculty.department and faculty.department in requirement.target_departments.all()):
+            return False
+        # Check faculty type filter
+        if requirement.faculty_type and requirement.faculty_type != 'all':
+            return faculty.faculty_type == requirement.faculty_type
+        return True
     elif requirement.recipient_scope == 'office':
         return faculty.office and faculty.office in requirement.target_offices.all()
     elif requirement.recipient_scope == 'individual':
