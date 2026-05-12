@@ -2274,12 +2274,7 @@ def _can_assistant_access_request(assistant: StudentAssistant, clearance_request
         if faculty.department == assistant.department:
             return True
 
-    # Check college-level access (fallback)
-    if assistant.college:
-        if (faculty.college == assistant.college or 
-            requirement.target_colleges.filter(id=assistant.college.id).exists()):
-            return True
-
+    # No college-level fallback - assistants should only see their specific office/department requests
     return False
 
 
@@ -8595,11 +8590,7 @@ def _can_assistant_access_requirement(assistant: StudentAssistant, requirement: 
             if requirement.target_departments.filter(id=assistant.department.id).exists():
                 return True
 
-    # Check college-level access (fallback)
-    if assistant.college:
-        if requirement.target_colleges.filter(id=assistant.college.id).exists():
-            return True
-
+    # No college-level fallback - assistants should only see their specific office/department requirements
     return False
 
 
