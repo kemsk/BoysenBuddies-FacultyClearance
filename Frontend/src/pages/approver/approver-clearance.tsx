@@ -445,7 +445,7 @@ export default function ApproverClearance() {
         <h1 className="text-2xl text-left text-primary font-bold">Clearance Requests</h1>
 
        <div className="mt-5 space-y-5">
-          <div className="w-full max-w-[520px]">
+          <div className="max-w-[520px]">
             <SearchInputGroup
               value={query}
               onChange={(e) => setQuery(e.target.value)}
