@@ -323,7 +323,9 @@ export const OverrideAlert = React.forwardRef<
           CANCEL
         </Button>
         <Button variant="default" onClick={() => {
-          onConfirm?.(overrideReason);
+          if (overrideReason.trim()) {
+            onConfirm?.(overrideReason.trim());
+          }
           }} className="flex-1 font-bold">
           UPDATE
         </Button>

@@ -9844,7 +9844,7 @@ def approver_override_api(request):
             details=[
                 f"Override Reason: {reason}",
                 f"Faculty Member: {faculty_display_name}".strip(),
-                f"Employee ID: {getattr(getattr(clearance_request.faculty, 'user', None), 'university_id', '')}",
+                f"University ID: {getattr(getattr(clearance_request.faculty, 'user', None), 'university_id', '')}",
                 f"Previous Status: {clearance_request.status}",
                 f"New Status: {status}",
                 f"Requirement: {clearance_request.requirement.title if clearance_request.requirement else 'N/A'}",
