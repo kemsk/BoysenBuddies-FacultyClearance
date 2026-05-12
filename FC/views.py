@@ -10248,6 +10248,83 @@ def approver_individual_approval_api(request):
             clearance_request.remarks = remarks
             clearance_request.save()
 
+        # Send email notification to faculty
+        try:
+            faculty = clearance_request.faculty
+            faculty_user = None
+            faculty_email = ""
+            faculty_name = ""
+            
+            if faculty:
+                faculty_user = getattr(faculty, "user", None)
+                if faculty_user:
+                    faculty_email = faculty_user.email
+                    faculty_name = faculty_user.get_full_name() or faculty_user.email
+                else:
+                    faculty_name = f"{faculty.first_name} {faculty.last_name}".strip()
+
+            requirement_title = ""
+            if clearance_request.requirement:
+                requirement_title = str(clearance_request.requirement.title)
+
+            remarks_text = str(remarks or "")
+            approver_name = user.get_full_name() or user.email
+            action = "approve" if action == "approve" else "reject"
+
+            clearance_period_start_date = None
+            clearance_period_end_date = None
+            try:
+                timeline = getattr(clearance_request, "clearance_timeline", None)
+                start_dt = getattr(timeline, "clearance_start_date", None)
+                end_dt = getattr(timeline, "clearance_end_date", None)
+                clearance_period_start_date = start_dt.date() if start_dt else None
+                clearance_period_end_date = end_dt.date() if end_dt else None
+            except Exception:
+                clearance_period_start_date = None
+                clearance_period_end_date = None
+
+            if faculty_user:
+                Notification.objects.create(
+                    user=faculty_user,
+                    created_by=user,
+                    approver=user,
+                    user_role="Faculty",
+                    title=
+                        "Submission Approved"
+                        if action == "approve"
+                        else "Submission Rejected",
+                    status=
+                        Notification.Status.APPROVED
+                        if action == "approve"
+                        else Notification.Status.REJECTED,
+                    body=(
+                        f"Your submission has been {action.upper()}.\n\n"
+                        f"Submission of {requirement_title}\n"
+                        f"Remarks: {remarks_text}"
+                    ),
+                    details=[
+                        f"Requirement = \"{requirement_title}\"",
+                        f"Remarks = {remarks_text}",
+                    ],
+                    is_read=False,
+                    clearance_period_start_date=clearance_period_start_date,
+                    clearance_period_end_date=clearance_period_end_date,
+                )
+
+            if faculty_email:
+                print(f"DEBUG: Sending approval email to {faculty_email} for request {clearance_request.request_id}")
+                send_faculty_notification_email(
+                    faculty_email=faculty_email,
+                    faculty_name=faculty_name,
+                    requirement_title=requirement_title,
+                    action=action,
+                    remarks=remarks_text,
+                    approver_name=approver_name
+                )
+                print(f"DEBUG: Approval email sent successfully to {faculty_email}")
+        except Exception as e:
+            print(f"ERROR: Failed to send approval email: {e}")
+
         return JsonResponse(
             {
                 "success": True,
@@ -10258,7 +10335,7 @@ def approver_individual_approval_api(request):
 
     return JsonResponse({"detail": "Method not allowed"}, status=405)
 
-
+# ... (rest of the code remains the same)
 # Assistant Approver endpoints
 @assistant_required
 def assistant_approver_dashboard_api(request):
@@ -10718,6 +10795,43 @@ def assistant_approver_individual_approval_api(request):
                 )
         except Exception:
             pass
+
+    # Send email notification to faculty (same for both approve and reject)
+    try:
+        faculty = req.faculty
+        faculty_user = None
+        faculty_email = ""
+        faculty_name = ""
+        
+        if faculty:
+            faculty_user = getattr(faculty, "user", None)
+            if faculty_user:
+                faculty_email = faculty_user.email
+                faculty_name = faculty_user.get_full_name() or faculty_user.email
+            else:
+                faculty_name = f"{faculty.first_name} {faculty.last_name}".strip()
+
+        requirement_title = ""
+        if req.requirement:
+            requirement_title = str(req.requirement.title)
+
+        remarks_text = str(remarks or "")
+        actor_user = supervisor if supervisor else user
+        approver_name = actor_user.get_full_name() or actor_user.email
+
+        if faculty_email:
+            print(f"DEBUG: Sending assistant approval email to {faculty_email} for request {req.request_id}")
+            send_faculty_notification_email(
+                faculty_email=faculty_email,
+                faculty_name=faculty_name,
+                requirement_title=requirement_title,
+                action=action,
+                remarks=remarks_text,
+                approver_name=approver_name
+            )
+            print(f"DEBUG: Assistant approval email sent successfully to {faculty_email}")
+    except Exception as e:
+        print(f"ERROR: Failed to send assistant approval email: {e}")
 
     # Create a faculty notification for rejections (assistant acting on behalf of supervisor approver)
     if action == "reject":

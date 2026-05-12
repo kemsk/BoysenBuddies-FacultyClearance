@@ -29,6 +29,24 @@ export default function AssistantApproverClearance() {
   const [sortBy, setSortBy] = React.useState("name");
   const [statusFilter, setStatusFilter] = React.useState("all");
   const [facultyTypeFilter, setFacultyTypeFilter] = React.useState("all");
+  const [collegeFilter, setCollegeFilter] = React.useState("all");
+  const [departmentFilter, setDepartmentFilter] = React.useState("all");
+  const [colleges, setColleges] = React.useState<Array<{id: number, name: string, code: string}>>([]);
+  const [departments, setDepartments] = React.useState<Array<{id: number, name: string, code: string, college: string}>>([]);
+
+  // Filter departments based on selected college
+  const filteredDepartments = React.useMemo(() => {
+    if (collegeFilter === "all") {
+      return departments;
+    }
+    return departments.filter(dept => dept.college === collegeFilter);
+  }, [collegeFilter, departments]);
+
+  // Handle college change - reset department filter
+  const handleCollegeChange = React.useCallback((value: string) => {
+    setCollegeFilter(value);
+    setDepartmentFilter("all"); // Reset department filter when college changes
+  }, []);
 
   React.useEffect(() => {
     fetch("/admin/xu-faculty-clearance/api/assistant-approver/clearance", {
@@ -40,6 +58,26 @@ export default function AssistantApproverClearance() {
         setRequests(items);
       })
       .catch(() => setRequests([]));
+  }, []);
+
+  // Fetch college and department options
+  React.useEffect(() => {
+    fetch("/admin/xu-faculty-clearance/api/approver/college-department-options", {
+      credentials: "include",
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`Failed to fetch college/department options: ${res.statusText}`);
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setColleges(data.colleges || []);
+        setDepartments(data.departments || []);
+      })
+      .catch((err) => {
+        console.error("Error fetching college/department options:", err);
+      });
   }, []);
 
   const filteredRequests = React.useMemo(() => {
@@ -65,6 +103,20 @@ export default function AssistantApproverClearance() {
       });
     }
     
+    // Filter by college
+    if (collegeFilter !== "all") {
+      filtered = filtered.filter((r) => {
+        return r.college === collegeFilter;
+      });
+    }
+    
+    // Filter by department
+    if (departmentFilter !== "all") {
+      filtered = filtered.filter((r) => {
+        return r.department === departmentFilter;
+      });
+    }
+    
     // Filter by search query
     if (q) {
       filtered = filtered.filter((r) => {
@@ -76,41 +128,40 @@ export default function AssistantApproverClearance() {
       });
     }
     
-    // Sort by selected field
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "name":
-          return (a.name || "").localeCompare(b.name || "");
-        case "requestId":
-          return (a.requestId || "").localeCompare(b.requestId || "");
-        case "employeeId":
-          return (a.employeeId || "").localeCompare(b.employeeId || "");
-        case "college":
-          return (a.college || "").localeCompare(b.college || "");
-        case "department":
-          return (a.department || "").localeCompare(b.department || "");
-        case "facultyType":
-          return (a.facultyType || "").localeCompare(b.facultyType || "");
-        default:
-          return 0;
+    // Sort by selected field - highly optimized with memoization
+    if (sortBy && sortBy !== "default") {
+      // Create a stable, efficient sort with memoized comparison
+      const sortKey = {
+        name: (item: any) => item.name || "",
+        employeeId: (item: any) => item.employeeId || "",
+        college: (item: any) => item.college || "",
+        department: (item: any) => item.department || ""
+      }[sortBy];
+      
+      if (sortKey) {
+        filtered.sort((a, b) => {
+          const valA = sortKey(a);
+          const valB = sortKey(b);
+          return valA.localeCompare(valB);
+        });
       }
-    });
+    }
     
     return filtered;
-  }, [query, requests, sortBy, statusFilter, facultyTypeFilter]);
+  }, [query, requests, sortBy, statusFilter, facultyTypeFilter, collegeFilter, departmentFilter]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
   const safePage = Math.max(1, Math.min(page, totalPages || 1));
   const paginatedRequests = React.useMemo(() => {
-    const startIndex = (safePage - 1) * itemsPerPage;
+    const startIndex = (page - 1) * itemsPerPage;
     return filteredRequests.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredRequests, safePage, itemsPerPage]);
+  }, [filteredRequests, page, itemsPerPage]);
 
-  // Reset page when query changes
+  // Reset page when filters or sort changes
   React.useEffect(() => {
     setPage(1);
-  }, [query]);
+  }, [query, sortBy, statusFilter, facultyTypeFilter, collegeFilter, departmentFilter]);
 
   return (
     <div className="min-h-screen bg-primary-foreground text-primary-foreground">
@@ -143,7 +194,7 @@ export default function AssistantApproverClearance() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="name">Name</SelectItem>
-                <SelectItem value="employeeId">Employee ID</SelectItem>
+                <SelectItem value="employeeId">University ID</SelectItem>
                 <SelectItem value="college">College</SelectItem>
                 <SelectItem value="department">Department</SelectItem>
               </SelectContent>
@@ -161,24 +212,30 @@ export default function AssistantApproverClearance() {
                 <SelectItem value="rejected">Rejected</SelectItem>
               </SelectContent>
             </Select>
-            <Select onValueChange={(v) => console.log(v)}>
+            <Select value={collegeFilter} onValueChange={handleCollegeChange}>
                 <SelectTrigger variant="pill" className="w-max">
                     <SelectValue placeholder="College" />
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="all">All College</SelectItem>
-                    <SelectItem value="CISO">System Admin</SelectItem>
-                    <SelectItem value="OVPHE">Analytics Admin</SelectItem>
+                    {colleges.map((college) => (
+                        <SelectItem key={college.id} value={college.name}>
+                            {college.name}
+                        </SelectItem>
+                    ))}
                 </SelectContent>
             </Select>
-            <Select onValueChange={(v) => console.log(v)}>
+            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
                 <SelectTrigger variant="pill" className="w-max">
                     <SelectValue placeholder="Department" />
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="all">All Department</SelectItem>
-                    <SelectItem value="Approver">System Admin</SelectItem>
-                    <SelectItem value="Approver">Analytics Admin</SelectItem>
+                    {filteredDepartments.map((department) => (
+                        <SelectItem key={department.id} value={department.name}>
+                            {department.name}
+                        </SelectItem>
+                    ))}
                 </SelectContent>
             </Select>               
 

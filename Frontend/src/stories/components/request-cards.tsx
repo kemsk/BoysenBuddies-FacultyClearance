@@ -585,7 +585,7 @@ export function ClearanceRequestsCard({
                     <th className="w-12 px-2 py-3 text-center min-w-[48px]" />
                     <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[20%] min-w-[150px]">Name</th>
                     <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[15%] min-w-[120px]">Request ID</th>
-                    <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[12%] min-w-[100px]">Employee ID</th>
+                    <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[12%] min-w-[100px]">University ID</th>
                     <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[15%] min-w-[120px]">College</th>
                     <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[15%] min-w-[120px]">Department</th>
                     <th className="px-2 py-3 text-left text-sm font-bold text-primary w-[12%] min-w-[100px]">Faculty Type</th>
@@ -757,7 +757,7 @@ export function ClearanceRequestsCard({
                           <div className="mt-3 grid grid-cols-[88px_1fr] gap-x-3 gap-y-1 text-sm">
                             <div className="font-bold text-gray-900">Request ID</div>
                             <div className="text-gray-900">{item.requestId}</div>
-                            <div className="font-bold text-gray-900">Employee ID</div>
+                            <div className="font-bold text-gray-900">University ID</div>
                             <div className="text-gray-900">{item.employeeId}</div>
                             <div className="font-bold text-gray-900">College</div>
                             <div className="text-gray-900">{item.college}</div>
