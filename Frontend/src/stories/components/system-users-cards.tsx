@@ -364,10 +364,10 @@ export function ApproverSystemUsersCard({
 
             <Select value={roleFilter} onValueChange={setRoleFilter}>
                 <SelectTrigger variant="pill" className="w-max">
-                    <SelectValue placeholder="User Role" />
+                    <SelectValue placeholder="College" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="SystemAdmin">All</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
                     <SelectItem value="CISO">System Admin</SelectItem>
                     <SelectItem value="OVPHE">Analytics Admin</SelectItem>
                 </SelectContent>
@@ -377,7 +377,7 @@ export function ApproverSystemUsersCard({
                     <SelectValue placeholder="Department" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="SystemAdmin">All</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
                     <SelectItem value="Approver">System Admin</SelectItem>
                     <SelectItem value="Approver">Analytics Admin</SelectItem>
                 </SelectContent>
