@@ -826,6 +826,49 @@ export default function CISOCollegeOfficeConfiguration() {
       });
   }, []);
 
+  // Refresh functions
+  const fetchColleges = React.useCallback(async () => {
+    try {
+      const response = await fetch("/admin/xu-faculty-clearance/api/ciso/org-structure", {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setColleges(data.colleges ?? []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch colleges:", error);
+    }
+  }, []);
+
+  const fetchDepartments = React.useCallback(async () => {
+    try {
+      const response = await fetch("/admin/xu-faculty-clearance/api/ciso/org-structure", {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setDepartments(data.departments ?? []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch departments:", error);
+    }
+  }, []);
+
+  const fetchOffices = React.useCallback(async () => {
+    try {
+      const response = await fetch("/admin/xu-faculty-clearance/api/ciso/org-structure", {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setOffices(data.offices ?? []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch offices:", error);
+    }
+  }, []);
+
   // Refetch approver flow data
   const refetchApproverFlow = React.useCallback(async () => {
     const approverFlowUrl = selectedTimelineId 
@@ -836,7 +879,7 @@ export default function CISOCollegeOfficeConfiguration() {
       const response = await fetch(approverFlowUrl, { credentials: "include" });
       if (response.ok) {
         const data = await response.json();
-        const steps = (data.steps ?? []).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        const steps = (data.steps ?? []).slice().sort((a: ApproverFlowItem, b: ApproverFlowItem) => (a.order ?? 0) - (b.order ?? 0));
         setApproverFlow(steps);
       } else {
         setApproverFlow([]);
@@ -2258,7 +2301,11 @@ export default function CISOCollegeOfficeConfiguration() {
               setSuccessOpen(true);
               
               // Refresh data
-              fetchColleges();
+              try {
+                await fetchColleges();
+              } catch (refreshError) {
+                console.error("Failed to refresh colleges:", refreshError);
+              }
             } catch (error) {
               console.error("Failed to update college:", error);
               setErrorMessage("Failed to update college. Please try again.");
@@ -2270,7 +2317,10 @@ export default function CISOCollegeOfficeConfiguration() {
         <EditDepartmentDialog
           open={editDepartmentOpen}
           onOpenChange={setEditDepartmentOpen}
-          initialValues={editingDepartmentId ? departments.find(d => d.id === editingDepartmentId) : undefined}
+          initialValues={editingDepartmentId ? {
+              name: departments.find(d => d.id === editingDepartmentId)?.name ?? "",
+              short: departments.find(d => d.id === editingDepartmentId)?.short ?? ""
+            } : undefined}
           onSave={async (payload) => {
             if (!editingDepartmentId) return;
             
@@ -2292,7 +2342,11 @@ export default function CISOCollegeOfficeConfiguration() {
               setSuccessOpen(true);
               
               // Refresh data
-              fetchDepartments();
+              try {
+                await fetchDepartments();
+              } catch (refreshError) {
+                console.error("Failed to refresh departments:", refreshError);
+              }
             } catch (error) {
               console.error("Failed to update department:", error);
               setErrorMessage("Failed to update department. Please try again.");
@@ -2304,7 +2358,10 @@ export default function CISOCollegeOfficeConfiguration() {
         <EditOfficeDialog
           open={editOfficeOpen}
           onOpenChange={setEditOfficeOpen}
-          initialValues={editingOfficeId ? offices.find(o => o.id === editingOfficeId) : undefined}
+          initialValues={editingOfficeId ? {
+              name: offices.find(o => o.id === editingOfficeId)?.name ?? "",
+              short: offices.find(o => o.id === editingOfficeId)?.short ?? ""
+            } : undefined}
           onSave={async (payload) => {
             if (!editingOfficeId) return;
             
@@ -2326,7 +2383,11 @@ export default function CISOCollegeOfficeConfiguration() {
               setSuccessOpen(true);
               
               // Refresh data
-              fetchOffices();
+              try {
+                await fetchOffices();
+              } catch (refreshError) {
+                console.error("Failed to refresh offices:", refreshError);
+              }
             } catch (error) {
               console.error("Failed to update office:", error);
               setErrorMessage("Failed to update office. Please try again.");
@@ -2338,7 +2399,10 @@ export default function CISOCollegeOfficeConfiguration() {
         <EditApproverDialog
           open={editApproverOpen}
           onOpenChange={setEditApproverOpen}
-          initialValues={editingApproverId ? approverFlow.find(a => a.id === editingApproverId) : undefined}
+          initialValues={editingApproverId ? {
+              category: approverFlow.find(a => a.id === editingApproverId)?.category ?? "",
+              collegeIds: approverFlow.find(a => a.id === editingApproverId)?.collegeIds ?? []
+            } : undefined}
           colleges={colleges.map(c => ({ id: c.id, name: c.name, short: c.short }))}
           categories={approverCategories}
           onSave={async (payload) => {
