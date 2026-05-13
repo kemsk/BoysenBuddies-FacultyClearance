@@ -846,7 +846,6 @@ DELETE FROM FC_approver WHERE user_id = (SELECT id FROM FC_user WHERE email = '2
 EOF
 
 echo "Database initialized."
-echo "Generating faculty clearance requests..."
 echo "Starting Gunicorn on port 8001..."
 # Force override any environment variables that might affect binding
 unset GUNICORN_CMD_ARGS
