@@ -2779,6 +2779,297 @@ def ciso_faculty_dump_import_api(request):
 
 
 @csrf_exempt
+@ciso_required
+def ciso_faculty_crud_api(request):
+    """
+    Faculty CRUD API endpoints for CISO
+    GET: List all faculty for a timeline
+    POST: Create new faculty
+    PUT/PATCH: Update faculty
+    DELETE: Delete faculty
+    """
+    # Get clearance timeline from query parameter
+    timeline_id = request.GET.get("clearance_timeline_id") or request.POST.get("clearance_timeline_id")
+    clearance_timeline = None
+    
+    if timeline_id:
+        try:
+            clearance_timeline = ClearanceTimeline.objects.get(id=timeline_id)
+        except ClearanceTimeline.DoesNotExist:
+            return JsonResponse({"detail": "Clearance timeline not found"}, status=400)
+    
+    if request.method == "GET":
+        # List faculty for the timeline
+        faculty_query = Faculty.objects.select_related('user', 'college', 'department').all()
+        
+        # Filter by timeline if specified
+        if clearance_timeline:
+            # Only return faculty assigned to this timeline
+            faculty_ids = Clearance.objects.filter(
+                academic_year=clearance_timeline.academic_year_start,
+                term=clearance_timeline.term
+            ).values_list('faculty_id', flat=True)
+            faculty_query = faculty_query.filter(id__in=faculty_ids)
+        
+        faculty_list = []
+        for faculty in faculty_query:
+            faculty_data = {
+                "id": str(faculty.id),
+                "email": faculty.user.email,
+                "universityId": faculty.user.university_id,
+                "firstname": faculty.user.first_name,
+                "middlename": faculty.user.middle_name,
+                "lastname": faculty.user.last_name,
+                "name": faculty.user.get_full_name(),
+                "facultytype": faculty.faculty_type,
+                "college": faculty.college.code if faculty.college else None,
+                "department": faculty.department.code if faculty.department else None,
+                "systemId": faculty.user.university_id,
+                "userRole": "Faculty"
+            }
+            faculty_list.append(faculty_data)
+        
+        return JsonResponse({"faculty": faculty_list})
+    
+    elif request.method == "POST":
+        # Create new faculty
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
+        
+        # Validate required fields
+        required_fields = ["email", "universityId", "firstName", "lastName", "facultyType"]
+        for field in required_fields:
+            if not data.get(field):
+                return JsonResponse({"detail": f"Missing required field: {field}"}, status=400)
+        
+        # Validate email format
+        email = data["email"].lower().strip()
+        if not email.endswith("@xu.edu.ph"):
+            return JsonResponse({"detail": "Only @xu.edu.ph email addresses are allowed"}, status=400)
+        
+        # Check if email already exists
+        if User.objects.filter(email=email).exists():
+            return JsonResponse({"detail": "Email already exists"}, status=400)
+        
+        # Check if university ID already exists
+        university_id = data["universityId"].strip()
+        if User.objects.filter(university_id=university_id).exists():
+            return JsonResponse({"detail": "University ID already exists"}, status=400)
+        
+        try:
+            with transaction.atomic():
+                # Create User
+                user = User.objects.create(
+                    email=email,
+                    university_id=university_id,
+                    first_name=data["firstName"].strip(),
+                    middle_name=data.get("middleName", "").strip(),
+                    last_name=data["lastName"].strip()
+                )
+                
+                # Handle college and department
+                college = None
+                department = None
+                
+                if data.get("college"):
+                    try:
+                        college = College.objects.get(code=data["college"])
+                    except College.DoesNotExist:
+                        return JsonResponse({"detail": "Invalid college code"}, status=400)
+                
+                if data.get("department") and college:
+                    try:
+                        department = Department.objects.get(code=data["department"], college=college)
+                    except Department.DoesNotExist:
+                        return JsonResponse({"detail": "Invalid department code"}, status=400)
+                
+                # Create Faculty profile
+                faculty = Faculty.objects.create(
+                    user=user,
+                    faculty_type=data["facultyType"],
+                    first_name=data["firstName"].strip(),
+                    middle_name=data.get("middleName", "").strip(),
+                    last_name=data["lastName"].strip(),
+                    college=college,
+                    department=department
+                )
+                
+                # Assign Faculty role
+                faculty_role = Role.objects.get(name='Faculty')
+                UserRole.objects.create(
+                    user=user,
+                    role=faculty_role,
+                    college=college,
+                    department=department
+                )
+                
+                # If clearance timeline is specified, create clearance record
+                if clearance_timeline:
+                    Clearance.objects.get_or_create(
+                        faculty=faculty,
+                        academic_year=clearance_timeline.academic_year_start,
+                        term=clearance_timeline.term,
+                        defaults={'status': Clearance.Status.PENDING}
+                    )
+                
+                return JsonResponse({
+                    "id": str(faculty.id),
+                    "email": faculty.user.email,
+                    "universityId": faculty.user.university_id,
+                    "firstname": faculty.user.first_name,
+                    "middlename": faculty.user.middle_name,
+                    "lastname": faculty.user.last_name,
+                    "name": faculty.user.get_full_name(),
+                    "facultytype": faculty.faculty_type,
+                    "college": faculty.college.code if faculty.college else None,
+                    "department": faculty.department.code if faculty.department else None,
+                    "systemId": faculty.user.university_id,
+                    "userRole": "Faculty"
+                })
+                
+        except Exception as e:
+            return JsonResponse({"detail": f"Error creating faculty: {str(e)}"}, status=500)
+    
+    elif request.method in ["PUT", "PATCH"]:
+        # Update faculty
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({"detail": "Invalid JSON"}, status=400)
+        
+        faculty_id = data.get("id")
+        if not faculty_id:
+            return JsonResponse({"detail": "Missing faculty ID"}, status=400)
+        
+        try:
+            faculty = Faculty.objects.select_related('user', 'college', 'department').get(id=faculty_id)
+        except Faculty.DoesNotExist:
+            return JsonResponse({"detail": "Faculty not found"}, status=404)
+        
+        try:
+            with transaction.atomic():
+                user = faculty.user
+                
+                # Update user fields if provided
+                if "email" in data:
+                    email = data["email"].lower().strip()
+                    if not email.endswith("@xu.edu.ph"):
+                        return JsonResponse({"detail": "Only @xu.edu.ph email addresses are allowed"}, status=400)
+                    
+                    # Check if email already exists for another user
+                    if User.objects.filter(email=email).exclude(id=user.id).exists():
+                        return JsonResponse({"detail": "Email already exists"}, status=400)
+                    user.email = email
+                
+                if "universityId" in data:
+                    university_id = data["universityId"].strip()
+                    # Check if university ID already exists for another user
+                    if User.objects.filter(university_id=university_id).exclude(id=user.id).exists():
+                        return JsonResponse({"detail": "University ID already exists"}, status=400)
+                    user.university_id = university_id
+                
+                if "firstName" in data:
+                    user.first_name = data["firstName"].strip()
+                    faculty.first_name = data["firstName"].strip()
+                
+                if "middleName" in data:
+                    user.middle_name = data.get("middleName", "").strip()
+                    faculty.middle_name = data.get("middleName", "").strip()
+                
+                if "lastName" in data:
+                    user.last_name = data["lastName"].strip()
+                    faculty.last_name = data["lastName"].strip()
+                
+                user.save()
+                
+                # Handle college and department changes
+                if "college" in data:
+                    if data["college"]:
+                        try:
+                            college = College.objects.get(code=data["college"])
+                            faculty.college = college
+                        except College.DoesNotExist:
+                            return JsonResponse({"detail": "Invalid college code"}, status=400)
+                    else:
+                        faculty.college = None
+                
+                if "department" in data:
+                    if data["department"] and faculty.college:
+                        try:
+                            department = Department.objects.get(code=data["department"], college=faculty.college)
+                            faculty.department = department
+                        except Department.DoesNotExist:
+                            return JsonResponse({"detail": "Invalid department code"}, status=400)
+                    else:
+                        faculty.department = None
+                
+                if "facultyType" in data:
+                    faculty.faculty_type = data["facultyType"]
+                
+                faculty.save()
+                
+                # Update user role if college/department changed
+                if "college" in data or "department" in data:
+                    faculty_role = Role.objects.get(name='Faculty')
+                    user_role = UserRole.objects.filter(user=user, role=faculty_role).first()
+                    if user_role:
+                        user_role.college = faculty.college
+                        user_role.department = faculty.department
+                        user_role.save()
+                
+                return JsonResponse({
+                    "id": str(faculty.id),
+                    "email": faculty.user.email,
+                    "universityId": faculty.user.university_id,
+                    "firstname": faculty.user.first_name,
+                    "middlename": faculty.user.middle_name,
+                    "lastname": faculty.user.last_name,
+                    "name": faculty.user.get_full_name(),
+                    "facultytype": faculty.faculty_type,
+                    "college": faculty.college.code if faculty.college else None,
+                    "department": faculty.department.code if faculty.department else None,
+                    "systemId": faculty.user.university_id,
+                    "userRole": "Faculty"
+                })
+                
+        except Exception as e:
+            return JsonResponse({"detail": f"Error updating faculty: {str(e)}"}, status=500)
+    
+    elif request.method == "DELETE":
+        # Delete faculty
+        faculty_id = request.GET.get("id") or request.POST.get("id")
+        if not faculty_id:
+            return JsonResponse({"detail": "Missing faculty ID"}, status=400)
+        
+        try:
+            faculty = Faculty.objects.get(id=faculty_id)
+        except Faculty.DoesNotExist:
+            return JsonResponse({"detail": "Faculty not found"}, status=404)
+        
+        try:
+            with transaction.atomic():
+                # Delete related records
+                Clearance.objects.filter(faculty=faculty).delete()
+                UserRole.objects.filter(user=faculty.user).delete()
+                
+                # Delete faculty profile
+                faculty.delete()
+                
+                # Delete user (this will cascade delete faculty profile if not already deleted)
+                faculty.user.delete()
+                
+            return JsonResponse({"success": True})
+            
+        except Exception as e:
+            return JsonResponse({"detail": f"Error deleting faculty: {str(e)}"}, status=500)
+    
+    else:
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+
+@csrf_exempt
 def ovphe_system_guidelines_api(request):
     return _system_guidelines_api(request, "ovphe")
 
