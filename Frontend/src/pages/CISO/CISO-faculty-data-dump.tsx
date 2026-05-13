@@ -539,7 +539,7 @@ export default function CISOFacultyDataDump() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard px-[1in] pt-4 pb-4 w-full">
+      <main className="dashboard px-4 md:px-6 lg:px-[1in] pt-4 pb-4 w-full">
         
         <h1 className="text-2xl text-left text-primary font-bold">Faculty Data Dump</h1>
 

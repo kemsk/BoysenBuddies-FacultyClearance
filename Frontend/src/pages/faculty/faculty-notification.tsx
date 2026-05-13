@@ -181,7 +181,7 @@ export default function Notification() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard px-[1in] pt-4 pb-4 w-full">
+      <main className="dashboard px-4 md:px-6 lg:px-[1in] pt-4 pb-4 w-full">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-primary">Notifications</h1>
         </div>

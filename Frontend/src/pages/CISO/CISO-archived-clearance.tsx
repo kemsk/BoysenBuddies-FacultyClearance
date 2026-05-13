@@ -192,7 +192,7 @@ React.useEffect(() => {
           <CISOHeader />
         </div>
 
-        <main className="dashboard px-[1in] pt-4 pb-4 w-full">
+        <main className="dashboard px-4 md:px-6 lg:px-[1in] pt-4 pb-4 w-full">
           <h1 className="text-2xl text-left text-primary font-bold">{selectedTimeline.name}</h1>
 
           <Breadcrumb className="mt-2">
@@ -333,7 +333,7 @@ React.useEffect(() => {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard px-[1in] pt-4 pb-4 w-full">
+      <main className="dashboard px-4 md:px-6 lg:px-[1in] pt-4 pb-4 w-full">
 
         <h1 className="text-2xl text-left text-primary font-bold">View Clearance Records</h1>
 

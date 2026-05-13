@@ -179,7 +179,7 @@ export default function AssitantApproverIndividualApproval() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard px-[1in] pt-4 pb-4 w-full">
+      <main className="dashboard px-4 md:px-6 lg:px-[1in] pt-4 pb-4 w-full">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-2xl text-left text-primary font-bold">Clearance Requests</h1>
           <Button variant="back" size="back" onClick={() => navigate("/assistant-approver-clearance")}> 

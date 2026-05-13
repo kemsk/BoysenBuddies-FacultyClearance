@@ -150,7 +150,7 @@ export default function OVPHEViewClearance() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard px-[1in] pt-4 pb-4 w-full">
+      <main className="dashboard px-4 md:px-6 lg:px-[1in] pt-4 pb-4 w-full">
 
         <h1 className="text-2xl text-left text-primary font-bold">{formattedTimelineId}</h1>
 

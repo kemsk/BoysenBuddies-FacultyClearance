@@ -1510,7 +1510,7 @@ export default function ApproverIndividualApproval() {
 
       {/* DASHBOARD CONTENT */}
 
-      <main className="dashboard px-[1in] pt-4 pb-4 w-full">
+      <main className="dashboard px-4 md:px-6 lg:px-[1in] pt-4 pb-4 w-full">
 
         <div className="flex items-center justify-between gap-4">
 

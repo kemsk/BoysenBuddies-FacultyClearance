@@ -11,7 +11,7 @@ export default function ApproverTools() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      <main className="dashboard px-[1in] pt-4 pb-4 w-full">
+      <main className="dashboard px-4 md:px-6 lg:px-[1in] pt-4 pb-4 w-full">
         <div className="mt-0 grid gap-4">
           <ActionNavCard
             icon={
