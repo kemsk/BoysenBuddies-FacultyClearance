@@ -206,6 +206,63 @@ export default function CISOFacultyDataDump() {
     return found?.label || selectedTimelineId || "";
   }, [timelines, selectedTimelineId]);
 
+  // Load persisted faculty data from localStorage on component mount
+  React.useEffect(() => {
+    if (!selectedTimelineId) return;
+    
+    const savedData = localStorage.getItem(`facultyData_${selectedTimelineId}`);
+    const hasUploaded = localStorage.getItem(`hasUploaded_${selectedTimelineId}`);
+    const previewDataKey = `previewData_${selectedTimelineId}`;
+    const savedPreviewData = localStorage.getItem(previewDataKey);
+    
+    // Load persisted data first for immediate display
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        setPersistedFacultyData(parsedData);
+        setCurrentTimelineHasUploaded(hasUploaded === 'true');
+      } catch (error) {
+        console.error('Failed to load saved faculty data:', error);
+        setPersistedFacultyData([]);
+        setCurrentTimelineHasUploaded(false);
+      }
+    } else {
+      setPersistedFacultyData([]);
+      setCurrentTimelineHasUploaded(false);
+    }
+
+    // Load preview data for current timeline
+    if (savedPreviewData) {
+      try {
+        const parsedPreviewData = JSON.parse(savedPreviewData);
+        setPreviewData(parsedPreviewData);
+      } catch (error) {
+        console.error('Failed to load saved preview data:', error);
+        setPreviewData([]);
+      }
+    } else {
+      setPreviewData([]);
+    }
+    
+    // Then load from API to get the latest data
+    loadFacultyData(selectedTimelineId);
+  }, [selectedTimelineId, loadFacultyData]);
+
+  // Save preview data to localStorage whenever it changes
+  React.useEffect(() => {
+    if (selectedTimelineId && previewData.length > 0) {
+      localStorage.setItem(`previewData_${selectedTimelineId}`, JSON.stringify(previewData));
+    }
+  }, [previewData, selectedTimelineId]);
+
+  // Save persisted faculty data to localStorage whenever it changes
+  React.useEffect(() => {
+    if (selectedTimelineId && getCurrentTimelineHasUploaded()) {
+      localStorage.setItem(`facultyData_${selectedTimelineId}`, JSON.stringify(persistedFacultyData));
+      localStorage.setItem(`hasUploaded_${selectedTimelineId}`, 'true');
+    }
+  }, [persistedFacultyData, selectedTimelineId, getCurrentTimelineHasUploaded]);
+
   // Save selected timeline to localStorage whenever it changes
   React.useEffect(() => {
     if (selectedTimelineId) {
@@ -215,12 +272,45 @@ export default function CISOFacultyDataDump() {
 
   // Reset faculty data when timeline changes
   React.useEffect(() => {
+    if (!selectedTimelineId) return;
+    
     setUploadedFile(null);
     setUploadStatus("idle");
     setUploadProgress(0);
     setIsFileReady(false);
     
-    // Load from API first, this will set the data and upload status
+    // Load saved data first for immediate display
+    const savedData = localStorage.getItem(`facultyData_${selectedTimelineId}`);
+    const hasUploaded = localStorage.getItem(`hasUploaded_${selectedTimelineId}`);
+    const previewDataKey = `previewData_${selectedTimelineId}`;
+    const savedPreviewData = localStorage.getItem(previewDataKey);
+    
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        setPersistedFacultyData(parsedData);
+        setCurrentTimelineHasUploaded(hasUploaded === 'true');
+      } catch (error) {
+        setPersistedFacultyData([]);
+        setCurrentTimelineHasUploaded(false);
+      }
+    } else {
+      setPersistedFacultyData([]);
+      setCurrentTimelineHasUploaded(false);
+    }
+
+    if (savedPreviewData) {
+      try {
+        const parsedPreviewData = JSON.parse(savedPreviewData);
+        setPreviewData(parsedPreviewData);
+      } catch (error) {
+        setPreviewData([]);
+      }
+    } else {
+      setPreviewData([]);
+    }
+    
+    // Then load from API to get the latest data
     loadFacultyData(selectedTimelineId);
   }, [selectedTimelineId, loadFacultyData]);
 
