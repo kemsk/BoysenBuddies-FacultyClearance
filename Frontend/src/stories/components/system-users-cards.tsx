@@ -34,6 +34,7 @@ export type SystemUser = {
   universityId: string;
   college: string;
   department: string;
+  office: string;
   email: string;
 };
 
@@ -269,6 +270,8 @@ export function AdminSystemUsersCard({
                         <div className="text-muted-foreground">{user.college}</div>
                         <div className="font-semibold text-gray-900">Department</div>
                         <div className="text-muted-foreground">{user.department}</div>
+                        <div className="font-semibold text-gray-900">Office</div>
+                        <div className="text-muted-foreground">{user.office}</div>
                         <div className="font-semibold text-gray-900">Email</div>
                         <div className="break-all text-muted-foreground">{user.email}</div>
                       </div>
@@ -408,7 +411,6 @@ export function ApproverSystemUsersCard({
                   </thead>
                   <tbody>
                     {sortedUsers.map((user, idx) => {
-                      const office = user.college === "None" ? user.department : user.college;
                       return (
                         <tr
                           key={user.id}
@@ -419,7 +421,7 @@ export function ApproverSystemUsersCard({
                           <td className="px-4 py-3 text-left text-sm text-muted-foreground">{user.email}</td>
                           <td className="px-4 py-3 text-left text-sm text-muted-foreground">{user.college}</td>
                           <td className="px-4 py-3 text-left text-sm text-muted-foreground">{user.department}</td>            
-                          <td className="px-4 py-3 text-left text-sm text-muted-foreground">{office}</td>
+                          <td className="px-4 py-3 text-left text-sm text-muted-foreground">{user.office}</td>
                           <td className="px-4 py-3 text-center">
                             <div className="flex items-center justify-center gap-2">
                               <Button
@@ -515,6 +517,8 @@ export function ApproverSystemUsersCard({
                         <div className="text-muted-foreground">{user.college}</div>
                         <div className="font-semibold text-gray-900">Department</div>
                         <div className="text-muted-foreground">{user.department}</div>
+                        <div className="font-semibold text-gray-900">Office</div>
+                        <div className="text-muted-foreground">{user.office}</div>
                         <div className="font-semibold text-gray-900">Email</div>
                         <div className="break-all text-muted-foreground">{user.email}</div>
                       </div>
