@@ -459,9 +459,9 @@ import { AdminSystemUsersCard, ApproverSystemUsersCard } from "../../stories/com
                   universityId: activeUser.universityId,
                   email: activeUser.email,
                   approverType: activeUser.college === "None" ? "Office" : "College",
-                  college: activeUser.college === "No college" ? "" : activeUser.college,
-                  department: activeUser.college === "No Department" ? "" : activeUser.department,
-                  office: activeUser.college === "No Office" ? activeUser.department : "",
+                  college: activeUser.college === "None" ? "" : activeUser.college,
+                  department: activeUser.college === "None" ? "" : activeUser.department,
+                  office: activeUser.college === "None" ? activeUser.department : "",
                   isActive: Boolean(activeUser.isActive),
                 }
               : undefined

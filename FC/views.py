@@ -6679,7 +6679,8 @@ def ciso_system_users_api(request):
                 "userRole": "Approver",
                 "universityId": u.university_id or "",
                 "college": ap.college.name if ap.college else "N/A",
-                "department": ap.department.name if ap.department else (ap.office.name if ap.office else "N/A"),
+                "department": ap.department.name if ap.department else "N/A",
+                "office": ap.office.name if ap.office else "N/A",
                 "email": u.email,
                 "isActive": u.get_active_roles().exists(),
             })

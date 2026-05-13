@@ -847,7 +847,6 @@ EOF
 
 echo "Database initialized."
 echo "Generating faculty clearance requests..."
-python generate_clearance_requests.py
 echo "Starting Gunicorn on port 8001..."
 # Force override any environment variables that might affect binding
 unset GUNICORN_CMD_ARGS
