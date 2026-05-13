@@ -67,6 +67,44 @@ def _assistant_scope(user):
     }
 
 
+def _sync_assistant_offices_with_supervisor(supervisor_user):
+    """
+    Automatically update all assistant office assignments to match their supervisor.
+    Called when an approver's office/college/department assignments change.
+    """
+    if not supervisor_user:
+        return 0
+    
+    supervisor_profile = getattr(supervisor_user, 'approver_profile', None)
+    if not supervisor_profile:
+        return 0
+    
+    updated_count = 0
+    
+    # Update StudentAssistant records
+    student_assistants = StudentAssistant.objects.filter(supervisor_approver=supervisor_user)
+    sa_updated = student_assistants.update(
+        office=supervisor_profile.office,
+        college=supervisor_profile.college,
+        department=supervisor_profile.department
+    )
+    updated_count += sa_updated
+    
+    # Update ApproverAssistant records  
+    admin_assistants = ApproverAssistant.objects.filter(supervisor=supervisor_user)
+    aa_updated = admin_assistants.update(
+        office=supervisor_profile.office,
+        college=supervisor_profile.college,
+        department=supervisor_profile.department
+    )
+    updated_count += aa_updated
+    
+    if updated_count > 0:
+        print(f"[SYNC] Updated {updated_count} assistants to match {supervisor_user.email}'s new office assignments")
+    
+    return updated_count
+
+
 def _assistant_requirement_queryset(user, timeline):
     assistant = getattr(user, "assistant_profile", None)
     
@@ -2050,10 +2088,6 @@ def ciso_system_user_detail_api(request, user_id: int):
         assistant_profile = getattr(user, "assistant_profile", None)
         if assistant_profile and not system_admin_office:
             assistant_type = (data.get("assistantType") or "student_assistant").strip() or "student_assistant"
-            if approver_type:
-                atype = approver_type.strip().lower()
-                if atype != "college":
-                    return JsonResponse({"detail": "Invalid approver type"}, status=400)
 
             college_name = (data.get("college") or "").strip()
             dept_name = (data.get("department") or "").strip()
@@ -2151,6 +2185,9 @@ def ciso_system_user_detail_api(request, user_id: int):
                 approver_profile.department = None
 
             approver_profile.save(update_fields=["approver_type", "office", "college", "department"])
+
+            # Automatically sync all assistants with this approver's new office assignments
+            _sync_assistant_offices_with_supervisor(user)
 
             # Assign appropriate role based on approver type
             from .models import Role, UserRole
@@ -6795,6 +6832,9 @@ def ciso_system_users_api(request):
             approver_profile.department = department
             approver_profile.office = office
             approver_profile.save(update_fields=["approver_type", "college", "department", "office"])
+
+            # Automatically sync all assistants with this approver's new office assignments
+            _sync_assistant_offices_with_supervisor(user)
 
             # Assign appropriate role based on approver type
             from .models import Role, UserRole
