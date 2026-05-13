@@ -39,7 +39,7 @@ export default function CISOFacultyDataDump() {
   const [skippedRows, setSkippedRows] = React.useState<Array<{rowLabel: string; reason: string}>>([]);
   const [previewData, setPreviewData] = React.useState<SystemUser[]>([]);
   const [persistedFacultyData, setPersistedFacultyData] = React.useState<SystemUser[]>([]);
-  const [hasUploadedData, setHasUploadedData] = React.useState(false);
+  const [hasUploadedData, setHasUploadedData] = React.useState<Record<string, boolean>>({});
 
   // Organization structure data
   const [orgColleges, setOrgColleges] = React.useState<string[]>([]);
@@ -48,25 +48,105 @@ export default function CISOFacultyDataDump() {
   const [collegeNameToCodeMap, setCollegeNameToCodeMap] = React.useState<Record<string, string>>({});
   const [departmentNameToCodeMap, setDepartmentNameToCodeMap] = React.useState<Record<string, string>>({});
 
-  const handleEditUser = (user: SystemUser) => {
-    // Update the user in both preview and persisted data
-    setPreviewData(prev => prev.map(u => u.id === user.id ? user : u));
-    if (hasUploadedData) {
-      const updatedData = persistedFacultyData.map(u => u.id === user.id ? user : u);
-      setPersistedFacultyData(updatedData);
-      // Save to localStorage
-      localStorage.setItem(`facultyData_${selectedTimelineId}`, JSON.stringify(updatedData));
+  const handleEditUser = async (user: SystemUser) => {
+    if (!selectedTimelineId) {
+      openError('Please select a timeline first');
+      return;
+    }
+
+    try {
+      const response = await fetch("/admin/xu-faculty-clearance/api/ciso/faculty-crud", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: user.id,
+          email: user.email,
+          universityId: user.universityId,
+          firstName: user.firstname,
+          middleName: user.middlename,
+          lastName: user.lastname,
+          facultyType: user.facultytype,
+          college: user.college,
+          department: user.department,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to update faculty');
+      }
+
+      const updatedUser = await response.json();
+      
+      // Update the user in both preview and persisted data
+      setPreviewData(prev => prev.map(u => u.id === user.id ? updatedUser : u));
+      if (getCurrentTimelineHasUploaded()) {
+        const updatedData = persistedFacultyData.map(u => u.id === user.id ? updatedUser : u);
+        setPersistedFacultyData(updatedData);
+        // Save to localStorage
+        localStorage.setItem(`facultyData_${selectedTimelineId}`, JSON.stringify(updatedData));
+      }
+    } catch (error) {
+      console.error('Error updating faculty:', error);
+      openError(error instanceof Error ? error.message : 'Failed to update faculty');
     }
   };
 
-  const handleRemoveUser = (user: SystemUser) => {
-    setPreviewData(prev => prev.filter(u => u.id !== user.id));
-    if (hasUploadedData) {
-      const updatedData = persistedFacultyData.filter(u => u.id !== user.id);
-      setPersistedFacultyData(updatedData);
-      // Save to localStorage
-      localStorage.setItem(`facultyData_${selectedTimelineId}`, JSON.stringify(updatedData));
+  const handleRemoveUser = async (user: SystemUser) => {
+    if (!selectedTimelineId) {
+      openError('Please select a timeline first');
+      return;
     }
+
+    try {
+      const response = await fetch(`/admin/xu-faculty-clearance/api/ciso/faculty-crud?id=${user.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to delete faculty');
+      }
+
+      // Remove the user from both preview and persisted data
+      setPreviewData(prev => prev.filter(u => u.id !== user.id));
+      if (getCurrentTimelineHasUploaded()) {
+        const updatedData = persistedFacultyData.filter(u => u.id !== user.id);
+        setPersistedFacultyData(updatedData);
+        // Save to localStorage
+        localStorage.setItem(`facultyData_${selectedTimelineId}`, JSON.stringify(updatedData));
+      }
+    } catch (error) {
+      console.error('Error deleting faculty:', error);
+      openError(error instanceof Error ? error.message : 'Failed to delete faculty');
+    }
+  };
+
+  const getCurrentTimelineHasUploaded = () => {
+    return hasUploadedData[selectedTimelineId] || false;
+  };
+
+  const setCurrentTimelineHasUploaded = (value: boolean) => {
+    setHasUploadedData(prev => ({
+      ...prev,
+      [selectedTimelineId]: value
+    }));
+  };
+
+  const clearTimelineData = () => {
+    setUploadedFile(null);
+    setUploadStatus("idle");
+    setUploadProgress(0);
+    setIsFileReady(false);
+    setPreviewData([]);
+    setPersistedFacultyData([]);
+    setCurrentTimelineHasUploaded(false);
+    // Clear localStorage for current timeline
+    localStorage.removeItem(`facultyData_${selectedTimelineId}`);
+    localStorage.removeItem(`hasUploaded_${selectedTimelineId}`);
+    localStorage.removeItem(`previewData_${selectedTimelineId}`);
   };
 
   const [errorOpen, setErrorOpen] = React.useState(false);
@@ -77,6 +157,50 @@ export default function CISOFacultyDataDump() {
     setErrorOpen(true);
   }, []);
 
+  const loadFacultyData = React.useCallback(async (timelineId: string) => {
+    if (!timelineId) {
+      setPersistedFacultyData([]);
+      setPreviewData([]);
+      setCurrentTimelineHasUploaded(false);
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/admin/xu-faculty-clearance/api/ciso/faculty-crud?clearance_timeline_id=${timelineId}`);
+      
+      if (!response.ok) {
+        // If no faculty data exists for this timeline, clear the data
+        setPersistedFacultyData([]);
+        setPreviewData([]);
+        setCurrentTimelineHasUploaded(false);
+        // Clear localStorage for this timeline
+        localStorage.removeItem(`facultyData_${timelineId}`);
+        localStorage.removeItem(`hasUploaded_${timelineId}`);
+        localStorage.removeItem(`previewData_${timelineId}`);
+        return;
+      }
+      
+      const data = await response.json();
+      const facultyList = data.faculty || [];
+      
+      // Set both data states to ensure consistent display
+      setPersistedFacultyData(facultyList);
+      setPreviewData(facultyList);
+      setCurrentTimelineHasUploaded(true);
+      
+      // Save to localStorage for persistence
+      localStorage.setItem(`facultyData_${timelineId}`, JSON.stringify(facultyList));
+      localStorage.setItem(`hasUploaded_${timelineId}`, 'true');
+      localStorage.setItem(`previewData_${timelineId}`, JSON.stringify(facultyList));
+    } catch (error) {
+      console.error('Error loading faculty data:', error);
+      // On error, clear the data to prevent inconsistencies
+      setPersistedFacultyData([]);
+      setPreviewData([]);
+      setCurrentTimelineHasUploaded(false);
+    }
+  }, []);
+
   const selectedTimelineLabel = React.useMemo(() => {
     const found = timelines.find((t) => t.id === selectedTimelineId);
     return found?.label || selectedTimelineId || "";
@@ -84,51 +208,111 @@ export default function CISOFacultyDataDump() {
 
   // Load persisted faculty data from localStorage on component mount
   React.useEffect(() => {
+    if (!selectedTimelineId) return;
+    
     const savedData = localStorage.getItem(`facultyData_${selectedTimelineId}`);
     const hasUploaded = localStorage.getItem(`hasUploaded_${selectedTimelineId}`);
+    const previewDataKey = `previewData_${selectedTimelineId}`;
+    const savedPreviewData = localStorage.getItem(previewDataKey);
     
+    // Load persisted data first for immediate display
     if (savedData) {
       try {
-        setPersistedFacultyData(JSON.parse(savedData));
-        setHasUploadedData(hasUploaded === 'true');
+        const parsedData = JSON.parse(savedData);
+        setPersistedFacultyData(parsedData);
+        setCurrentTimelineHasUploaded(hasUploaded === 'true');
       } catch (error) {
         console.error('Failed to load saved faculty data:', error);
+        setPersistedFacultyData([]);
+        setCurrentTimelineHasUploaded(false);
       }
+    } else {
+      setPersistedFacultyData([]);
+      setCurrentTimelineHasUploaded(false);
     }
-  }, [selectedTimelineId]);
+
+    // Load preview data for current timeline
+    if (savedPreviewData) {
+      try {
+        const parsedPreviewData = JSON.parse(savedPreviewData);
+        setPreviewData(parsedPreviewData);
+      } catch (error) {
+        console.error('Failed to load saved preview data:', error);
+        setPreviewData([]);
+      }
+    } else {
+      setPreviewData([]);
+    }
+    
+    // Then load from API to get the latest data
+    loadFacultyData(selectedTimelineId);
+  }, [selectedTimelineId, loadFacultyData]);
+
+  // Save preview data to localStorage whenever it changes
+  React.useEffect(() => {
+    if (selectedTimelineId && previewData.length > 0) {
+      localStorage.setItem(`previewData_${selectedTimelineId}`, JSON.stringify(previewData));
+    }
+  }, [previewData, selectedTimelineId]);
 
   // Save persisted faculty data to localStorage whenever it changes
   React.useEffect(() => {
-    if (selectedTimelineId && hasUploadedData) {
+    if (selectedTimelineId && getCurrentTimelineHasUploaded()) {
       localStorage.setItem(`facultyData_${selectedTimelineId}`, JSON.stringify(persistedFacultyData));
       localStorage.setItem(`hasUploaded_${selectedTimelineId}`, 'true');
     }
-  }, [persistedFacultyData, hasUploadedData, selectedTimelineId]);
+  }, [persistedFacultyData, selectedTimelineId, getCurrentTimelineHasUploaded]);
+
+  // Save selected timeline to localStorage whenever it changes
+  React.useEffect(() => {
+    if (selectedTimelineId) {
+      localStorage.setItem('lastSelectedTimeline', selectedTimelineId);
+    }
+  }, [selectedTimelineId]);
 
   // Reset faculty data when timeline changes
   React.useEffect(() => {
+    if (!selectedTimelineId) return;
+    
     setUploadedFile(null);
     setUploadStatus("idle");
     setUploadProgress(0);
     setIsFileReady(false);
-    setPreviewData([]);
-    // Load data for new timeline or clear if none exists
+    
+    // Load saved data first for immediate display
     const savedData = localStorage.getItem(`facultyData_${selectedTimelineId}`);
     const hasUploaded = localStorage.getItem(`hasUploaded_${selectedTimelineId}`);
+    const previewDataKey = `previewData_${selectedTimelineId}`;
+    const savedPreviewData = localStorage.getItem(previewDataKey);
     
     if (savedData) {
       try {
-        setPersistedFacultyData(JSON.parse(savedData));
-        setHasUploadedData(hasUploaded === 'true');
+        const parsedData = JSON.parse(savedData);
+        setPersistedFacultyData(parsedData);
+        setCurrentTimelineHasUploaded(hasUploaded === 'true');
       } catch (error) {
         setPersistedFacultyData([]);
-        setHasUploadedData(false);
+        setCurrentTimelineHasUploaded(false);
       }
     } else {
       setPersistedFacultyData([]);
-      setHasUploadedData(false);
+      setCurrentTimelineHasUploaded(false);
     }
-  }, [selectedTimelineId]);
+
+    if (savedPreviewData) {
+      try {
+        const parsedPreviewData = JSON.parse(savedPreviewData);
+        setPreviewData(parsedPreviewData);
+      } catch (error) {
+        setPreviewData([]);
+      }
+    } else {
+      setPreviewData([]);
+    }
+    
+    // Then load from API to get the latest data
+    loadFacultyData(selectedTimelineId);
+  }, [selectedTimelineId, loadFacultyData]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -155,9 +339,22 @@ export default function CISOFacultyDataDump() {
 
         if (!cancelled) {
           setTimelines(options);
-          // Prefer the first active/most recent timeline if none chosen yet
+          // If no timeline is selected, prioritize the timeline with hasUploaded=true
           if (!selectedTimelineId && options.length) {
-            setSelectedTimelineId(options[0].id);
+            // Find the timeline with hasUploaded=true (this is where the data should be)
+            const timelineWithUploadedFlag = options.find(option => 
+              localStorage.getItem(`hasUploaded_${option.id}`) === 'true'
+            );
+            
+            if (timelineWithUploadedFlag) {
+              setSelectedTimelineId(timelineWithUploadedFlag.id);
+            } else {
+              // Fallback to last selected timeline if it exists
+              const lastSelectedTimeline = localStorage.getItem('lastSelectedTimeline');
+              const lastTimelineExists = lastSelectedTimeline && options.find(opt => opt.id === lastSelectedTimeline);
+              
+              setSelectedTimelineId((lastTimelineExists && lastTimelineExists.id) || options[0].id);
+            }
           }
         }
       } catch {
@@ -378,38 +575,60 @@ export default function CISOFacultyDataDump() {
           uploadStatus={uploadStatus}
           uploadProgress={uploadProgress}
           isFileReady={isFileReady}
-          tableUsers={hasUploadedData ? persistedFacultyData : previewData}
+          tableUsers={getCurrentTimelineHasUploaded() ? persistedFacultyData : previewData}
           tablePage={1}
           tablePageCount={1}
           onTablePageChange={() => {}}
-          onAddFaculty={(faculty) => {
-            // Convert college and department names to codes
-            const collegeCode = collegeNameToCodeMap[faculty.college] || faculty.college;
-            const departmentCode = departmentNameToCodeMap[faculty.department] || faculty.department;
-            
-            const newFaculty: SystemUser = {
-              id: `manual-${Date.now()}`,
-              name: `${faculty.firstName} ${faculty.lastName}`.trim(),
-              systemId: faculty.universityId,
-              userRole: 'Faculty',
-              universityId: faculty.universityId,
-              college: collegeCode,
-              department: departmentCode,
-              email: faculty.email,
-              firstname: faculty.firstName,
-              middlename: faculty.middleName,
-              lastname: faculty.lastName,
-              facultytype: faculty.facultyType,
-            };
-            setPersistedFacultyData(prev => [...prev, newFaculty]);
-            if (!hasUploadedData) {
-              setPreviewData(prev => [...prev, newFaculty]);
+          onAddFaculty={async (faculty) => {
+            if (!selectedTimelineId) {
+              openError('Please select a timeline first');
+              return;
             }
-            // Save to localStorage immediately if data has been uploaded
-            if (hasUploadedData) {
-              setTimeout(() => {
-                localStorage.setItem(`facultyData_${selectedTimelineId}`, JSON.stringify([...persistedFacultyData, newFaculty]));
-              }, 0);
+
+            try {
+              // Convert college and department names to codes
+              const collegeCode = collegeNameToCodeMap[faculty.college] || faculty.college;
+              const departmentCode = departmentNameToCodeMap[faculty.department] || faculty.department;
+              
+              const response = await fetch("/admin/xu-faculty-clearance/api/ciso/faculty-crud", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  email: faculty.email,
+                  universityId: faculty.universityId,
+                  firstName: faculty.firstName,
+                  middleName: faculty.middleName,
+                  lastName: faculty.lastName,
+                  facultyType: faculty.facultyType,
+                  college: collegeCode,
+                  department: departmentCode,
+                  clearance_timeline_id: selectedTimelineId,
+                }),
+              });
+
+              if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || 'Failed to create faculty');
+              }
+
+              const newFaculty = await response.json();
+              
+              // Add the new faculty to both preview and persisted data
+              setPersistedFacultyData(prev => [...prev, newFaculty]);
+              if (!getCurrentTimelineHasUploaded()) {
+                setPreviewData(prev => [...prev, newFaculty]);
+              }
+              // Save to localStorage immediately if data has been uploaded
+              if (getCurrentTimelineHasUploaded()) {
+                setTimeout(() => {
+                  localStorage.setItem(`facultyData_${selectedTimelineId}`, JSON.stringify([...persistedFacultyData, newFaculty]));
+                }, 0);
+              }
+            } catch (error) {
+              console.error('Error creating faculty:', error);
+              openError(error instanceof Error ? error.message : 'Failed to create faculty');
             }
           }}
           onEditUser={handleEditUser}
@@ -419,31 +638,11 @@ export default function CISOFacultyDataDump() {
           collegeDepartmentsMap={collegeDepartmentsMap}
           collegeNameToCodeMap={collegeNameToCodeMap}
           departmentNameToCodeMap={departmentNameToCodeMap}
-          onClearFile={() => {
-            setUploadedFile(null);
-            setUploadStatus("idle");
-            setUploadProgress(0);
-            setIsFileReady(false);
-            setPreviewData([]);
-            setPersistedFacultyData([]);
-            setHasUploadedData(false);
-            // Clear localStorage
-            localStorage.removeItem(`facultyData_${selectedTimelineId}`);
-            localStorage.removeItem(`hasUploaded_${selectedTimelineId}`);
-          }}
+          onClearFile={clearTimelineData}
           onRemoveFile={async () => {
             const fileName = uploadedFile?.name;
             const timelineLabel = selectedTimelineLabel;
-            setUploadedFile(null);
-            setUploadStatus("idle");
-            setUploadProgress(0);
-            setIsFileReady(false);
-            setPreviewData([]);
-            setPersistedFacultyData([]);
-            setHasUploadedData(false);
-            // Clear localStorage
-            localStorage.removeItem(`facultyData_${selectedTimelineId}`);
-            localStorage.removeItem(`hasUploaded_${selectedTimelineId}`);
+            clearTimelineData();
             if (fileName && timelineLabel) {
               try {
                 await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
@@ -559,7 +758,7 @@ export default function CISOFacultyDataDump() {
               // Move preview data to persisted data and clear preview
               setPersistedFacultyData(previewData);
               setPreviewData([]);
-              setHasUploadedData(true);
+              setCurrentTimelineHasUploaded(true);
               // Save to localStorage
               localStorage.setItem(`facultyData_${selectedTimelineId}`, JSON.stringify(previewData));
               localStorage.setItem(`hasUploaded_${selectedTimelineId}`, 'true');

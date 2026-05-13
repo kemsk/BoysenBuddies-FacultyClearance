@@ -28,11 +28,7 @@ VALUES
     ('20220025546@my.xu.edu.ph', 20220025546, 'Albert Floyd', 'Villanueva', NOW()),
     ('20190016375@my.xu.edu.ph', 20190016375, 'Nesyl', 'Ylanan', NOW()),
     ('201131134@my.xu.edu.ph', 201131134, 'Farrah', 'Apag', NOW()),
-    ('20220024573@my.xu.edu.ph', 20220024573, 'Kim', 'Flores', NOW()),
-    ('approver.seed@xu.edu.ph', 1000000001, 'Angela', 'Santos', NOW()),
-    ('assistant.seed@xu.edu.ph', 1000000002, 'Seed', 'Assistant', NOW()),
-    ('faculty.seed@xu.edu.ph', 1000000003, 'John', 'Doe', NOW()),
-    ('ovphe.seed@xu.edu.ph', 1000000005, 'Maria', 'Reyes', NOW())
+    ('20220024573@my.xu.edu.ph', 20220024573, 'Kim', 'Flores', NOW())
 ON DUPLICATE KEY UPDATE
     first_name = VALUES(first_name),
     last_name = VALUES(last_name);
@@ -207,20 +203,6 @@ ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
 
 -- Seed UserRoles for other users
-INSERT INTO FC_userrole (user_id, role_id, college_id, department_id, assigned_by_id, assigned_date, is_active)
-SELECT 
-    u.id AS user_id, 
-    r.id AS role_id,
-    @ccs_id AS college_id,
-    @cs_id AS department_id,
-    u.id AS assigned_by_id,
-    NOW() AS assigned_date,
-    1 AS is_active
-FROM FC_user u
-CROSS JOIN FC_role r
-WHERE u.email = 'approver.seed@xu.edu.ph' AND r.name = 'Approver'
-ON DUPLICATE KEY UPDATE
-    is_active = VALUES(is_active);
 
 INSERT INTO FC_userrole (user_id, role_id, college_id, department_id, assigned_by_id, assigned_date, is_active)
 SELECT 
@@ -259,7 +241,7 @@ SELECT
     r.id AS role_id,
     @ccs_id AS college_id,
     @cs_id AS department_id,
-    @approver_user_id AS assigned_by_id,
+    @ciso_user_id AS assigned_by_id,
     NOW() AS assigned_date,
     1 AS is_active
 FROM FC_user u
@@ -734,10 +716,6 @@ UPDATE FC_office SET display_order = 3 WHERE code = 'HRO';
 SET @ciso_user_id = (SELECT id FROM FC_user WHERE email = '20220025546@my.xu.edu.ph' LIMIT 1);
 SET @ovphe_user_id = (SELECT id FROM FC_user WHERE email = '20190016375@my.xu.edu.ph' LIMIT 1);
 
--- Get user IDs
-SET @approver_user_id = (SELECT id FROM FC_user WHERE email = 'approver.seed@xu.edu.ph' LIMIT 1);
-SET @assistant_user_id = (SELECT id FROM FC_user WHERE email = 'assistant.seed@xu.edu.ph' LIMIT 1);
-SET @faculty_user_id = (SELECT id FROM FC_user WHERE email = 'faculty.seed@xu.edu.ph' LIMIT 1);
 SET @farrah_user_id = (SELECT id FROM FC_user WHERE email = '201131134@my.xu.edu.ph' LIMIT 1);
 
 -- Seed Approver for main user (20220025546@my.xu.edu.ph) as Office approver in Human Resources Office
@@ -764,23 +742,9 @@ ON DUPLICATE KEY UPDATE
     approver_type = VALUES(approver_type),
     office_id = VALUES(office_id);
 
--- Seed StudentAssistant
-INSERT INTO FC_studentassistant (user_id, college_id, department_id)
-VALUES (@assistant_user_id, @ccs_id, @cs_id)
-ON DUPLICATE KEY UPDATE
-    college_id = VALUES(college_id),
-    department_id = VALUES(department_id);
 
 
 
--- Seed Faculty (needed for real analytics)
-INSERT INTO FC_faculty (user_id, first_name, last_name, college_id, department_id)
-SELECT * FROM (
-    SELECT @faculty_user_id AS user_id, 'Faye' AS first_name, 'Faculty' AS last_name, @ccs_id AS college_id, @cs_id AS department_id
-) AS v
-WHERE NOT EXISTS (
-    SELECT 1 FROM FC_faculty f WHERE f.user_id = v.user_id
-);
 
 INSERT INTO FC_faculty (user_id, first_name, last_name, college_id, department_id)
 SELECT * FROM (

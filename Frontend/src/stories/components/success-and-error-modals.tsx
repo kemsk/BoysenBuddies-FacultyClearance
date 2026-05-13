@@ -172,7 +172,7 @@ export function DataDumpSuccessModal({
                 <div className="bg-gray-600 px-4 py-3 text-center text-base font-bold text-white">
                   Skipped rows
                 </div>
-                <div className="divide-y divide-gray-300 bg-white">
+                <div className="max-h-60 overflow-y-auto divide-y divide-gray-300 bg-white">
                   {rows.map((r, idx) => (
                     <div key={`${r.rowLabel}-${idx}`} className="flex gap-4 px-4 py-4">
                       <div className="w-20 flex-none font-semibold text-gray-700">{r.rowLabel}</div>

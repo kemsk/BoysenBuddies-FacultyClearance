@@ -646,6 +646,13 @@ export default function ApproverIndividualApproval() {
         setRemarks(updatedData.item.remarks || "");
       }
 
+      // Show success message after override
+      openSuccess(
+        overrideStatus === "rejected"
+          ? SuccessErrorModalMessages.REQUEST_REJECTED
+          : SuccessErrorModalMessages.REQUEST_APPROVED,
+      );
+
     } catch (err) {
       console.error("Error overriding:", err);
       setError(err instanceof Error ? err.message : "Failed to override request");
@@ -858,9 +865,14 @@ export default function ApproverIndividualApproval() {
                         console.log("Override confirmed:", overrideStatus);
                         setShowOverrideAlert(false);
                       }}
-                      onCancel={() => setShowOverrideAlert(false)}
+                      onCancel={() => {
+                        setShowOverrideAlert(false);
+                        setOverrideReason('');
+                        setOverrideStatus('approved');
+                      }}
                       onConfirm={(reason: string) => {
                         setOverrideReason(reason);
+                        setShowOverrideAlert(false);
                         setShowConfirmAlert(true);
                       }}
                     />
@@ -886,7 +898,12 @@ export default function ApproverIndividualApproval() {
                         setShowConfirmAlert(false);
                         handleOverride();
                       }}
-                      onCancel={() => setShowConfirmAlert(false)}
+                      onCancel={() => {
+                        setShowConfirmAlert(false);
+                        setOverrideReason('');
+                        setOverrideStatus('approved');
+                        setShowOverrideAlert(false);
+                      }}
                     />
                   </div>
                 </div>

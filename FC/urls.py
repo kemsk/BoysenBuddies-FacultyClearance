@@ -28,6 +28,7 @@ urlpatterns = [
     path('api/ciso/system-users/<int:user_id>', views.ciso_system_user_detail_api, name='CISOSystemUserDetail'),
     path('api/ciso/faculty-dump/template', views.ciso_faculty_dump_template_api, name='CISOFacultyDumpTemplate'),
     path('api/ciso/faculty-dump/import', views.ciso_faculty_dump_import_api, name='CISOFacultyDumpImport'),
+    path('api/ciso/faculty-crud', views.ciso_faculty_crud_api, name='CISOFacultyCRUD'),
     # Additional CISO endpoints
     path('api/ciso/tools', views.ciso_tools_api, name='CISOTools'),
     path('api/ciso/college-office-configuration', views.ciso_college_office_configuration_api, name='CISOCollegeOfficeConfiguration'),
