@@ -484,6 +484,20 @@ export default function CISOSystemAnalytics() {
               </SelectContent>
             </Select>
 
+            <Select value={selectedCollege} onValueChange={setSelectedCollege}>
+              <SelectTrigger variant="pill" className="w-max">
+                <SelectValue placeholder="College" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="College">All Colleges</SelectItem>
+                {colleges.map((college) => (
+                  <SelectItem key={college.id} value={college.name}>
+                    {college.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
           
 
               <Button 

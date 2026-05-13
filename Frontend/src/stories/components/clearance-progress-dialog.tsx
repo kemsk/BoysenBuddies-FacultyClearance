@@ -26,6 +26,11 @@ export type ClearanceProgressDialogProps = {
   rows: ClearanceProgressRow[];
 };
 
+type OrgStructure = {
+  colleges: { id: string; name: string; short: string }[];
+  departments: { id: string; collegeId: string; name: string; short: string }[];
+};
+
 export function ClearanceProgressDialog({ open, onOpenChange, rows }: ClearanceProgressDialogProps) {
   const [query, setQuery] = React.useState("");
   const [sort, setSort] = React.useState("college");
@@ -33,6 +38,8 @@ export function ClearanceProgressDialog({ open, onOpenChange, rows }: ClearanceP
   const [facultyTypeFilter, setFacultyTypeFilter] = React.useState<"" | "all" | "part_time" | "full_time">("");
   const [collegeFilter, setCollegeFilter] = React.useState("");
   const [departmentFilter, setDepartmentFilter] = React.useState("");
+  const [orgStructure, setOrgStructure] = React.useState<OrgStructure | null>(null);
+  const [loadingOrgStructure, setLoadingOrgStructure] = React.useState(false);
 
   React.useEffect(() => {
     if (!open) return;
@@ -42,7 +49,37 @@ export function ClearanceProgressDialog({ open, onOpenChange, rows }: ClearanceP
     setFacultyTypeFilter("");
     setCollegeFilter("");
     setDepartmentFilter("");
+    
+    // Fetch org structure data for dropdowns
+    setLoadingOrgStructure(true);
+    fetch("/admin/xu-faculty-clearance/api/ovphe/org-structure")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: OrgStructure) => {
+        setOrgStructure(data);
+      })
+      .catch(() => {
+        setOrgStructure(null);
+      })
+      .finally(() => {
+        setLoadingOrgStructure(false);
+      });
   }, [open]);
+
+  // Reset department filter when college changes
+  React.useEffect(() => {
+    setDepartmentFilter("");
+  }, [collegeFilter]);
+
+  // Filter departments based on selected college
+  const availableDepartments = React.useMemo(() => {
+    if (!orgStructure) return [];
+    
+    if (!collegeFilter || collegeFilter === "" || collegeFilter === "all") {
+      return orgStructure.departments;
+    }
+    
+    return orgStructure.departments.filter(dept => dept.collegeId === collegeFilter);
+  }, [orgStructure, collegeFilter]);
 
   const filteredRows = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -61,16 +98,48 @@ export function ClearanceProgressDialog({ open, onOpenChange, rows }: ClearanceP
       return true;
     });
 
-    if (!q) return facultyTypeFiltered;
+    const collegeFiltered = facultyTypeFiltered.filter((r) => {
+      if (!collegeFilter || collegeFilter === "" || collegeFilter === "all") return true;
+      const collegeName = String(r.college ?? "").trim().toLowerCase();
+      
+      // Find college by ID to get name for comparison
+      if (orgStructure) {
+        const college = orgStructure.colleges.find(c => c.id === collegeFilter);
+        if (college) {
+          return collegeName === college.name.toLowerCase();
+        }
+      }
+      
+      // Fallback to direct string comparison
+      return collegeName === collegeFilter.toLowerCase();
+    });
 
-    return facultyTypeFiltered.filter((r) => {
+    const departmentFiltered = collegeFiltered.filter((r) => {
+      if (!departmentFilter || departmentFilter === "" || departmentFilter === "all") return true;
+      const departmentName = String(r.department ?? "").trim().toLowerCase();
+      
+      // Find department by ID to get name for comparison
+      if (orgStructure) {
+        const department = orgStructure.departments.find(d => d.id === departmentFilter);
+        if (department) {
+          return departmentName === department.name.toLowerCase();
+        }
+      }
+      
+      // Fallback to direct string comparison
+      return departmentName === departmentFilter.toLowerCase();
+    });
+
+    if (!q) return departmentFiltered;
+
+    return departmentFiltered.filter((r) => {
       const asText = [r.name, r.requestId, r.employeeId, r.college, r.department]
         .map((x) => (typeof x === "string" ? x : ""))
         .join(" ")
         .toLowerCase();
       return asText.includes(q);
     });
-  }, [facultyTypeFilter, query, rows, statusFilter]);
+  }, [facultyTypeFilter, query, rows, statusFilter, collegeFilter, departmentFilter, orgStructure]);
 
   const sortedRows = React.useMemo(() => {
     const clone = [...filteredRows];
@@ -244,21 +313,21 @@ export function ClearanceProgressDialog({ open, onOpenChange, rows }: ClearanceP
                     <Select
                       value={collegeFilter}
                       onValueChange={setCollegeFilter}
+                      disabled={loadingOrgStructure}
                     >
                       <SelectTrigger
                         variant="primaryoutline"
                         className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
                       >
-                        <SelectValue placeholder="College" />
+                        <SelectValue placeholder={loadingOrgStructure ? "Loading..." : "College"} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Colleges</SelectItem>
-                        <SelectItem value="college_of_arts_and_sciences">College of Arts and Sciences</SelectItem>
-                        <SelectItem value="college_of_business_and_accountancy">College of Business and Accountancy</SelectItem>
-                        <SelectItem value="college_of_computer_studies">College of Computer Studies</SelectItem>
-                        <SelectItem value="college_of_engineering">College of Engineering</SelectItem>
-                        <SelectItem value="college_of_nursing">College of Nursing</SelectItem>
-                        <SelectItem value="college_of_education">College of Education</SelectItem>
+                        {orgStructure?.colleges.map((college) => (
+                          <SelectItem key={college.id} value={college.id}>
+                            {college.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -267,21 +336,21 @@ export function ClearanceProgressDialog({ open, onOpenChange, rows }: ClearanceP
                     <Select
                       value={departmentFilter}
                       onValueChange={setDepartmentFilter}
+                      disabled={loadingOrgStructure}
                     >
                       <SelectTrigger
                         variant="primaryoutline"
                         className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
                       >
-                        <SelectValue placeholder="Department" />
+                        <SelectValue placeholder={loadingOrgStructure ? "Loading..." : "Department"} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Departments</SelectItem>
-                        <SelectItem value="computer_science">Computer Science</SelectItem>
-                        <SelectItem value="information_technology">Information Technology</SelectItem>
-                        <SelectItem value="civil_engineering">Civil Engineering</SelectItem>
-                        <SelectItem value="mechanical_engineering">Mechanical Engineering</SelectItem>
-                        <SelectItem value="accountancy">Accountancy</SelectItem>
-                        <SelectItem value="business_administration">Business Administration</SelectItem>
+                        {availableDepartments.map((department) => (
+                          <SelectItem key={department.id} value={department.id}>
+                            {department.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
