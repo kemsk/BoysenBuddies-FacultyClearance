@@ -128,7 +128,9 @@ function DateField(props: {
   
   const parsedDate = React.useMemo(() => {
     if (!value) return undefined;
-    const parsed = new Date(value);
+    // Parse ISO date string (YYYY-MM-DD) as a local date at noon to avoid timezone issues
+    const [year, month, day] = value.split('-').map(Number);
+    const parsed = new Date(year, month - 1, day, 12, 0, 0); // Set to noon to avoid DST issues
     if (Number.isNaN(parsed.getTime())) return undefined;
     return parsed;
   }, [value]);
@@ -238,6 +240,7 @@ function DateField(props: {
                     }`}
                     onClick={() => {
                       if (isCurrentMonth && isSelectable) {
+                        // Use local date components but format as ISO string
                         const y = date.getFullYear();
                         const m = String(date.getMonth() + 1).padStart(2, "0");
                         const d = String(date.getDate()).padStart(2, "0");

@@ -1764,7 +1764,9 @@ def _parse_iso_date(value: str | None):
     if not value:
         return None
     try:
-        return datetime.fromisoformat(value).date()
+        # Parse as date and create datetime at noon in local timezone
+        date_obj = datetime.fromisoformat(value).date()
+        return datetime.combine(date_obj, datetime.min.time()).replace(hour=12, tzinfo=timezone.get_default_timezone())
     except Exception:
         return None
 
@@ -2202,7 +2204,9 @@ def _parse_iso_date(value: str | None):
     if not value:
         return None
     try:
-        return datetime.fromisoformat(value).date()
+        # Parse as date and create datetime at noon in local timezone
+        date_obj = datetime.fromisoformat(value).date()
+        return datetime.combine(date_obj, datetime.min.time()).replace(hour=12, tzinfo=timezone.get_default_timezone())
     except Exception:
         return None
 
