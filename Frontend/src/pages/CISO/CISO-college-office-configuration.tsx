@@ -2125,21 +2125,6 @@ export default function CISOCollegeOfficeConfiguration() {
                             { method: "DELETE" }
                           );
                           
-                          // Remove approver flow steps that reference the deleted office
-                          const stepsToDelete = approverFlow.filter((step) => step.officeId === confirmDelete.id);
-                          
-                          // Delete each approver flow step via API
-                          for (const step of stepsToDelete) {
-                            try {
-                              await apiJson(
-                                `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps/${step.id}`,
-                                { method: "DELETE" }
-                              );
-                            } catch (error) {
-                              // ignore individual step deletion errors
-                            }
-                          }
-                          
                           // Log activity
                           try {
                             await fetch("/admin/xu-faculty-clearance/api/ciso/activity-logs", {
@@ -2247,6 +2232,185 @@ export default function CISOCollegeOfficeConfiguration() {
           </AlertDialogContent>
         </AlertDialog>
       </main>
+
+      <EditCollegeDialog
+          open={editCollegeOpen}
+          onOpenChange={setEditCollegeOpen}
+          initialValues={editingCollegeId ? colleges.find(c => c.id === editingCollegeId) : undefined}
+          onSave={async (payload) => {
+            if (!editingCollegeId) return;
+            
+            try {
+              await apiJson(
+                `/admin/xu-faculty-clearance/api/ciso/colleges/${editingCollegeId}`,
+                {
+                  method: "PATCH",
+                  body: JSON.stringify(payload),
+                }
+              );
+              
+              // Show success modal
+              setSuccessMessage(`College "${payload.name}" updated successfully!`);
+              setSuccessContinue(() => () => {
+                setSuccessOpen(false);
+                setSuccessMessage('');
+              });
+              setSuccessOpen(true);
+              
+              // Refresh data
+              fetchColleges();
+            } catch (error) {
+              console.error("Failed to update college:", error);
+              setErrorMessage("Failed to update college. Please try again.");
+              setErrorOpen(true);
+            }
+          }}
+        />
+
+        <EditDepartmentDialog
+          open={editDepartmentOpen}
+          onOpenChange={setEditDepartmentOpen}
+          initialValues={editingDepartmentId ? departments.find(d => d.id === editingDepartmentId) : undefined}
+          onSave={async (payload) => {
+            if (!editingDepartmentId) return;
+            
+            try {
+              await apiJson(
+                `/admin/xu-faculty-clearance/api/ciso/departments/${editingDepartmentId}`,
+                {
+                  method: "PATCH",
+                  body: JSON.stringify(payload),
+                }
+              );
+              
+              // Show success modal
+              setSuccessMessage(`Department "${payload.name}" updated successfully!`);
+              setSuccessContinue(() => () => {
+                setSuccessOpen(false);
+                setSuccessMessage('');
+              });
+              setSuccessOpen(true);
+              
+              // Refresh data
+              fetchDepartments();
+            } catch (error) {
+              console.error("Failed to update department:", error);
+              setErrorMessage("Failed to update department. Please try again.");
+              setErrorOpen(true);
+            }
+          }}
+        />
+
+        <EditOfficeDialog
+          open={editOfficeOpen}
+          onOpenChange={setEditOfficeOpen}
+          initialValues={editingOfficeId ? offices.find(o => o.id === editingOfficeId) : undefined}
+          onSave={async (payload) => {
+            if (!editingOfficeId) return;
+            
+            try {
+              await apiJson(
+                `/admin/xu-faculty-clearance/api/ciso/offices/${editingOfficeId}`,
+                {
+                  method: "PATCH",
+                  body: JSON.stringify(payload),
+                }
+              );
+              
+              // Show success modal
+              setSuccessMessage(`Office "${payload.name}" updated successfully!`);
+              setSuccessContinue(() => () => {
+                setSuccessOpen(false);
+                setSuccessMessage('');
+              });
+              setSuccessOpen(true);
+              
+              // Refresh data
+              fetchOffices();
+            } catch (error) {
+              console.error("Failed to update office:", error);
+              setErrorMessage("Failed to update office. Please try again.");
+              setErrorOpen(true);
+            }
+          }}
+        />
+
+        <EditApproverDialog
+          open={editApproverOpen}
+          onOpenChange={setEditApproverOpen}
+          initialValues={editingApproverId ? approverFlow.find(a => a.id === editingApproverId) : undefined}
+          colleges={colleges.map(c => ({ id: c.id, name: c.name, short: c.short }))}
+          categories={approverCategories}
+          onSave={async (payload) => {
+            if (!editingApproverId) return;
+            
+            try {
+              await apiJson(
+                `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps/${editingApproverId}`,
+                {
+                  method: "PATCH",
+                  body: JSON.stringify(payload),
+                }
+              );
+              
+              // Show success modal
+              setSuccessMessage('Approver step updated successfully!');
+              setSuccessContinue(() => () => {
+                setSuccessOpen(false);
+                setSuccessMessage('');
+              });
+              setSuccessOpen(true);
+              
+              // Refresh approver flow data
+              refetchApproverFlow();
+            } catch (error) {
+              console.error("Failed to update approver step:", error);
+              setErrorMessage("Failed to update approver step. Please try again.");
+              setErrorOpen(true);
+            }
+          }}
+        />
+
+        <EditApproverFlowDialog
+          open={editApproverFlowOpen}
+          onOpenChange={setEditApproverFlowOpen}
+          items={approverFlow}
+          onSave={async (updatedSteps) => {
+            try {
+              // Update each step via API
+              await Promise.all(
+                updatedSteps.map((step) =>
+                  apiJson(
+                    `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps/${step.id}`,
+                    {
+                      method: "PATCH",
+                      body: JSON.stringify({
+                        category: step.category,
+                        collegeIds: step.collegeIds,
+                        order: step.order,
+                      }),
+                    }
+                  )
+                )
+              );
+              
+              // Show success modal
+              setSuccessMessage('Approver flow updated successfully!');
+              setSuccessContinue(() => () => {
+                setSuccessOpen(false);
+                setSuccessMessage('');
+              });
+              setSuccessOpen(true);
+              
+              // Refresh approver flow data
+              refetchApproverFlow();
+            } catch (error) {
+              console.error("Failed to update approver flow:", error);
+              setErrorMessage("Failed to update approver flow. Please try again.");
+              setErrorOpen(true);
+            }
+          }}
+        />
 
       <ErrorModal open={errorOpen} onOpenChange={setErrorOpen} message={errorMessage} />
       <SuccessModal open={successOpen} onOpenChange={setSuccessOpen} message={successMessage} onContinue={successContinue || undefined} />

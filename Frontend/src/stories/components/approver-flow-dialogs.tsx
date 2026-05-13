@@ -15,6 +15,7 @@ export type ApproverFlowItem = {
   id: string;
   category: string;
   collegeIds: string[];
+  order: number;
 };
 
 export function AddApproverDialog(props: {

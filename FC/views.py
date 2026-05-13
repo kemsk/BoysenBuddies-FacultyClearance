@@ -4171,7 +4171,7 @@ def faculty_notifications_api(request):
         ids = payload.get("ids")
         role_filter = (payload.get("role") or "").strip()
 
-        qs = Notification.objects.filter(user=session_user)
+        # For mark-as-read, filter by role if provided, otherwise current user
 
         if role_filter and role_filter.lower() != "all":
             role_groups = {
@@ -4184,6 +4184,8 @@ def faculty_notifications_api(request):
             }   
             allowed = role_groups.get(role_filter.lower(), [role_filter])
             qs = qs.filter(user_role__in=allowed)
+        else:
+            qs = Notification.objects.filter(user=session_user)
 
         if isinstance(ids, list) and ids:
             qs = qs.filter(id__in=ids)
@@ -6277,20 +6279,23 @@ def ciso_users_by_role_api(request):
 
 @csrf_exempt
 def ciso_notifications_api(request):
+    print(f"[DEBUG] ciso_notifications_api {request.method} received")
     admin = _get_active_ciso_admin(request)
     if not admin:
         return JsonResponse({"detail": "CISO user not found"}, status=404)
 
     if request.method == "PUT":
+        print("[DEBUG] Processing PUT request")
         payload = _json_body(request)
         if payload is None:
             payload = {}
-
+        
+        print(f"[DEBUG] PUT payload: {payload}")
         ids = payload.get("ids")
         role_filter = (payload.get("role") or "").strip()
+        print(f"[DEBUG] ids={ids}, role_filter={role_filter}")
 
-        qs = Notification.objects.filter(user=session_user)
-
+        # For mark-as-read, filter by role if provided, otherwise current user
         if role_filter and role_filter.lower() != "all":
             role_groups = {
                 "approver": ["Approver", "APPROVER"],
@@ -6301,7 +6306,9 @@ def ciso_notifications_api(request):
                 "system": ["System"],
             }   
             allowed = role_groups.get(role_filter.lower(), [role_filter])
-            qs = qs.filter(user_role__in=allowed)
+            qs = Notification.objects.filter(user_role__in=allowed)
+        else:
+            qs = Notification.objects.filter(user=session_user)
 
         if isinstance(ids, list) and ids:
             qs = qs.filter(id__in=ids)
@@ -9759,9 +9766,7 @@ def approver_action_api(request):
                         title="Submission Approved" if action == "approve" else "Submission Rejected",
                         status=Notification.Status.APPROVED if action == "approve" else Notification.Status.REJECTED,
                         body=(
-                            f"Your submission has been {action.upper()}.\n\n"
-                            f"Submission of {requirement_title}\n"
-                            f"Remarks: {remarks_text}"
+                            f"Your submission has been {action.upper()}.\\n\\nSubmission of {requirement_title}\\nRemarks: {remarks_text}"
                         ),
                         details=[
                             f"Requirement = \"{requirement_title}\"",
@@ -10321,9 +10326,7 @@ def approver_override_api(request):
                         if action == "approve"
                         else Notification.Status.REJECTED,
                     body=(
-                        f"Your submission has been OVERRIDDEN to {action.upper()}.\n\n"
-                        f"Submission of {requirement_title}\n"
-                        f"Remarks: {remarks_text}"
+                        f"Your submission has been OVERRIDDEN to {action.upper()}.\n\nSubmission of {requirement_title}\nRemarks: {remarks_text}"
                     ),
                     details=[
                         f"Requirement = \"{requirement_title}\"",
@@ -10380,7 +10383,7 @@ def approver_notifications_api(request):
         ids = payload.get("ids")
         role_filter = (payload.get("role") or "").strip()
 
-        qs = Notification.objects.filter(user=session_user)
+        # For mark-as-read, filter by role if provided, otherwise current user
 
         if role_filter and role_filter.lower() != "all":
             role_groups = {
@@ -10393,6 +10396,8 @@ def approver_notifications_api(request):
             }   
             allowed = role_groups.get(role_filter.lower(), [role_filter])
             qs = qs.filter(user_role__in=allowed)
+        else:
+            qs = Notification.objects.filter(user=session_user)
 
         if isinstance(ids, list) and ids:
             qs = qs.filter(id__in=ids)
@@ -10702,10 +10707,8 @@ def approver_individual_approval_api(request):
                         Notification.Status.APPROVED
                         if action == "approve"
                         else Notification.Status.REJECTED,
-                    body=(
-                        f"Your submission has been {action.upper()}.\n\n"
-                        f"Submission of {requirement_title}\n"
-                        f"Remarks: {remarks_text}"
+                                        body=(
+                        f"Your submission has been {action.upper()}.\n\nSubmission of {requirement_title}\nRemarks: {remarks_text}"
                     ),
                     details=[
                         f"Requirement = \"{requirement_title}\"",
@@ -10911,9 +10914,7 @@ def assistant_approver_clearance_api(request):
                             title="Submission Approved" if action == "approve" else "Submission Rejected",
                             status=Notification.Status.APPROVED if action == "approve" else Notification.Status.REJECTED,
                             body=(
-                                f"Your submission has been {action.upper()}.\n\n"
-                                f"Submission of {requirement_title}\n"
-                                f"Remarks: {remarks_text}"
+                                f"Your submission has been {action.upper()}.\n\nSubmission of {requirement_title}\nRemarks: {remarks_text}"
                             ),
                             details=[
                                 f"Requirement = \"{requirement_title}\"",
@@ -10990,7 +10991,7 @@ def assistant_approver_notifications_api(request):
         ids = payload.get("ids")
         role_filter = (payload.get("role") or "").strip()
 
-        qs = Notification.objects.filter(user=session_user)
+        # For mark-as-read, filter by role if provided, otherwise current user
 
         if role_filter and role_filter.lower() != "all":
             role_groups = {
@@ -11003,6 +11004,8 @@ def assistant_approver_notifications_api(request):
             }   
             allowed = role_groups.get(role_filter.lower(), [role_filter])
             qs = qs.filter(user_role__in=allowed)
+        else:
+            qs = Notification.objects.filter(user=session_user)
 
         if isinstance(ids, list) and ids:
             qs = qs.filter(id__in=ids)
@@ -11188,10 +11191,8 @@ def assistant_approver_individual_approval_api(request):
                     title="Submission Approved",
                     status=Notification.Status.APPROVED,
                     body=(
-                        "Your submission has been APPROVED.\n\n"
-                        f"Submission of {requirement_title}\n"
-                        f"Remarks: {remarks}"
-                    ),
+                        f"Your submission has been {action.upper()}.\n\nSubmission of {requirement_title}\nRemarks: {remarks_text}"
+                            ),
                     details=[
                         f"Requirement = \"{requirement_title}\"",
                         f"Remarks = {remarks}",
@@ -11266,10 +11267,7 @@ def assistant_approver_individual_approval_api(request):
                     title="Submission Rejected",
                     status=Notification.Status.REJECTED,
                     body=(
-                        "Your submission has been REJECTED.\n\n"
-                        f"Submission of {requirement_title}\n"
-                        "Remarks:\n"
-                        f"{remarks}"
+                         f"Your submission has been {action.upper()}.\n\nSubmission of {requirement_title}\nRemarks: {remarks_text}"
                     ),
                     details=[
                         f"Requirement = \"{requirement_title}\"",
