@@ -2,18 +2,18 @@ import * as React from "react";
 
 import "../../index.css"; 
 import { AssistantApproverHeader } from "../../stories/components/header";
-
 import {
   ClearanceRequestsCard,
   type ClearanceRequestItem,
 } from "../../stories/components/request-cards";
+import { Link, useNavigate } from "react-router-dom";
 
 import {
   type AnnouncementItem,
 } from "../../stories/components/cards";
 
 import { Button } from "../../stories/components/button";
-
+import { Badge } from "../../stories/components/badge";
 import {
   Select,
   SelectContent,
@@ -22,12 +22,23 @@ import {
   SelectValue,
 } from "../../stories/components/select";
 
-
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
-import { Link, useNavigate } from "react-router-dom";
 import { SearchInputGroup } from "../../stories/components/input-group";
 import { useState } from "react";
 
+// Helper to compute overall faculty status
+function getFacultyOverallStatus(facultyId: string, allRequests: ClearanceRequestItem[]): "approved" | "pending" | "rejected" {
+  const facultyRequests = allRequests.filter(r => r.employeeId === facultyId);
+  if (facultyRequests.length === 0) return "pending";
+
+  const hasRejected = facultyRequests.some(r => r.status === "rejected");
+  if (hasRejected) return "rejected";
+
+  const allApproved = facultyRequests.every(r => r.status === "approved");
+  const result = allApproved ? "approved" : "pending";
+  console.log("[DEBUG] getFacultyOverallStatus", { facultyId, facultyRequests: facultyRequests.map(r => ({ id: r.id, status: r.status })), result });
+  return result;
+}
 
 export default function AssistantApproverViewClearance() {
   const navigate = useNavigate();
@@ -71,7 +82,11 @@ export default function AssistantApproverViewClearance() {
         setItems(initial);
       });
   }, []);
-
+  function getClearanceStatusBadgeVariant(status: ClearanceRequestItem["status"]) {
+    if (status === "approved") return "success" as const;
+    if (status === "rejected") return "destructive" as const;
+    return "warning" as const;
+  }
 React.useEffect(() => {
   refresh()
     .catch(() => {
@@ -114,6 +129,8 @@ React.useEffect(() => {
               status: item.status === "COMPLETED" ? "approved" as const : "pending" as const,
             }))
           : [];
+        console.log("[DEBUG] assistant-approver-view-clearance raw data", data);
+        console.log("[DEBUG] mapped requests", next);
         setRequests(next);
       })
       .catch(() => {
@@ -143,7 +160,6 @@ React.useEffect(() => {
           return true;
         });
       }
-      
       // Filter by search query
       if (q) {
         filtered = filtered.filter((r) => {
@@ -312,10 +328,62 @@ React.useEffect(() => {
           
           <div className="mt-3">
             <div className="mt-6">
-              <ClearanceRequestsCard
-                items={filteredRequests}
-                getItemHref={(item) => `/assistant-approver-archived-individual?timelineId=${encodeURIComponent(rawTimelineId)}&archivedId=${encodeURIComponent(item.id)}`}
-              />
+              <div className="hidden lg:block">
+                <div className="overflow-hidden rounded-xl border border-muted-foreground/20 bg-card shadow">
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-left text-sm text-black">
+                      <thead className="bg-white">
+                        <tr className="border-b border-muted-foreground/20">
+                          <th className="px-4 py-3 font-semibold">Name</th>
+                          <th className="px-4 py-3 font-semibold">Employee ID</th>
+                          <th className="px-4 py-3 font-semibold">College</th>
+                          <th className="px-4 py-3 font-semibold">Department</th>
+                          <th className="px-4 py-3 font-semibold">Faculty Type</th>
+                          <th className="px-4 py-3 font-semibold">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredRequests.map((item) => (
+                          <tr key={item.id} className="border-b border-muted-foreground/20 last:border-b-0">
+                            <td className="px-4 py-4 align-top font-semibold text-primary">
+                              <Link
+                                to={`/assistant-approver-archived-individual?timelineId=${encodeURIComponent(rawTimelineId)}&archivedId=${encodeURIComponent(item.id)}`}
+                                title={item.name}
+                              >
+                                {item.name}
+                              </Link>
+                            </td>
+                            <td className="px-4 py-4 align-top">{item.employeeId}</td>
+                            <td className="px-4 py-4 align-top">
+                              <div className="max-w-[220px] whitespace-pre-wrap">{item.college}</div>
+                            </td>
+                            <td className="px-4 py-4 align-top">
+                              <div className="max-w-[220px] whitespace-pre-wrap">{item.department}</div>
+                            </td>
+                            <td className="px-4 py-4 align-top">
+                              <div className="max-w-[220px] whitespace-pre-wrap">{item.facultyType}</div>
+                            </td>
+                            <td className="px-4 py-4 align-top">
+                              <Badge
+                                variant={getClearanceStatusBadgeVariant(getFacultyOverallStatus(item.employeeId, requests))}
+                                className="px-3 py-1 text-xs font-bold"
+                              >
+                                {getFacultyOverallStatus(item.employeeId, requests).toUpperCase()}
+                              </Badge>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+              <div className="lg:hidden">
+                <ClearanceRequestsCard
+                  items={filteredRequests}
+                  getItemHref={(item) => `/assistant-approver-archived-individual?timelineId=${encodeURIComponent(rawTimelineId)}&archivedId=${encodeURIComponent(item.id)}`}
+                />
+              </div>
             </div>
           </div>
         </div>

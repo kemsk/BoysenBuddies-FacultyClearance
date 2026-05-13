@@ -135,39 +135,65 @@ export default function ApproverArchivedIndividualApproval() {
       return;
     }
 
+    if (!item || !Array.isArray(item.requests) || item.requests.length === 0) {
+      openError("No clearance requests found for this faculty member.");
+      return;
+    }
+
+    const requestIds = item.requests
+      .map((req) => req.requestId)
+      .filter((id): id is string => Boolean(id));
+
+    if (requestIds.length === 0) {
+      openError("No request IDs found for this faculty member.");
+      return;
+    }
+
     setSubmittingRequestId(requestId);
     try {
-      const response = await fetch(
-        `/admin/xu-faculty-clearance/api/approver/archived-individual?timelineId=${encodeURIComponent(timelineId)}&archivedId=${encodeURIComponent(archivedId)}`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": getCookie("csrftoken") || "",
+      for (const id of requestIds) {
+        const response = await fetch(
+          `/admin/xu-faculty-clearance/api/approver/archived-individual?timelineId=${encodeURIComponent(timelineId)}&archivedId=${encodeURIComponent(archivedId)}`,
+          {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken") || "",
+            },
+            body: JSON.stringify({
+              request_id: id,
+              action,
+              remarks,
+            }),
           },
-          body: JSON.stringify({
-            request_id: requestId,
-            action,
-            remarks,
-          }),
-        },
-      );
+        );
 
-      const data = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error((data && (data as any).detail) || `Failed to ${action}.`);
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          const targetReq = item.requests.find((req) => req.requestId === id);
+          const targetTitle = targetReq?.requirementTitle || targetReq?.requirementName || id;
+          throw new Error((data && (data as any).detail) || `Failed to ${action} "${targetTitle}".`);
+        }
       }
 
-      const requestItem = item?.requests?.find((req) => req.requestId === requestId);
-      const requirementTitle = requestItem?.requirementTitle || requestItem?.requirementName || "";
-      const facultyEmployeeId = item?.employeeId || "No Employee ID";
-      const requestItemName = item?.fullName || item?.name || "";
+      const facultyEmployeeId = item.employeeId || "No Employee ID";
+      const requestItemName = item.fullName || item.name || "";
+      const requirementTitles = item.requests
+        .map((req) => req.requirementTitle || req.requirementName || req.requestId)
+        .filter((v): v is string => Boolean(v));
+      const requirementsSummary = requirementTitles.join(", ");
+
+      const targetUserIdRaw = item?.id;
+      const targetUserId = targetUserIdRaw ? parseInt(String(targetUserIdRaw), 10) : null;
+      const sessionUserIdRaw = (userProfile as any)?.id;
+      const sessionUserId = sessionUserIdRaw ? parseInt(String(sessionUserIdRaw), 10) : null;
 
       const eventType = action === "approve" ? "approved_clearance" : "rejected_clearance";
       const details: string[] = [
         `Faculty Member: ${requestItemName}`,
         `Employee ID: ${facultyEmployeeId}`,
+        `Requirements: ${requirementsSummary || "(none)"}`,
         `Remarks: ${remarks}`,
       ];
 
@@ -220,20 +246,26 @@ export default function ApproverArchivedIndividualApproval() {
               "X-CSRFToken": getCookie("csrftoken") || "",
             },
             body: JSON.stringify({
+              ...(targetUserId ? { user_id: targetUserId } : {}),
+              ...(sessionUserId ? { approver_id: sessionUserId, created_by_id: sessionUserId } : {}),
               title: action === "approve" ? "Submission Approved" : "Submission Rejected",
               status: action === "approve" ? "approved" : "rejected",
               body:
                 action === "approve"
                   ? "Your submission has been APPROVED.\n\n" +
-                    `Submission of ${requirementTitle}\n\n` +
+                    `Faculty Member: ${requestItemName}\n\n` +
+                    `Requirements: ${requirementsSummary || "(none)"}\n\n` +
                     "Remarks:\n" +
                     `${remarks}`
                   : "Your submission has been REJECTED.\n\n" +
-                    `Submission of ${requirementTitle}\n\n` +
+                    `Faculty Member: ${requestItemName}\n\n` +
+                    `Requirements: ${requirementsSummary || "(none)"}\n\n` +
                     "Remarks:\n" +
                     `${remarks}`,
               details: [
-                `Requirement = "${requirementTitle}"`,
+                `Faculty Member = ${requestItemName}`,
+                `Employee ID = ${facultyEmployeeId}`,
+                `Requirements = ${requirementsSummary || "(none)"}`,
                 `Remarks = ${remarks}`,
               ],
               user_role: "Approver",

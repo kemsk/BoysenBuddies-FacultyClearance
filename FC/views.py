@@ -4166,6 +4166,8 @@ def faculty_notifications_api(request):
         details = payload.get("details", [])
         user_role = (payload.get("user_role") or "").strip()
         user_id = payload.get("user_id")
+        if user_id in (None, ""):
+            user_id = payload.get("user")
         is_read = payload.get("is_read", False)
         status = payload.get("status")  # Can be None
         created_by_id_raw = payload.get("created_by_id")
@@ -4188,15 +4190,26 @@ def faculty_notifications_api(request):
         except Exception:
             created_by_user = session_user
 
-        approver_user = None
+        approver_user = session_user
         try:
             if approver_id_raw not in (None, ""):
-                approver_user = User.objects.filter(id=int(approver_id_raw)).first()
+                approver_candidate = User.objects.filter(id=int(approver_id_raw)).first()
+                if approver_candidate:
+                    approver_user = approver_candidate
         except Exception:
-            approver_user = None
+            approver_user = session_user
+
+        target_user = session_user
+        try:
+            if user_id not in (None, ""):
+                target_candidate = User.objects.filter(id=int(user_id)).first()
+                if target_candidate:
+                    target_user = target_candidate
+        except Exception:
+            target_user = session_user
 
         notification = Notification.objects.create(
-            user=session_user,  # Use user field, not user_id
+            user=target_user,
             created_by=created_by_user,
             approver=approver_user,
             user_role=user_role,
@@ -9544,9 +9557,10 @@ def approver_clearance_api(request):
             "submittedDate": req.submitted_date.strftime("%Y-%m-%d") if req.submitted_date else None,
             "submissionNotes": req.submission_notes or "",
         })
+
     return JsonResponse({"items": items})
 
-@csrf_exempt
+
 @approver_required
 def approver_action_api(request):
     user = _get_authenticated_user(request)
@@ -9573,41 +9587,95 @@ def approver_action_api(request):
     if action == "reject" and not remarks.strip():
         return JsonResponse({"detail": "Remarks are required for rejection"}, status=400)
 
-    # Get all clearance requests (allow both active and archived timelines)
-    clearance_requests = ClearanceRequest.objects.filter(
-        id__in=request_ids
-    )
+    # Get all clearance requests.
+    # NOTE: Frontend bulk actions can send:
+    # - ClearanceRequest PK IDs (historical behavior)
+    # - ArchivedClearance IDs (from approver-view-clearance which lists archived faculty rows)
+    clearance_requests = list(ClearanceRequest.objects.filter(id__in=request_ids).select_related("faculty", "requirement"))
 
     if len(clearance_requests) != len(request_ids):
-        return JsonResponse({"detail": "Some clearance requests not found"}, status=404)
+        archived_rows = list(
+            ArchivedClearance.objects.filter(id__in=request_ids)
+            .select_related("faculty", "clearance_timeline")
+        )
+        if len(archived_rows) != len(request_ids):
+            return JsonResponse({"detail": "Some clearance requests not found"}, status=404)
 
-    # Check if any requests are already processed
-    processed_requests = []
+        expanded = []
+        for archived in archived_rows:
+            if not archived.faculty_id or not archived.clearance_timeline_id:
+                continue
+            expanded.extend(
+                list(
+                    ClearanceRequest.objects.filter(
+                        faculty_id=archived.faculty_id,
+                        clearance_timeline_id=archived.clearance_timeline_id,
+                    ).select_related("faculty", "requirement")
+                )
+            )
 
+        # De-dupe while preserving order
+        seen_ids = set()
+        clearance_requests = []
+        for cr in expanded:
+            if cr.id in seen_ids:
+                continue
+            seen_ids.add(cr.id)
+            clearance_requests.append(cr)
+
+        if not clearance_requests:
+            return JsonResponse({"detail": "No clearance requests found for selected faculty"}, status=404)
+
+    # Filter to only requests this approver can act on.
+    # Bulk selection from archived faculty rows can expand to requests outside the current approver's scope;
+    # those should be skipped rather than failing the entire operation.
+    accessible_requests = []
+    skipped_requests = []
     for cr in clearance_requests:
+        if _can_approver_access_request(user, cr):
+            accessible_requests.append(cr)
+        else:
+            skipped_requests.append({
+                "id": str(cr.id),
+                "requestId": cr.request_id,
+                "message": "Permission denied",
+            })
+
+    if not accessible_requests:
+        first = skipped_requests[0]["requestId"] if skipped_requests else ""
+        return JsonResponse(
+            {
+                "detail": f"Permission denied for request {first}" if first else "Permission denied",
+                "skipped_requests": skipped_requests,
+            },
+            status=403,
+        )
+
+    # Check if any accessible requests are already processed
+    processed_requests = []
+    for cr in accessible_requests:
         if cr.status in [ClearanceRequest.Status.APPROVED, ClearanceRequest.Status.REJECTED]:
             processed_requests.append({
                 "id": str(cr.id),
                 "requestId": cr.request_id,
                 "status": _to_request_status(cr.status),
-                "message": "Request already processed"
+                "message": "Request already processed",
             })
 
     if processed_requests:
-        return JsonResponse({
-            "detail": f"{len(processed_requests)} request(s) already processed and cannot be modified",
-            "processed_requests": processed_requests
-        }, status=400)
+        return JsonResponse(
+            {
+                "detail": f"{len(processed_requests)} request(s) already processed and cannot be modified",
+                "processed_requests": processed_requests,
+                "skipped_requests": skipped_requests,
+            },
+            status=400,
+        )
 
-    # Validate permissions for all requests
-    for cr in clearance_requests:
-        if not _can_approver_access_request(user, cr):
-            return JsonResponse({"detail": f"Permission denied for request {cr.request_id}"}, status=403)
-
-    # Process all requests in a transaction
+    # Process all accessible requests in a transaction
     with transaction.atomic():
         updated_requests = []
-        for clearance_request in clearance_requests:
+        for clearance_request in accessible_requests:
             old_status = clearance_request.status
             clearance_request.status = (
                 ClearanceRequest.Status.APPROVED if action == "approve"
@@ -9705,7 +9773,8 @@ def approver_action_api(request):
     return JsonResponse({
         "success": True,
         "message": f"Successfully {action}d {len(updated_requests)} clearance request(s)",
-        "updated_requests": updated_requests
+        "updated_requests": updated_requests,
+        "skipped_requests": skipped_requests,
     })
 
 

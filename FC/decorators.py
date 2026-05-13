@@ -1,5 +1,6 @@
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.http import JsonResponse
 from functools import wraps
 
 # Role mapping based on numeric values
@@ -73,7 +74,14 @@ ROLE_VIEW_ACCESS = {
 def login_required(view_func):
     @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
+        wants_json = (
+            request.path.startswith('/admin/xu-faculty-clearance/api/')
+            or request.headers.get('x-requested-with') == 'XMLHttpRequest'
+            or 'application/json' in (request.headers.get('accept') or '')
+        )
         if not request.session.get('user_authenticated'):
+            if wants_json:
+                return JsonResponse({'detail': 'Authentication required'}, status=401)
             return redirect(reverse('fc:login'))
         return view_func(request, *args, **kwargs)
     return _wrapped_view
@@ -86,12 +94,21 @@ def role_required(*allowed_roles):
     def decorator(view_func):
         @wraps(view_func)
         def _wrapped_view(request, *args, **kwargs):
+            wants_json = (
+                request.path.startswith('/admin/xu-faculty-clearance/api/')
+                or request.headers.get('x-requested-with') == 'XMLHttpRequest'
+                or 'application/json' in (request.headers.get('accept') or '')
+            )
             if not request.session.get('user_authenticated'):
+                if wants_json:
+                    return JsonResponse({'detail': 'Authentication required'}, status=401)
                 return redirect(reverse('fc:login'))
             
             user_role_value = request.session.get('user_role_value')
             if user_role_value not in allowed_roles:
                 # Redirect to appropriate dashboard based on role
+                if wants_json:
+                    return JsonResponse({'detail': 'Forbidden'}, status=403)
                 return redirect(get_role_dashboard_url(user_role_value))
             
             return view_func(request, *args, **kwargs)
@@ -106,7 +123,14 @@ def view_folder_required(*allowed_folders):
     def decorator(view_func):
         @wraps(view_func)
         def _wrapped_view(request, *args, **kwargs):
+            wants_json = (
+                request.path.startswith('/admin/xu-faculty-clearance/api/')
+                or request.headers.get('x-requested-with') == 'XMLHttpRequest'
+                or 'application/json' in (request.headers.get('accept') or '')
+            )
             if not request.session.get('user_authenticated'):
+                if wants_json:
+                    return JsonResponse({'detail': 'Authentication required'}, status=401)
                 return redirect(reverse('fc:login'))
             
             user_role_value = request.session.get('user_role_value')
@@ -114,6 +138,8 @@ def view_folder_required(*allowed_folders):
             
             # Check if user can access any of the required folders
             if not any(folder in user_accessible_folders for folder in allowed_folders):
+                if wants_json:
+                    return JsonResponse({'detail': 'Forbidden'}, status=403)
                 return redirect(get_role_dashboard_url(user_role_value))
             
             return view_func(request, *args, **kwargs)
