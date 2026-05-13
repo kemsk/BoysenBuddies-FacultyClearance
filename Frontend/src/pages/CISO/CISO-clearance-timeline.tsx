@@ -26,6 +26,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "../../stories/components/dialog";
+import { Lock } from "lucide-react";
 
 type StoredClearanceTimelineItem = {
   id: string;
@@ -312,7 +313,7 @@ function TimelineCard(props: {
               disabled={isSubmitting}
               onClick={() => onArchive(item)}
             >
-              Place in Record
+              File timeline
             </Button>
             <Button
               variant="back"
@@ -320,7 +321,14 @@ function TimelineCard(props: {
               disabled={editDisabled}
               onClick={handleEditClick}
             >
-              {item.setAsActive ? "EDIT BLOCKED" : "EDIT"}
+              {item.setAsActive ? (
+  <div className="flex items-center gap-2">
+    <Lock className="h-4 w-4 text-gray-500" strokeWidth={2.5} />
+    <span>Edit</span>
+  </div>
+) : (
+  "Edit"
+)}
             </Button>
           </div>
         ) : (
@@ -331,7 +339,7 @@ function TimelineCard(props: {
               disabled={isSubmitting}
               onClick={() => onAdd(term)}
             >
-              ADD
+              Add
             </Button>
           </div>
         )}

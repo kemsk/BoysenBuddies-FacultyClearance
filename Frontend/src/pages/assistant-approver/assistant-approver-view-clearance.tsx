@@ -309,14 +309,6 @@ React.useEffect(() => {
               </div>
           </div>
 
-          <div className="flex justify-between gap-3 mt-4">
-            <Button variant="default" className="w-full font-bold whitespace-nowrap" onClick={handleExport} disabled={filteredRequests.length === 0}> 
-              <div className="flex items-center justify-center gap-2">
-                <img src="/WhiteDownloadIcon.png" alt="export" className="w-6 h-6" />
-                <span>Export Current View</span>
-              </div>  
-            </Button>
-          </div>
           
           <div className="mt-3">
             <div className="mt-6">

@@ -22,6 +22,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { Button } from "../../stories/components/button";
 import { SuccessMessageCard } from "../../stories/components/status-message-card";
+import { ErrorModal } from "../../stories/components/success-and-error-modals";
 
 type Requirement = {
   id: number;
@@ -55,6 +56,8 @@ export default function RequirementList() {
   const [approverName, setApproverName] = React.useState<string>("");
   const [currentUserId, setCurrentUserId] = React.useState<number | null>(null);
   const [isPartOfApproverFlow, setIsPartOfApproverFlow] = React.useState<boolean>(false);
+  const [errorModalOpen, setErrorModalOpen] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState("");
 
   const hasActiveTimeline = Boolean(activeAcademicYear && activeSemester);
 
@@ -112,6 +115,8 @@ export default function RequirementList() {
               }
             } catch (error) {
               console.log("Error checking approver profile:", error);
+              setErrorMessage("Failed to check approver profile. Please try again.");
+              setErrorModalOpen(true);
               setIsPartOfApproverFlow(false);
             }
           } else {
@@ -123,6 +128,8 @@ export default function RequirementList() {
         }
       } catch (error) {
         console.log("Error fetching user profile:", error);
+        setErrorMessage("Failed to fetch user profile. Please try again.");
+        setErrorModalOpen(true);
         setApproverName("Approver");
         setIsPartOfApproverFlow(false);
       }
@@ -140,6 +147,8 @@ export default function RequirementList() {
       }
     } catch (error) {
       console.error("Failed to fetch requirements:", error);
+      setErrorMessage("Failed to fetch requirements. Please try again.");
+      setErrorModalOpen(true);
     } finally {
       setLoading(false);
     }
@@ -255,8 +264,8 @@ export default function RequirementList() {
   };
 
   // Function to commit all pending changes
-  const commitPendingChanges = async () => {
-    if (pendingChanges.length === 0) return;
+  const commitPendingChanges = async (): Promise<boolean> => {
+    if (pendingChanges.length === 0) return true;
 
     try {
       const createdTitles = pendingChanges
@@ -304,7 +313,7 @@ export default function RequirementList() {
       // Process each pending change
       for (const change of pendingChanges) {
         if (change.type === 'create') {
-          await fetch("/admin/xu-faculty-clearance/api/approver/requirement-list", {
+          const response = await fetch("/admin/xu-faculty-clearance/api/approver/requirement-list", {
             method: "POST",
             credentials: "include",
             headers: {
@@ -313,6 +322,10 @@ export default function RequirementList() {
             },
             body: JSON.stringify(change.data),
           });
+          
+          if (!response.ok) {
+            throw new Error(`Failed to create requirement: ${response.status} ${response.statusText}`);
+          }
 
           // POST Requirement Edited notification for the created requirement
           try {
@@ -386,7 +399,7 @@ export default function RequirementList() {
             console.warn("[notification] Requirement Edited POST error:", e);
           }
         } else if (change.type === 'update') {
-          await fetch(`/admin/xu-faculty-clearance/api/approver/requirement-list/${change.id}`, {
+          const response = await fetch(`/admin/xu-faculty-clearance/api/approver/requirement-list/${change.id}`, {
             method: "PUT",
             credentials: "include",
             headers: {
@@ -395,14 +408,22 @@ export default function RequirementList() {
             },
             body: JSON.stringify(change.data),
           });
+          
+          if (!response.ok) {
+            throw new Error(`Failed to update requirement: ${response.status} ${response.statusText}`);
+          }
         } else if (change.type === 'delete') {
-          await fetch(`/admin/xu-faculty-clearance/api/approver/requirement-list/${change.id}`, {
+          const response = await fetch(`/admin/xu-faculty-clearance/api/approver/requirement-list/${change.id}`, {
             method: "DELETE",
             credentials: "include",
             headers: {
               "X-CSRFToken": getCookie("csrftoken"),
             },
           });
+          
+          if (!response.ok) {
+            throw new Error(`Failed to delete requirement: ${response.status} ${response.statusText}`);
+          }
         }
       }
 
@@ -411,9 +432,14 @@ export default function RequirementList() {
       
       // Refresh requirements
       fetchRequirements();
+      
+      return true; // Success
     } catch (error) {
       console.error("Failed to commit pending changes:", error);
-      // Error handling without JavaScript alert
+      setErrorMessage("Failed to save changes. Please try again.");
+      setErrorModalOpen(true);
+      
+      return false; // Failure
     }
   };
 
@@ -620,11 +646,14 @@ export default function RequirementList() {
             )}
             <AgreementCard 
               disabled={!isPartOfApproverFlow || !hasActiveTimeline}
-              onConfirm={() => {
+              onConfirm={async () => {
+                let success = true;
                 if (pendingChanges.length > 0) {
-                  commitPendingChanges();
+                  success = await commitPendingChanges();
                 }
-                setShowSuccess(true);
+                if (success) {
+                  setShowSuccess(true);
+                }
               }} 
             />
           </>
@@ -663,6 +692,20 @@ export default function RequirementList() {
           }}
         />
       )}
+      
+      {/* Error Modal */}
+      <ErrorModal
+        open={errorModalOpen}
+        onOpenChange={setErrorModalOpen}
+        message={errorMessage}
+        continueLabel="OK"
+        onContinue={() => {
+          // Clear pending changes to revert to original state
+          setPendingChanges([]);
+          // Refresh requirements to show current server state
+          fetchRequirements();
+        }}
+      />
     </div>
   );
 }
