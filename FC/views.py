@@ -2722,14 +2722,15 @@ def ciso_faculty_dump_import_api(request):
                 'invalid_fields': f"Error: {str(e)}"
             })
 
-    # Check if all entries are complete - if so, still create archive for history
+    # Check if all entries are complete - if so, create archive for history
     all_complete = all(
         processed_row.get('validation_status') == 'COMPLETE' 
         for processed_row in processed_rows
     )
 
-    # After processing rows, save the uploaded CSV to disk with validation info and create
-    # a FacultyDumpArchive entry tied to the selected clearance timeline.
+    # After processing rows, handle two scenarios:
+    # - All entries complete: create archive only, no downloadable file
+    # - Incomplete entries: create downloadable file only, no archive
 
     try:
         import os
@@ -2738,10 +2739,7 @@ def ciso_faculty_dump_import_api(request):
         dumps_dir = os.path.join(media_root, "faculty_dumps")
         os.makedirs(dumps_dir, exist_ok=True)
 
-        # Build a unique filename for each import so that multiple dumps for
-        # the same timeline create distinct archive entries and do not
-        # overwrite the previous file on disk.
-
+        # Build a unique filename
         safe_name = upload.name.replace("/", "_").replace("\\", "_")
         timestamp = timezone.localtime().strftime("%Y%m%d%H%M%S")
         file_name = f"timeline-{clearance_timeline.id}-{timestamp}-{safe_name}"
@@ -2779,7 +2777,11 @@ def ciso_faculty_dump_import_api(request):
 
         relative_path = os.path.relpath(file_path, media_root) if media_root else file_name
 
-        # Create archive entry and return the ID for frontend download
+        # Handle the two scenarios
+        archive_entry = None
+        download_file_path = None
+        
+        # Always create archive entry so frontend can download the enhanced CSV
         archive_entry = FacultyDumpArchive.objects.create(
             clearance_timeline=clearance_timeline,
             academic_year_start=clearance_timeline.academic_year_start,
@@ -2788,8 +2790,15 @@ def ciso_faculty_dump_import_api(request):
             dump_file_path=relative_path,
             dump_file_size=size_label,
         )
+        
+        # Only set download_file_path for incomplete entries (for future use)
+        if not all_complete:
+            download_file_path = relative_path
+        else:
+            download_file_path = None
+
     except Exception as e:
-        errors.append({"row": 0, "message": f"Error saving dump archive: {str(e)}"})
+        errors.append({"row": 0, "message": f"Error processing file: {str(e)}"})
 
     return JsonResponse(
         {
@@ -2797,7 +2806,8 @@ def ciso_faculty_dump_import_api(request):
             "updated_count": updated_count,
             "skipped_count": skipped_count,
             "errors": errors,
-            "archive_id": archive_entry.id if 'archive_entry' in locals() else None,
+            "archive_id": archive_entry.id if archive_entry else None,
+            "download_file_path": download_file_path,
         }
     )
 

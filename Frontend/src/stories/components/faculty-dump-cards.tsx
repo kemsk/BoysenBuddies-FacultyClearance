@@ -339,7 +339,10 @@ export function FacultyDataDumpCard({
                 {" "}
                 <span className="font-bold">Click to upload </span> or drag and drop
               </div>
-              <div className="text-xs text-muted-foreground">CSV or Excel files ({maxSizeLabel})</div>
+              <div className="text-xs text-muted-foreground">CSV file ({maxSizeLabel})</div>
+              <div className="mt-2 text-xs text-blue-900">
+                <strong>Required Columns:</strong> email, university_id, first_name, middle_name, last_name, faculty_type, college_code, department_code
+              </div>
             </button>
           )}
           <input

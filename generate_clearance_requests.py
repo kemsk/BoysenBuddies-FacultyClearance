@@ -97,8 +97,12 @@ def create_requirement(timeline, title, approver_step):
         # Office-based requirement
         recipient_scope = 'office'
         description = f'Requirement for {title} - {approver_step.office.name}'
+    elif approver_step.category == "Department Chair":
+        # Department Chair requirement - should be department-scoped
+        recipient_scope = 'department'
+        description = f'Requirement for {title} - All Departments'
     else:
-        # College/Department-based requirement
+        # College Dean requirement - should be college-scoped
         recipient_scope = 'college'
         description = f'Requirement for {title} - All Colleges'
     
@@ -118,8 +122,13 @@ def create_requirement(timeline, title, approver_step):
         if approver_step.office:
             # Office-based: link to the specific office
             requirement.target_offices.add(approver_step.office)
+        elif recipient_scope == 'department':
+            # Department-based: link to all departments
+            from FC.models import Department
+            all_departments = Department.objects.all()
+            requirement.target_departments.set(all_departments)
         else:
-            # College-based: link to all colleges (department chair and college dean)
+            # College-based: link to all colleges (for College Dean clearance)
             from FC.models import College
             all_colleges = College.objects.all()
             requirement.target_colleges.set(all_colleges)

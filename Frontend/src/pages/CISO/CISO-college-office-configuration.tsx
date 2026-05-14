@@ -192,7 +192,10 @@ function AddCollegeDialog(props: {
                       {" "}
                       <span className="font-bold">Click to upload </span> or drag and drop
                     </div>
-                    <div className="text-xs text-muted-foreground">CSV or Excel files (Max size 50 MB)</div>
+                    <div className="text-xs text-muted-foreground">CSV file (Max size 50 MB)</div>
+                    <div className="mt-2 text-xs text-blue-900">
+                      <strong>Required Columns:</strong> name, code
+                    </div>
                   </button>
                 </div>
               )}
@@ -327,7 +330,10 @@ function AddDepartmentDialog(props: {
                       {" "}
                       <span className="font-bold">Click to upload </span> or drag and drop
                     </div>
-                    <div className="text-xs text-muted-foreground">CSV or Excel files (Max size 50 MB)</div>
+                    <div className="text-xs text-muted-foreground">CSV file (Max size 50 MB)</div>
+                    <div className="mt-2 text-xs text-blue-900">
+                      <strong>Required Columns:</strong> college_code, name, code
+                    </div>
                   </button>
                 </div>
               )}
