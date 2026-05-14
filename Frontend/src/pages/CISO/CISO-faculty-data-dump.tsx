@@ -447,9 +447,6 @@ export default function CISOFacultyDataDump() {
        <div className="mt-2 space-y-3">
         <FacultyDataDumpCard
           title="Upload Faculty Data"
-          semesters={timelines}
-          selectedSemesterId={selectedTimelineId}
-          onSemesterChange={setSelectedTimelineId}
           selectedFile={uploadedFile}
           uploadStatus={uploadStatus}
           uploadProgress={uploadProgress}
@@ -461,10 +458,20 @@ export default function CISOFacultyDataDump() {
           tablePageCount={1}
           onTablePageChange={() => {}}
           onAddFaculty={async (faculty) => {
-            if (!selectedTimelineId) {
-              openError('Please select a timeline first');
-              return;
-            }
+            try {
+              // Get current active timeline
+              const timelineResponse = await fetch("/admin/xu-faculty-clearance/api/ciso/clearance-timeline");
+              if (!timelineResponse.ok) {
+                openError('Failed to get current timeline');
+                return;
+              }
+              const timelineData = await timelineResponse.json();
+              const activeTimeline = timelineData.items?.find((t: any) => t.isActive) || timelineData.timelines?.find((t: any) => t.isActive);
+              
+              if (!activeTimeline) {
+                openError('No active timeline found');
+                return;
+              }
 
             try {
               // Convert college and department names to codes
@@ -485,7 +492,7 @@ export default function CISOFacultyDataDump() {
                   facultyType: faculty.facultyType,
                   college: collegeCode,
                   department: departmentCode,
-                  clearance_timeline_id: selectedTimelineId,
+                  clearance_timeline_id: activeTimeline.id,
                 }),
               });
 
@@ -505,6 +512,10 @@ export default function CISOFacultyDataDump() {
             } catch (error) {
               console.error('Error creating faculty:', error);
               openError(error instanceof Error ? error.message : 'Failed to create faculty');
+            }
+            } catch (error) {
+              console.error('Timeline fetch error:', error);
+              openError('Failed to get current timeline');
             }
           }}
           onEditUser={handleEditUser}
@@ -540,20 +551,32 @@ export default function CISOFacultyDataDump() {
           }}
           onActivate={async () => {
             if (!uploadedFile || busy) return;
-            if (!selectedTimelineId) {
-              openError(SuccessErrorModalMessages.IMPORT_SELECT_SEMESTER);
-              return;
-            }
-            setBusy(true);
-            setUploadStatus("uploading");
-            setUploadProgress(0);
+            
+            // Get current active timeline
             try {
-              // Use the original uploaded CSV file
-              const fileToUpload = uploadedFile;
+              const timelineResponse = await fetch("/admin/xu-faculty-clearance/api/ciso/clearance-timeline");
+              if (!timelineResponse.ok) {
+                openError('Failed to get current timeline');
+                return;
+              }
+              const timelineData = await timelineResponse.json();
+              const activeTimeline = timelineData.items?.find((t: any) => t.isActive) || timelineData.timelines?.find((t: any) => t.isActive);
               
-              const formData = new FormData();
-              formData.append("file", fileToUpload);
-              formData.append("clearance_timeline_id", selectedTimelineId);
+              if (!activeTimeline) {
+                openError('No active timeline found');
+                return;
+              }
+              
+              setBusy(true);
+              setUploadStatus("uploading");
+              setUploadProgress(0);
+              try {
+                // Use the original uploaded CSV file
+                const fileToUpload = uploadedFile;
+                
+                const formData = new FormData();
+                formData.append("file", fileToUpload);
+                formData.append("clearance_timeline_id", activeTimeline.id);
 
               const res = await fetch("/admin/xu-faculty-clearance/api/ciso/faculty-dump/import", {
                 method: "POST",
@@ -648,13 +671,13 @@ export default function CISOFacultyDataDump() {
             } finally {
               setBusy(false);
             }
+            } catch (error) {
+              console.error('Timeline fetch error:', error);
+              openError('Failed to get current timeline');
+            }
           }}
           onFileSelected={async (file) => {
             if (busy) return;
-            if (!selectedTimelineId) {
-              openError(SuccessErrorModalMessages.IMPORT_SELECT_SEMESTER);
-              return;
-            }
             try {
               // Store the file and mark as ready for upload
               setUploadedFile(file);

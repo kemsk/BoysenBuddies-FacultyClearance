@@ -39,9 +39,6 @@ export interface FacultyDataDumpCardProps {
   onDownloadTemplate?: () => void;
   maxSizeLabel?: string;
   accept?: string;
-  semesters?: { id: string; label: string }[];
-  selectedSemesterId?: string;
-  onSemesterChange?: (id: string) => void;
   isFileReady?: boolean;
   onClearFile?: () => void;
   tableUsers?: SystemUser[];
@@ -89,9 +86,6 @@ export function FacultyDataDumpCard({
 
   accept = ".csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 
-  semesters,
-  selectedSemesterId,
-  onSemesterChange,
   isFileReady = false,
   onClearFile,
   tableUsers,
@@ -110,9 +104,7 @@ export function FacultyDataDumpCard({
   departmentNameToCodeMap = {},
 }: FacultyDataDumpCardProps) {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
-  const [internalSemesterId, setInternalSemesterId] = React.useState("");
   const [internalFile, setInternalFile] = React.useState<File | null>(null);
-  const currentSemesterId = selectedSemesterId ?? internalSemesterId;
   const currentFile = selectedFile ?? internalFile;
 
   function handleFiles(files: FileList | null) {
@@ -148,29 +140,6 @@ export function FacultyDataDumpCard({
     <Card className={cn("overflow-hidden border-muted-foreground/20", className)}>
       <CardContent className="p-6">
         <div className="text-center text-base font-bold text-gray-900">{title}</div>
-        <div className="mt-4">
-          <Select
-
-            value={currentSemesterId}
-            onValueChange={(val) => {
-              setInternalSemesterId(val);
-              onSemesterChange?.(val);
-            }}
-
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select Semester" />
-            </SelectTrigger>
-            <SelectContent>
-              {(semesters ?? []).map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.label}
-                </SelectItem>
-
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
         <div
 
           className={cn(

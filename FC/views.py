@@ -2722,24 +2722,11 @@ def ciso_faculty_dump_import_api(request):
                 'invalid_fields': f"Error: {str(e)}"
             })
 
-    # Check if all entries are complete - if so, don't save the results CSV
+    # Check if all entries are complete - if so, still create archive for history
     all_complete = all(
         processed_row.get('validation_status') == 'COMPLETE' 
         for processed_row in processed_rows
     )
-    
-    if all_complete:
-        # All entries are complete, return success without creating archive
-        return JsonResponse(
-            {
-                "created_count": created_count,
-                "updated_count": updated_count,
-                "skipped_count": skipped_count,
-                "errors": errors,
-                "archive_id": None,  # No archive created since all entries are complete
-                "message": "All faculty entries were successfully processed. No results file created."
-            }
-        )
 
     # After processing rows, save the uploaded CSV to disk with validation info and create
     # a FacultyDumpArchive entry tied to the selected clearance timeline.
