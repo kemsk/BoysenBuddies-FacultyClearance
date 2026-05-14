@@ -11566,8 +11566,6 @@ def ciso_college_office_configuration_api(request):
 
             try:
                 timeline = ClearanceTimeline.objects.get(id=timeline_id)
-                if timeline.is_active:
-                    return JsonResponse({"detail": "Cannot save configuration for active timeline"}, status=400)
             except ClearanceTimeline.DoesNotExist:
                 return JsonResponse({"detail": "Timeline not found"}, status=400)
 

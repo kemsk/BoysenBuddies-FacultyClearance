@@ -2444,25 +2444,37 @@ export default function CISOCollegeOfficeConfiguration() {
         <EditApproverFlowDialog
           open={editApproverFlowOpen}
           onOpenChange={setEditApproverFlowOpen}
-          items={approverFlow}
+          items={approverFlow.map((item, index) => ({
+            ...item,
+            order: item.order ?? index
+          }))}
           onSave={async (updatedSteps) => {
             try {
-              // Update each step via API
-              await Promise.all(
-                updatedSteps.map((step) =>
-                  apiJson(
-                    `/admin/xu-faculty-clearance/api/ciso/approver-flow/steps/${step.id}`,
-                    {
-                      method: "PATCH",
-                      body: JSON.stringify({
-                        category: step.category,
-                        collegeIds: step.collegeIds,
-                        order: step.order,
-                      }),
-                    }
-                  )
-                )
-              );
+              if (!selectedTimelineId) {
+                throw new Error("No timeline selected");
+              }
+
+              // Save the entire approver flow configuration via the correct API
+              const response = await fetch(`/admin/xu-faculty-clearance/api/ciso/college-office-configuration?timeline_id=${selectedTimelineId}`, {
+                method: 'POST',
+                credentials: "include",
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  timelineId: selectedTimelineId,
+                  colleges,
+                  departments,
+                  offices,
+                  approverFlow: updatedSteps,
+                }),
+              });
+              
+              if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Save approver flow error:', errorText);
+                throw new Error(`Failed to save approver flow: ${errorText}`);
+              }
               
               // Show success modal
               setSuccessMessage('Approver flow updated successfully!');
