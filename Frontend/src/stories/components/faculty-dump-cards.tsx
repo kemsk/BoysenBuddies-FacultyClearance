@@ -47,6 +47,8 @@ export interface FacultyDataDumpCardProps {
   tableUsers?: SystemUser[];
   tablePage?: number;
   tablePageCount?: number;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
   onTablePageChange?: (page: number) => void;
   onAddFaculty?: (faculty: {
     email: string;
@@ -93,6 +95,8 @@ export function FacultyDataDumpCard({
   isFileReady = false,
   onClearFile,
   tableUsers,
+  searchQuery,
+  onSearchChange,
   tablePage,
   tablePageCount,
   onTablePageChange,
@@ -383,10 +387,12 @@ export function FacultyDataDumpCard({
 
           />
         </div>
-        {(currentFile && (uploadStatus === "success" || isFileReady)) || (tableUsers && tableUsers.length > 0) ? (
+        {(tableUsers && tableUsers.length > 0) || searchQuery ? (
           <FacultyTableCard
             className="mt-5"
             users={tableUsers ?? []}
+            searchQuery={searchQuery}
+            onSearchChange={onSearchChange}
             page={tablePage}
             pageCount={tablePageCount}
             onPageChange={onTablePageChange}
@@ -466,6 +472,8 @@ export type FacultyTableCardProps = {
 
   className?: string;
   users: SystemUser[];
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
   onAddApprover?: () => void;
   onAddAdmin?: () => void;
   onEditUser?: (user: SystemUser) => void;
@@ -500,6 +508,8 @@ export function FacultyTableCard({
 
   className,
   users,
+  searchQuery,
+  onSearchChange,
   onAddAdmin,
   onEditUser,
   onRemoveUser,
@@ -566,6 +576,8 @@ export function FacultyTableCard({
             <div className="flex items-center justify-start gap-2 bg-background px-4 py-3 flex-wrap">
             <div className="w-full md:flex-1 md:min-w-[320px]">
               <SearchInputGroup
+                value={searchQuery || ''}
+                onChange={(e) => onSearchChange?.(e.target.value)}
                 containerClassName="h-10"
                 placeholder="Search by name, ID, or email..."
               />
@@ -638,7 +650,16 @@ export function FacultyTableCard({
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map((user, idx) => {
+                    {users.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="px-4 py-8 text-center">
+                          <div className="text-muted-foreground">
+                            {searchQuery ? `No faculty found "${searchQuery}"` : "No faculty found"}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      users.map((user, idx) => {
                       const firstName = user.firstname ?? user.FirstName ?? "";
                       const middleName = user.middlename ?? user.MiddleName ?? "";
                       const lastName = user.lastname ?? user.LastName ?? "";
@@ -685,7 +706,8 @@ export function FacultyTableCard({
                           </td>
                         </tr>
                       );
-                    })}
+                    })
+                    )}
                   </tbody>
                   {typeof page === "number" && typeof pageCount === "number" ? (
                     <tfoot>
@@ -718,7 +740,14 @@ export function FacultyTableCard({
             </div>
 
             <div className="md:hidden">
-              {users.map((user, idx) => (
+              {users.length === 0 ? (
+                <div className="px-4 py-8 text-center">
+                  <div className="text-muted-foreground">
+                    {searchQuery ? `No faculty found matching "${searchQuery}"` : "No faculty found"}
+                  </div>
+                </div>
+              ) : (
+                users.map((user, idx) => (
                 <React.Fragment key={user.id}>
                   <div className="flex items-start gap-4 px-4 py-5">
                     <div className="min-w-0 flex-1">
@@ -772,7 +801,8 @@ export function FacultyTableCard({
                   </div>
                   {idx < users.length - 1 ? <Divider color="border-[hsl(var(--gray-border))]" /> : null}
                 </React.Fragment>
-              ))}
+              ))
+              )}
             </div>
           </div>
           <Divider orientation="vertical" className="h-auto self-stretch" />
