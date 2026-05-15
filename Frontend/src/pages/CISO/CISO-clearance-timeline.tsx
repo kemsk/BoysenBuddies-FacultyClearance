@@ -2,6 +2,7 @@ import * as React from "react";
 
 import "../../index.css"; 
 import { CISOHeader } from "../../stories/components/header";
+import { usePopupNotifications } from "../../stories/components/PopupNotification";
 
 import {
   CreateClearanceTimelineDialog,
@@ -350,6 +351,7 @@ function TimelineCard(props: {
 
 export default function CISOClearanceTimeline() {
   const navigate = useNavigate();
+  const { showNotification, PopupNotificationsContainer } = usePopupNotifications();
 
   const [items, setItems] = React.useState<StoredClearanceTimelineItem[]>(() => loadTimelineItems());
   const [timelineError, setTimelineError] = React.useState("");
@@ -827,6 +829,8 @@ export default function CISOClearanceTimeline() {
 
       </main>
 
+    {/* Popup Notifications Container */}
+    <PopupNotificationsContainer />
     </div>
   );
 }

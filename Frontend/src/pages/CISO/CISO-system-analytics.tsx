@@ -654,7 +654,7 @@ export default function CISOSystemAnalytics() {
           </div>
         )}
         
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col md:flex-row md:flex-wrap gap-3">
             <StatCard 
               variant="TotalFaculty" 
               number={analyticsData?.summary?.totalFaculty?.toString() || "0"}

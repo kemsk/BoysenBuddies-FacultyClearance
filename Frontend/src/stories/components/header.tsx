@@ -26,16 +26,27 @@ import { Divider } from "./divider";
 import { authService } from "../../services/authService";
 
 type HeaderVariantProps = {
+  children?: React.ReactNode;
   sheetTitle?: string;
   sheetDescription?: string;
-  children?: React.ReactNode;
+  notificationCount?: number;
 };
 
-function HeaderVariant({ sheetTitle, sheetDescription, children }: HeaderVariantProps) {
+function HeaderVariant({
+  children,
+  sheetTitle,
+  sheetDescription,
+  notificationCount = 0,
+}: {
+  children?: React.ReactNode;
+  sheetTitle?: string;
+  sheetDescription?: string;
+  notificationCount?: number;
+}) {
+  console.log("[HeaderVariant] notificationCount:", notificationCount);
   return (
     <header className="w-full border-b bg-background">
       <div className="flex w-full items-center justify-between px-4 py-4 md:py-6">
-        
         {/* Left section */}
         <div className="flex items-center gap-2">
           {/* Mobile logo + label (use flexible container so text doesn't get clipped) */}
@@ -57,11 +68,19 @@ function HeaderVariant({ sheetTitle, sheetDescription, children }: HeaderVariant
         <div className="flex items-center gap-2">
           <Sheet>
             <SheetTrigger >
-              <img
-              src="/PrimaryMenuIcon.png"
-              alt="Menu Icon"
-              className="h-7 w-7 object-contain"
-            />
+              <div className="relative">
+                <img
+                src="/PrimaryMenuIcon.png"
+                alt="Menu Icon"
+                className="h-7 w-7 object-contain"
+              />
+              {/* Red notification dot with counter - only show if there are unread notifications */}
+              {notificationCount > 0 && (
+                <div className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-red-500 border-2 border-white flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">{notificationCount}</span>
+                </div>
+              )}
+              </div>
             </SheetTrigger>
           <SheetContent>
             {sheetTitle || sheetDescription ? (
@@ -144,7 +163,7 @@ export function FacultyHeader() {
   };
 
   return (
-    <HeaderVariant>
+    <HeaderVariant notificationCount={unreadCount}>
       <div className="mt-4 flex h-full flex-col">
         <div className="flex flex-col gap-4">
 
@@ -928,6 +947,8 @@ export function DynamicApproverHeader() {
 export function CISOHeader() {
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = React.useState(0);
+  console.log("[CISO Header] unreadCount:", unreadCount);
+  console.log("[CISO Header] RENDERED!");
 
   React.useEffect(() => {
     let mounted = true;
@@ -986,7 +1007,7 @@ export function CISOHeader() {
   };
 
   return (
-    <HeaderVariant>
+    <HeaderVariant notificationCount={unreadCount}>
       <div className="mt-4 flex h-full flex-col">
         <div className="flex flex-col gap-4 flex-1 min-h-0">
 

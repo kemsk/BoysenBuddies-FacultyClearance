@@ -18,8 +18,8 @@ import {
 
 export default function CISONotification() {
   const [readAll, setReadAll] = React.useState(false);
-
-  type NotificationItemWithRole = NotificationItem & { user_role?: string };
+  
+  type NotificationItemWithRole = NotificationItem & { user_role?: string; user_id?: number | null };
 
   const [items, setItems] = React.useState<NotificationItemWithRole[]>([]);
 
@@ -78,6 +78,7 @@ export default function CISONotification() {
   }, [selectedRole, sessionRoleOptions]);
 
   const markAllAsRead = React.useCallback(async () => {
+    console.log("[CISO] markAllAsRead called with role:", selectedRole);
     try {
       const r = await fetch("/admin/xu-faculty-clearance/api/ciso/notifications", {
         method: "PUT",
@@ -88,18 +89,77 @@ export default function CISONotification() {
         body: JSON.stringify({ role: selectedRole }),
       });
 
+      console.log("[CISO] PUT response status:", r.status);
       const text = await r.text();
+      console.log("[CISO] PUT response text:", text);
+      
       if (!r.ok) {
         console.error("CISO notifications mark-as-read failed", r.status, text);
         return;
       }
 
-      setItems((prev) => prev.map((it) => ({ ...it, is_read: true })));
+      console.log("[CISO] PUT successful, updating UI");
+      // Only update items that match the current filter
+      setItems((prev) => prev.map((it) => {
+        // If "all" is selected, update everything
+        if (selectedRole === "all") return { ...it, is_read: true };
+        
+        // Otherwise, only update items that match the current role filter
+        const roleGroups: Record<string, string[]> = {
+          Approver: ["Approver", "APPROVER"],
+          Faculty: ["Faculty", "FACULTY"],
+          CISO: ["CISO"],
+          Assistant: ["Assistant"],
+          OVPHE: ["OVPHE"],
+          System: ["System"],
+        };
+        const normalizedRole = Object.keys(roleGroups).find((k) => k.toLowerCase() === selectedRole.toLowerCase()) ?? selectedRole;
+        const allowedRoles = roleGroups[normalizedRole] ?? [selectedRole];
+        
+        if (allowedRoles.includes(String((it as any).user_role || "").trim())) {
+          return { ...it, is_read: true };
+        }
+        return it;
+      }));
       setReadAll(true);
     } catch (e) {
       console.error("CISO notifications mark-as-read threw", e);
     }
   }, [selectedRole]);
+
+  const markOneAsRead = React.useCallback(async (item: NotificationItemWithRole) => {
+    const id = (item as any)?.id;
+    console.log("[CISO] markOneAsRead called with item:", item);
+    if (!id) {
+      console.log("[CISO] No ID found for item");
+      return;
+    }
+
+    try {
+      const r = await fetch("/admin/xu-faculty-clearance/api/ciso/notifications", {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ids: [id], role: selectedRole }),
+      });
+
+      console.log("[CISO] Individual PUT response status:", r.status);
+      const text = await r.text();
+      console.log("[CISO] Individual PUT response text:", text);
+      
+      if (!r.ok) {
+        console.error("CISO notifications mark-one-as-read failed", r.status, text);
+        return;
+      }
+
+      console.log("[CISO] Individual PUT successful, updating UI");
+      setItems((prev) => prev.map((it) => ((it as any).id === id ? { ...it, is_read: true } : it)));
+    } catch (e) {
+      console.error("CISO notifications mark-one-as-read threw", e);
+    }
+  }, []);
 
   React.useEffect(() => {
     const load = async () => {
@@ -119,6 +179,7 @@ export default function CISONotification() {
           const data = JSON.parse(text) as { items?: NotificationItem[] };
           const nextItems = (data.items ?? []) as NotificationItemWithRole[];
           setItems(nextItems);
+          
           try {
             const roles = Array.from(new Set(nextItems.map((it) => String((it as any).user_role || "")).filter(Boolean)));
             console.log("[CISO notifications] roles from API:", roles);
@@ -217,14 +278,23 @@ export default function CISONotification() {
           </Button>
         </div>
         <div className="mt-4">
+          {(() => { console.log("[CISO] About to render NotificationsCard with onItemClick:", !!markOneAsRead); return null; })()}
+          {/* Popup notifications will appear automatically when new notifications arrive */}
+        
           <NotificationsCard
             items={filteredItems}
             showMarkAsReadButton={false}
             readAll={readAll}
             onReadAllChange={setReadAll}
+            onItemClick={(it) => {
+              console.log("[CISO] onItemClick triggered with:", it);
+              void markOneAsRead(it as NotificationItemWithRole);
+            }}
           />
         </div>
       </main>
+    
+    {/* Popup notifications are handled globally by NotificationProvider */}
     </div>
   );
 }

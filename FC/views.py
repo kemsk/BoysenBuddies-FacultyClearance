@@ -6294,8 +6294,13 @@ def ciso_notifications_api(request):
         ids = payload.get("ids")
         role_filter = (payload.get("role") or "").strip()
         print(f"[DEBUG] ids={ids}, role_filter={role_filter}")
+        
+        # Get session user for fallback filtering
+        session_user = _get_authenticated_user(request)
 
         # For mark-as-read, filter by role if provided, otherwise current user
+        qs = Notification.objects.all()
+        
         if role_filter and role_filter.lower() != "all":
             role_groups = {
                 "approver": ["Approver", "APPROVER"],

@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactElement } from "react";
 import { useThemeFavicon } from "./hooks/useThemeFavicon";
+import { NotificationProvider } from "./contexts/NotificationContext";
 import {
   BrowserRouter as Router,
   Routes,
@@ -370,13 +371,14 @@ function App() {
   useThemeFavicon();
   
   return (
-    <Router>
-      <HeartbeatManager />
-      <Routes>
-        <Route path="/" element={<LoginInput />} />
-        
-        <Route path="/login" element={<Login />} />
-        <Route path="/login-prompt" element={<LoginPrompt />} />
+    <NotificationProvider>
+      <Router>
+        <HeartbeatManager />
+        <Routes>
+          <Route path="/" element={<LoginInput />} />
+          
+          <Route path="/login" element={<Login />} />
+          <Route path="/login-prompt" element={<LoginPrompt />} />
 
         {
           <Route
@@ -878,8 +880,9 @@ function App() {
         }
 
         <Route path="*" element={<Login />} /> {/* fallback route */}
-      </Routes>
-    </Router>
+        </Routes>
+      </Router>
+    </NotificationProvider>
   );
 }
 
