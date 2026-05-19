@@ -10,6 +10,9 @@ import {
   SheetClose,
 } from "./sheet"
 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
+import { User } from "lucide-react";
+
 import { Button } from "../../stories/components/button";
 import {
   AlertDialog,
@@ -103,6 +106,7 @@ function HeaderVariant({
 }
 
 export function Header() {
+  const [facultyTypeFilter, setFacultyTypeFilter] = React.useState<"" | "all" | "part_time" | "full_time">("");
   return (
     <HeaderVariant
       sheetTitle="Are you absolutely sure?"
@@ -114,6 +118,7 @@ export function Header() {
 }
 
 export function FacultyHeader() {
+  const [facultyTypeFilter, setFacultyTypeFilter] = React.useState<"" | "all" | "part_time" | "full_time">("");
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = React.useState(0);
 
@@ -180,7 +185,89 @@ export function FacultyHeader() {
           </div>
 
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
+                  <div className="w-full sm:w-auto sm:min-w-[190px]">
+                    <Select>
+                      <SelectTrigger
+                        variant="primaryoutline"
+                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                      >
+                        <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
+                          <User className="w-4 h-4 text-primary" />
+                          <span>Role:</span>
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="complete">Faculty</SelectItem>
+                        <SelectItem value="incomplete">System Admin</SelectItem>
+                        <SelectItem value="complete">Analytics Admin</SelectItem>
+                        <SelectItem value="incomplete">Approver</SelectItem>  
+                        <SelectItem value="incomplete">Assistant Approver</SelectItem>                   
+                      </SelectContent>
+                    </Select>
+                  </div>
+        <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
+                  <div className="w-full sm:w-auto sm:min-w-[190px]">
+                    <Select
+                      value={facultyTypeFilter}
+                      onValueChange={(v) => setFacultyTypeFilter(v as typeof facultyTypeFilter)}
+                    >
+                      <SelectTrigger
+                        variant="primaryoutline"
+                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                      >
+                        <SelectValue placeholder="Faculty Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Faculty</SelectItem>
+                        <SelectItem value="part_time">Part-time </SelectItem>
+                        <SelectItem value="full_time">Full-time </SelectItem>                        
+                      </SelectContent>
+                    </Select>
+                  </div>
 
+        <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
+                  <div className="w-full sm:w-auto sm:min-w-[190px]">
+                    <Select>
+                      <SelectTrigger
+                        variant="primaryoutline"
+                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                      >
+                        <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
+                          <User className="w-4 h-4 text-primary" />
+                          <span>Role:</span>
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="complete">Faculty</SelectItem>
+                        <SelectItem value="incomplete">System Admin</SelectItem>
+                        <SelectItem value="complete">Analytics Admin</SelectItem>
+                        <SelectItem value="incomplete">Approver</SelectItem>  
+                        <SelectItem value="incomplete">Assistant Approver</SelectItem>                   
+                      </SelectContent>
+                    </Select>
+                  </div>
+        <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />        
+                  <div className="w-full sm:w-auto sm:min-w-[190px]">
+                    <Select>
+                      <SelectTrigger
+                        variant="primaryoutline"
+                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                      >
+                        <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
+                          <User className="w-4 h-4 text-primary" />
+                          <span>Role:</span>
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="complete">Faculty</SelectItem>
+                        <SelectItem value="incomplete">System Admin</SelectItem>
+                        <SelectItem value="complete">Analytics Admin</SelectItem>
+                        <SelectItem value="incomplete">Approver</SelectItem>  
+                        <SelectItem value="incomplete">Assistant Approver</SelectItem>                   
+                      </SelectContent>
+                    </Select>
+                  </div>
+        <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
           <nav className="flex flex-col gap-4 mt-2">
             <div>
               <SheetClose asChild>
@@ -291,6 +378,7 @@ export function FacultyHeader() {
 }
 
 export function AdminHeader() {
+  
   return (
     <HeaderVariant
       sheetTitle="System Admin Menu"
@@ -300,6 +388,7 @@ export function AdminHeader() {
 }
 
 export function ApprovalHeader() {
+  const [facultyTypeFilter, setFacultyTypeFilter] = React.useState<"" | "all" | "part_time" | "full_time">("");
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [userProfile, setUserProfile] = React.useState<any>(null);
@@ -405,7 +494,27 @@ export function ApprovalHeader() {
           </div>
 
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
-
+                  <div className="w-full sm:w-auto sm:min-w-[190px]">
+                    <Select>
+                      <SelectTrigger
+                        variant="primaryoutline"
+                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                      >
+                        <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
+                          <User className="w-4 h-4 text-primary" />
+                          <span>Role:</span>
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="complete">Faculty</SelectItem>
+                        <SelectItem value="incomplete">System Admin</SelectItem>
+                        <SelectItem value="complete">Analytics Admin</SelectItem>
+                        <SelectItem value="incomplete">Approver</SelectItem>  
+                        <SelectItem value="incomplete">Assistant Approver</SelectItem>                   
+                      </SelectContent>
+                    </Select>
+                  </div>
+        <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
           <nav className="flex flex-col gap-4 mt-2">
             <div>
               <SheetClose asChild>
@@ -646,6 +755,7 @@ export function ApprovalHeader() {
 
 
 export function HROHeader() {
+  const [facultyTypeFilter, setFacultyTypeFilter] = React.useState<"" | "all" | "part_time" | "full_time">("");
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = React.useState(0);
 
@@ -723,7 +833,27 @@ export function HROHeader() {
           </div>
 
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
-
+                  <div className="w-full sm:w-auto sm:min-w-[190px]">
+                    <Select>
+                      <SelectTrigger
+                        variant="primaryoutline"
+                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                      >
+                        <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
+                          <User className="w-4 h-4 text-primary" />
+                          <span>Role:</span>
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="complete">Faculty</SelectItem>
+                        <SelectItem value="incomplete">System Admin</SelectItem>
+                        <SelectItem value="complete">Analytics Admin</SelectItem>
+                        <SelectItem value="incomplete">Approver</SelectItem>  
+                        <SelectItem value="incomplete">Assistant Approver</SelectItem>                   
+                      </SelectContent>
+                    </Select>
+                  </div>
+        <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
           <nav className="flex flex-col gap-4 mt-2">
             <div>
               <SheetClose asChild>
@@ -915,6 +1045,7 @@ export function HROHeader() {
 }
 
 export function DynamicApproverHeader() {
+  const [facultyTypeFilter, setFacultyTypeFilter] = React.useState<"" | "all" | "part_time" | "full_time">("");  
   const [userProfile, setUserProfile] = React.useState<any>(null);
 
   React.useEffect(() => {
@@ -945,6 +1076,7 @@ export function DynamicApproverHeader() {
 }
 
 export function CISOHeader() {
+  const [facultyTypeFilter, setFacultyTypeFilter] = React.useState<"" | "all" | "part_time" | "full_time">("");  
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = React.useState(0);
   console.log("[CISO Header] unreadCount:", unreadCount);
@@ -1023,6 +1155,27 @@ export function CISOHeader() {
             </span>
           </div>
 
+        <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
+                  <div className="w-full sm:w-auto sm:min-w-[190px]">
+                    <Select>
+                      <SelectTrigger
+                        variant="primaryoutline"
+                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                      >
+                        <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
+                          <User className="w-4 h-4 text-primary" />
+                          <span>Role:</span>
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="complete">Faculty</SelectItem>
+                        <SelectItem value="incomplete">System Admin</SelectItem>
+                        <SelectItem value="complete">Analytics Admin</SelectItem>
+                        <SelectItem value="incomplete">Approver</SelectItem>  
+                        <SelectItem value="incomplete">Assistant Approver</SelectItem>                   
+                      </SelectContent>
+                    </Select>
+                  </div>
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
 
           <nav className="flex flex-col gap-4 mt-2 overflow-y-auto flex-1 min-h-0 pr-2">
@@ -1260,6 +1413,7 @@ export function CISOHeader() {
 }
 
 export function OVPHEHeader() {
+  const [facultyTypeFilter, setFacultyTypeFilter] = React.useState<"" | "all" | "part_time" | "full_time">("");
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = React.useState(0);
 
@@ -1337,7 +1491,27 @@ export function OVPHEHeader() {
           </div>
 
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
-
+                  <div className="w-full sm:w-auto sm:min-w-[190px]">
+                    <Select>
+                      <SelectTrigger
+                        variant="primaryoutline"
+                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                      >
+                        <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
+                          <User className="w-4 h-4 text-primary" />
+                          <span>Role:</span>
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="complete">Faculty</SelectItem>
+                        <SelectItem value="incomplete">System Admin</SelectItem>
+                        <SelectItem value="complete">Analytics Admin</SelectItem>
+                        <SelectItem value="incomplete">Approver</SelectItem>  
+                        <SelectItem value="incomplete">Assistant Approver</SelectItem>                   
+                      </SelectContent>
+                    </Select>
+                  </div>
+        <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
           <nav className="flex flex-col gap-4 mt-2">
             <div>
               <SheetClose asChild>
@@ -1521,6 +1695,7 @@ export function OVPHEHeader() {
 }
 
 export function AssistantApproverHeader() {
+  const [facultyTypeFilter, setFacultyTypeFilter] = React.useState<"" | "all" | "part_time" | "full_time">("");
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = React.useState(0);
 
@@ -1598,7 +1773,27 @@ export function AssistantApproverHeader() {
           </div>
 
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
-
+                  <div className="w-full sm:w-auto sm:min-w-[190px]">
+                    <Select>
+                      <SelectTrigger
+                        variant="primaryoutline"
+                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                      >
+                        <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
+                          <User className="w-4 h-4 text-primary" />
+                          <span>Role:</span>
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="complete">Faculty</SelectItem>
+                        <SelectItem value="incomplete">System Admin</SelectItem>
+                        <SelectItem value="complete">Analytics Admin</SelectItem>
+                        <SelectItem value="incomplete">Approver</SelectItem>  
+                        <SelectItem value="incomplete">Assistant Approver</SelectItem>                   
+                      </SelectContent>
+                    </Select>
+                  </div>
+        <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
           <nav className="flex flex-col gap-4 mt-2">
             <div>
               <SheetClose asChild>
