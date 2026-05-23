@@ -268,7 +268,6 @@ export function FacultyHeader() {
                         value={currentRole?.toString()}
                         onValueChange={handleRoleChange}
                       >
-<<<<<<< HEAD
                         <SelectTrigger
                           variant="primaryoutline"
                           className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
@@ -289,23 +288,6 @@ export function FacultyHeader() {
                       </Select>
                     </div>
                   )}
-=======
-                        <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
-                          <User className="w-4 h-4 text-primary" />
-                          <span>Role:</span>
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="complete">Faculty</SelectItem>
-                        <SelectItem value="incomplete">System Admin</SelectItem>
-                        <SelectItem value="complete">Analytics Admin</SelectItem>
-                        <SelectItem value="incomplete">Approver</SelectItem>  
-                        <SelectItem value="incomplete">Assistant Approver</SelectItem>                   
-                      </SelectContent>
-                    </Select>
-                  </div>
-
->>>>>>> 523eae78966be4a3481ff835911aff64b6672103
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
           <nav className="flex flex-col gap-4 mt-2">
             <div>
