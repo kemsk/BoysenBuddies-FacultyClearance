@@ -25,6 +25,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { Button } from "../../stories/components/button";
+import { AnalyticsActivityLogsGuideCard } from "../../stories/components/guide-cards";
 
 function mapEventNameToVariant(eventName: string): ActivityLogVariant {
   const eventMapping: Record<string, ActivityLogVariant> = {
@@ -44,7 +45,6 @@ function mapEventNameToVariant(eventName: string): ActivityLogVariant {
     created_guideline: "created_guideline",
     edited_guideline: "edited_guideline",
     delete_guideline: "delete_guideline",
-    deleted_guideline: "deleted_guideline",
     enabled_guideline: "enabled_guideline",
     disabled_guideline: "disabled_guideline",
     archived_guideline: "archived_guideline",
@@ -73,7 +73,7 @@ function mapEventNameToVariant(eventName: string): ActivityLogVariant {
 }
 
 export default function OVPHEActivityLogs() {
-  
+  const [openCard, setOpenCard] = useState(false);   
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -323,7 +323,20 @@ export default function OVPHEActivityLogs() {
           </div>
         </div>
 
-        
+           <div className="fixed bottom-4 left-4 z-[9999]">
+             <Button
+               variant="default"
+               size="sm"
+               onClick={() => setOpenCard(true)}
+             >
+               Need help?
+             </Button>
+           
+           </div>
+             <AnalyticsActivityLogsGuideCard
+               open={openCard}
+               onClose={() => setOpenCard(false)}
+             />       
 
         
       </main>

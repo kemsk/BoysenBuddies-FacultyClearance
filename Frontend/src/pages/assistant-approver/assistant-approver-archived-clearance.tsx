@@ -14,7 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../stories/components/select";
-
+import { ArchivedGuideCard } from "../../stories/components/guide-cards";
+import { Button } from "../../stories/components/button";
 import { useNavigate } from "react-router-dom";
 import { SearchInputGroup } from "../../stories/components/input-group";
 import { useState } from "react";
@@ -35,7 +36,7 @@ export default function AssistantApproverAchivedClearance() {
   const [query, setQuery] = useState("");
   const [selectedYear, setSelectedYear] = useState("all");
   const [selectedTerm, setSelectedTerm] = useState("all");
-
+  const [openCard, setOpenCard] = useState(false); 
   type AnnouncementApiItem = AnnouncementItem & { id: number; email?: string };
 
   const [, setItems] = React.useState<AnnouncementApiItem[]>([]);
@@ -198,7 +199,20 @@ React.useEffect(() => {
           </div>
         </div>
 
-
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <ArchivedGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />   
       </main>
 
     </div>

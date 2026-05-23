@@ -12,11 +12,13 @@ import {
   type SystemGuidlinesItem,
 } from "../../stories/components/cards";
 
-
+import { Button } from "../../stories/components/button";
+import { FacultyDashboardGuideCard } from "../../stories/components/guide-cards";
+import { useState, useEffect } from "react";
 
 export default function Facultydashboard() {
   const [expandedStepIndex, setExpandedStepIndex] = React.useState<number | null>(1);
-
+   const [openCard, setOpenCard] = useState(false); 
   const [profile, setProfile] = React.useState<null | {
     faculty: {
       email: string;
@@ -196,6 +198,21 @@ export default function Facultydashboard() {
             items={dashboardGuidelinesNoEmail}
             cardName="System Guidelines"
           />
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <FacultyDashboardGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />
+
       </main>
 
     </div>

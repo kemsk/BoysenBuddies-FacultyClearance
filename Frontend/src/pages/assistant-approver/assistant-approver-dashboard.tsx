@@ -11,10 +11,13 @@ import {
   type ClearanceRequestItem,
   type RequirementListItem,
 } from "../../stories/components/cards";
+import { AssistantDashboardGuideCard } from "../../stories/components/guide-cards";
+import { Button } from "../../stories/components/button";
+import { useState, useEffect } from "react";
 
 export default function AssistantApproverDashboard() {
   const [timeline, setTimeline] = React.useState<{ academicYear: string; semester: string } | null>(null);
-
+  const [openCard, setOpenCard] = useState(false); 
   const [profile, setProfile] = React.useState<{
     email: string;
     university_id: string;
@@ -139,7 +142,20 @@ export default function AssistantApproverDashboard() {
             showHeaderChevron={false}
           />
 
-
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <AssistantDashboardGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />
 
       </main>
 

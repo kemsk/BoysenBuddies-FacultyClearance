@@ -21,9 +21,12 @@ import {
   ErrorModal,
   SuccessErrorModalMessages,
 } from "../../stories/components/success-and-error-modals";
+import { ImportHistoryGuideCard } from "../../stories/components/guide-cards";
+import { useState } from "react";
 
 export default function CISOFacultyDataDump() {
   const navigate = useNavigate();
+  const [openCard, setOpenCard] = useState(false);   
   const [busy, setBusy] = React.useState(false);
   const [timelines, setTimelines] = React.useState<{ id: string; label: string }[]>([]);
   const [selectedTimelineId, setSelectedTimelineId] = React.useState("");
@@ -715,7 +718,6 @@ export default function CISOFacultyDataDump() {
           }}
         />
        </div>
-
       </main>
 
     </div>

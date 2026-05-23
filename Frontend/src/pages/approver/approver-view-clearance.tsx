@@ -22,6 +22,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { Link, useNavigate } from "react-router-dom";
 import { SearchInputGroup } from "../../stories/components/input-group";
 import { useState } from "react";
+import { ApproverArchivedFacultyRequestGuideCard } from "../../stories/components/guide-cards";
 
 // Helper to compute overall faculty status
 function getFacultyOverallStatus(facultyId: string, allRequests: ClearanceRequestItem[]): "approved" | "pending" | "rejected" {
@@ -41,7 +42,7 @@ export default function ApproverViewClearance() {
   const [sortBy, setSortBy] = React.useState("name");
   const [statusFilter, setStatusFilter] = React.useState("all");
   const [facultyTypeFilter, setFacultyTypeFilter] = React.useState("all");
-  
+  const [openCard, setOpenCard] = useState(false);   
   const timelineId = React.useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get("timelineId") || "";
@@ -375,7 +376,20 @@ export default function ApproverViewClearance() {
           </div>
         </div>
 
-
+           <div className="fixed bottom-4 left-4 z-[9999]">
+             <Button
+               variant="default"
+               size="sm"
+               onClick={() => setOpenCard(true)}
+             >
+               Need help?
+             </Button>
+           
+           </div>
+             <ApproverArchivedFacultyRequestGuideCard
+               open={openCard}
+               onClose={() => setOpenCard(false)}
+             />
       </main>
 
     </div>

@@ -53,6 +53,8 @@ import {
   BreadcrumbSeparator,
 } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { ConfigurationGuideCard } from "../../stories/components/guide-cards";
 
 type CollegeItem = {
   id: string;
@@ -716,7 +718,7 @@ function AddOfficeDialog(props: {
 
 export default function CISOCollegeOfficeConfiguration() {
   const navigate = useNavigate();
-
+  const [openCard, setOpenCard] = useState(false); 
   const [colleges, setColleges] = React.useState<CollegeItem[]>([]);
   const [departments, setDepartments] = React.useState<DepartmentItem[]>([]);
   const [offices, setOffices] = React.useState<OfficeItem[]>([]);
@@ -2281,6 +2283,20 @@ export default function CISOCollegeOfficeConfiguration() {
             </div>
           </AlertDialogContent>
         </AlertDialog>
+                  <div className="fixed bottom-4 left-4 z-[9999]">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => setOpenCard(true)}
+                    >
+                      Need help?
+                    </Button>
+                  
+                  </div>
+                    <ConfigurationGuideCard
+                      open={openCard}
+                      onClose={() => setOpenCard(false)}
+                    />
       </main>
 
       <EditCollegeDialog

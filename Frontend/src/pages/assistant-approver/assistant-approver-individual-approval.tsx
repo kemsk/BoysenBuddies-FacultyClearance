@@ -6,12 +6,14 @@ import { RequestCard } from "../../stories/components/request-cards";
 import { Button } from "../../stories/components/button";
 import { useNavigate } from "react-router-dom";
 import { Textarea } from "../../stories/components/textarea";
+import { AssistantApproverRequestGuideCard } from "../../stories/components/guide-cards";
 
 import {
   ErrorModal,
   SuccessErrorModalMessages,
   SuccessModal,
 } from "../../stories/components/success-and-error-modals";
+import { useState } from "react";
 
 async function parseApiResponse<T>(res: Response): Promise<T> {
   const text = await res.text();
@@ -70,7 +72,7 @@ export default function AssitantApproverIndividualApproval() {
   const [message, setMessage] = React.useState("");
   const [isSaving, setIsSaving] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
-
+  const [openCard, setOpenCard] = useState(false); 
   const [successOpen, setSuccessOpen] = React.useState(false);
   const [successMessage, setSuccessMessage] = React.useState<React.ReactNode>("");
 
@@ -287,6 +289,20 @@ export default function AssitantApproverIndividualApproval() {
             </div>
           )}
         </div>
+                  <div className="fixed bottom-4 left-4 z-[9999]">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => setOpenCard(true)}
+                    >
+                      Need help?
+                    </Button>
+                  
+                  </div>
+                  <AssistantApproverRequestGuideCard
+                    open={openCard}
+                    onClose={() => setOpenCard(false)}
+                  />        
       </main>
 
     </div>

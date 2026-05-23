@@ -25,6 +25,8 @@ import {
 } from "../../stories/components/select";
 import { ClearanceDistributionCard, StatCard, StatCardWithActions, FacultyCompositionCard, OfficeBottlenecksCard, CollegeClearanceStatusCard } from "../../stories/components/system-analytics-cards";
 import { ClearanceProgressDialog, type ClearanceProgressRow } from "../../stories/components/clearance-progress-dialog";
+import { useState } from "react";
+import { SystemAnalyticsGuideCard } from "../../stories/components/guide-cards";
 
 function postOVPHEActivityLog(payload: { event_type: string; details?: string[] }) {
   fetch("/admin/xu-faculty-clearance/api/ovphe/activity-logs", {
@@ -191,7 +193,7 @@ function normalizeTermCode(term: string) {
 
 export default function CISOSystemAnalytics() {
   const navigate = useNavigate();
-
+  const [openCard, setOpenCard] = useState(false); 
   const [clearanceProgressOpen, setClearanceProgressOpen] = React.useState(false);
   const [clearanceProgressRows, setClearanceProgressRows] = React.useState<ClearanceProgressRow[]>([]);
   const [analyticsData, setAnalyticsData] = React.useState<any>(null);
@@ -804,6 +806,20 @@ export default function CISOSystemAnalytics() {
               );
             })()}
           </div>                  
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <SystemAnalyticsGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />          
       </main>
 
     </div>

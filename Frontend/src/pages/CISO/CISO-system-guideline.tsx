@@ -23,6 +23,8 @@ import {
 } from "../../stories/components/edit-system-guidelines-dialog";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
+import { GuidelinesGuideCard } from "../../stories/components/guide-cards";
+import { useState } from "react";
 
 // Helper to POST notifications for multiple roles
 function postCISONotification(payload: {
@@ -86,7 +88,7 @@ function GuidelinesToggle({
 
 export default function CISOSystemGuideline() {
   const navigate = useNavigate();
-
+   const [openCard, setOpenCard] = useState(false); 
   type GuidelineApiItem = SystemGuidlinesItem & { id: number };
 
   const [items, setItems] = React.useState<GuidelineApiItem[]>([]);
@@ -460,8 +462,20 @@ React.useEffect(() => {
             }}
           />
   
-
-
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <GuidelinesGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />
 
       </main>
 

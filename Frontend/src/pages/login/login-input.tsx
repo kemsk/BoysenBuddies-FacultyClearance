@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import "../../index.css"; // ensure index.css is accessible from src
 import { Button } from "../../stories/components/button";
 import PWAInstallPrompt from "../../components/PWAInstallPrompt";
+import { LoginGuideCard } from "../../stories/components/guide-cards";
 
 export default function LoginInput() {
+  const [openCard, setOpenCard] = useState(false);
   const [error, setError] = useState<string>(() => {
     // Check for error parameters in URL during initial render
     const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
     const errorParam = urlParams.get('error');
-    
     const getErrorMessage = () => {
       switch (errorParam) {
         case 'authentication_failed':
@@ -111,7 +112,17 @@ export default function LoginInput() {
               </span>
             </span>
           </Button>
-
+          <Button
+            variant="whitelink"
+            size="sm"
+            onClick={() => setOpenCard(true)}
+          >
+            Need help?
+          </Button>
+      <LoginGuideCard
+        open={openCard}
+        onClose={() => setOpenCard(false)}
+      />
         </div>
         
       </div>

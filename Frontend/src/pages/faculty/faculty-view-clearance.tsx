@@ -14,9 +14,12 @@ import {
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Button } from "../../stories/components/button";
 import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { FacultyIndividualArchiveGuideCard } from "../../stories/components/guide-cards";
 
 export default function FacultyViewClearance() {
   const navigate = useNavigate();
+  const [openCard, setOpenCard] = useState(false);   
   const [expandedStepIndex, setExpandedStepIndex] = React.useState<number | null>(1);
   const timelineId = React.useMemo(() => {
     const params = new URLSearchParams(window.location.search);
@@ -269,6 +272,21 @@ export default function FacultyViewClearance() {
             <ApprovedCard />
           </div>
         ) : null}
+
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <FacultyIndividualArchiveGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />
 
       </main>
 

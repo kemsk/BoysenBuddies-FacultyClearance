@@ -205,68 +205,7 @@ export function FacultyHeader() {
                       </SelectContent>
                     </Select>
                   </div>
-        <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
-                  <div className="w-full sm:w-auto sm:min-w-[190px]">
-                    <Select
-                      value={facultyTypeFilter}
-                      onValueChange={(v) => setFacultyTypeFilter(v as typeof facultyTypeFilter)}
-                    >
-                      <SelectTrigger
-                        variant="primaryoutline"
-                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
-                      >
-                        <SelectValue placeholder="Faculty Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Faculty</SelectItem>
-                        <SelectItem value="part_time">Part-time </SelectItem>
-                        <SelectItem value="full_time">Full-time </SelectItem>                        
-                      </SelectContent>
-                    </Select>
-                  </div>
 
-        <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
-                  <div className="w-full sm:w-auto sm:min-w-[190px]">
-                    <Select>
-                      <SelectTrigger
-                        variant="primaryoutline"
-                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
-                      >
-                        <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
-                          <User className="w-4 h-4 text-primary" />
-                          <span>Role:</span>
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="complete">Faculty</SelectItem>
-                        <SelectItem value="incomplete">System Admin</SelectItem>
-                        <SelectItem value="complete">Analytics Admin</SelectItem>
-                        <SelectItem value="incomplete">Approver</SelectItem>  
-                        <SelectItem value="incomplete">Assistant Approver</SelectItem>                   
-                      </SelectContent>
-                    </Select>
-                  </div>
-        <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />        
-                  <div className="w-full sm:w-auto sm:min-w-[190px]">
-                    <Select>
-                      <SelectTrigger
-                        variant="primaryoutline"
-                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
-                      >
-                        <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
-                          <User className="w-4 h-4 text-primary" />
-                          <span>Role:</span>
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="complete">Faculty</SelectItem>
-                        <SelectItem value="incomplete">System Admin</SelectItem>
-                        <SelectItem value="complete">Analytics Admin</SelectItem>
-                        <SelectItem value="incomplete">Approver</SelectItem>  
-                        <SelectItem value="incomplete">Assistant Approver</SelectItem>                   
-                      </SelectContent>
-                    </Select>
-                  </div>
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
           <nav className="flex flex-col gap-4 mt-2">
             <div>
@@ -377,16 +316,6 @@ export function FacultyHeader() {
   );
 }
 
-export function AdminHeader() {
-  
-  return (
-    <HeaderVariant
-      sheetTitle="System Admin Menu"
-      sheetDescription="Administrator navigation"
-    />
-  );
-}
-
 export function ApprovalHeader() {
   const [facultyTypeFilter, setFacultyTypeFilter] = React.useState<"" | "all" | "part_time" | "full_time">("");
   const navigate = useNavigate();
@@ -477,7 +406,7 @@ export function ApprovalHeader() {
   };
 
   return (
-    <HeaderVariant>
+    <HeaderVariant notificationCount={unreadCount}>
       <div className="mt-4 flex h-full flex-col">
         <div className="flex flex-col gap-4">
 
@@ -816,7 +745,7 @@ export function HROHeader() {
   };
 
   return (
-    <HeaderVariant>
+    <HeaderVariant notificationCount={unreadCount}>
       <div className="mt-4 flex h-full flex-col">
         <div className="flex flex-col gap-4">
 
@@ -1474,7 +1403,7 @@ export function OVPHEHeader() {
   };
 
   return (
-    <HeaderVariant>
+    <HeaderVariant notificationCount={unreadCount}>
       <div className="mt-4 flex h-full flex-col">
         <div className="flex flex-col gap-4">
 
@@ -1666,12 +1595,12 @@ export function OVPHEHeader() {
                         body: JSON.stringify({
                           event_type: "user_logout",
                           user_role: "OVPHE",
-                          details: ["OVPHE Logout"],
+                          details: ["Analytics System Logout"],
                         }),
                       });
                       if (!r.ok) {
                         const text = await r.text().catch(() => "");
-                        console.error("[OVPHE] activity log POST failed:", r.status, text);
+                        console.error("Analytics System activity log POST failed:", r.status, text);
                       }
                     } catch {
                     }
@@ -1695,6 +1624,7 @@ export function OVPHEHeader() {
 }
 
 export function AssistantApproverHeader() {
+  
   const [facultyTypeFilter, setFacultyTypeFilter] = React.useState<"" | "all" | "part_time" | "full_time">("");
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = React.useState(0);
@@ -1756,7 +1686,7 @@ export function AssistantApproverHeader() {
   };
 
   return (
-    <HeaderVariant>
+    <HeaderVariant notificationCount={unreadCount}>
       <div className="mt-4 flex h-full flex-col">
         <div className="flex flex-col gap-4">
 

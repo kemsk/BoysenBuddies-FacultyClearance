@@ -10,11 +10,15 @@ import {
   SystemGuidlinesCard,
   type SystemGuidlinesItem,
 } from "../../stories/components/cards";
+import { AdminDashboardGuideCard } from "../../stories/components/guide-cards";
+import { useState, useEffect } from "react";
+import { Button } from "../../stories/components/button";
 
 type OVPHEGuidelinesResponse = { items: SystemGuidlinesItem[] };
 type OVPHEAnnouncementsResponse = { items: AnnouncementItem[] };
 
 export default function OVPHEDashboard() {
+  const [openCard, setOpenCard] = useState(false); 
   const [me, setMe] = React.useState<{
     email: string;
     university_id: string;
@@ -147,7 +151,20 @@ export default function OVPHEDashboard() {
           
           />
 
-
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <AdminDashboardGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />
 
       </main>
 

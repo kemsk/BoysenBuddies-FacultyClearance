@@ -25,6 +25,8 @@ import {
 } from "../../stories/components/edit-announcements-dialog";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
+import { AnnouncementGuideCard, LoginGuideCard } from "../../stories/components/guide-cards";
+import { useState } from "react";
 
 // Helper to POST notifications for multiple roles
 function postCISONotification(payload: {
@@ -49,10 +51,10 @@ function postCISONotification(payload: {
     .then(async (r) => {
       if (r.ok) return;
       const text = await r.text().catch(() => "");
-      console.error("CISO notification POST failed", r.status, text);
+      console.error("Computing and Information Services Office Services notification POST failed", r.status, text);
     })
     .catch((e) => {
-      console.error("CISO notification POST threw", e);
+      console.error("Computing and Information Services Office Services notification POST threw", e);
     });
 }
 
@@ -88,7 +90,7 @@ function GuidelinesToggle({
 
 export default function CISOAnnouncements() {
   const navigate = useNavigate();
-
+  const [openCard, setOpenCard] = useState(false);
   type AnnouncementApiItem = AnnouncementItem & { id: number; email?: string };
 
   const [items, setItems] = React.useState<AnnouncementApiItem[]>([]);
@@ -128,7 +130,6 @@ export default function CISOAnnouncements() {
 
       {/* DASHBOARD CONTENT */}
       <main className="dashboard px-4 md:px-6 lg:px-[1in] pt-4 pb-4 w-full">
-
         <h1 className="text-2xl text-left text-primary font-bold">Announcements</h1>
 
         <Breadcrumb className="mt-2">
@@ -331,10 +332,10 @@ export default function CISOAnnouncements() {
                                 .then(async (r) => {
                                   if (r.ok) return;
                                   const t = await r.text().catch(() => "");
-                                  console.error("CISO activity log POST failed", r.status, t);
+                                  console.error("Computing and Information Services Office Services activity log POST failed", r.status, t);
                                 })
                                 .catch((e) => {
-                                  console.error("CISO activity log POST error", e);
+                                  console.error("Computing and Information Services Office Services activity log POST error", e);
                                 });
                               fetch(
                                 `/admin/xu-faculty-clearance/api/ciso/announcements/${current.id}`,
@@ -362,10 +363,10 @@ export default function CISOAnnouncements() {
                               .then(async (r) => {
                                 if (r.ok) return;
                                 const t = await r.text().catch(() => "");
-                                console.error("CISO activity log POST failed", r.status, t);
+                                console.error("Computing and Information Services Office Services activity log POST failed", r.status, t);
                               })
                               .catch((e) => {
-                                console.error("CISO activity log POST error", e);
+                                console.error("Computing and Information Services Office Services activity log POST error", e);
                               });
                             fetch(
                               `/admin/xu-faculty-clearance/api/ciso/announcements/${current.id}`,
@@ -526,6 +527,20 @@ export default function CISOAnnouncements() {
               });
             }}
           />
+                    <div className="fixed bottom-4 left-4 z-[9999]">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => setOpenCard(true)}
+                      >
+                        Need help?
+                      </Button>
+                    
+                    </div>
+                      <AnnouncementGuideCard
+                        open={openCard}
+                        onClose={() => setOpenCard(false)}
+                      />
       </main>
 
     </div>

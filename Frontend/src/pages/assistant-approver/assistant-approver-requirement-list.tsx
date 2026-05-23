@@ -19,12 +19,14 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 
 import { Button } from "../../stories/components/button";
+import { useState } from "react";
+import { AssistantRequirementGuideCard } from "../../stories/components/guide-cards";
 
 export default function AssistantApproverRequirementList() {
   const navigate = useNavigate();
   const [items, setItems] = React.useState<RequirementListItem[]>([]);
   const [loading, setLoading] = React.useState(true);
-
+  const [openCard, setOpenCard] = useState(false); 
   React.useEffect(() => {
     fetch("/admin/xu-faculty-clearance/api/assistant-approver/requirement-list")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
@@ -89,7 +91,20 @@ export default function AssistantApproverRequirementList() {
           <div className="rounded-xl border border-muted-foreground/20 bg-card p-6 text-black">No requirements found.</div>
         )}
        </div>
-
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <AssistantRequirementGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />
       </main>
 
     </div>

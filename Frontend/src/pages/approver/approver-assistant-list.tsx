@@ -39,6 +39,9 @@ import {
   SuccessModal,
   SuccessErrorModalMessages,
 } from "../../stories/components/success-and-error-modals";
+import { AssistantListGuideCard } from "../../stories/components/guide-cards";
+
+
 
 export default function ApproverAssistantList() {
   const navigate = useNavigate();
@@ -46,7 +49,7 @@ export default function ApproverAssistantList() {
   const [items, setItems] = useState<StudentAssistantItem[]>([]);
   const [mode, setMode] = useState<"assistants" | "approvers">("assistants");
   const [sortBy, setSortBy] = useState("name");
-
+  const [openCard, setOpenCard] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<React.ReactNode>("");
   const [errorOpen, setErrorOpen] = useState(false);
@@ -934,7 +937,20 @@ export default function ApproverAssistantList() {
             })();
           }}
         />
-
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <AssistantListGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />
         
       </main>
     </div>

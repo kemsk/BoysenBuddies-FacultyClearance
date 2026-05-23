@@ -28,6 +28,8 @@ import {
   DialogTitle,
 } from "../../stories/components/dialog";
 import { Lock } from "lucide-react";
+import { TimelineGuideCard } from "../../stories/components/guide-cards";
+import { useState } from "react";
 
 type StoredClearanceTimelineItem = {
   id: string;
@@ -351,6 +353,7 @@ function TimelineCard(props: {
 
 export default function CISOClearanceTimeline() {
   const navigate = useNavigate();
+  const [openCard, setOpenCard] = useState(false); 
   const { showNotification, PopupNotificationsContainer } = usePopupNotifications();
 
   const [items, setItems] = React.useState<StoredClearanceTimelineItem[]>(() => loadTimelineItems());
@@ -827,6 +830,20 @@ export default function CISOClearanceTimeline() {
           onConfirm={confirmToggleActive}
         />
 
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <TimelineGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />
       </main>
 
     {/* Popup Notifications Container */}

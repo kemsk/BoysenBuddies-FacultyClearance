@@ -23,6 +23,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../../stories/components/button";
 import { SuccessMessageCard } from "../../stories/components/status-message-card";
 import { ErrorModal } from "../../stories/components/success-and-error-modals";
+import { ApproverRequirementGuideCard } from "../../stories/components/guide-cards";
+import { useState } from "react";
 
 type Requirement = {
   id: number;
@@ -58,7 +60,7 @@ export default function RequirementList() {
   const [isPartOfApproverFlow, setIsPartOfApproverFlow] = React.useState<boolean>(false);
   const [errorModalOpen, setErrorModalOpen] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState("");
-
+  const [openCard, setOpenCard] = useState(false); 
   const hasActiveTimeline = Boolean(activeAcademicYear && activeSemester);
 
   // Debug state values
@@ -659,6 +661,20 @@ export default function RequirementList() {
           </>
         )}
        </div>
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <ApproverRequirementGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />       
       </main>
 
       {/* Edit Requirement Dialog */}

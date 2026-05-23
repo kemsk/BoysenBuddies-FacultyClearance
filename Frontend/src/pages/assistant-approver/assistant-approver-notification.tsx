@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import "../../index.css"; // ensure index.css is accessible from src
 import { Button } from "../../stories/components/button";
 import { AssistantApproverHeader } from "../../stories/components/header";
@@ -14,10 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../stories/components/select";
+import { NotificationsGuideCard } from "../../stories/components/guide-cards";
 
 export default function AssistantApproverNotification() {
   const [readAll, setReadAll] = React.useState(false);
-
+  const [openCard, setOpenCard] = useState(false); 
   type NotificationItemWithRole = NotificationItem & { user_role?: string; user_id?: number | null };
 
   const [items, setItems] = React.useState<NotificationItemWithRole[]>([]);
@@ -133,9 +134,9 @@ export default function AssistantApproverNotification() {
     const roleGroups: Record<string, string[]> = {
       Approver: ["Approver", "APPROVER"],
       Faculty: ["Faculty", "FACULTY"],
-      CISO: ["CISO"],
+      CISO: ["Computing and Information Services Office Services"],
       Assistant: ["Assistant"],
-      OVPHE: ["OVPHE"],
+      OVPHE: ["Office of the University Registrar"],
       System: ["System"],
     };
     const selected = String(selectedRole || "").trim();
@@ -208,6 +209,20 @@ export default function AssistantApproverNotification() {
             onReadAllChange={setReadAll}
           />
         </div>
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <NotificationsGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />                  
       </main>
     </div>
   );
