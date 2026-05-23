@@ -25,6 +25,8 @@ import {
 } from "../../stories/components/edit-announcements-dialog";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
+import { AnnouncementGuideCard } from "../../stories/components/guide-cards";
+import { useState } from "react";
 
 // Helper to POST notifications for multiple roles
 function postOVPHENotification(payload: {
@@ -105,7 +107,7 @@ function GuidelinesToggle({
 
 export default function OVPHEAnnouncements() {
   const navigate = useNavigate();
-
+  const [openCard, setOpenCard] = useState(false);
   type AnnouncementApiItem = AnnouncementItem & { id: number; email?: string };
 
   const [items, setItems] = React.useState<AnnouncementApiItem[]>([]);
@@ -480,6 +482,20 @@ export default function OVPHEAnnouncements() {
               });
             }}
           />
+        <div className="fixed bottom-4 left-4 z-[9999]">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setOpenCard(true)}
+          >
+             Need help?
+          </Button>
+                      
+         </div>
+            <AnnouncementGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+          />        
       </main>
 
     </div>

@@ -7,7 +7,7 @@ import { SearchInputGroup } from "../../stories/components/input-group";
 import { useState } from "react";
 import { Divider } from "../../stories/components/divider";
 import { Badge } from "../../stories/components/badge";
-
+import { Button } from "../../stories/components/button";
 import {
   Select,
   SelectContent,
@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../stories/components/select";
+import { ArchivedGuideCard } from "../../stories/components/guide-cards";
 
 type ArchivedTimelineItem = {
   id: string;
@@ -33,7 +34,7 @@ export default function FacultyArchiveClearance() {
   const [selectedYear, setSelectedYear] = useState("all");
   const [selectedTerm, setSelectedTerm] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
-
+  const [openCard, setOpenCard] = useState(false); 
   const [query, setQuery] = useState("");
   const [timelines, setTimelines] = React.useState<ArchivedTimelineItem[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -197,7 +198,21 @@ export default function FacultyArchiveClearance() {
             )}
           </div>
         </div>
-        </div>       
+        </div>
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <ArchivedGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />               
       </main>
     </div>
   );

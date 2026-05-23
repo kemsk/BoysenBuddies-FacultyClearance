@@ -7,6 +7,8 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { Link, useNavigate } from "react-router-dom";
 import { ErrorModal, SuccessModal } from "../../stories/components/success-and-error-modals";
 import { Badge } from "../../stories/components/badge";
+import { useState } from "react";
+import { AssistantArchivedRequestGuideCard } from "../../stories/components/guide-cards";
 
 type ArchivedAssistantRequest = {
   id: string;
@@ -53,7 +55,7 @@ export default function AssistantApproverArchivedIndividualApproval() {
   const params = React.useMemo(() => new URLSearchParams(window.location.search), []);
   const timelineId = params.get("timelineId") || "";
   const archivedId = params.get("archivedId") || "";
-
+  const [openCard, setOpenCard] = useState(false); 
   const [timelineName, setTimelineName] = React.useState("Archived Clearance");
   const [item, setItem] = React.useState<ArchivedAssistantItem | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -510,6 +512,21 @@ export default function AssistantApproverArchivedIndividualApproval() {
             </div>
           )}
         </div>
+
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <AssistantArchivedRequestGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />
       </main>
     </div>
   );

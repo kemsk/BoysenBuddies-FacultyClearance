@@ -10,13 +10,16 @@ import {
   RequirementsListCard,
   type RequirementListItem,
 } from "../../stories/components/cards";
+import { ApproverDashboardGuideCard } from "../../stories/components/guide-cards";
+import { Button } from "../../stories/components/button";
+import { useState, useEffect } from "react";
 
 export default function Approverdashboard() {
   const [timeline, setTimeline] = React.useState<{ academicYear: string; semester: string } | null>(null);
   const [approverOffice, setApproverOffice] = React.useState<string>("");
   const [pendingClearance, setPendingClearance] = React.useState<number>(0);
   const [totalClearanceRequests, setTotalClearanceRequests] = React.useState<number>(0);
-
+   const [openCard, setOpenCard] = useState(false); 
   const [profile, setProfile] = React.useState<{
     email: string;
     university_id: string;
@@ -142,7 +145,20 @@ export default function Approverdashboard() {
             showHeaderChevron={false}
           />
 
-
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <ApproverDashboardGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />
 
       </main>
 

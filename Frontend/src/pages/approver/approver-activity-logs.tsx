@@ -22,6 +22,7 @@ import {
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useEffect, useMemo, useState } from "react";
+import { AnalyticsActivityLogsGuideCard } from "../../stories/components/guide-cards";
 
 function normalizeDetailsToArray(raw: any): string[] {
   if (Array.isArray(raw)) return raw.map((d) => String(d ?? "")).filter(Boolean);
@@ -87,7 +88,7 @@ export default function ApproverActivityLogs() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 20;
-
+  const [openCard, setOpenCard] = useState(false);
   const [items, setItems] = useState<ActivityLogItem[]>([]);
 
   const [sessionUserId, setSessionUserId] = useState<string>("");
@@ -371,8 +372,20 @@ export default function ApproverActivityLogs() {
           </div>
         </div>
 
-        
-
+           <div className="fixed bottom-4 left-4 z-[9999]">
+             <Button
+               variant="default"
+               size="sm"
+               onClick={() => setOpenCard(true)}
+             >
+               Need help?
+             </Button>
+           
+           </div>
+             <AnalyticsActivityLogsGuideCard
+               open={openCard}
+               onClose={() => setOpenCard(false)}
+             />              
         
       </main>
     </div>

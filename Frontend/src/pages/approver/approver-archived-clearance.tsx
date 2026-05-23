@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../stories/components/select";
-
+import { ArchivedGuideCard } from "../../stories/components/guide-cards";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { Link, useNavigate } from "react-router-dom";
 import { SearchInputGroup } from "../../stories/components/input-group";
@@ -39,7 +39,7 @@ export default function ApproverAchivedClearance() {
   const [selectedYear, setSelectedYear] = useState("all");
   const [selectedTerm, setSelectedTerm] = useState("all");
   const [sortBy, setSortBy] = React.useState("name");
-
+  const [openCard, setOpenCard] = useState(false); 
   type AnnouncementApiItem = AnnouncementItem & { id: number; email?: string };
 
   const [, setItems] = React.useState<AnnouncementApiItem[]>([]);
@@ -239,6 +239,20 @@ export default function ApproverAchivedClearance() {
           </div>
         </div>
 
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <ArchivedGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />   
 
       </main>
 

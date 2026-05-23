@@ -15,10 +15,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../stories/components/select";
+import { NotificationsGuideCard } from "../../stories/components/guide-cards";
+import { useState } from "react";
 
 export default function Notification() {
   const [readAll, setReadAll] = React.useState(false);
-
+  const [openCard, setOpenCard] = useState(false); 
   type NotificationItemWithRole = NotificationItem & { user_role?: string; user_id?: number | null };
 
   const [items, setItems] = React.useState<NotificationItemWithRole[]>([]);
@@ -232,6 +234,20 @@ export default function Notification() {
             onItemClick={(it) => void markOneAsRead(it as NotificationItemWithRole)}
           />
         </div>
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <NotificationsGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />               
       </main>
     </div>
   );

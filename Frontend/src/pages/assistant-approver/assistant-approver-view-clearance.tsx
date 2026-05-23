@@ -22,9 +22,11 @@ import {
   SelectValue,
 } from "../../stories/components/select";
 
+
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../../stories/components/breadcrumb";
 import { SearchInputGroup } from "../../stories/components/input-group";
 import { useState } from "react";
+import { AssistantArchivedFacultyRequestGuideCard } from "../../stories/components/guide-cards";
 
 // Helper to compute overall faculty status
 function getFacultyOverallStatus(facultyId: string, allRequests: ClearanceRequestItem[]): "approved" | "pending" | "rejected" {
@@ -47,6 +49,7 @@ export default function AssistantApproverViewClearance() {
   const [sortBy, setSortBy] = React.useState("name");
   const [statusFilter, setStatusFilter] = React.useState("all");
   const [facultyTypeFilter, setFacultyTypeFilter] = React.useState("all");
+  const [openCard, setOpenCard] = useState(false);   
   const rawTimelineId = React.useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get("timelineId") || "";
@@ -388,7 +391,20 @@ React.useEffect(() => {
           </div>
         </div>
 
-
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <AssistantArchivedFacultyRequestGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />
       </main>
 
     </div>

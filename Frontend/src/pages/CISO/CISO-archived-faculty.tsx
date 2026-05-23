@@ -2,6 +2,7 @@ import * as React from "react";
 
 import "../../index.css"; 
 import { CISOHeader} from "../../stories/components/header";
+import { ImportHistoryGuideCard } from "../../stories/components/guide-cards";
 
 import {
   ViewArchivedFacultyCard,
@@ -41,6 +42,7 @@ interface ArchivedFacultyData {
 
 export default function CISOArchivedFaculty() {
   const navigate = useNavigate();
+  const [openCard, setOpenCard] = useState(false); 
   const [query, setQuery] = useState("");
   const [selectedYear, setSelectedYear] = useState("all");
   const [sortBy, setSortBy] = useState("name");
@@ -206,6 +208,20 @@ export default function CISOArchivedFaculty() {
             )}
           </div>
         </div>
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <ImportHistoryGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />        
       </main>
     </div>
   );

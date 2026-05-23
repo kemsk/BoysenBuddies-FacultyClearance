@@ -51,6 +51,7 @@ const buttonVariants = cva(
           "border border-btn-outline-border bg-[hsl(var(--btn-ghost-bg))] text-[hsl(var(--btn-ghost-text))] shadow hover:bg-muted disabled:bg-[hsl(var(--btn-ghost-bg))] disabled:text-[hsl(var(--btn-ghost-text))] disabled:hover:bg-[hsl(var(--btn-ghost-bg))]",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        whitelink: "text-white underline-offset-4 underline",
         icon: "bg-transparent text-foreground",
         cancel: "bg-gray-200 text-black border border-gray-700 hover:bg-gray-500 hover:text-white",
         white:"bg-white text-primary hover:bg-secondary hover:text-white",
@@ -83,7 +84,7 @@ const buttonVariants = cva(
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   asChild?: boolean
-  variant?: "default" | "destructive" | "link" | "outline" | "secondary" | "ghost" | "icon" | "cancel" | "white" | "back" | "action" | "primaryoutline"
+  variant?: "default" | "destructive" | "link" | "outline" | "secondary" | "ghost" | "icon" | "cancel" | "white" | "back" | "action" | "primaryoutline" | "whitelink"
   size?: "sm" | "default" | "lg" | "icon" | "mobileLarge" | "mobileXL" | "back"
   alignment?: "center" | "left"
 }

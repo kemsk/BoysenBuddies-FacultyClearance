@@ -1,6 +1,6 @@
 import "../../index.css"; 
 import { CISOHeader } from "../../stories/components/header";
-
+import { ManageUserGuideCard } from "../../stories/components/guide-cards";
 
 import {
   Breadcrumb,
@@ -39,12 +39,13 @@ import {
   SuccessErrorModalMessages,
 } from "../../stories/components/success-and-error-modals";
 import { AdminSystemUsersCard, ApproverSystemUsersCard } from "../../stories/components/system-users-cards";
+import { useState } from "react";
 
  export default function CISOManageSystemUser() {
   const navigate = useNavigate();
   const [page, setPage] = React.useState(1);
   const pageSize = 10;
-
+  const [openCard, setOpenCard] = useState(false); 
   const [successOpen, setSuccessOpen] = React.useState(false);
   const [successMessage, setSuccessMessage] = React.useState<React.ReactNode>("");
 
@@ -319,7 +320,19 @@ import { AdminSystemUsersCard, ApproverSystemUsersCard } from "../../stories/com
         </div>
        
        <div className="mt-4 space-y-3">
-        
+
+          <div className="rounded-lg borde bg-white p-4">
+            <h3 className="font-medium text-blue-900 mb-2">
+              <b>What does this mean?</b>
+            </h3>
+
+            <ul className="list-disc pl-5 space-y-1 text-blue-800">     
+              <li>The <b>System Admin</b> has full access to the system’s management features, including managing users, viewing activity logs, handling imports, and configuring system settings.</li> 
+              <li>The <b>Analytics Admin</b> is responsible for managing analytics-related features such as reports, dashboards, and data monitoring tools.</li> 
+              <li><b>Approvers</b> are office representatives who review and approve submitted requests, records, or transactions within their assigned office.</li>   
+            </ul>
+          </div>
+
         <div className="pt-4">
           <div className="text-primary text-md font-semibold"> Administrative Roles</div>
         </div>
@@ -632,7 +645,35 @@ import { AdminSystemUsersCard, ApproverSystemUsersCard } from "../../stories/com
             })();
           }}
         />
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <ManageUserGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />
 
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <ManageUserGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />            
       </main>
 
     </div>

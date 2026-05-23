@@ -11,7 +11,7 @@ import { Lock} from 'lucide-react';
 import { ConfirmAlert, OverrideAlert } from "../../stories/components/alert";
 import { useState } from "react";
 import { ErrorModal, SuccessErrorModalMessages, SuccessModal } from "../../stories/components/success-and-error-modals";
-
+import { ApproverArchivedRequestGuideCard } from "../../stories/components/guide-cards";
 type ArchivedApproverRequest = {
   id: string;
   requestId: string;
@@ -56,7 +56,7 @@ export default function ApproverArchivedIndividualApproval() {
   const params = React.useMemo(() => new URLSearchParams(window.location.search), []);
   const timelineId = params.get("timelineId") || "";
   const archivedId = params.get("archivedId") || "";
-
+  const [openCard, setOpenCard] = useState(false); 
   const [timelineName, setTimelineName] = React.useState("Archived Clearance");
   const [item, setItem] = React.useState<ArchivedApproverItem | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -818,6 +818,21 @@ export default function ApproverArchivedIndividualApproval() {
             </div>
           )}
         </div>
+           <div className="fixed bottom-4 left-4 z-[9999]">
+             <Button
+               variant="default"
+               size="sm"
+               onClick={() => setOpenCard(true)}
+             >
+               Need help?
+             </Button>
+           
+           </div>
+             <ApproverArchivedRequestGuideCard
+               open={openCard}
+               onClose={() => setOpenCard(false)}
+             />
+        
       </main>
 
       {/* Override Dialogs */}

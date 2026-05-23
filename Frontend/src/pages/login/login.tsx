@@ -3,6 +3,7 @@ import "../../index.css"; // ensure index.css is accessible from src
 import { Button } from "../../stories/components/button";
 import { authService } from "../../services/authService";
 import PWAInstallPrompt from "../../components/PWAInstallPrompt";
+import { RoleLoginGuideCard } from "../../stories/components/guide-cards";
 
 interface UserRole {
   value: number;
@@ -33,7 +34,7 @@ export default function Login() {
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [userInfo, setUserInfo] = useState<{ first_name?: string; last_name?: string } | null>(null);
-
+  const [openCard, setOpenCard] = useState(false);
   const allRoles: UserRole[] = useMemo(() => [
     {
       value: 1,
@@ -260,6 +261,17 @@ export default function Login() {
               </div>
             </Button>
           ))}
+                  <Button
+                    variant="whitelink"
+                    size="sm"
+                    onClick={() => setOpenCard(true)}
+                  >
+                    Need help?
+                  </Button>
+              <RoleLoginGuideCard
+                open={openCard}
+                onClose={() => setOpenCard(false)}
+              />          
         </div>
       </div>
       </div>

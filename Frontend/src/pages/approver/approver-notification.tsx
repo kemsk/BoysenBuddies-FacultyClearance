@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import "../../index.css"; // ensure index.css is accessible from src
 import { Button } from "../../stories/components/button";
 import { DynamicApproverHeader } from "../../stories/components/header";
@@ -15,11 +15,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../stories/components/select";
+import { NotificationsGuideCard } from "../../stories/components/guide-cards";
 
 export default function ApproverNotification() {
   const [readAll, setReadAll] = React.useState(false);
   type NotificationItemWithRole = NotificationItem & { user_role?: string; user_id?: number | null };
-
+  const [openCard, setOpenCard] = useState(false); 
   const [items, setItems] = React.useState<NotificationItemWithRole[]>([]);
   const [selectedRole, setSelectedRole] = React.useState<string>("all");
 
@@ -241,6 +242,20 @@ export default function ApproverNotification() {
             onItemClick={(it) => void markOneAsRead(it as NotificationItemWithRole)}
           />
         </div>
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <NotificationsGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />             
       </main>
     </div>
   );

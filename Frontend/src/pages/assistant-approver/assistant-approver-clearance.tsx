@@ -17,7 +17,9 @@ import {
 } from "../../stories/components/select";
 
 import { SearchInputGroup } from "../../stories/components/input-group";
-
+import { RequestGuideCard } from "../../stories/components/guide-cards";
+import { Button } from "../../stories/components/button";
+import { useState } from "react";
 
 
 
@@ -33,7 +35,7 @@ export default function AssistantApproverClearance() {
   const [departmentFilter, setDepartmentFilter] = React.useState("all");
   const [colleges, setColleges] = React.useState<Array<{id: number, name: string, code: string}>>([]);
   const [departments, setDepartments] = React.useState<Array<{id: number, name: string, code: string, college: string}>>([]);
-
+  const [openCard, setOpenCard] = useState(false); 
   // Filter departments based on selected college
   const filteredDepartments = React.useMemo(() => {
     if (collegeFilter === "all") {
@@ -299,7 +301,20 @@ export default function AssistantApproverClearance() {
           </div>
         </div>
 
-        
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <RequestGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />
 
       </main>
 

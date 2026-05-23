@@ -24,6 +24,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "../../stories/components/button";
+import { SystemActivityLogsGuideCard } from "../../stories/components/guide-cards";
 
 function mapEventNameToVariant(eventName: string): ActivityLogVariant {
   const eventMapping: Record<string, ActivityLogVariant> = {
@@ -84,6 +85,7 @@ function mapEventNameToVariant(eventName: string): ActivityLogVariant {
 
 export default function CISOActivityLogs() {
   const [query, setQuery] = useState("");
+  const [openCard, setOpenCard] = useState(false); 
   const [page, setPage] = useState(1);
   const pageSize = 20;
   const navigate = useNavigate();
@@ -338,9 +340,20 @@ export default function CISOActivityLogs() {
           </div>
         </div>
 
-        
-
-        
+          <div className="fixed bottom-4 left-4 z-[9999]">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setOpenCard(true)}
+            >
+              Need help?
+            </Button>
+          
+          </div>
+            <SystemActivityLogsGuideCard
+              open={openCard}
+              onClose={() => setOpenCard(false)}
+            />
       </main>
     </div>
   );
