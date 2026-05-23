@@ -8895,7 +8895,7 @@ def _can_approver_access_requirement(approver_profile, requirement):
         creator_approver_profile = requirement.created_by.approver_profile
         if creator_approver_profile.office:
             creator_office_name = creator_approver_profile.office.name.lower()
-            if any(term in creator_office_name for term in ['vice president', 'ovphe', 'registrar', 'library', 'human resources', 'hr']):
+            if any(term in creator_office_name for term in ['vice president', 'ovphe', 'registrar', 'library', 'human relations', 'hr']):
                 creator_is_office_approver = True
             elif not creator_approver_profile.college and not creator_approver_profile.department:
                 creator_is_office_approver = True
@@ -8919,7 +8919,7 @@ def _can_approver_access_requirement(approver_profile, requirement):
     if approver_profile.office:
         office_name_lower = approver_profile.office.name.lower()
         # OVPHE and similar offices should be treated as Office Approvers even if they have college/department
-        if any(term in office_name_lower for term in ['vice president', 'ovphe', 'registrar', 'library', 'human resources', 'hr']):
+        if any(term in office_name_lower for term in ['vice president', 'ovphe', 'registrar', 'library', 'human relations', 'hr']):
             is_office_approver = True
         # If they only have office (no college/department), they're definitely an Office Approver
         elif not approver_profile.college and not approver_profile.department:
@@ -9091,7 +9091,7 @@ def _get_approver_flow_step_for_user(user):
         office_name_lower = approver_profile.office.name.lower()
         # OVPHE and similar offices should be treated as Office Approvers even if they have college/department
 
-        if any(term in office_name_lower for term in ['vice president', 'ovphe', 'registrar', 'library', 'human resources', 'hr']):
+        if any(term in office_name_lower for term in ['vice president', 'ovphe', 'registrar', 'library', 'human relations', 'hr']):
             is_office_approver = True
 
         # If they only have office (no college/department), they're definitely an Office Approver
@@ -9134,7 +9134,7 @@ def _get_approver_flow_step_for_user(user):
                 return step
             elif 'library' in step_category and 'library' in office_name:
                 return step
-            elif 'human resources' in step_category and ('human resources' in office_name or 'hr' in office_name):
+            elif 'human relations' in step_category and ('human relations' in office_name or 'hr' in office_name):
                 return step
             elif 'vice president' in step_category and ('vice president' in office_name or 'ovphe' in office_name):
                 return step

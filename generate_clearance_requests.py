@@ -228,10 +228,10 @@ def main():
     requirement_mappings = [
         ("Department Chair Clearance", "Department Chair"),
         ("College Dean Clearance", "College Dean"),
-        ("University Registrar Clearance", "University Registrar"),
+        ("Office of the University Registrar Clearance", "Office of the University Registrar"),
         ("Library Clearance", "University Library"),
         ("OVPHE Clearance", "Office of the Vice President for Higher Education"),
-        ("HR Clearance", "Human Resources Office")
+        ("HR Clearance", "Human Relations Office")
     ]
     
     for req_title, step_category in requirement_mappings:

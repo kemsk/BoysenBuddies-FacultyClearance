@@ -185,10 +185,10 @@ function ProtectedRouteForSystemAnalytics({ children }: { children: ReactElement
         
         // Allow access if:
         // 1. User is OVPHE (role 2), OR
-        // 2. User has Approver role (role 3) AND their roles_payload contains "Human Resources Office"
+        // 2. User has Approver role (role 3) AND their roles_payload contains "Human Relations Office"
         const hasApproverRole = roles.includes(3);
         const hasHROOffice = data.roles_payload?.some(
-          (role: any) => role.office === "Human Resources Office"
+          (role: any) => role.office === "Human Relations Office"
         ) || false;
         
         const hasAccess = 

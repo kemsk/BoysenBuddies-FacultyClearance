@@ -100,10 +100,10 @@ type DraftDepartment = { name: string; short: string };
 const FALLBACK_APPROVER_CATEGORIES = [
   "Department Chair",
   "College Dean",
-  "University Registrar",
+  "Office of the University Registrar",
   "University Library",
   "Office of the Vice President for Higher Education",
-  "Human Resources Office",
+  "Human Relations Office",
 ];
 
 async function apiJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {

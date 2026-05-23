@@ -136,7 +136,7 @@ export default function AssistantApproverNotification() {
       Faculty: ["Faculty", "FACULTY"],
       CISO: ["Computing and Information Services Office Services"],
       Assistant: ["Assistant"],
-      OVPHE: ["Office of the University Registrar"],
+      OVPHE: ["Office of the Office of the University Registrar"],
       System: ["System"],
     };
     const selected = String(selectedRole || "").trim();

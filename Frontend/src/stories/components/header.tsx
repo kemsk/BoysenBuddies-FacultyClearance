@@ -468,7 +468,7 @@ export function ApprovalHeader() {
   };
 
   const isHRO = userProfile?.roles_payload?.some(
-    (role: any) => role.office === "Human Resources Office"
+    (role: any) => role.office === "Human Relations Office"
   ) || false;
 
   React.useEffect(() => {

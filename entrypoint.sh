@@ -684,7 +684,7 @@ WHERE NOT EXISTS (
 
 INSERT INTO FC_office (name, code, is_active, display_order)
 SELECT * FROM (
-    SELECT 'University Registrar' AS name, 'REG' AS code, 1 AS is_active, 1 AS display_order
+    SELECT 'Office of the University Registrar' AS name, 'REG' AS code, 1 AS is_active, 1 AS display_order
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_office o WHERE o.code = v.code
@@ -700,7 +700,7 @@ WHERE NOT EXISTS (
 
 INSERT INTO FC_office (name, code, is_active, display_order)
 SELECT * FROM (
-    SELECT 'Human Resources Office' AS name, 'HRO' AS code, 1 AS is_active, 3 AS display_order
+    SELECT 'Human Relations Office' AS name, 'HRO' AS code, 1 AS is_active, 3 AS display_order
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_office o WHERE o.code = v.code
@@ -718,7 +718,7 @@ SET @ovphe_user_id = (SELECT id FROM FC_user WHERE email = '20190016375@my.xu.ed
 
 SET @farrah_user_id = (SELECT id FROM FC_user WHERE email = '201131134@my.xu.edu.ph' LIMIT 1);
 
--- Seed Approver for main user (20220025546@my.xu.edu.ph) as Office approver in Human Resources Office
+-- Seed Approver for main user (20220025546@my.xu.edu.ph) as Office approver in Human Relations Office
 INSERT INTO FC_approver (user_id, approver_type, office_id)
 VALUES (@ciso_user_id, 'Office', (SELECT id FROM FC_office WHERE code = 'HRO' LIMIT 1))
 ON DUPLICATE KEY UPDATE
@@ -843,7 +843,7 @@ SET @hro_office_id = (SELECT id FROM FC_office WHERE code = 'HRO' LIMIT 1);
 
 INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
 SELECT * FROM (
-    SELECT @first_sem_config_id AS config_id, 2 AS `order`, 'University Registrar' AS category, @reg_office_id AS office_id
+    SELECT @first_sem_config_id AS config_id, 2 AS `order`, 'Office of the University Registrar' AS category, @reg_office_id AS office_id
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
@@ -867,7 +867,7 @@ WHERE NOT EXISTS (
 
 INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
 SELECT * FROM (
-    SELECT @first_sem_config_id AS config_id, 5 AS `order`, 'Human Resources Office' AS category, @hro_office_id AS office_id
+    SELECT @first_sem_config_id AS config_id, 5 AS `order`, 'Human Relations Office' AS category, @hro_office_id AS office_id
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
@@ -892,7 +892,7 @@ WHERE NOT EXISTS (
 
 INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
 SELECT * FROM (
-    SELECT @second_sem_config_id AS config_id, 2 AS `order`, 'University Registrar' AS category, @reg_office_id AS office_id
+    SELECT @second_sem_config_id AS config_id, 2 AS `order`, 'Office of the University Registrar' AS category, @reg_office_id AS office_id
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
@@ -916,7 +916,7 @@ WHERE NOT EXISTS (
 
 INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
 SELECT * FROM (
-    SELECT @second_sem_config_id AS config_id, 5 AS `order`, 'Human Resources Office' AS category, @hro_office_id AS office_id
+    SELECT @second_sem_config_id AS config_id, 5 AS `order`, 'Human Relations Office' AS category, @hro_office_id AS office_id
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
@@ -941,7 +941,7 @@ WHERE NOT EXISTS (
 
 INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
 SELECT * FROM (
-    SELECT @intersession_config_id AS config_id, 2 AS `order`, 'University Registrar' AS category, @reg_office_id AS office_id
+    SELECT @intersession_config_id AS config_id, 2 AS `order`, 'Office of the University Registrar' AS category, @reg_office_id AS office_id
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
@@ -965,7 +965,7 @@ WHERE NOT EXISTS (
 
 INSERT INTO FC_approverflowstep (config_id, `order`, category, office_id)
 SELECT * FROM (
-    SELECT @intersession_config_id AS config_id, 5 AS `order`, 'Human Resources Office' AS category, @hro_office_id AS office_id
+    SELECT @intersession_config_id AS config_id, 5 AS `order`, 'Human Relations Office' AS category, @hro_office_id AS office_id
 ) AS v
 WHERE NOT EXISTS (
     SELECT 1 FROM FC_approverflowstep s WHERE s.config_id = v.config_id AND s.`order` = v.`order`
