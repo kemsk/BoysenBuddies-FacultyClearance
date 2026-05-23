@@ -121,6 +121,83 @@ export function FacultyHeader() {
   const [facultyTypeFilter, setFacultyTypeFilter] = React.useState<"" | "all" | "part_time" | "full_time">("");
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = React.useState(0);
+  const [userRoles, setUserRoles] = React.useState<number[]>([]);
+  const [currentRole, setCurrentRole] = React.useState<number | null>(null);
+
+  const ROLE_LABELS: Record<number, string> = {
+    1: "System Admin",
+    2: "Analytics Admin",
+    3: "Approver",
+    4: "Assistant Approver",
+    5: "Faculty",
+  };
+
+  React.useEffect(() => {
+    let mounted = true;
+
+    const fetchUserRoles = async () => {
+      try {
+        const response = await fetch("/admin/xu-faculty-clearance/api/me", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch user roles");
+        }
+
+        const data = await response.json();
+        
+        if (mounted) {
+          setUserRoles(data.roles || []);
+          setCurrentRole(data.role_value || null);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user roles:", error);
+      }
+    };
+
+    fetchUserRoles();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleRoleChange = async (roleValue: string) => {
+    const roleNumber = parseInt(roleValue, 10);
+    
+    try {
+      const response = await fetch("/admin/xu-faculty-clearance/api/auth/update-role", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ role_value: roleNumber }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update role");
+      }
+
+      const dashboardPaths: Record<number, string> = {
+        1: "/system-admin-dashboard",
+        2: "/analytics-admin-dashboard",
+        3: "/approver-dashboard",
+        4: "/assistant-approver-dashboard",
+        5: "/faculty-dashboard",
+      };
+
+      window.location.href = dashboardPaths[roleNumber];
+    } catch (error) {
+      console.error("Failed to switch role:", error);
+    }
+  };
 
   React.useEffect(() => {
     let mounted = true;
@@ -185,88 +262,32 @@ export function FacultyHeader() {
           </div>
 
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
-                  <div className="w-full sm:w-auto sm:min-w-[190px]">
-                    <Select>
-                      <SelectTrigger
-                        variant="primaryoutline"
-                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                  {userRoles.length > 1 && (
+                    <div className="w-full sm:w-auto sm:min-w-[190px]">
+                      <Select
+                        value={currentRole?.toString()}
+                        onValueChange={handleRoleChange}
                       >
-                        <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
-                          <User className="w-4 h-4 text-primary" />
-                          <span>Role:</span>
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="complete">Faculty</SelectItem>
-                        <SelectItem value="incomplete">System Admin</SelectItem>
-                        <SelectItem value="complete">Analytics Admin</SelectItem>
-                        <SelectItem value="incomplete">Approver</SelectItem>  
-                        <SelectItem value="incomplete">Assistant Approver</SelectItem>                   
-                      </SelectContent>
-                    </Select>
-                  </div>
-        <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
-                  <div className="w-full sm:w-auto sm:min-w-[190px]">
-                    <Select
-                      value={facultyTypeFilter}
-                      onValueChange={(v) => setFacultyTypeFilter(v as typeof facultyTypeFilter)}
-                    >
-                      <SelectTrigger
-                        variant="primaryoutline"
-                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
-                      >
-                        <SelectValue placeholder="Faculty Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Faculty</SelectItem>
-                        <SelectItem value="part_time">Part-time </SelectItem>
-                        <SelectItem value="full_time">Full-time </SelectItem>                        
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-        <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
-                  <div className="w-full sm:w-auto sm:min-w-[190px]">
-                    <Select>
-                      <SelectTrigger
-                        variant="primaryoutline"
-                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
-                      >
-                        <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
-                          <User className="w-4 h-4 text-primary" />
-                          <span>Role:</span>
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="complete">Faculty</SelectItem>
-                        <SelectItem value="incomplete">System Admin</SelectItem>
-                        <SelectItem value="complete">Analytics Admin</SelectItem>
-                        <SelectItem value="incomplete">Approver</SelectItem>  
-                        <SelectItem value="incomplete">Assistant Approver</SelectItem>                   
-                      </SelectContent>
-                    </Select>
-                  </div>
-        <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />        
-                  <div className="w-full sm:w-auto sm:min-w-[190px]">
-                    <Select>
-                      <SelectTrigger
-                        variant="primaryoutline"
-                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
-                      >
-                        <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
-                          <User className="w-4 h-4 text-primary" />
-                          <span>Role:</span>
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="complete">Faculty</SelectItem>
-                        <SelectItem value="incomplete">System Admin</SelectItem>
-                        <SelectItem value="complete">Analytics Admin</SelectItem>
-                        <SelectItem value="incomplete">Approver</SelectItem>  
-                        <SelectItem value="incomplete">Assistant Approver</SelectItem>                   
-                      </SelectContent>
-                    </Select>
-                  </div>
+                        <SelectTrigger
+                          variant="primaryoutline"
+                          className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                        >
+                          <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
+                            <User className="w-4 h-4 text-primary" />
+                            <span>Role:</span>
+                            <SelectValue placeholder={currentRole ? ROLE_LABELS[currentRole] : "Select Role"} />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {userRoles.map((roleValue) => (
+                            <SelectItem key={roleValue} value={roleValue.toString()}>
+                              {ROLE_LABELS[roleValue] || `Role ${roleValue}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
           <nav className="flex flex-col gap-4 mt-2">
             <div>
@@ -393,6 +414,14 @@ export function ApprovalHeader() {
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [userProfile, setUserProfile] = React.useState<any>(null);
 
+  const ROLE_LABELS: Record<number, string> = {
+    1: "System Admin",
+    2: "Analytics Admin",
+    3: "Approver",
+    4: "Assistant Approver",
+    5: "Faculty",
+  };
+
   React.useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -415,6 +444,38 @@ export function ApprovalHeader() {
 
     fetchProfile();
   }, []);
+
+  const handleRoleChange = async (roleValue: string) => {
+    const roleNumber = parseInt(roleValue, 10);
+    
+    try {
+      const response = await fetch("/admin/xu-faculty-clearance/api/auth/update-role", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ role_value: roleNumber }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update role");
+      }
+
+      const dashboardPaths: Record<number, string> = {
+        1: "/system-admin-dashboard",
+        2: "/analytics-admin-dashboard",
+        3: "/approver-dashboard",
+        4: "/assistant-approver-dashboard",
+        5: "/faculty-dashboard",
+      };
+
+      window.location.href = dashboardPaths[roleNumber];
+    } catch (error) {
+      console.error("Failed to switch role:", error);
+    }
+  };
 
   const isHRO = userProfile?.roles_payload?.some(
     (role: any) => role.office === "Human Resources Office"
@@ -494,26 +555,32 @@ export function ApprovalHeader() {
           </div>
 
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
-                  <div className="w-full sm:w-auto sm:min-w-[190px]">
-                    <Select>
-                      <SelectTrigger
-                        variant="primaryoutline"
-                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                  {userProfile?.roles && userProfile.roles.length > 1 && (
+                    <div className="w-full sm:w-auto sm:min-w-[190px]">
+                      <Select
+                        value={userProfile?.role_value?.toString()}
+                        onValueChange={handleRoleChange}
                       >
-                        <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
-                          <User className="w-4 h-4 text-primary" />
-                          <span>Role:</span>
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="complete">Faculty</SelectItem>
-                        <SelectItem value="incomplete">System Admin</SelectItem>
-                        <SelectItem value="complete">Analytics Admin</SelectItem>
-                        <SelectItem value="incomplete">Approver</SelectItem>  
-                        <SelectItem value="incomplete">Assistant Approver</SelectItem>                   
-                      </SelectContent>
-                    </Select>
-                  </div>
+                        <SelectTrigger
+                          variant="primaryoutline"
+                          className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                        >
+                          <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
+                            <User className="w-4 h-4 text-primary" />
+                            <span>Role:</span>
+                            <SelectValue placeholder={userProfile?.role_value ? ROLE_LABELS[userProfile.role_value] : "Select Role"} />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {userProfile.roles.map((roleValue: number) => (
+                            <SelectItem key={roleValue} value={roleValue.toString()}>
+                              {ROLE_LABELS[roleValue] || `Role ${roleValue}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
           <nav className="flex flex-col gap-4 mt-2">
             <div>
@@ -758,6 +825,83 @@ export function HROHeader() {
   const [facultyTypeFilter, setFacultyTypeFilter] = React.useState<"" | "all" | "part_time" | "full_time">("");
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = React.useState(0);
+  const [userRoles, setUserRoles] = React.useState<number[]>([]);
+  const [currentRole, setCurrentRole] = React.useState<number | null>(null);
+
+  const ROLE_LABELS: Record<number, string> = {
+    1: "System Admin",
+    2: "Analytics Admin",
+    3: "Approver",
+    4: "Assistant Approver",
+    5: "Faculty",
+  };
+
+  React.useEffect(() => {
+    let mounted = true;
+
+    const fetchUserRoles = async () => {
+      try {
+        const response = await fetch("/admin/xu-faculty-clearance/api/me", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch user roles");
+        }
+
+        const data = await response.json();
+        
+        if (mounted) {
+          setUserRoles(data.roles || []);
+          setCurrentRole(data.role_value || null);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user roles:", error);
+      }
+    };
+
+    fetchUserRoles();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleRoleChange = async (roleValue: string) => {
+    const roleNumber = parseInt(roleValue, 10);
+    
+    try {
+      const response = await fetch("/admin/xu-faculty-clearance/api/auth/update-role", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ role_value: roleNumber }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update role");
+      }
+
+      const dashboardPaths: Record<number, string> = {
+        1: "/system-admin-dashboard",
+        2: "/analytics-admin-dashboard",
+        3: "/approver-dashboard",
+        4: "/assistant-approver-dashboard",
+        5: "/faculty-dashboard",
+      };
+
+      window.location.href = dashboardPaths[roleNumber];
+    } catch (error) {
+      console.error("Failed to switch role:", error);
+    }
+  };
 
   React.useEffect(() => {
     let mounted = true;
@@ -833,26 +977,32 @@ export function HROHeader() {
           </div>
 
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
-                  <div className="w-full sm:w-auto sm:min-w-[190px]">
-                    <Select>
-                      <SelectTrigger
-                        variant="primaryoutline"
-                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                  {userRoles.length > 1 && (
+                    <div className="w-full sm:w-auto sm:min-w-[190px]">
+                      <Select
+                        value={currentRole?.toString()}
+                        onValueChange={handleRoleChange}
                       >
-                        <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
-                          <User className="w-4 h-4 text-primary" />
-                          <span>Role:</span>
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="complete">Faculty</SelectItem>
-                        <SelectItem value="incomplete">System Admin</SelectItem>
-                        <SelectItem value="complete">Analytics Admin</SelectItem>
-                        <SelectItem value="incomplete">Approver</SelectItem>  
-                        <SelectItem value="incomplete">Assistant Approver</SelectItem>                   
-                      </SelectContent>
-                    </Select>
-                  </div>
+                        <SelectTrigger
+                          variant="primaryoutline"
+                          className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                        >
+                          <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
+                            <User className="w-4 h-4 text-primary" />
+                            <span>Role:</span>
+                            <SelectValue placeholder={currentRole ? ROLE_LABELS[currentRole] : "Select Role"} />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {userRoles.map((roleValue) => (
+                            <SelectItem key={roleValue} value={roleValue.toString()}>
+                              {ROLE_LABELS[roleValue] || `Role ${roleValue}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
           <nav className="flex flex-col gap-4 mt-2">
             <div>
@@ -1079,8 +1229,85 @@ export function CISOHeader() {
   const [facultyTypeFilter, setFacultyTypeFilter] = React.useState<"" | "all" | "part_time" | "full_time">("");  
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = React.useState(0);
+  const [userRoles, setUserRoles] = React.useState<number[]>([]);
+  const [currentRole, setCurrentRole] = React.useState<number | null>(null);
   console.log("[CISO Header] unreadCount:", unreadCount);
   console.log("[CISO Header] RENDERED!");
+
+  const ROLE_LABELS: Record<number, string> = {
+    1: "System Admin",
+    2: "Analytics Admin",
+    3: "Approver",
+    4: "Assistant Approver",
+    5: "Faculty",
+  };
+
+  React.useEffect(() => {
+    let mounted = true;
+
+    const fetchUserRoles = async () => {
+      try {
+        const response = await fetch("/admin/xu-faculty-clearance/api/me", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch user roles");
+        }
+
+        const data = await response.json();
+        
+        if (mounted) {
+          setUserRoles(data.roles || []);
+          setCurrentRole(data.role_value || null);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user roles:", error);
+      }
+    };
+
+    fetchUserRoles();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleRoleChange = async (roleValue: string) => {
+    const roleNumber = parseInt(roleValue, 10);
+    
+    try {
+      const response = await fetch("/admin/xu-faculty-clearance/api/auth/update-role", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ role_value: roleNumber }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update role");
+      }
+
+      const dashboardPaths: Record<number, string> = {
+        1: "/system-admin-dashboard",
+        2: "/analytics-admin-dashboard",
+        3: "/approver-dashboard",
+        4: "/assistant-approver-dashboard",
+        5: "/faculty-dashboard",
+      };
+
+      window.location.href = dashboardPaths[roleNumber];
+    } catch (error) {
+      console.error("Failed to switch role:", error);
+    }
+  };
 
   React.useEffect(() => {
     let mounted = true;
@@ -1156,26 +1383,32 @@ export function CISOHeader() {
           </div>
 
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
-                  <div className="w-full sm:w-auto sm:min-w-[190px]">
-                    <Select>
-                      <SelectTrigger
-                        variant="primaryoutline"
-                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                  {userRoles.length > 1 && (
+                    <div className="w-full sm:w-auto sm:min-w-[190px]">
+                      <Select
+                        value={currentRole?.toString()}
+                        onValueChange={handleRoleChange}
                       >
-                        <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
-                          <User className="w-4 h-4 text-primary" />
-                          <span>Role:</span>
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="complete">Faculty</SelectItem>
-                        <SelectItem value="incomplete">System Admin</SelectItem>
-                        <SelectItem value="complete">Analytics Admin</SelectItem>
-                        <SelectItem value="incomplete">Approver</SelectItem>  
-                        <SelectItem value="incomplete">Assistant Approver</SelectItem>                   
-                      </SelectContent>
-                    </Select>
-                  </div>
+                        <SelectTrigger
+                          variant="primaryoutline"
+                          className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                        >
+                          <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
+                            <User className="w-4 h-4 text-primary" />
+                            <span>Role:</span>
+                            <SelectValue placeholder={currentRole ? ROLE_LABELS[currentRole] : "Select Role"} />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {userRoles.map((roleValue) => (
+                            <SelectItem key={roleValue} value={roleValue.toString()}>
+                              {ROLE_LABELS[roleValue] || `Role ${roleValue}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
 
           <nav className="flex flex-col gap-4 mt-2 overflow-y-auto flex-1 min-h-0 pr-2">
@@ -1416,6 +1649,83 @@ export function OVPHEHeader() {
   const [facultyTypeFilter, setFacultyTypeFilter] = React.useState<"" | "all" | "part_time" | "full_time">("");
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = React.useState(0);
+  const [userRoles, setUserRoles] = React.useState<number[]>([]);
+  const [currentRole, setCurrentRole] = React.useState<number | null>(null);
+
+  const ROLE_LABELS: Record<number, string> = {
+    1: "System Admin",
+    2: "Analytics Admin",
+    3: "Approver",
+    4: "Assistant Approver",
+    5: "Faculty",
+  };
+
+  React.useEffect(() => {
+    let mounted = true;
+
+    const fetchUserRoles = async () => {
+      try {
+        const response = await fetch("/admin/xu-faculty-clearance/api/me", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch user roles");
+        }
+
+        const data = await response.json();
+        
+        if (mounted) {
+          setUserRoles(data.roles || []);
+          setCurrentRole(data.role_value || null);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user roles:", error);
+      }
+    };
+
+    fetchUserRoles();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleRoleChange = async (roleValue: string) => {
+    const roleNumber = parseInt(roleValue, 10);
+    
+    try {
+      const response = await fetch("/admin/xu-faculty-clearance/api/auth/update-role", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ role_value: roleNumber }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update role");
+      }
+
+      const dashboardPaths: Record<number, string> = {
+        1: "/system-admin-dashboard",
+        2: "/analytics-admin-dashboard",
+        3: "/approver-dashboard",
+        4: "/assistant-approver-dashboard",
+        5: "/faculty-dashboard",
+      };
+
+      window.location.href = dashboardPaths[roleNumber];
+    } catch (error) {
+      console.error("Failed to switch role:", error);
+    }
+  };
 
   React.useEffect(() => {
     let mounted = true;
@@ -1491,26 +1801,32 @@ export function OVPHEHeader() {
           </div>
 
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
-                  <div className="w-full sm:w-auto sm:min-w-[190px]">
-                    <Select>
-                      <SelectTrigger
-                        variant="primaryoutline"
-                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                  {userRoles.length > 1 && (
+                    <div className="w-full sm:w-auto sm:min-w-[190px]">
+                      <Select
+                        value={currentRole?.toString()}
+                        onValueChange={handleRoleChange}
                       >
-                        <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
-                          <User className="w-4 h-4 text-primary" />
-                          <span>Role:</span>
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="complete">Faculty</SelectItem>
-                        <SelectItem value="incomplete">System Admin</SelectItem>
-                        <SelectItem value="complete">Analytics Admin</SelectItem>
-                        <SelectItem value="incomplete">Approver</SelectItem>  
-                        <SelectItem value="incomplete">Assistant Approver</SelectItem>                   
-                      </SelectContent>
-                    </Select>
-                  </div>
+                        <SelectTrigger
+                          variant="primaryoutline"
+                          className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                        >
+                          <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
+                            <User className="w-4 h-4 text-primary" />
+                            <span>Role:</span>
+                            <SelectValue placeholder={currentRole ? ROLE_LABELS[currentRole] : "Select Role"} />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {userRoles.map((roleValue) => (
+                            <SelectItem key={roleValue} value={roleValue.toString()}>
+                              {ROLE_LABELS[roleValue] || `Role ${roleValue}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
           <nav className="flex flex-col gap-4 mt-2">
             <div>
@@ -1698,6 +2014,83 @@ export function AssistantApproverHeader() {
   const [facultyTypeFilter, setFacultyTypeFilter] = React.useState<"" | "all" | "part_time" | "full_time">("");
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = React.useState(0);
+  const [userRoles, setUserRoles] = React.useState<number[]>([]);
+  const [currentRole, setCurrentRole] = React.useState<number | null>(null);
+
+  const ROLE_LABELS: Record<number, string> = {
+    1: "System Admin",
+    2: "Analytics Admin",
+    3: "Approver",
+    4: "Assistant Approver",
+    5: "Faculty",
+  };
+
+  React.useEffect(() => {
+    let mounted = true;
+
+    const fetchUserRoles = async () => {
+      try {
+        const response = await fetch("/admin/xu-faculty-clearance/api/me", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch user roles");
+        }
+
+        const data = await response.json();
+        
+        if (mounted) {
+          setUserRoles(data.roles || []);
+          setCurrentRole(data.role_value || null);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user roles:", error);
+      }
+    };
+
+    fetchUserRoles();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleRoleChange = async (roleValue: string) => {
+    const roleNumber = parseInt(roleValue, 10);
+    
+    try {
+      const response = await fetch("/admin/xu-faculty-clearance/api/auth/update-role", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ role_value: roleNumber }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update role");
+      }
+
+      const dashboardPaths: Record<number, string> = {
+        1: "/system-admin-dashboard",
+        2: "/analytics-admin-dashboard",
+        3: "/approver-dashboard",
+        4: "/assistant-approver-dashboard",
+        5: "/faculty-dashboard",
+      };
+
+      window.location.href = dashboardPaths[roleNumber];
+    } catch (error) {
+      console.error("Failed to switch role:", error);
+    }
+  };
 
   React.useEffect(() => {
     let mounted = true;
@@ -1773,26 +2166,32 @@ export function AssistantApproverHeader() {
           </div>
 
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
-                  <div className="w-full sm:w-auto sm:min-w-[190px]">
-                    <Select>
-                      <SelectTrigger
-                        variant="primaryoutline"
-                        className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                  {userRoles.length > 1 && (
+                    <div className="w-full sm:w-auto sm:min-w-[190px]">
+                      <Select
+                        value={currentRole?.toString()}
+                        onValueChange={handleRoleChange}
                       >
-                        <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
-                          <User className="w-4 h-4 text-primary" />
-                          <span>Role:</span>
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="complete">Faculty</SelectItem>
-                        <SelectItem value="incomplete">System Admin</SelectItem>
-                        <SelectItem value="complete">Analytics Admin</SelectItem>
-                        <SelectItem value="incomplete">Approver</SelectItem>  
-                        <SelectItem value="incomplete">Assistant Approver</SelectItem>                   
-                      </SelectContent>
-                    </Select>
-                  </div>
+                        <SelectTrigger
+                          variant="primaryoutline"
+                          className="w-full h-auto sm:h-8 sm:py-0 py-2 whitespace-normal sm:whitespace-nowrap"
+                        >
+                          <div className="flex items-center gap-1 min-w-0 text-left leading-tight whitespace-normal sm:whitespace-nowrap">
+                            <User className="w-4 h-4 text-primary" />
+                            <span>Role:</span>
+                            <SelectValue placeholder={currentRole ? ROLE_LABELS[currentRole] : "Select Role"} />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {userRoles.map((roleValue) => (
+                            <SelectItem key={roleValue} value={roleValue.toString()}>
+                              {ROLE_LABELS[roleValue] || `Role ${roleValue}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
         <Divider className="-mx-6 mt-2 w-[calc(100%+3rem)] border-[hsl(var(--gray-border))]" />
           <nav className="flex flex-col gap-4 mt-2">
             <div>
