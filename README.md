@@ -44,8 +44,6 @@ ClearTrack is designed as a Progressive Web Application, providing a responsive 
 
 ## Technologies Used
 
-## Technologies Used
-
 **Frontend**
 * React.js
 * Tailwind CSS
